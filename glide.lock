@@ -1,6 +1,10 @@
 hash: f2086272e86724de966a2476de3eb87bba12ad0bf4376bf4780eb247284ca1de
-updated: 2016-11-06T01:21:33.867964554+11:00
+updated: 2016-11-06T01:26:20.394653678+11:00
 imports:
+- name: github.com/cyphar/umoci
+  version: 08881b74c23d83283138d6a64823ef7a809dbd58
+  subpackages:
+  - image/layerdiff
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/opencontainers/image-spec

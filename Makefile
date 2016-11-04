@@ -17,7 +17,7 @@ GO ?= go
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/cyphar/umoci
-UMOCI_LINK := vendor/src/$(PROJECT)
+UMOCI_LINK := vendor/$(PROJECT)
 
 # Version information.
 VERSION := $(shell cat ./VERSION)
@@ -27,18 +27,11 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 .DEFAULT: umoci
 
 GO_SRC =  $(shell find . -name \*.go)
-umoci: $(GO_SRC) | $(UMOCI_LINK)
-	GOPATH=$(PWD)/vendor $(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o umoci $(PROJECT)/cmd/umoci
-
-$(UMOCI_LINK):
-	ln -sfnT . vendor/src
-	mkdir -p $(dir $(UMOCI_LINK))
-	ln -sfnT $(CURDIR) $(UMOCI_LINK)
+umoci: $(GO_SRC)
+	$(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o umoci $(PROJECT)/cmd/umoci
 
 update-deps:
 	glide --home=$(PWD) up -v
 
 clean:
 	rm -f umoci
-	rm -f vendor/src
-	rm -f $(UMOCI_LINK)
