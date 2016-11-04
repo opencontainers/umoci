@@ -16,11 +16,15 @@ tooling that can abstract all of the internals of the OCI specification into a
 single CLI interface. The main purpose of this tool is to serve as example of
 what **I** would like to see in an `oci-image` tool.
 
+Some of the [planned design][design.md] has been written down, but is subject
+to change (once all of the in progress points below have been addressed).
+
 [oci-image-spec]: https://github.com/opencontainers/image-spec
 [oci-image-tools]: https://github.com/opencontainers/image-tools
 [disc-1]: https://github.com/opencontainers/image-spec/pull/411
 [disc-2]: https://github.com/opencontainers/image-tools/pull/5
 [disc-3]: https://github.com/opencontainers/image-tools/pull/8
+[design.md]: DESIGN.md
 
 ### In Progress ###
 
