@@ -1,0 +1,6 @@
+package: umoci
+import:
+- package: github.com/Sirupsen/logrus
+  version: ~0.11.0
+- package: github.com/urfave/cli
+  version: ~1.18.1

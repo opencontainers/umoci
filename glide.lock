@@ -1,0 +1,30 @@
+hash: 5436d9739786e8e0e7ec8d4bfb95672826f25f1eac3309636a78e5719f986cee
+updated: 2016-11-06T01:19:45.065913599+11:00
+imports:
+- name: github.com/Sirupsen/logrus
+  version: d26492970760ca5d33129d2d799e34be5c4782eb
+- name: github.com/urfave/cli
+  version: a14d7d367bc02b1f57d88de97926727f2d936387
+- name: golang.org/x/sys
+  version: c200b10b5d5e122be351b67af224adc6128af5bf
+  subpackages:
+  - unix
+- name: gopkg.in/airbrake/gobrake.v2
+  version: 5d77bd50d083834501349f8be70197b26963674d
+- name: gopkg.in/gemnasium/logrus-airbrake-hook.v2
+  version: bfee1239d796830ca346767650cce5ba90d58c57
+- name: gopkg.in/yaml.v2
+  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 346938d642f2ec3594ed81d874461961cd0faa76
+  subpackages:
+  - spew
+- name: github.com/pmezard/go-difflib
+  version: 792786c7400a136282c1664665ae0a8db921c6c2
+  subpackages:
+  - difflib
+- name: github.com/stretchr/testify
+  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  subpackages:
+  - assert
