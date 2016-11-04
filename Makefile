@@ -35,6 +35,9 @@ $(UMOCI_LINK):
 	mkdir -p $(dir $(UMOCI_LINK))
 	ln -sfnT $(CURDIR) $(UMOCI_LINK)
 
+update-deps:
+	glide --home=$(PWD) up -v
+
 clean:
 	rm -f umoci
 	rm -f vendor/src

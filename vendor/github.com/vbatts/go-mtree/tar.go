@@ -145,7 +145,6 @@ func (ts *tarStream) readHeaders() {
 				if hdr.FileInfo().IsDir() && keyword == "size" {
 					continue
 				}
-				// TODO: handle hardlinks
 				val, err := keyFunc(hdr.Name, hdr.FileInfo(), tmpFile)
 				if err != nil {
 					ts.setErr(err)
@@ -218,13 +217,11 @@ func populateTree(root, e *Entry, hdr *tar.Header) error {
 		// directory up until the actual file
 		wd = filepath.Dir(wd)
 		if wd == "." {
-			// If file in root directory, no need to traverse down, just append
 			root.Children = append([]*Entry{e}, root.Children...)
 			e.Parent = root
 			return nil
 		}
 	}
-	// TODO: what about directory/file names with "/" in it?
 	dirNames := strings.Split(wd, "/")
 	parent := root
 	for _, name := range dirNames[:] {
@@ -420,30 +417,6 @@ func setDifference(this, that []string) []string {
 		}
 	}
 	return diff
-}
-
-type relationship int
-
-const (
-	unknownDir relationship = iota
-	sameDir
-	childDir
-	parentDir
-)
-
-func compareDir(curDir, prevDir string) relationship {
-	curDir = filepath.Clean(curDir)
-	prevDir = filepath.Clean(prevDir)
-	if curDir == prevDir {
-		return sameDir
-	}
-	if filepath.Dir(curDir) == prevDir {
-		return childDir
-	}
-	if curDir == filepath.Dir(prevDir) {
-		return parentDir
-	}
-	return unknownDir
 }
 
 func (ts *tarStream) setErr(err error) {

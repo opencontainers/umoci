@@ -78,6 +78,15 @@ func (kv KeyVal) ChangeValue(newval string) string {
 	return fmt.Sprintf("%s=%s", kv.Keyword(), newval)
 }
 
+// KeyValEqual returns whether two KeyVals are equivalent. This takes
+// care of certain odd cases such as tar_mtime, and should be used over
+// using == comparisons directly unless you really know what you're
+// doing.
+func KeyValEqual(a, b KeyVal) bool {
+	// TODO: Implement handling of tar_mtime.
+	return a.Keyword() == b.Keyword() && a.Value() == b.Value()
+}
+
 // keywordSelector takes an array of "keyword=value" and filters out that only the set of words
 func keywordSelector(keyval, words []string) []string {
 	retList := []string{}
@@ -165,7 +174,7 @@ var (
 	BsdKeywords = []string{
 		"cksum",
 		"device",
-		"flags",
+		"flags", // this one is really mostly BSD specific ...
 		"ignore",
 		"gid",
 		"gname",
@@ -226,6 +235,8 @@ var (
 		"sha512":          hasherKeywordFunc("sha512digest", sha512.New),       // The SHA512 message digest of the file
 		"sha512digest":    hasherKeywordFunc("sha512digest", sha512.New),       // A synonym for `sha512`
 
+		"flags": flagsKeywordFunc, // NOTE: this is a noop, but here to support the presence of the "flags" keyword.
+
 		// This is not an upstreamed keyword, but used to vary from "time", as tar
 		// archives do not store nanosecond precision. So comparing on "time" will
 		// be only seconds level accurate.
@@ -285,14 +296,12 @@ var (
 		}
 	}
 	tartimeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		return fmt.Sprintf("tar_time=%d.000000000", info.ModTime().Unix()), nil
+		return fmt.Sprintf("tar_time=%d.%9.9d", info.ModTime().Unix(), 0), nil
 	}
 	timeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		t := info.ModTime().UnixNano()
-		if t == 0 {
-			return "time=0.000000000", nil
-		}
-		return fmt.Sprintf("time=%d.%9.9d", (t / 1e9), (t % (t / 1e9))), nil
+		tSec := info.ModTime().Unix()
+		tNano := info.ModTime().Nanosecond()
+		return fmt.Sprintf("time=%d.%9.9d", tSec, tNano), nil
 	}
 	linkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
 		if sys, ok := info.Sys().(*tar.Header); ok {

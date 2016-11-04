@@ -100,6 +100,19 @@ func (e Entry) String() string {
 	return fmt.Sprintf("    %s %s", e.Name, strings.Join(e.Keywords, " "))
 }
 
+// AllKeys returns the full set of KeyVals for the given entry, based on the
+// /set keys as well as the entry-local keys. Entry-local keys always take
+// precedence.
+func (e Entry) AllKeys() KeyVals {
+	var kv KeyVals
+	if e.Set != nil {
+		kv = MergeSet(e.Set.Keywords, e.Keywords)
+	} else {
+		kv = NewKeyVals(e.Keywords)
+	}
+	return kv
+}
+
 // EntryType are the formats of lines in an mtree spec file
 type EntryType int
 

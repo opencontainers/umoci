@@ -1,3 +1,5 @@
+// +build linux
+
 package mtree
 
 import (
@@ -14,6 +16,11 @@ import (
 )
 
 var (
+	// this is bsd specific https://www.freebsd.org/cgi/man.cgi?query=chflags&sektion=2
+	flagsKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+		return "", nil
+	}
+
 	unameKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
 		if hdr, ok := info.Sys().(*tar.Header); ok {
 			return fmt.Sprintf("uname=%s", hdr.Uname), nil
@@ -58,6 +65,9 @@ var (
 				klist = append(klist, fmt.Sprintf("xattr.%s=%s", k, base64.StdEncoding.EncodeToString([]byte(v))))
 			}
 			return strings.Join(klist, " "), nil
+		}
+		if !info.Mode().IsRegular() && !info.Mode().IsDir() {
+			return "", nil
 		}
 
 		xlist, err := xattr.List(path)

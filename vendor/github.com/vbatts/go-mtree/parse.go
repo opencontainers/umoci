@@ -93,6 +93,7 @@ func ParseSpec(r io.Reader) (*DirectoryHierarchy, error) {
 					}
 				}
 			}
+			e.Set = creator.curSet
 		default:
 			// TODO(vbatts) log a warning?
 			continue

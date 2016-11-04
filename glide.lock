@@ -29,7 +29,7 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: 92b6fc1af326c0ed4c8efba6aa657b84b50d3973
+  version: c7f15034cf7858abfeb498f4ec0e612f7e6e2e4e
   subpackages:
   - xattr
 - name: github.com/xeipuuv/gojsonpointer
