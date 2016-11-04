@@ -47,11 +47,16 @@ particular order:
   PR][oci-cas] merged. In particular, I don't want to have to write my own
   version of the blob writing code.
 
+* [ ] Currently there's a bug in `image-tools` which required me to manually
+  modify the code. Which is a pain. There is a [PR to fix it, hopefully it's
+  merged soon][mediatype-bug].
+
 There are also some other issues that I need to make a decision about (specifically)
 
 [gomtree-pr]: https://github.com/vbatts/go-mtree/pull/48
 [oci-create-layer]: https://github.com/opencontainers/image-tools/pull/8
 [oci-cas]: https://github.com/opencontainers/image-tools/pull/5
+[mediatype-bug]: https://github.com/opencontainers/image-tools/pull/69
 
 ### License ###
 

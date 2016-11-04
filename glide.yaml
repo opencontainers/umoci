@@ -4,3 +4,16 @@ import:
   version: ~0.11.0
 - package: github.com/urfave/cli
   version: ~1.18.1
+- package: github.com/opencontainers/image-tools
+  subpackages:
+  - image
+- package: github.com/opencontainers/image-spec
+  version: v1.0.0-rc2
+  subpackages:
+  - specs-go
+- package: github.com/opencontainers/runtime-spec
+  version: v1.0.0-rc2
+  subpackages:
+  - specs-go
+- package: github.com/vbatts/go-mtree
+  version: ~0.2.0

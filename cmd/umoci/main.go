@@ -58,7 +58,9 @@ func main() {
 		return nil
 	}
 
-	app.Commands = []cli.Command{}
+	app.Commands = []cli.Command{
+		unpackCommand,
+	}
 
 	// Actually run umoci.
 	if err := app.Run(os.Args); err != nil {

@@ -1,10 +1,51 @@
-hash: 5436d9739786e8e0e7ec8d4bfb95672826f25f1eac3309636a78e5719f986cee
-updated: 2016-11-06T01:19:45.065913599+11:00
+hash: f2086272e86724de966a2476de3eb87bba12ad0bf4376bf4780eb247284ca1de
+updated: 2016-11-06T01:21:33.867964554+11:00
 imports:
+- name: github.com/inconshreveable/mousetrap
+  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
+- name: github.com/opencontainers/image-spec
+  version: 6e820ec55259e89ccd7092f3131c63e8419a349b
+  subpackages:
+  - image
+  - schema
+  - specs-go
+  - specs-go/v1
+- name: github.com/opencontainers/image-tools
+  version: 0a1e5dc0c9b67619d46bd8cbcc948bda1b143b27
+  subpackages:
+  - image
+- name: github.com/opencontainers/runtime-spec
+  version: 7dab1a245d3e13d0ad03b77409d0bf7e00a6ada4
+  subpackages:
+  - specs-go
+- name: github.com/pkg/errors
+  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/Sirupsen/logrus
   version: d26492970760ca5d33129d2d799e34be5c4782eb
+- name: github.com/spf13/cobra
+  version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
+- name: github.com/spf13/pflag
+  version: 5ccb023bc27df288a957c5e994cd44fd19619465
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
+- name: github.com/vbatts/go-mtree
+  version: 92b6fc1af326c0ed4c8efba6aa657b84b50d3973
+  subpackages:
+  - xattr
+- name: github.com/xeipuuv/gojsonpointer
+  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
+- name: github.com/xeipuuv/gojsonreference
+  version: e02fc20de94c78484cd5ffb007f8af96be030a45
+- name: github.com/xeipuuv/gojsonschema
+  version: d5336c75940ef31c9ceeb0ae64cf92944bccb4ee
+- name: go4.org
+  version: 399a9d7bfe85437346a5ec4ef0450fc2f1084e61
+  subpackages:
+  - errorutil
+- name: golang.org/x/crypto
+  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  subpackages:
+  - ripemd160
 - name: golang.org/x/sys
   version: c200b10b5d5e122be351b67af224adc6128af5bf
   subpackages:
@@ -24,7 +65,11 @@ testImports:
   version: 792786c7400a136282c1664665ae0a8db921c6c2
   subpackages:
   - difflib
+- name: github.com/russross/blackfriday
+  version: 0b647d0506a698cca42caca173e55559b12a69f2
+- name: github.com/shurcooL/sanitized_anchor_name
+  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
 - name: github.com/stretchr/testify
-  version: 976c720a22c8eb4eb6a0b4348ad85ad12491a506
+  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
   subpackages:
   - assert

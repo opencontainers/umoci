@@ -26,7 +26,8 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 
 .DEFAULT: umoci
 
-umoci: | $(UMOCI_LINK)
+GO_SRC =  $(shell find . -name \*.go)
+umoci: $(GO_SRC) | $(UMOCI_LINK)
 	GOPATH=$(PWD)/vendor $(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o umoci $(PROJECT)/cmd/umoci
 
 $(UMOCI_LINK):
