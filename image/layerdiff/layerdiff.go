@@ -21,6 +21,7 @@ import (
 	"compress/gzip"
 	"io"
 	"path/filepath"
+	"sort"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/vbatts/go-mtree"
@@ -31,6 +32,14 @@ import (
 //       implemented the InodeDelta and supporting interfaces. Hopefully my PR
 //       will be merged soon. https://github.com/vbatts/go-mtree/pull/48
 
+// inodeDeltas is a wrapper around []mtree.InodeDelta that allows for sorting
+// the set of deltas by the pathname.
+type inodeDeltas []mtree.InodeDelta
+
+func (ids inodeDeltas) Len() int           { return len(ids) }
+func (ids inodeDeltas) Less(i, j int) bool { return ids[i].Path() < ids[j].Path() }
+func (ids inodeDeltas) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
+
 // GenerateLayer creates a new OCI diff layer based on the mtree diff provided.
 // All of the mtree.Modified and mtree.Extra blobs are read relative to the
 // provided path (which should be the rootfs of the layer that was diffed).
@@ -38,18 +47,27 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 	reader, writer := io.Pipe()
 
 	go func() {
+		defer writer.Close()
+		gzw := gzip.NewWriter(writer)
+		defer gzw.Close()
+
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
 		// TODO: Should we doing the gzip in this layer?
-		gzw := gzip.NewWriter(writer)
 		tg := NewTarGenerator(gzw)
+		defer tg.tw.Close()
 
-		// XXX: Do we need to sort the delta paths?
+		// Sort the delta paths.
+		sort.Sort(inodeDeltas(deltas))
 
 		for _, delta := range deltas {
 			name := delta.Path()
 			fullPath := filepath.Join(path, name)
+
+			// XXX: It's possible that if we unlink a hardlink, we're going to
+			//      AddFile() for no reason. Maybe we should drop nlink= from
+			//      the set of keywords we care about?
 
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:

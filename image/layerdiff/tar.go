@@ -89,49 +89,6 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	return path, nil
 }
 
-// ensureParent creates all of the necessary headers to make sure that all of
-// the parent directories have been included in the tarGenerator.
-func (tg *tarGenerator) ensureParent(path, name string) error {
-	return nil
-
-	pathDir := filepath.Dir(path)
-	nameDir := filepath.Dir(name)
-	if nameDir == "." {
-		// Nothing to do, we are in the root.
-		return nil
-	}
-
-	// We need to figure out what parent directories we're missing. Do it
-	// recursively to save space. FIXME
-	if !tg.directories[nameDir] {
-		if err := tg.ensureParent(pathDir, nameDir); err != nil {
-			return err
-		}
-
-		fi, err := os.Lstat(pathDir)
-		if err != nil {
-			return err
-		}
-
-		hdr, err := tar.FileInfoHeader(fi, "")
-		if err != nil {
-			return err
-		}
-		hdr.Name = nameDir
-
-		if hdr.Typeflag != tar.TypeDir {
-			return fmt.Errorf("parent directory is not a directory")
-		}
-
-		if err := tg.tw.WriteHeader(hdr); err != nil {
-			return err
-		}
-	}
-
-	tg.directories[nameDir] = true
-	return nil
-}
-
 // AddFile adds a file from the filesystem to the tar archive. It copies all of
 // the relevant stat information about the file, and also attempts to track
 // hardlinks. This should be functionally equivalent to adding entries with GNU
@@ -160,10 +117,13 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	}
 	hdr.Name = name
 
-	// We need to make sure that all of the parent directories exist.
-	if err := tg.ensureParent(path, name); err != nil {
-		return err
-	}
+	// FIXME: Do we need to ensure that the parent paths have all been added to
+	//        the archive? I haven't found any tar specification that makes
+	//        this mandatory, but I have a feeling that some people might rely
+	//        on it. The issue with implementing it is that we'd have to get
+	//        the FileInfo about the directory from somewhere (and we don't
+	//        want to waste space by adding an entry that will be overwritten
+	//        later).
 
 	// Different systems have different special things they need to set within
 	// a tar header. In principle, tar.FileInfoHeader should've done it for us
@@ -242,12 +202,15 @@ func (tg *tarGenerator) AddWhiteout(name string) error {
 	whiteout := filepath.Join(dir, whPrefix+file)
 	timestamp := time.Now()
 
-	// XXX: This is almost certainly wrong.
-	/*
-		if err := tg.ensureParent(whiteout, whiteout); err != nil {
-			return err
-		}
-	*/
+	// FIXME: Do we need to ensure that the parent paths have all been added to
+	//        the archive? I haven't found any tar specification that makes
+	//        this mandatory, but I have a feeling that some people might rely
+	//        on it.
+	//
+	//        The big issue with implementing it for whiteouts is that you then
+	//        have to ensure you match the old FileInfo in a lower layer (which
+	//        we don't have access to in this context). In addition, I don't
+	//        really buy why it would be necessary.
 
 	// Add a dummy header for the whiteout file.
 	if err := tg.tw.WriteHeader(&tar.Header{
