@@ -1,5 +1,7 @@
 ## `umoci` ###
 
+**Status: Pre-Alpha**
+
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
 what are you going to do. It also is a cool way for people to "dip their toe"
 into OCI images ("umoci" also means "to dip" in Serbian).
@@ -28,35 +30,59 @@ to change (once all of the in progress points below have been addressed).
 
 ### In Progress ###
 
-Currently `umoci` isn't being developed, since there are several open PRs and
-issues that need to be resolved in order for this code to be worked on. In no
-particular order:
+Here is a laundry list of features that are being worked on [from the design
+document][design.md]. Checked items have been "completed" (noting that the UX
+is likely to change and that there are certain issues documented in the code
+that probably result in technically invalid OCI images -- though testing showed
+that the OCI tooling didn't pick up on the transgressions).
 
-* [ ] `go-mtree` needs to have better handling of comparing specifications and
+* [x] `umoci unpack`.
+* [x] `umoci repack`.
+* [x] `umoci/image/generate`.
+* [ ] `umoci config`.
+* [ ] `umoci gc`.
+* [ ] `umoci init`.
+* [ ] `umoci ref`.
+* [ ] `umoci info`. (*optional*)
+* [ ] `umoci verify`. (*optional*)
+* [ ] `umoci sign`. (*optional*)
+
+Currently `umoci` relies on several from-scratch implementations of existing
+PRs against upstream projects (or aliased vendor projects that include PRs
+merged that are not merged upstream). This is because currently upstream
+projects are simply not mature enough to be used. It also means that this code
+is definitely not safe for production.
+
+* `go-mtree` needs to have better handling of comparing specifications and
   directories. I have [an open pull request which is being reviewed and will
   hopefully be merged soon][gomtree-pr].
 
-* [ ] The proposed implementation for [`oci-create-layer`][oci-create-layer]
-  needs to be finalised so that I can fork it to use `[]gomtree.InodeDelta` to
-  generate the diff layer. I intend to actually contribute that fork back
-  upstream, but the maintainers have expressed concerns about `go-mtree`
-  because of its age.
+* Currently `image/layerdiff` is a complete reimplementation of the proposed
+  implementation for [`oci-create-layer`][oci-create-layer]. This is because I
+  needed to use `[]gomtree.InodeDelta` but the hope is that my implementation
+  will eventually be pushed upstream (once `go-mtree` merges my PR and gets
+  more stable).
 
-* [ ] While I don't agree with the CLI tooling, in order to effectively access the
-  CAS of an OCI image we need to have the `Engine` interface from [this
-  PR][oci-cas] merged. In particular, I don't want to have to write my own
-  version of the blob writing code.
+* In addition, `image/cas` is also a complete reimplementation of [this
+  PR][oci-cas]. The reason for rewriting that code was because the proposed
+  code doesn't implement some of the nice interfaces I would like (and has some
+  other issues that I find frustrating). I hope that I can push my
+  implementation upstream.
 
-* [ ] Currently there's a bug in `image-tools` which required me to manually
-  modify the code. Which is a pain. There is a [PR to fix it, hopefully it's
-  merged soon][mediatype-bug].
+* Currently, `umoci` requires root privileges to extract the `rootfs` of an
+  image. This is simply ludicrous, and I'm hoping that [this upstream PR will
+  be merged][oci-ownership] so that I can use an `[]idtools.IDMap` to allow for
+  translation of the owners of files when generating the `tar` archives. There
+  are almost certainly hacky ways around this but I would prefer to avoid them.
 
-There are also some other issues that I need to make a decision about (specifically)
+Also, some of the vendored `opencontainers` libraries have bugs which means
+that I have to manually patch them after running `hack/vendor.sh`. Which is
+just bad on so many levels.
 
 [gomtree-pr]: https://github.com/vbatts/go-mtree/pull/48
 [oci-create-layer]: https://github.com/opencontainers/image-tools/pull/8
 [oci-cas]: https://github.com/opencontainers/image-tools/pull/5
-[mediatype-bug]: https://github.com/opencontainers/image-tools/pull/69
+[oci-ownership]: https://github.com/opencontainers/image-tools/pull/3
 
 ### License ###
 
