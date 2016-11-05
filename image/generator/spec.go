@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	imagespec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // FIXME: Because we are not a part of upstream, we have to add some tests that
@@ -37,7 +37,32 @@ import (
 // recommended way of handling modification and generation of image-spec
 // configuration blobs.
 type Generator struct {
-	image imagespec.Image
+	image v1.Image
+}
+
+// init makes sure everything has a "proper" zero value.
+func (g *Generator) init() {
+	if g.image.Config.ExposedPorts == nil {
+		g.ClearConfigExposedPorts()
+	}
+	if g.image.Config.Env == nil {
+		g.ClearConfigEnv()
+	}
+	if g.image.Config.Entrypoint == nil {
+		g.SetConfigEntrypoint([]string{})
+	}
+	if g.image.Config.Cmd == nil {
+		g.SetConfigCmd([]string{})
+	}
+	if g.image.Config.Volumes == nil {
+		g.ClearConfigVolumes()
+	}
+	if g.image.RootFS.DiffIDs == nil {
+		g.ClearRootfsDiffIDs()
+	}
+	if g.image.History == nil {
+		g.ClearHistory()
+	}
 }
 
 // New creates a new Generator with the inital template set to a default. It is
@@ -46,29 +71,32 @@ type Generator struct {
 func New() *Generator {
 	// FIXME: Come up with some sane default.
 	return &Generator{
-		image: imagespec.Image{},
+		image: v1.Image{},
 	}
 }
 
 // NewFromTemplate creates a new Generator with the initial template being
 // unmarshaled from JSON read from the provided reader (which must unmarshal
-// into a valid imagespec.Image).
+// into a valid v1.Image).
 func NewFromTemplate(r io.Reader) (*Generator, error) {
-	var image imagespec.Image
-	if err := json.Decoder(r).Decode(&image); err != nil {
+	var image v1.Image
+	if err := json.NewDecoder(r).Decode(&image); err != nil {
 		return nil, err
 	}
 
 	// TODO: Should we validate the image here?
 
-	return &Generator{
+	g := &Generator{
 		image: image,
-	}, nil
+	}
+
+	g.init()
+	return g, nil
 }
 
 // NewFromFile creates a new Generator with the initial template being
 // unmarshaled from JSON read from the provided file (which must unmarshal
-// into a valid imagespec.Image).
+// into a valid v1.Image).
 func NewFromFile(path string) (*Generator, error) {
 	fh, err := os.Open(path)
 	if err != nil {
@@ -79,8 +107,19 @@ func NewFromFile(path string) (*Generator, error) {
 	return NewFromTemplate(fh)
 }
 
+// NewFromImage generates a new generator with the initial template being the
+// given v1.Image.
+func NewFromImage(image v1.Image) (*Generator, error) {
+	g := &Generator{
+		image: image,
+	}
+
+	g.init()
+	return g, nil
+}
+
 // Image returns a copy of the current state of the generated image.
-func (g *Generator) Image() imagespec.Image {
+func (g *Generator) Image() v1.Image {
 	return g.image
 }
 
@@ -264,17 +303,17 @@ func (g *Generator) RootfsDiffIDs() []string {
 
 // ClearHistory clears the history of each layer.
 func (g *Generator) ClearHistory() {
-	g.image.History = []imagespec.History{}
+	g.image.History = []v1.History{}
 }
 
 // AddHistory appends to the history of the layers.
-func (g *Generator) AddHistory(history imagespec.History) {
+func (g *Generator) AddHistory(history v1.History) {
 	g.image.History = append(g.image.History, history)
 }
 
 // History returns the history of each layer.
-func (g *Generator) History() []imagespec.History {
-	copy := []imagespec.History{}
+func (g *Generator) History() []v1.History {
+	copy := []v1.History{}
 	for _, v := range g.image.History {
 		copy = append(copy, v)
 	}

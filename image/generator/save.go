@@ -31,7 +31,7 @@ type fakeBuffer struct {
 // Write just counts the number of bytes requested to be written.
 func (fb *fakeBuffer) Write(p []byte) (int, error) {
 	size := len(p)
-	n += size
+	fb.n += int64(size)
 	return size, nil
 }
 
@@ -45,9 +45,7 @@ func (g *Generator) WriteTo(w io.Writer) (n int64, err error) {
 	var fb fakeBuffer
 	w = io.MultiWriter(w, &fb)
 
-	enc := json.NewEnocode(w)
-	enc.SetIndent("", "")
-	if err := enc.Encode(g.image); err != nil {
+	if err := json.NewEncoder(w).Encode(g.image); err != nil {
 		return fb.n, err
 	}
 
