@@ -25,6 +25,8 @@ import (
 	"github.com/urfave/cli"
 )
 
+const rootfsName = "rootfs"
+
 // version is version ID for the source, read from VERSION in the source and
 // populated on build by make.
 var version = ""

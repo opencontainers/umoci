@@ -23,12 +23,13 @@ import (
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci/image/cas"
+	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/image-tools/image"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
+	"golang.org/x/net/context"
 )
-
-const rootfsPath = "rootfs"
 
 var unpackCommand = cli.Command{
 	Name:  "unpack",
@@ -72,19 +73,37 @@ func unpack(ctx *cli.Context) error {
 	if bundlePath == "" {
 		return fmt.Errorf("bundle path cannot be empty")
 	}
-	refName := ctx.String("from")
-	if refName == "" {
+	fromName := ctx.String("from")
+	if fromName == "" {
 		return fmt.Errorf("reference name cannot be empty")
 	}
 
-	// FIXME: This *should* be named after the digest referenced by the ref.
-	mtreePath := filepath.Join(bundlePath, refName+".mtree")
+	// Get a reference to the CAS.
+	engine, err := cas.Open(imagePath)
+	if err != nil {
+		return err
+	}
+	defer engine.Close()
+
+	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
+	if err != nil {
+		return err
+	}
+
+	// FIXME: Implement support for manifest lists.
+	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
+		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
+	}
+
+	// FIXME: We should probably fix this so we don't use ':' in a pathname.
+	mtreePath := filepath.Join(bundlePath, fromDescriptor.Digest+".mtree")
+	fullRootfsPath := filepath.Join(bundlePath, rootfsName)
 
 	logrus.WithFields(logrus.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
-		"ref":    refName,
-		"rootfs": rootfsPath,
+		"ref":    fromName,
+		"rootfs": rootfsName,
 	}).Debugf("umoci: unpacking OCI image")
 
 	// Unpack the runtime bundle.
@@ -98,7 +117,7 @@ func unpack(ctx *cli.Context) error {
 	// FIXME: This also currently requires root privileges in order to extract
 	//        something owned by root, which is a real shame. There are some
 	//        PRs to fix this though. https://github.com/opencontainers/image-tools/pull/3
-	if err := image.CreateRuntimeBundleLayout(imagePath, bundlePath, refName, rootfsPath); err != nil {
+	if err := image.CreateRuntimeBundleLayout(imagePath, bundlePath, fromName, rootfsName); err != nil {
 		return fmt.Errorf("failed to create runtime bundle: %q", err)
 	}
 
@@ -110,7 +129,6 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	fullRootfsPath := filepath.Join(bundlePath, rootfsPath)
 	dh, err := mtree.Walk(fullRootfsPath, nil, keywords)
 	if err != nil {
 		return fmt.Errorf("failed to generate mtree spec: %q", err)

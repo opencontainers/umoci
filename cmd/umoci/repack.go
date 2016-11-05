@@ -19,14 +19,17 @@ package main
 
 import (
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci/image/cas"
+	"github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layerdiff"
+	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
+	"golang.org/x/net/context"
 )
 
 var repackCommand = cli.Command{
@@ -57,6 +60,10 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Name:  "bundle",
 			Usage: "destination bundle path",
 		},
+		cli.StringFlag{
+			Name:  "tag",
+			Usage: "tag name for repacked image",
+		},
 	},
 
 	Action: repack,
@@ -72,20 +79,37 @@ func repack(ctx *cli.Context) error {
 	if bundlePath == "" {
 		return fmt.Errorf("bundle path cannot be empty")
 	}
-	refName := ctx.String("from")
-	if refName == "" {
+	fromName := ctx.String("from")
+	if fromName == "" {
 		return fmt.Errorf("reference name cannot be empty")
 	}
 
-	// FIXME: This *should* be named after the digest referenced by the ref.
-	mtreePath := filepath.Join(bundlePath, refName+".mtree")
-	fullRootfsPath := filepath.Join(bundlePath, rootfsPath)
+	// Get a reference to the CAS.
+	engine, err := cas.Open(imagePath)
+	if err != nil {
+		return err
+	}
+	defer engine.Close()
+
+	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
+	if err != nil {
+		return err
+	}
+
+	// FIXME: Implement support for manifest lists.
+	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
+		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
+	}
+
+	// FIXME: We should probably fix this so we don't use ':' in a pathname.
+	mtreePath := filepath.Join(bundlePath, fromDescriptor.Digest+".mtree")
+	fullRootfsPath := filepath.Join(bundlePath, rootfsName)
 
 	logrus.WithFields(logrus.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
-		"ref":    refName,
-		"rootfs": rootfsPath,
+		"ref":    fromName,
+		"rootfs": rootfsName,
 		"mtree":  mtreePath,
 	}).Debugf("umoci: repacking OCI image")
 
@@ -111,12 +135,103 @@ func repack(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	defer reader.Close()
 
-	io.Copy(os.Stdout, reader)
+	// XXX: I get the feeling all of this should be moved to a separate package
+	//      which abstracts this nicely.
 
-	// TODO: Modify the configuration and manifest to use the new layer. -- requires CAS
-	// TODO: Add all of those blobs. -- requires CAS
-	// TODO: Add the refs. -- requires CAS
+	layerDigest, layerSize, err := engine.PutBlob(context.TODO(), reader)
+	if err != nil {
+		return err
+	}
+	reader.Close()
+	// XXX: Should we defer a DeleteBlob?
 
-	return fmt.Errorf("not implemented")
+	layerDescriptor := &v1.Descriptor{
+		// FIXME: This should probably be configurable, so someone can specify
+		//        that a layer is not distributable.
+		MediaType: v1.MediaTypeImageLayer,
+		Digest:    layerDigest,
+		Size:      layerSize,
+	}
+
+	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
+	if err != nil {
+		return err
+	}
+	defer manifestBlob.Close()
+
+	manifest, ok := manifestBlob.Data.(*v1.Manifest)
+	if !ok {
+		// Should never be reached.
+		return fmt.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
+	}
+
+	// We also need to update the config. Fun.
+	configBlob, err := cas.FromDescriptor(context.TODO(), engine, &manifest.Config)
+	if err != nil {
+		return err
+	}
+	defer configBlob.Close()
+
+	config, ok := configBlob.Data.(*v1.Image)
+	if !ok {
+		// Should not be reached.
+		return fmt.Errorf("config blob type not implemented: %s", configBlob.MediaType)
+	}
+
+	g, err := generator.NewFromImage(*config)
+	if err != nil {
+		return err
+	}
+
+	// Append our new layer to the set of DiffIDs.
+	g.AddRootfsDiffID(layerDigest)
+
+	// Update config and create a new blob for it.
+	*config = g.Image()
+	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
+	if err != nil {
+		return err
+	}
+
+	// Update the manifest to include the new layer, and also point at the new
+	// config. Then create a new blob for it.
+	manifest.Layers = append(manifest.Layers, *layerDescriptor)
+	manifest.Config.Digest = newConfigDigest
+	manifest.Config.Size = newConfigSize
+	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+
+	// Now create a new reference, and either add it to the engine or spew it
+	// to stdout.
+
+	newDescriptor := &v1.Descriptor{
+		// FIXME: Support manifest lists.
+		MediaType: v1.MediaTypeImageManifest,
+		Digest:    newManifestDigest,
+		Size:      newManifestSize,
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"mediatype": newDescriptor.MediaType,
+		"digest":    newDescriptor.Digest,
+		"size":      newDescriptor.Size,
+	}).Infof("created new image")
+
+	tagName := ctx.String("tag")
+	if tagName == "" {
+		return nil
+	}
+
+	// We have to clobber the old reference.
+	// XXX: Should we output some warning if we actually did remove an old
+	//      reference?
+	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
+		return err
+	}
+	if err := engine.PutReference(context.TODO(), tagName, newDescriptor); err != nil {
+		return err
+	}
+
+	return nil
 }
