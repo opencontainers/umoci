@@ -111,12 +111,20 @@ func unpack(ctx *cli.Context) error {
 		return fmt.Errorf("failed to create bundle path: %q", err)
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
+
 	// FIXME: Currently we only support OCI layouts, not tar archives. This
 	//        should be fixed once the CAS engine PR is merged into
 	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
+	//
 	// FIXME: This also currently requires root privileges in order to extract
 	//        something owned by root, which is a real shame. There are some
 	//        PRs to fix this though. https://github.com/opencontainers/image-tools/pull/3
+	//
+	// FIXME: This also currently doesn't correctly extract a bundle (the
+	//        modified/create time is not preserved after doing the
+	//        extraction). I'm considering reimplementing it just so there are
+	//        competing implementations of this extraction functionality.
+	//           https://github.com/opencontainers/image-tools/issues/74
 	if err := image.CreateRuntimeBundleLayout(imagePath, bundlePath, fromName, rootfsName); err != nil {
 		return fmt.Errorf("failed to create runtime bundle: %q", err)
 	}
