@@ -116,6 +116,7 @@ func (c *config) runtimeSpec(rootfs string) (*specs.Spec, error) {
 	swap := uint64(c.Config.MemorySwap)
 	shares := uint64(c.Config.CPUShares)
 
+	s.Linux = &specs.Linux{}
 	s.Linux.Resources = &specs.Resources{
 		CPU: &specs.CPU{
 			Shares: &shares,
