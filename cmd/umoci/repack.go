@@ -126,10 +126,18 @@ func repack(ctx *cli.Context) error {
 
 	keywords := mtree.CollectUsedKeywords(spec)
 
+	logrus.WithFields(logrus.Fields{
+		"keywords": keywords,
+	}).Debugf("umoci: parsed mtree spec")
+
 	diffs, err := mtree.Check(fullRootfsPath, spec, keywords)
 	if err != nil {
 		return err
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"ndiff": len(diffs),
+	}).Debugf("umoci: checked mtree spec")
 
 	reader, err := layerdiff.GenerateLayer(fullRootfsPath, diffs)
 	if err != nil {
@@ -155,11 +163,20 @@ func repack(ctx *cli.Context) error {
 		Size:      layerSize,
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"digest": layerDigest,
+		"size":   layerSize,
+	}).Debugf("umoci: generated new diff layer")
+
 	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
 	if err != nil {
 		return err
 	}
 	defer manifestBlob.Close()
+
+	logrus.WithFields(logrus.Fields{
+		"digest": manifestBlob.Digest,
+	}).Debugf("umoci: got original manifest")
 
 	manifest, ok := manifestBlob.Data.(*v1.Manifest)
 	if !ok {
@@ -174,6 +191,10 @@ func repack(ctx *cli.Context) error {
 	}
 	defer configBlob.Close()
 
+	logrus.WithFields(logrus.Fields{
+		"digest": configBlob.Digest,
+	}).Debugf("umoci: got original config")
+
 	config, ok := configBlob.Data.(*v1.Image)
 	if !ok {
 		// Should not be reached.
@@ -186,6 +207,7 @@ func repack(ctx *cli.Context) error {
 	}
 
 	// Append our new layer to the set of DiffIDs.
+	// FIXME: This should be the *uncompressed* version of the layerDigest.
 	g.AddRootfsDiffID(layerDigest)
 
 	// Update config and create a new blob for it.
@@ -195,12 +217,22 @@ func repack(ctx *cli.Context) error {
 		return err
 	}
 
+	logrus.WithFields(logrus.Fields{
+		"digest": newConfigDigest,
+		"size":   newConfigSize,
+	}).Debugf("umoci: added new config")
+
 	// Update the manifest to include the new layer, and also point at the new
 	// config. Then create a new blob for it.
 	manifest.Layers = append(manifest.Layers, *layerDescriptor)
 	manifest.Config.Digest = newConfigDigest
 	manifest.Config.Size = newConfigSize
 	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+
+	logrus.WithFields(logrus.Fields{
+		"digest": newManifestDigest,
+		"size":   newManifestSize,
+	}).Debugf("umoci: added new manifest")
 
 	// Now create a new reference, and either add it to the engine or spew it
 	// to stdout.
