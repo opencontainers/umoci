@@ -31,7 +31,7 @@ umoci: $(GO_SRC)
 	$(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o umoci $(PROJECT)/cmd/umoci
 
 update-deps:
-	glide --home=$(PWD) up -v
+	hack/vendor.sh
 
 clean:
 	rm -f umoci
