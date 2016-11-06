@@ -61,6 +61,7 @@ func main() {
 	}
 
 	app.Commands = []cli.Command{
+		configCommand,
 		unpackCommand,
 		repackCommand,
 		gcCommand,
