@@ -63,6 +63,7 @@ func main() {
 	app.Commands = []cli.Command{
 		unpackCommand,
 		repackCommand,
+		gcCommand,
 	}
 
 	// Actually run umoci.

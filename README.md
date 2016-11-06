@@ -40,7 +40,7 @@ that the OCI tooling didn't pick up on the transgressions).
 * [x] `umoci repack`.
 * [x] `umoci/image/generate`.
 * [ ] `umoci config`.
-* [ ] `umoci gc`.
+* [x] `umoci gc`.
 * [ ] `umoci init`.
 * [ ] `umoci ref`.
 * [ ] `umoci info`. (*optional*)
