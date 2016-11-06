@@ -18,7 +18,6 @@
 package layerdiff
 
 import (
-	"compress/gzip"
 	"io"
 	"path/filepath"
 	"sort"
@@ -42,20 +41,19 @@ func (ids inodeDeltas) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
 
 // GenerateLayer creates a new OCI diff layer based on the mtree diff provided.
 // All of the mtree.Modified and mtree.Extra blobs are read relative to the
-// provided path (which should be the rootfs of the layer that was diffed).
+// provided path (which should be the rootfs of the layer that was diffed). The
+// returned reader is for the *raw* tar data, it is the caller's responsibility
+// to gzip it.
 func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error) {
 	reader, writer := io.Pipe()
 
 	go func() {
 		defer writer.Close()
-		gzw := gzip.NewWriter(writer)
-		defer gzw.Close()
 
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		// TODO: Should we doing the gzip in this layer?
-		tg := NewTarGenerator(gzw)
+		tg := NewTarGenerator(writer)
 		defer tg.tw.Close()
 
 		// Sort the delta paths.
@@ -87,12 +85,6 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 
 		if err := tg.tw.Close(); err != nil {
 			logrus.Warnf("could not close layer: %s", err)
-			writer.CloseWithError(err)
-			return
-		}
-
-		if err := gzw.Close(); err != nil {
-			logrus.Warnf("could not close gzip writer: %s", err)
 			writer.CloseWithError(err)
 			return
 		}

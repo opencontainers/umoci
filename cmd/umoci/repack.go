@@ -18,7 +18,10 @@
 package main
 
 import (
+	"compress/gzip"
+	"crypto/sha256"
 	"fmt"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -148,12 +151,38 @@ func repack(ctx *cli.Context) error {
 	// XXX: I get the feeling all of this should be moved to a separate package
 	//      which abstracts this nicely.
 
-	layerDigest, layerSize, err := engine.PutBlob(context.TODO(), reader)
+	// We need to store the gzip'd layer (which has a blob digest) but we also
+	// need to grab the diffID (which is the digest of the *uncompressed*
+	// layer). But because we have a Reader from GenerateLayer() we need to use
+	// a goroutine.
+	// FIXME: This is all super-ugly.
+
+	diffIDHash := sha256.New()
+	hashReader := io.TeeReader(reader, diffIDHash)
+
+	pipeReader, pipeWriter := io.Pipe()
+	defer pipeReader.Close()
+
+	gzw := gzip.NewWriter(pipeWriter)
+	defer gzw.Close()
+	go func() {
+		_, err := io.Copy(gzw, hashReader)
+		if err != nil {
+			pipeWriter.CloseWithError(err)
+			return
+		}
+		gzw.Close()
+		pipeWriter.Close()
+	}()
+
+	layerDigest, layerSize, err := engine.PutBlob(context.TODO(), pipeReader)
 	if err != nil {
 		return err
 	}
 	reader.Close()
 	// XXX: Should we defer a DeleteBlob?
+
+	layerDiffID := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, diffIDHash.Sum(nil))
 
 	layerDescriptor := &v1.Descriptor{
 		// FIXME: This should probably be configurable, so someone can specify
@@ -208,7 +237,7 @@ func repack(ctx *cli.Context) error {
 
 	// Append our new layer to the set of DiffIDs.
 	// FIXME: This should be the *uncompressed* version of the layerDigest.
-	g.AddRootfsDiffID(layerDigest)
+	g.AddRootfsDiffID(layerDiffID)
 
 	// Update config and create a new blob for it.
 	*config = g.Image()
