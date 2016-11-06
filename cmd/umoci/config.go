@@ -33,21 +33,21 @@ var configFlags = []cli.Flag{
 	cli.Int64Flag{Name: "config.memory.limit"},
 	cli.Int64Flag{Name: "config.memory.swap"},
 	cli.Int64Flag{Name: "config.cpu.shares"},
-	cli.StringSliceFlag{Name: "config.exposedports"}, // FIXME: How do we implement --clear-config.exposedports?
-	cli.StringSliceFlag{Name: "config.env"},          // FIXME: How do we implement --clear-config.env?
-	cli.StringSliceFlag{Name: "config.entrypoint"},   // FIXME: This interface is weird.
-	cli.StringSliceFlag{Name: "config.cmd"},          // FIXME: This interface is weird.
-	cli.StringSliceFlag{Name: "config.volume"},       // FIXME: How do we implement --clear-config.volume?
+	cli.StringSliceFlag{Name: "config.exposedports"},
+	cli.StringSliceFlag{Name: "config.env"},
+	cli.StringSliceFlag{Name: "config.entrypoint"}, // FIXME: This interface is weird.
+	cli.StringSliceFlag{Name: "config.cmd"},        // FIXME: This interface is weird.
+	cli.StringSliceFlag{Name: "config.volume"},
 	cli.StringFlag{Name: "config.workingdir"},
 	// FIXME: These aren't really safe to expose.
 	//cli.StringFlag{Name: "rootfs.type"},
 	//cli.StringSliceFlag{Name: "rootfs.diffids"},
-	cli.StringSliceFlag{Name: "history"}, // FIXME: How do we implement --clear-history?
-	// FIXME: Also implement this is a way that isn't broken (using string is broken).
-	cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
+	cli.StringSliceFlag{Name: "history"}, // FIXME: Implement this is a way that isn't broken (using string is broken).
+	cli.StringFlag{Name: "created"},      // FIXME: Implement TimeFlag.
 	cli.StringFlag{Name: "author"},
 	cli.StringFlag{Name: "architecture"},
 	cli.StringFlag{Name: "os"},
+	cli.StringSliceFlag{Name: "clear"},
 }
 
 // FIXME: This is ugly.
@@ -87,6 +87,24 @@ based.`,
 
 // TODO: This can be scripted by have a list of mappings to mutation methods.
 func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
+	if ctx.IsSet("clear") {
+		for _, key := range ctx.StringSlice("clear") {
+			switch key {
+			case "config.exposedports":
+				g.ClearConfigExposedPorts()
+			case "config.env":
+				g.ClearConfigEnv()
+			case "config.volume":
+				g.ClearConfigVolumes()
+			case "rootfs.diffids":
+				//g.ClearRootfsDiffIDs()
+				return fmt.Errorf("clear rootfs.diffids is not safe")
+			case "history":
+				g.ClearHistory()
+			}
+		}
+	}
+
 	// FIXME: Implement TimeFlag.
 	if ctx.IsSet("created") {
 		// FIXME: Parsing appears broken right now...
@@ -116,13 +134,11 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 	if ctx.IsSet("config.cpu.shares") {
 		g.SetConfigCPUShares(ctx.Int64("config.cpu.shares"))
 	}
-	// FIXME: How do we implement --clear-config.exposedports?
 	if ctx.IsSet("config.exposedports") {
 		for _, port := range ctx.StringSlice("config.exposedports") {
 			g.AddConfigExposedPort(port)
 		}
 	}
-	// FIXME: How do we implement --clear-config.env?
 	if ctx.IsSet("config.env") {
 		for _, env := range ctx.StringSlice("config.env") {
 			g.AddConfigEnv(env)
@@ -136,7 +152,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 	if ctx.IsSet("config.cmd") {
 		g.SetConfigCmd(ctx.StringSlice("config.cmd"))
 	}
-	// FIXME: How do we implement --clear-config.volume?
 	if ctx.IsSet("config.volume") {
 		for _, volume := range ctx.StringSlice("config.volume") {
 			g.AddConfigVolume(volume)
@@ -151,7 +166,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 			g.AddRootfsDiffID(diffid)
 		}
 	}
-	// FIXME: How do we implement --clear-history?
 	// FIXME: Also implement this is a way that isn't broken (using string is broken).
 	if ctx.IsSet("history") {
 		return fmt.Errorf("--history not implemented")
