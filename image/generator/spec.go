@@ -320,9 +320,9 @@ func (g *Generator) History() []v1.History {
 	return copy
 }
 
-// ISO8601 represents the format of an ISO-8601 time string. Currently this is
-// not part of the Go stdlib, which doesn't make any sense.
-const ISO8601 = "%Y-%m-%dT%H:%M:%S%z"
+// ISO8601 represents the format of an ISO-8601 time string, which is identical
+// to Go's RFC3339 specification.
+const ISO8601 = time.RFC3339Nano
 
 // SetCreated sets the combined date and time at which the image was created.
 func (g *Generator) SetCreated(created time.Time) {

@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
@@ -107,8 +108,12 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 
 	// FIXME: Implement TimeFlag.
 	if ctx.IsSet("created") {
-		// FIXME: Parsing appears broken right now...
-		return fmt.Errorf("--created not implemented")
+		// How do we handle other formats?
+		created, err := time.Parse(igen.ISO8601, ctx.String("created"))
+		if err != nil {
+			return err
+		}
+		g.SetCreated(created)
 	}
 	if ctx.IsSet("author") {
 		g.SetAuthor(ctx.String("author"))
