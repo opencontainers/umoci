@@ -279,6 +279,11 @@ func (e dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
 	blobDir := filepath.Join(e.path, blobDirectory, BlobAlgorithm)
 
 	if err := filepath.Walk(blobDir, func(path string, _ os.FileInfo, _ error) error {
+		// Skip the actual directory.
+		if path == blobDir {
+			return nil
+		}
+
 		// XXX: Do we need to handle multiple-directory-deep cases?
 		digest := fmt.Sprintf("%s:%s", BlobAlgorithm, filepath.Base(path))
 		digests = append(digests, digest)
@@ -296,6 +301,11 @@ func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 	refDir := filepath.Join(e.path, refDirectory)
 
 	if err := filepath.Walk(refDir, func(path string, _ os.FileInfo, _ error) error {
+		// Skip the actual directory.
+		if path == refDir {
+			return nil
+		}
+
 		// XXX: Do we need to handle multiple-directory-deep cases?
 		refs = append(refs, filepath.Base(path))
 		return nil
