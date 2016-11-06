@@ -24,8 +24,10 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
+	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/image-tools/image"
+	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
@@ -61,6 +63,25 @@ creation with umoci-repack(1).`,
 	},
 
 	Action: unpack,
+}
+
+func getConfig(engine cas.Engine, ctx context.Context, manDescriptor *v1.Descriptor) (v1.Image, error) {
+	// FIXME: Implement support for manifest lists.
+	if manDescriptor.MediaType != v1.MediaTypeImageManifest {
+		return v1.Image{}, fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType)
+	}
+
+	manBlob, err := cas.FromDescriptor(ctx, engine, manDescriptor)
+	if err != nil {
+		return v1.Image{}, err
+	}
+
+	configBlob, err := cas.FromDescriptor(ctx, engine, &manBlob.Data.(*v1.Manifest).Config)
+	if err != nil {
+		return v1.Image{}, err
+	}
+
+	return *configBlob.Data.(*v1.Image), nil
 }
 
 func unpack(ctx *cli.Context) error {
@@ -127,6 +148,18 @@ func unpack(ctx *cli.Context) error {
 	//           https://github.com/opencontainers/image-tools/issues/74
 	if err := image.CreateRuntimeBundleLayout(imagePath, bundlePath, fromName, rootfsName); err != nil {
 		return fmt.Errorf("failed to create runtime bundle: %q", err)
+	}
+
+	// FIXME: Replacing the "config.json" manually is silly. Wrap the above (or
+	//        just reimplement it). Also, this should be part of an unpacking
+	//        library.
+	imageConfig, err := getConfig(engine, context.TODO(), fromDescriptor)
+	if err != nil {
+		return fmt.Errorf("failed to get image config: %q", err)
+	}
+	g := igen.MutateRuntimeSpec(rgen.New(), imageConfig)
+	if err := g.SaveToFile(filepath.Join(bundlePath, "config.json"), rgen.ExportOptions{}); err != nil {
+		return fmt.Errorf("failed to write new config.json: %q", err)
 	}
 
 	// Create the mtree manifest.
