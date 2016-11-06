@@ -1,8 +1,10 @@
-hash: f2086272e86724de966a2476de3eb87bba12ad0bf4376bf4780eb247284ca1de
-updated: 2016-11-06T01:31:31.196025583+11:00
+hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
+updated: 2016-11-06T17:09:45.615697163+11:00
 imports:
+- name: github.com/blang/semver
+  version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 08881b74c23d83283138d6a64823ef7a809dbd58
+  version: c71e790993b582f90063a83f44afb99d239a9bef
   subpackages:
   - image/cas
   - image/generator
@@ -24,6 +26,13 @@ imports:
   version: 7dab1a245d3e13d0ad03b77409d0bf7e00a6ada4
   subpackages:
   - specs-go
+- name: github.com/opencontainers/runtime-tools
+  version: bb040483d65d8731a2589f5d20c8b2367323219d
+  subpackages:
+  - cmd/runtimetest/mount
+  - generate
+  - generate/seccomp
+  - validate
 - name: github.com/pkg/errors
   version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/Sirupsen/logrus
@@ -32,6 +41,10 @@ imports:
   version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
 - name: github.com/spf13/pflag
   version: 5ccb023bc27df288a957c5e994cd44fd19619465
+- name: github.com/syndtr/gocapability
+  version: 2c00daeb6c3b45114c80ac44119e7b8801fdd852
+  subpackages:
+  - capability
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
