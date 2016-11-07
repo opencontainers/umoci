@@ -62,5 +62,5 @@ func gc(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Run the GC.
-	return cas.GC(engine, context.TODO())
+	return cas.GC(context.TODO(), engine)
 }

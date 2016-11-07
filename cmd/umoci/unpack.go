@@ -65,7 +65,7 @@ creation with umoci-repack(1).`,
 	Action: unpack,
 }
 
-func getConfig(engine cas.Engine, ctx context.Context, manDescriptor *v1.Descriptor) (v1.Image, error) {
+func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descriptor) (v1.Image, error) {
 	// FIXME: Implement support for manifest lists.
 	if manDescriptor.MediaType != v1.MediaTypeImageManifest {
 		return v1.Image{}, fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType)
@@ -153,7 +153,7 @@ func unpack(ctx *cli.Context) error {
 	// FIXME: Replacing the "config.json" manually is silly. Wrap the above (or
 	//        just reimplement it). Also, this should be part of an unpacking
 	//        library.
-	imageConfig, err := getConfig(engine, context.TODO(), fromDescriptor)
+	imageConfig, err := getConfig(context.TODO(), engine, fromDescriptor)
 	if err != nil {
 		return fmt.Errorf("failed to get image config: %q", err)
 	}

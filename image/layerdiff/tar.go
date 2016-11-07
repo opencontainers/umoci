@@ -50,9 +50,9 @@ type tarGenerator struct {
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 
-// NewTarGenerator creates a new tarGenerator using the provided writer as the
+// newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
-func NewTarGenerator(w io.Writer) *tarGenerator {
+func newTarGenerator(w io.Writer) *tarGenerator {
 	return &tarGenerator{
 		tw:          tar.NewWriter(w),
 		inodes:      map[uint64]string{},

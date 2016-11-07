@@ -94,6 +94,7 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 	return nil
 }
 
+// Close cleans up all of the resources for the opened blob.
 func (b *Blob) Close() {
 	switch b.MediaType {
 	case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerNonDistributable:

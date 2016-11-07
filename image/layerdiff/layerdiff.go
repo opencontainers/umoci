@@ -53,7 +53,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := NewTarGenerator(writer)
+		tg := newTarGenerator(writer)
 		defer tg.tw.Close()
 
 		// Sort the delta paths.

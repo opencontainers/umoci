@@ -1,13 +1,13 @@
 language: go
 
-matrix:
-  include:
-    - go: 1.5
-      env: GO15VENDOREXPERIMENT=1
-    - go: 1.6
-    - go: 1.7
-    - go: master
+# We can't test Go 1.5, because golint requires >1.6 (which is annoying).
+go:
+  - 1.6
+  - 1.7
+  - master
+
+before_script:
+  - make install-deps
 
 script:
-  - make
-  - go test -v ./...
+  - make ci

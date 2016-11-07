@@ -35,3 +35,27 @@ update-deps:
 
 clean:
 	rm -f umoci
+
+install-deps:
+	go get -u github.com/golang/lint/golint
+	go get -u github.com/vbatts/git-validation
+
+EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
+validate:
+	@echo "go-fmt"
+	@test -z "$$(gofmt -s -l . | grep -v '^vendor/' | tee /dev/stderr)"
+	@echo "go-lint"
+	@out="$$(golint $(PROJECT)/... | grep -v '/vendor/')"; \
+	if [ -n "$$out" ]; then \
+		echo "$$out"; \
+		exit 1; \
+	fi
+	@echo "go-vet"
+	@go vet $(shell go list $(PROJECT)/... | grep -v /vendor/)
+	#@echo "git-validation"
+	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
+
+test:
+	go test $(PROJECT)/...
+
+ci: umoci validate test

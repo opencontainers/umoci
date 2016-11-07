@@ -28,7 +28,7 @@ import (
 // Used by gcState.mark() to determine which struct members are descriptors to
 // recurse into them. We aren't interested in struct members which are not
 // either a slice of v1.Descriptor or v1.Descriptor themselves.
-var descriptorType reflect.Type = reflect.TypeOf(v1.Descriptor{})
+var descriptorType = reflect.TypeOf(v1.Descriptor{})
 
 // isDescriptor returns whether the given T is a v1.Descriptor.
 // XXX: Should we be using .PkgPath() + .Name() here?
@@ -116,7 +116,7 @@ func childDescriptors(i interface{}) []v1.Descriptor {
 		return []v1.Descriptor{}
 	}
 
-	panic("should never be reached")
+	// Unreachable.
 }
 
 // gcState represents the state of the garbage collector at one point in time.
@@ -176,7 +176,7 @@ func (gc *gcState) mark(ctx context.Context, descriptor v1.Descriptor) error {
 // functions. In other words, it assumes it is the only user of the image that
 // is making modifications. Things will not go well if this assumption is
 // challenged.
-func GC(engine Engine, ctx context.Context) error {
+func GC(ctx context.Context, engine Engine) error {
 	// Generate the root set of descriptors.
 	var root []v1.Descriptor
 
