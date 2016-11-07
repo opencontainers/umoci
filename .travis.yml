@@ -6,6 +6,9 @@ go:
   - 1.7
   - master
 
+notifications:
+    email: false
+
 before_script:
   - make install-deps
 
