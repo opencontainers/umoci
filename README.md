@@ -1,6 +1,8 @@
 ## `umoci` ###
 
-[![Build Status](https://travis-ci.org/cyphar/umoci.svg?branch=master)](https://travis-ci.org/cyphar/umoci)
+[![Build Status](https://img.shields.io/travis/cyphar/umoci/master.svg)](https://travis-ci.org/cyphar/umoci)
+![License: Apache 2.0](https://img.shields.io/github/license/cyphar/umoci.svg)
+
 
 **Status: Pre-Alpha**
 
