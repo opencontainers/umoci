@@ -28,7 +28,6 @@ import (
 	"path/filepath"
 	"reflect"
 
-	imagespec "github.com/opencontainers/image-spec/specs-go"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
 )
@@ -39,6 +38,12 @@ import (
 type ImageLayout struct {
 	Version string `json:"imageLayoutVersion"`
 }
+
+// ImageLayoutVersion is the version of the image layout we support. This value
+// is *not* the same as imagespec.Version, and the meaning of this field is
+// still under discussion in the spec. For now we'll just hardcode the value
+// and hope for the best.
+const ImageLayoutVersion = "1.0.0"
 
 // CreateLayout creates a new OCI image layout at the given path. If the path
 // already exists, os.ErrExist is returned. However, all of the parent
@@ -71,7 +76,7 @@ func CreateLayout(path string) error {
 	defer fh.Close()
 
 	ociLayout := &ImageLayout{
-		Version: imagespec.Version,
+		Version: ImageLayoutVersion,
 	}
 
 	if err := json.NewEncoder(fh).Encode(ociLayout); err != nil {
@@ -89,7 +94,8 @@ type dirEngine struct {
 
 // verify ensures that the image is valid.
 // FIXME: Actually validate the full image, not just the layoutFile.
-func (e dirEngine) verify() error {
+// FIXME: Return more information about what was invalid about the image.
+func (e dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -103,8 +109,31 @@ func (e dirEngine) verify() error {
 		return err
 	}
 
-	// FIXME: This will break with each -rc bump.
-	if ociLayout.Version != imagespec.Version {
+	// XXX: Currently the meaning of this field is not adequately defined by
+	//      the spec, nor is the "official" value determined by the spec.
+	if ociLayout.Version != ImageLayoutVersion {
+		return ErrInvalid
+	}
+
+	// Check that "blobs" and "refs" exist in the image.
+	// FIXME: We also should check that blobs *only* contains a BlobAlgorithm
+	//        directory (with no subdirectories) and that refs *only* contains
+	//        files (optionally also making sure they're all JSON descriptors).
+	if fi, err := os.Stat(filepath.Join(e.path, blobDirectory)); err != nil {
+		if os.IsNotExist(err) {
+			err = ErrInvalid
+		}
+		return err
+	} else if !fi.IsDir() {
+		return ErrInvalid
+	}
+
+	if fi, err := os.Stat(filepath.Join(e.path, refDirectory)); err != nil {
+		if os.IsNotExist(err) {
+			err = ErrInvalid
+		}
+		return err
+	} else if !fi.IsDir() {
 		return ErrInvalid
 	}
 
@@ -322,9 +351,13 @@ func (e dirEngine) Close() error {
 	return os.RemoveAll(e.temp)
 }
 
-func newDirEngine(path string) (Engine, error) {
+func newDirEngine(path string) (*dirEngine, error) {
 	engine := &dirEngine{
 		path: path,
+	}
+
+	if err := engine.validate(); err != nil {
+		return nil, err
 	}
 
 	tempDir, err := ioutil.TempDir(engine.path, "tmp-")
