@@ -1,5 +1,7 @@
 ## `umoci` ###
 
+[![Build Status](https://travis-ci.org/cyphar/umoci.svg?branch=master)](https://travis-ci.org/cyphar/umoci)
+
 **Status: Pre-Alpha**
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
