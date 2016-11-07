@@ -19,6 +19,7 @@ package cas
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
@@ -81,6 +82,8 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 	// v1.MediaTypeImageConfig => *v1.ImageConfig
 	case v1.MediaTypeImageConfig:
 		parsed = &v1.Image{}
+	default:
+		return fmt.Errorf("cas blob: unsupported mediatype: %s", b.MediaType)
 	}
 
 	if err := json.NewDecoder(reader).Decode(parsed); err != nil {
