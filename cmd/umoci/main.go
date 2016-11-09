@@ -43,6 +43,12 @@ func main() {
 	app := cli.NewApp()
 	app.Name = "umoci"
 	app.Usage = usage
+	app.Authors = []cli.Author{
+		{
+			Name:  "Aleksa Sarai",
+			Email: "asarai@suse.com",
+		},
+	}
 	app.Version = fmt.Sprintf("%s~git%s", version, gitCommit)
 
 	// FIXME: Should --image be a global option?
