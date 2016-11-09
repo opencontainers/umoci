@@ -25,10 +25,12 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
 	igen "github.com/cyphar/umoci/image/generator"
+	"github.com/cyphar/umoci/system"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rgen "github.com/opencontainers/runtime-tools/generate"
 	"golang.org/x/net/context"
@@ -97,6 +99,16 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil {
 		return fmt.Errorf("unpack manifest: creating rootfs: %s", err)
+	}
+
+	// Currently, many different images in the wild don't specify what the
+	// atime/mtime of the root directory is. This is a huge pain because it
+	// means that we can't ensure consistent unpacking. In order to get around
+	// this, we first set the mtime of the root directory to the Unix epoch
+	// (which is as good of an arbitrary choice as any).
+	epoch := time.Unix(0, 0)
+	if err := system.Lutimes(rootfsPath, epoch, epoch); err != nil {
+		return fmt.Errorf("unpack manifest: setting initial root time: %s", err)
 	}
 
 	// In order to verify the DiffIDs as we extract layers, we have to get the
