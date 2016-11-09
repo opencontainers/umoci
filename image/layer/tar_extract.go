@@ -56,13 +56,15 @@ func applyMetadata(path string, hdr *tar.Header) error {
 	// Apply access and modified time. Note that some archives won't fill the
 	// atime and mtime fields, so we have to set them to a more sane value.
 	// Otherwise Linux will start screaming at us, and nobody wants that.
-	atime := hdr.AccessTime
-	if atime.IsZero() {
-		atime = time.Now()
-	}
 	mtime := hdr.ModTime
 	if mtime.IsZero() {
+		// XXX: Should we instead default to atime if it's non-zero?
 		mtime = time.Now()
+	}
+	atime := hdr.AccessTime
+	if atime.IsZero() {
+		// Default to the mtime.
+		atime = mtime
 	}
 
 	if err := system.Lutimes(path, atime, mtime); err != nil {
