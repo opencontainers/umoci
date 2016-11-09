@@ -90,6 +90,8 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 		return err
 	}
 
+	// TODO: We should really check that parsed.MediaType == b.MediaType.
+
 	b.Data = parsed
 	return nil
 }

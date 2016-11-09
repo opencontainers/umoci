@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package layerdiff
+package layer
 
 import (
 	"io"
@@ -57,6 +57,9 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 		defer tg.tw.Close()
 
 		// Sort the delta paths.
+		// FIXME: We need to add whiteouts first, otherwise we might end up
+		//        doing something silly like deleting a file which we actually
+		//        meant to modify.
 		sort.Sort(inodeDeltas(deltas))
 
 		for _, delta := range deltas {

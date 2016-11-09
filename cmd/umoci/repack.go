@@ -28,7 +28,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/cyphar/umoci/image/generator"
-	"github.com/cyphar/umoci/image/layerdiff"
+	"github.com/cyphar/umoci/image/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -142,7 +142,7 @@ func repack(ctx *cli.Context) error {
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
-	reader, err := layerdiff.GenerateLayer(fullRootfsPath, diffs)
+	reader, err := layer.GenerateLayer(fullRootfsPath, diffs)
 	if err != nil {
 		return err
 	}

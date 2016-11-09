@@ -61,7 +61,7 @@ is definitely not safe for production.
   directories. I have [an open pull request which is being reviewed and will
   hopefully be merged soon][gomtree-pr].
 
-* Currently `image/layerdiff` is a complete reimplementation of the proposed
+* Currently `image/layer` is a complete reimplementation of the proposed
   implementation for [`oci-create-layer`][oci-create-layer]. This is because I
   needed to use `[]gomtree.InodeDelta` but the hope is that my implementation
   will eventually be pushed upstream (once `go-mtree` merges my PR and gets
