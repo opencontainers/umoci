@@ -1,10 +1,10 @@
 hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
-updated: 2016-11-10T01:27:20.040096686+11:00
+updated: 2016-11-10T01:48:47.450889171+11:00
 imports:
 - name: github.com/blang/semver
   version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 7654ebc76ec62c39f48eac45183ec2766132db33
+  version: 7c4309715ec586b6ccf165b27fc6cb82ba0dce9d
   subpackages:
   - image/cas
   - image/generator
@@ -23,6 +23,10 @@ imports:
   version: 27d5fd6616cc7cd4de36521e9a0c9c8cfc8234ca
   subpackages:
   - image
+- name: github.com/opencontainers/runc
+  version: 8779fa57eb4a810a7360187dfa5e168a76cf5d21
+  subpackages:
+  - libcontainer/user
 - name: github.com/opencontainers/runtime-spec
   version: 7dab1a245d3e13d0ad03b77409d0bf7e00a6ada4
   subpackages:

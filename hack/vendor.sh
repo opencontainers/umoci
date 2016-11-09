@@ -67,7 +67,7 @@ clean() {
 	unset IFS
 
 	# Files we don't want to delete from *any* directory.
-	local importantfiles=( -name 'LICENSE*' -or -name 'COPYING*' )
+	local importantfiles=( -name 'LICENSE*' -or -name 'COPYING*' -or -name 'NOTICE*' )
 
 	# Delete all top-level files which are not LICENSE or COPYING related, as
 	# well as deleting the actual directory if it's empty.

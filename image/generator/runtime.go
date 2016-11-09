@@ -18,9 +18,10 @@
 package generator
 
 import (
-	"strconv"
-	"strings"
+	"fmt"
+	"path/filepath"
 
+	"github.com/cyphar/umoci/third_party/user"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
@@ -30,18 +31,20 @@ import (
 // configuration appropriate for use, which is templated on the default
 // configuration specified by the OCI runtime-tools. It is equivalent to
 // MutateRuntimeSpec("runtime-tools/generate".New(), image).Spec().
-func ToRuntimeSpec(image v1.Image) rspec.Spec {
+func ToRuntimeSpec(rootfs string, image v1.Image) (rspec.Spec, error) {
 	g := rgen.New()
-	MutateRuntimeSpec(g, image)
-	return *g.Spec()
+	if err := MutateRuntimeSpec(g, rootfs, image); err != nil {
+		return rspec.Spec{}, err
+	}
+	return *g.Spec(), nil
 }
 
 // MutateRuntimeSpec mutates a given runtime specification generator with the
 // image configuration provided. It returns the original generator, and does
 // not modify any fields directly (to allow for chaining).
-func MutateRuntimeSpec(g rgen.Generator, image v1.Image) rgen.Generator {
+func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image) error {
 	if image.OS != "linux" {
-		panic("unsupported OS")
+		return fmt.Errorf("unsupported OS: %s", image.OS)
 	}
 
 	// FIXME: We need to figure out if we're modifying an incompatible runtime spec.
@@ -50,7 +53,7 @@ func MutateRuntimeSpec(g rgen.Generator, image v1.Image) rgen.Generator {
 	g.SetPlatformArch(image.Architecture)
 
 	g.SetProcessTerminal(true)
-	g.SetRootPath("rootfs") // XXX: Should be configurable.
+	g.SetRootPath(filepath.Base(rootfs))
 	g.SetRootReadonly(false)
 
 	g.SetProcessCwd("/")
@@ -73,23 +76,27 @@ func MutateRuntimeSpec(g rgen.Generator, image v1.Image) rgen.Generator {
 	}
 	g.SetProcessArgs(args)
 
-	if uid, err := strconv.Atoi(image.Config.User); err == nil {
-		g.SetProcessUID(uint32(uid))
-	} else if ug := strings.Split(image.Config.User, ":"); len(ug) == 2 {
-		uid, err := strconv.Atoi(ug[0])
-		if err != nil {
-			panic("config.User: unsupported uid format")
-		}
+	// Get the *actual* uid and gid of the user. If the image doesn't contain
+	// an /etc/passwd or /etc/group file then GetExecUserPath will just do a
+	// numerical parsing.
+	var passwdPath, groupPath string
+	if rootfs != "" {
+		passwdPath = filepath.Join(rootfs, "/etc/passwd")
+		groupPath = filepath.Join(rootfs, "/etc/group")
+	}
+	execUser, err := user.GetExecUserPath(image.Config.User, nil, passwdPath, groupPath)
+	if err != nil {
+		return fmt.Errorf("cannot parse user spec '%s': %s", image.Config.User, err)
+	}
 
-		gid, err := strconv.Atoi(ug[1])
-		if err != nil {
-			panic("config.User: unsupported gid format")
-		}
-
-		g.SetProcessUID(uint32(uid))
-		g.SetProcessGID(uint32(gid))
-	} else if image.Config.User != "" {
-		panic("config.User: unsupported format")
+	g.SetProcessUID(uint32(execUser.Uid))
+	g.SetProcessGID(uint32(execUser.Gid))
+	g.ClearProcessAdditionalGids()
+	for _, gid := range execUser.Sgids {
+		g.AddProcessAdditionalGid(uint32(gid))
+	}
+	if execUser.Home != "" {
+		g.AddProcessEnv("HOME=" + execUser.Home)
 	}
 
 	// TODO: Handle cases where these are unset properly.
@@ -103,5 +110,5 @@ func MutateRuntimeSpec(g rgen.Generator, image v1.Image) rgen.Generator {
 		g.AddBindMount("", vol, []string{"rw", "rbind"})
 	}
 
-	return g
+	return nil
 }

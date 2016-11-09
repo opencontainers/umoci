@@ -174,9 +174,12 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		"config": manifest.Config.Digest,
 	}).Infof("unpack manifest: unpacking config")
 
-	g := igen.MutateRuntimeSpec(rgen.New(), *config)
+	g := rgen.New()
+	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config); err != nil {
+		return fmt.Errorf("unpack manifest: generating config.json: %s", err)
+	}
 	if err := g.SaveToFile(configPath, rgen.ExportOptions{}); err != nil {
-		return fmt.Errorf("failed to write new config.json: %q", err)
+		return fmt.Errorf("failed to write new config.json: %s", err)
 	}
 
 	return nil
