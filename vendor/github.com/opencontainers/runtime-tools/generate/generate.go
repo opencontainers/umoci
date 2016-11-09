@@ -158,7 +158,7 @@ func NewFromSpec(spec *rspec.Spec) Generator {
 	}
 }
 
-// NewFromFile loads the template specifed in a file into a spec Generator.
+// NewFromFile loads the template specified in a file into a spec Generator.
 func NewFromFile(path string) (Generator, error) {
 	cf, err := os.Open(path)
 	if err != nil {
@@ -633,24 +633,35 @@ func (g *Generator) AddCgroupsMount(mountCgroupOption string) error {
 }
 
 // AddBindMount adds a bind mount into g.spec.Mounts.
-func (g *Generator) AddBindMount(source, dest, options string) {
-	if options == "" {
-		options = "ro"
+func (g *Generator) AddBindMount(source, dest string, options []string) {
+	if len(options) == 0 {
+		options = []string{"rw"}
 	}
 
-	defaultOptions := []string{"bind"}
+	// We have to make sure that there is a bind option set, otherwise it won't
+	// be an actual bindmount.
+	foundBindOption := false
+	for _, opt := range options {
+		if opt == "bind" || opt == "rbind" {
+			foundBindOption = true
+			break
+		}
+	}
+	if !foundBindOption {
+		options = append(options, "bind")
+	}
 
 	mnt := rspec.Mount{
 		Destination: dest,
 		Type:        "bind",
 		Source:      source,
-		Options:     append(defaultOptions, options),
+		Options:     options,
 	}
 	g.initSpec()
 	g.spec.Mounts = append(g.spec.Mounts, mnt)
 }
 
-// SetupPrivileged sets up the priviledge-related fields inside g.spec.
+// SetupPrivileged sets up the privilege-related fields inside g.spec.
 func (g *Generator) SetupPrivileged(privileged bool) {
 	if privileged {
 		// Add all capabilities in privileged mode.

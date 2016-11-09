@@ -100,10 +100,7 @@ func MutateRuntimeSpec(g rgen.Generator, image v1.Image) rgen.Generator {
 
 	for vol := range image.Config.Volumes {
 		// XXX: Is it fine to generate source=""?
-		// FIXME: Currently the runtime-spec generator doesn't accept a list of
-		//        options here, which is broken (and it also does silly things
-		//        like set "bind" always). We want this to be an rbind.
-		g.AddBindMount("", vol, "rw")
+		g.AddBindMount("", vol, []string{"rw", "rbind"})
 	}
 
 	return g
