@@ -24,10 +24,8 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
-	igen "github.com/cyphar/umoci/image/generator"
+	"github.com/cyphar/umoci/image/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/opencontainers/image-tools/image"
-	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
@@ -110,9 +108,14 @@ func unpack(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
+	if err != nil {
+		return err
+	}
+	defer manifestBlob.Close()
 
 	// FIXME: Implement support for manifest lists.
-	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
+	if manifestBlob.MediaType != v1.MediaTypeImageManifest {
 		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
 	}
 
@@ -126,6 +129,9 @@ func unpack(ctx *cli.Context) error {
 		"ref":    fromName,
 		"rootfs": rootfsName,
 	}).Debugf("umoci: unpacking OCI image")
+
+	// Get the manifest.
+	manifest := manifestBlob.Data.(*v1.Manifest)
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
@@ -146,20 +152,8 @@ func unpack(ctx *cli.Context) error {
 	//        extraction). I'm considering reimplementing it just so there are
 	//        competing implementations of this extraction functionality.
 	//           https://github.com/opencontainers/image-tools/issues/74
-	if err := image.CreateRuntimeBundleLayout(imagePath, bundlePath, fromName, rootfsName); err != nil {
+	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest); err != nil {
 		return fmt.Errorf("failed to create runtime bundle: %q", err)
-	}
-
-	// FIXME: Replacing the "config.json" manually is silly. Wrap the above (or
-	//        just reimplement it). Also, this should be part of an unpacking
-	//        library.
-	imageConfig, err := getConfig(context.TODO(), engine, fromDescriptor)
-	if err != nil {
-		return fmt.Errorf("failed to get image config: %q", err)
-	}
-	g := igen.MutateRuntimeSpec(rgen.New(), imageConfig)
-	if err := g.SaveToFile(filepath.Join(bundlePath, "config.json"), rgen.ExportOptions{}); err != nil {
-		return fmt.Errorf("failed to write new config.json: %q", err)
 	}
 
 	// Create the mtree manifest.

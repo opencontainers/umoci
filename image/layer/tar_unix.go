@@ -15,13 +15,15 @@
  * limitations under the License.
  */
 
-package layerdiff
+package layer
 
 import (
 	"archive/tar"
 	"fmt"
 	"os"
 	"syscall"
+
+	"github.com/cyphar/umoci/system"
 )
 
 // These values come from new_decode_dev() inside <linux/kdev_t.h>.
@@ -43,8 +45,8 @@ func updateHeader(hdr *tar.Header, fi os.FileInfo) error {
 	// Currently the Go stdlib doesn't fill in the major/minor numbers of
 	// devices, so we have to do it manually.
 	if s.Mode&syscall.S_IFBLK == syscall.S_IFBLK || s.Mode&syscall.S_IFCHR == syscall.S_IFCHR {
-		hdr.Devmajor = int64(major(s.Rdev))
-		hdr.Devminor = int64(minor(s.Rdev))
+		hdr.Devmajor = int64(system.Majordev(system.Dev_t(s.Rdev)))
+		hdr.Devminor = int64(system.Minordev(system.Dev_t(s.Rdev)))
 	}
 
 	return nil

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package layerdiff
+package layer
 
 import (
 	"archive/tar"
