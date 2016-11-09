@@ -19,6 +19,7 @@ package system
 
 import "syscall"
 
+// Unlink is a wrapper around unlink(2).
 func Unlink(path string) error {
 	return syscall.Unlink(path)
 }

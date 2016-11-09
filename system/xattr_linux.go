@@ -44,7 +44,7 @@ func Llistxattr(path string) ([]string, error) {
 		uintptr(unsafe.Pointer(&buffer[0])), // char *list,
 		uintptr(bufsize))                    // size_t size);
 	if err == syscall.ERANGE || n != bufsize {
-		return nil, fmt.Errorf("llistxattr: getting buffer: xattr set changed!")
+		return nil, fmt.Errorf("llistxattr: getting buffer: xattr set changed")
 	} else if err != 0 {
 		return nil, fmt.Errorf("llistxattr: getting buffer: %s", err)
 	}
@@ -107,7 +107,7 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 		uintptr(bufsize),                    // size_t size);
 		0, 0)
 	if err == syscall.ERANGE || n != bufsize {
-		return nil, fmt.Errorf("lgetxattr: getting buffer: xattr set changed!")
+		return nil, fmt.Errorf("lgetxattr: getting buffer: xattr set changed")
 	} else if err != 0 {
 		return nil, fmt.Errorf("lgetxattr: getting buffer: %s", err)
 	}

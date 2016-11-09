@@ -23,9 +23,10 @@ import (
 	"syscall"
 )
 
+// Dev_t represents a dev_t structure.
 type Dev_t uint64
 
-// TarNod takes a Typeflag (from a tar.Header for example) and returns the
+// Tarmode takes a Typeflag (from a tar.Header for example) and returns the
 // corresponding os.Filemode bit. Unknown typeflags are treated like regular
 // files.
 func Tarmode(typeflag byte) uint32 {
@@ -63,6 +64,7 @@ func Minordev(device Dev_t) uint64 {
 	return uint64((device & 0xff) | ((device >> 12) & 0xfff00))
 }
 
+// Mknod is a wrapper around mknod(2).
 func Mknod(path string, mode os.FileMode, dev Dev_t) error {
 	return syscall.Mknod(path, uint32(mode), int(dev))
 }

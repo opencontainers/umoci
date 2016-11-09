@@ -58,6 +58,8 @@ func UnpackLayer(root string, layer io.Reader) error {
 	return nil
 }
 
+// RootfsName is the name of the rootfs directory inside the bundle path when
+// generated.
 const RootfsName = "rootfs"
 
 // isLayerType returns if the given MediaType is the media type of an image
@@ -162,8 +164,8 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		layerGzip.Close()
 
 		layerDigest := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, layerHash.Sum(nil))
-		if layerDigest != config.RootFS.DiffIDs[idx] {
-			return fmt.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDigest)
+		if layerDigest != layerDiffID {
+			return fmt.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}
 	}
 
