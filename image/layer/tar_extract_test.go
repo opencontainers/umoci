@@ -29,7 +29,6 @@ import (
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.
 // TODO: Add tests for metadata and consistency.
-// TODO: Add whiteout path tests.
 
 // testUnpackEntrySanitiseHelper is a basic helper to check that a tar header
 // with the given prefix will resolve to the same path without it during
@@ -196,4 +195,108 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	if !bytes.Equal(ctrValue, ctrValueGot) {
 		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
 	}
+}
+
+// TestUnpackEntryWhiteout checks whether whiteout handling is done correctly,
+// as well as ensuring that the metadata of the parent is maintained.
+func TestUnpackEntryWhiteout(t *testing.T) {
+	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
+	func(t *testing.T) {
+		for _, test := range []struct {
+			name string
+			path string
+			dir  bool // TODO: Switch to Typeflag
+		}{
+			{"FileInRoot", "rootpath", false},
+			{"HiddenFileInRoot", ".hiddenroot", false},
+			{"FileInSubdir", "some/path/file", false},
+			{"HiddenFileInSubdir", "another/path/.hiddenfile", false},
+			{"DirInRoot", "rootpath", true},
+			{"HiddenDirInRoot", ".hiddenroot", true},
+			{"DirInSubdir", "some/path/dir", true},
+			{"HiddenDirInSubdir", "another/path/.hiddendir", true},
+		} {
+			t.Logf("running Test%s", test.name)
+			testMtime := time.Unix(123, 456)
+			testAtime := time.Unix(789, 111)
+
+			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryWhiteout")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+
+			rawDir, rawFile := filepath.Split(test.path)
+			wh := filepath.Join(rawDir, whPrefix+rawFile)
+
+			// Create the parent directory.
+			if err := os.MkdirAll(filepath.Join(dir, rawDir), 0755); err != nil {
+				t.Fatal(err)
+			}
+
+			// Create the path itself.
+			if test.dir {
+				if err := os.Mkdir(filepath.Join(dir, test.path), 0755); err != nil {
+					t.Fatal(err)
+				}
+				// Make some subfiles and directories.
+				if err := ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				if err := ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0644); err != nil {
+					t.Fatal(err)
+				}
+				if err := os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0755); err != nil {
+					t.Fatal(err)
+				}
+				if err := ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			} else {
+				if err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0644); err != nil {
+					t.Fatal(err)
+				}
+			}
+
+			// Set the modified time of the directory itself.
+			if err := os.Chtimes(filepath.Join(dir, rawDir), testAtime, testMtime); err != nil {
+				t.Fatal(err)
+			}
+
+			// Whiteout the path.
+			hdr := &tar.Header{
+				Name:     wh,
+				Typeflag: tar.TypeReg,
+			}
+
+			if err := unpackEntry(dir, hdr, nil); err != nil {
+				t.Fatalf("unexpected error in unpackEntry: %s", err)
+			}
+
+			// Make sure that the path is gone.
+			if _, err := os.Lstat(filepath.Join(dir, test.path)); !os.IsNotExist(err) {
+				if err != nil {
+					t.Fatalf("unexpected error checking whiteout out path: %s", err)
+				}
+				t.Errorf("path was not removed by whiteout: %s", test.path)
+			}
+
+			// Make sure the parent directory wasn't modified.
+			if fi, err := os.Lstat(filepath.Join(dir, rawDir)); err != nil {
+				t.Fatalf("error checking parent directory of whiteout: %s", err)
+			} else {
+				hdr, err := tar.FileInfoHeader(fi, "")
+				if err != nil {
+					t.Fatalf("error generating header from fileinfo of parent directory of whiteout: %s", err)
+				}
+
+				if !hdr.ModTime.Equal(testMtime) {
+					t.Errorf("mtime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testMtime)
+				}
+				if !hdr.AccessTime.Equal(testAtime) {
+					t.Errorf("atime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testAtime)
+				}
+			}
+		}
+	}(t)
 }
