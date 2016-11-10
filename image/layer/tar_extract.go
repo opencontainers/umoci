@@ -68,10 +68,6 @@ func applyMetadata(path string, hdr *tar.Header) error {
 		atime = mtime
 	}
 
-	if err := system.Lutimes(path, atime, mtime); err != nil {
-		return fmt.Errorf("apply metadata: %s: %s", path, err)
-	}
-
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
@@ -83,6 +79,10 @@ func applyMetadata(path string, hdr *tar.Header) error {
 		if err := system.Lsetxattr(path, name, []byte(value), 0); err != nil {
 			return fmt.Errorf("apply metadata: %s: %s", path, err)
 		}
+	}
+
+	if err := system.Lutimes(path, atime, mtime); err != nil {
+		return fmt.Errorf("apply metadata: %s: %s", path, err)
 	}
 
 	// TODO.
