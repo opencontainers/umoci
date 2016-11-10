@@ -28,6 +28,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/system"
+	"github.com/cyphar/umoci/third_party/symlink"
 )
 
 // applyMetadata applies the state described in tar.Header to the filesystem at
@@ -92,9 +93,6 @@ func applyMetadata(path string, hdr *tar.Header) error {
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
-//
-// FIXME: This is not currently safe against a variety of attacks (such as
-//        symlink attacks and ../../ attacks).
 func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 	logrus.WithFields(logrus.Fields{
 		"root": root,
@@ -102,10 +100,20 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		"type": hdr.Typeflag,
 	}).Debugf("unpacking entry")
 
-	// Get directory and filename.
-	// FIXME: Protect against ../ and symlink attacks.
-	path := filepath.Join(root, hdr.Name)
-	dir, file := filepath.Split(path)
+	// Make hdr.Name safe.
+	hdr.Name = filepath.Clean(filepath.Join("/", hdr.Name))
+
+	// Get directory and filename, but we have to safely get the directory
+	// component of the path. FollowSymlinkInScope will evaluate the path
+	// itself, which we don't want (we're clever enough to handle the actual
+	// path being a symlink).
+	unsafePath := filepath.Join(root, hdr.Name)
+	unsafeDir, file := filepath.Split(unsafePath)
+	dir, err := symlink.FollowSymlinkInScope(unsafeDir, root)
+	if err != nil {
+		return err
+	}
+	path := filepath.Join(dir, file)
 
 	// Before we do anything, get the state of dir. Because we might be adding
 	// or removing files, our parent directory might be modified in the
