@@ -152,3 +152,48 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 		}
 	}(t)
 }
+
+// TestUnpackEntryParentDir ensures that when unpackEntry hits a path that
+// doesn't have its leading directories, we create all of the parent
+// directories.
+func TestUnpackEntryParentDir(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryParentDir")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	rootfs := filepath.Join(dir, "rootfs")
+	if err := os.Mkdir(rootfs, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	ctrValue := []byte("creating parentdirs")
+
+	// Create our header. We raw prepend the prefix because we are generating
+	// invalid tar headers.
+	hdr := &tar.Header{
+		Name:       "a/b/c/file",
+		Uid:        os.Getuid(),
+		Gid:        os.Getgid(),
+		Mode:       0644,
+		Size:       int64(len(ctrValue)),
+		Typeflag:   tar.TypeReg,
+		ModTime:    time.Now(),
+		AccessTime: time.Now(),
+		ChangeTime: time.Now(),
+	}
+
+	if err := unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		t.Fatalf("unexpected unpackEntry error: %s", err)
+	}
+
+	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
+	if err != nil {
+		t.Fatalf("unexpected readfile error: %s", err)
+	}
+
+	if !bytes.Equal(ctrValue, ctrValueGot) {
+		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+	}
+}

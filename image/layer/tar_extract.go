@@ -194,6 +194,18 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		}
 	}
 
+	// Attempt to create the parent directory of the path we're unpacking.
+	// We do a MkdirAll here because even though you need to have a tar entry
+	// for every component of a new path, applyMetadata will correct any
+	// inconsistencies.
+	//
+	// FIXME: We have to make this consistent, since if the tar archive doesn't
+	//        have entries for some of these components we won't be able to
+	//        verify that we have consistent results during unpacking.
+	if err := os.MkdirAll(dir, 0777); err != nil {
+		return err
+	}
+
 	// Now create or otherwise modify the state of the path. Right now, either
 	// the type of path matches hdr or the path doesn't exist. Note that we
 	// don't care about umasks or the initial mode here, since applyMetadata
