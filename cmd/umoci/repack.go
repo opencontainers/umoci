@@ -106,13 +106,13 @@ func repack(ctx *cli.Context) error {
 
 	// FIXME: We should probably fix this so we don't use ':' in a pathname.
 	mtreePath := filepath.Join(bundlePath, fromDescriptor.Digest+".mtree")
-	fullRootfsPath := filepath.Join(bundlePath, rootfsName)
+	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
 	logrus.WithFields(logrus.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
 		"ref":    fromName,
-		"rootfs": rootfsName,
+		"rootfs": layer.RootfsName,
 		"mtree":  mtreePath,
 	}).Debugf("umoci: repacking OCI image")
 

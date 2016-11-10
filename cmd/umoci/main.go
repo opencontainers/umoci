@@ -25,8 +25,6 @@ import (
 	"github.com/urfave/cli"
 )
 
-const rootfsName = "rootfs"
-
 // version is version ID for the source, read from VERSION in the source and
 // populated on build by make.
 var version = ""
@@ -49,7 +47,16 @@ func main() {
 			Email: "asarai@suse.com",
 		},
 	}
-	app.Version = fmt.Sprintf("%s~git%s", version, gitCommit)
+
+	// Fill the version.
+	v := "unknown"
+	if version != "" {
+		v = version
+	}
+	if gitCommit != "" {
+		v = fmt.Sprintf("%s~git%s", v, gitCommit)
+	}
+	app.Version = v
 
 	// FIXME: Should --image be a global option?
 	app.Flags = []cli.Flag{
