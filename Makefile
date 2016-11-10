@@ -42,20 +42,17 @@ install-deps:
 
 EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
 validate:
-	@echo "go-fmt"
-	@test -z "$$(gofmt -s -l . | grep -v '^vendor/' | grep -v '^third_party/' | tee /dev/stderr)"
-	@echo "go-lint"
-	@out="$$(golint $(PROJECT)/... | grep -v '/vendor/' | grep -v '/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores')"; \
+	test -z "$$(gofmt -s -l . | grep -v '^vendor/' | grep -v '^third_party/' | tee /dev/stderr)"
+	out="$$(golint $(PROJECT)/... | grep -v '/vendor/' | grep -v '/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores')"; \
 	if [ -n "$$out" ]; then \
 		echo "$$out"; \
 		exit 1; \
 	fi
-	@echo "go-vet"
-	@go vet $(shell go list $(PROJECT)/... | grep -v /vendor/ | grep -v /third_party/)
+	go vet $(shell go list $(PROJECT)/... | grep -v /vendor/ | grep -v /third_party/)
 	#@echo "git-validation"
 	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
 
 test:
-	go test $(PROJECT)/...
+	go test -v $(PROJECT)/...
 
 ci: umoci validate test

@@ -68,10 +68,6 @@ func applyMetadata(path string, hdr *tar.Header) error {
 		atime = mtime
 	}
 
-	if err := system.Lutimes(path, atime, mtime); err != nil {
-		return fmt.Errorf("apply metadata: %s: %s", path, err)
-	}
-
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
@@ -83,6 +79,10 @@ func applyMetadata(path string, hdr *tar.Header) error {
 		if err := system.Lsetxattr(path, name, []byte(value), 0); err != nil {
 			return fmt.Errorf("apply metadata: %s: %s", path, err)
 		}
+	}
+
+	if err := system.Lutimes(path, atime, mtime); err != nil {
+		return fmt.Errorf("apply metadata: %s: %s", path, err)
 	}
 
 	// TODO.
@@ -192,6 +192,18 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		if err := os.RemoveAll(path); err != nil {
 			return err
 		}
+	}
+
+	// Attempt to create the parent directory of the path we're unpacking.
+	// We do a MkdirAll here because even though you need to have a tar entry
+	// for every component of a new path, applyMetadata will correct any
+	// inconsistencies.
+	//
+	// FIXME: We have to make this consistent, since if the tar archive doesn't
+	//        have entries for some of these components we won't be able to
+	//        verify that we have consistent results during unpacking.
+	if err := os.MkdirAll(dir, 0777); err != nil {
+		return err
 	}
 
 	// Now create or otherwise modify the state of the path. Right now, either
