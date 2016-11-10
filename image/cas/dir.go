@@ -65,6 +65,9 @@ func CreateLayout(path string) error {
 	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
 		return err
 	}
+	if err := os.Mkdir(filepath.Join(path, blobDirectory, BlobAlgorithm), 0755); err != nil {
+		return err
+	}
 	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
 		return err
 	}
