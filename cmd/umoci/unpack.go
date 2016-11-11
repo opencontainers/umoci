@@ -158,6 +158,12 @@ func unpack(ctx *cli.Context) error {
 
 	// Create the mtree manifest.
 	keywords := append(mtree.DefaultKeywords[:], "sha256digest")
+	for idx, kw := range keywords {
+		// We have to use tar_time because we're extracting from a tar archive.
+		if kw == "time" {
+			keywords[idx] = "tar_time"
+		}
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"keywords": keywords,
