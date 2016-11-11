@@ -1,16 +1,26 @@
 language: go
 
+# `make ci` uses Docker.
+sudo: required
+services:
+  - docker
+
 # We can't test Go 1.5, because golint requires >1.6 (which is annoying).
+# Also note that this probably doesn't work with `make ci` right now.
 go:
-  - 1.6
   - 1.7
-  - master
+  #- 1.6
+  #- master
+
+env:
+  - DOCKER_IMAGE="opensuse/amd64:42.2"
+  - DOCKER_IMAGE="fedora:latest"
+  - DOCKER_IMAGE="debian:jessie"
+  - DOCKER_IMAGE="ubuntu:16.04"
 
 notifications:
     email: false
 
-before_script:
-  - make install-deps
-
 script:
-  - make ci
+  - make umoci
+  - make DOCKER_IMAGE=$DOCKER_IMAGE ci
