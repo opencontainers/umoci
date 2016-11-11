@@ -54,7 +54,6 @@ func UnpackLayer(root string, layer io.Reader) error {
 			return err
 		}
 	}
-
 	return nil
 }
 

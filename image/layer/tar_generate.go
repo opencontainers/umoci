@@ -63,13 +63,11 @@ func newTarGenerator(w io.Writer) *tarGenerator {
 // normalise converts the provided pathname to a POSIX-compliant pathname. It also will provide an error if a path looks unsafe.
 func normalise(rawPath string, isDir bool) (string, error) {
 	// Clean up the path.
-	path := filepath.Clean(rawPath)
-	if filepath.IsAbs(path) {
-		path, _ = filepath.Rel("/", path)
-	}
+	path := CleanPath(rawPath)
 
+	// Nothing to do.
 	if path == "." {
-		path = ""
+		return ".", nil
 	}
 
 	// Check that the path is "safe", meaning that it doesn't resolve outside

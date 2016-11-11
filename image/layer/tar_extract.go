@@ -94,14 +94,15 @@ func applyMetadata(path string, hdr *tar.Header) error {
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
 func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
+	// Make the paths safe.
+	hdr.Name = CleanPath(hdr.Name)
+	root = filepath.Clean(root)
+
 	logrus.WithFields(logrus.Fields{
 		"root": root,
 		"path": hdr.Name,
 		"type": hdr.Typeflag,
 	}).Debugf("unpacking entry")
-
-	// Make hdr.Name safe.
-	hdr.Name = filepath.Clean(filepath.Join("/", hdr.Name))
 
 	// Get directory and filename, but we have to safely get the directory
 	// component of the path. FollowSymlinkInScope will evaluate the path
@@ -109,6 +110,10 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 	// path being a symlink).
 	unsafePath := filepath.Join(root, hdr.Name)
 	unsafeDir, file := filepath.Split(unsafePath)
+	if filepath.Join("/", hdr.Name) == "/" {
+		// If we got an entry for the root, then unsafeDir is the full path.
+		unsafeDir, file = unsafePath, "."
+	}
 	dir, err := symlink.FollowSymlinkInScope(unsafeDir, root)
 	if err != nil {
 		return err
@@ -121,7 +126,7 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 	// (because we only apply state that we find in the archive we're iterating
 	// over). We can safely ignore an error here, because a non-existent
 	// directory will be fixed by later archive entries.
-	if dirFi, err := os.Lstat(dir); err == nil {
+	if dirFi, err := os.Lstat(dir); err == nil && path != dir {
 		// FIXME: This is really stupid.
 		link, _ := os.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
@@ -147,19 +152,18 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		file = strings.TrimPrefix(file, whPrefix)
 		path = filepath.Join(dir, file)
 
-		// We would like to use RemoveAll, to recursively remove directories,
-		// but we first need to make sure that the directory existed in the
-		// first place.
-		if _, err := os.Lstat(path); err != nil {
-			if os.IsNotExist(err) {
-				err = fmt.Errorf("unpack entry: encountered invalid whiteout %s: %s", hdr.Name, err)
-			}
-			return fmt.Errorf("unpack entry: error checking whiteout path %s: %s", path, err)
-		}
+		// Unfortunately we can't just stat the file here, because if we hit a
+		// parent directory whiteout earlier than this one then stating here
+		// would fail. The best solution would be to keep a list of whiteouts
+		// we've seen and then Lstat accordingly (though it won't help in some
+		// cases).
 
 		// Just remove the path. The defer will reapply the correct parent
 		// metadata. We have nothing left to do here.
-		return os.RemoveAll(path)
+		if err := os.RemoveAll(path); err != nil {
+			return fmt.Errorf("whiteout removeAll: %s", err)
+		}
+		return nil
 	}
 
 	// FIXME: Currently we cannot use os.Link because we have to wait until the
@@ -177,10 +181,6 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 	hdrFi := hdr.FileInfo()
 	fi, err := os.Lstat(path)
 	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-
 		// File doesn't exist, just switch fi to the file header.
 		fi = hdr.FileInfo()
 	}
