@@ -138,27 +138,6 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		}()
 	}
 
-	// FIXME: Currently we cannot use os.Link because we have to wait until the
-	//        entire archive has been extracted to be sure that hardlinks will
-	//        work. There are a few ways of solving this, one of which is to
-	//        keep an inode index. For now we don't have any other option than
-	//        to "fake" hardlinks with symlinks.
-	if hdr.Typeflag == tar.TypeLink {
-		hdr.Typeflag = tar.TypeSymlink
-	}
-
-	// Get information about the path.
-	hdrFi := hdr.FileInfo()
-	fi, err := os.Lstat(path)
-	if err != nil {
-		if !os.IsNotExist(err) {
-			return err
-		}
-
-		// File doesn't exist, just switch fi to the file header.
-		fi = hdr.FileInfo()
-	}
-
 	// Currently the spec doesn't specify what the hdr.Typeflag of whiteout
 	// files is meant to be. We specifically only produce regular files
 	// ('\x00') but it could be possible that someone produces a different
@@ -173,14 +152,37 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 		// first place.
 		if _, err := os.Lstat(path); err != nil {
 			if os.IsNotExist(err) {
-				err = fmt.Errorf("unpack entry: encountered whiteout %s: %s", hdr.Name, err)
+				err = fmt.Errorf("unpack entry: encountered invalid whiteout %s: %s", hdr.Name, err)
 			}
-			return err
+			return fmt.Errorf("unpack entry: error checking whiteout path %s: %s", path, err)
 		}
 
 		// Just remove the path. The defer will reapply the correct parent
 		// metadata. We have nothing left to do here.
 		return os.RemoveAll(path)
+	}
+
+	// FIXME: Currently we cannot use os.Link because we have to wait until the
+	//        entire archive has been extracted to be sure that hardlinks will
+	//        work. There are a few ways of solving this, one of which is to
+	//        keep an inode index. For now we don't have any other option than
+	//        to "fake" hardlinks with symlinks.
+	if hdr.Typeflag == tar.TypeLink {
+		hdr.Typeflag = tar.TypeSymlink
+	}
+
+	// Get information about the path. This has to be done after we've dealt
+	// with whiteouts because it turns out that lstat(2) will return EPERM if
+	// you try to stat a whiteout on AUFS.
+	hdrFi := hdr.FileInfo()
+	fi, err := os.Lstat(path)
+	if err != nil {
+		if !os.IsNotExist(err) {
+			return err
+		}
+
+		// File doesn't exist, just switch fi to the file header.
+		fi = hdr.FileInfo()
 	}
 
 	// If the type of the file has changed, there's nothing we can do other
