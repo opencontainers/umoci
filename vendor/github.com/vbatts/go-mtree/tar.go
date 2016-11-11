@@ -129,7 +129,11 @@ func (ts *tarStream) readHeaders() {
 				log.Println(err)
 				break
 			}
-			linkname := KeyVal(kv).Value()
+			linkname, err := Unvis(KeyVal(kv).Value())
+			if err != nil {
+				log.Println(err)
+				break
+			}
 			if _, ok := ts.hardlinks[linkname]; !ok {
 				ts.hardlinks[linkname] = []string{hdr.Name}
 			} else {

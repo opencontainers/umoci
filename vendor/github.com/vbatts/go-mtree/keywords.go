@@ -306,7 +306,11 @@ var (
 	linkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
 		if sys, ok := info.Sys().(*tar.Header); ok {
 			if sys.Linkname != "" {
-				return fmt.Sprintf("link=%s", sys.Linkname), nil
+				linkname, err := Vis(sys.Linkname)
+				if err != nil {
+					return "", err
+				}
+				return fmt.Sprintf("link=%s", linkname), nil
 			}
 			return "", nil
 		}
@@ -316,7 +320,11 @@ var (
 			if err != nil {
 				return "", err
 			}
-			return fmt.Sprintf("link=%s", str), nil
+			linkname, err := Vis(str)
+			if err != nil {
+				return "", err
+			}
+			return fmt.Sprintf("link=%s", linkname), nil
 		}
 		return "", nil
 	}
