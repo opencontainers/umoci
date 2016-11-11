@@ -12,6 +12,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"syscall"
 )
 
 // FollowSymlinkInScope is a wrapper around evalSymlinksInScope that returns an
@@ -26,6 +27,25 @@ func FollowSymlinkInScope(path, root string) (string, error) {
 		return "", err
 	}
 	return evalSymlinksInScope(path, root)
+}
+
+// isNotExist tells you if err is an error that implies that either the path
+// accessed does not exist (or path components don't exist).
+func isNotExist(err error) bool {
+	if os.IsNotExist(err) {
+		return true
+	}
+
+	// Check that it's not actually an ENOTDIR.
+	perr, ok := err.(*os.PathError)
+	if !ok {
+		return false
+	}
+	errno, ok := perr.Err.(syscall.Errno)
+	if !ok {
+		return false
+	}
+	return errno == syscall.ENOTDIR || errno == syscall.ENOENT
 }
 
 // evalSymlinksInScope will evaluate symlinks in `path` within a scope `root` and return
@@ -101,7 +121,7 @@ func evalSymlinksInScope(path, root string) (string, error) {
 		fullP := filepath.Clean(root + cleanP)
 
 		fi, err := os.Lstat(fullP)
-		if os.IsNotExist(err) {
+		if isNotExist(err) {
 			// if p does not exist, accept it
 			b.WriteString(p)
 			b.WriteRune(filepath.Separator)
