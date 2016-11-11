@@ -177,7 +177,7 @@ func (k KeyDelta) MarshalJSON() ([]byte, error) {
 
 // Like Compare, but for single inode entries only. Used to compute the
 // cached version of inode.keys.
-func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
+func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	// Represents the new and old states for an entry's keys.
 	type stateT struct {
 		Old *KeyVal
@@ -190,8 +190,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 	for _, kv := range oldEntry.AllKeys() {
 		key := kv.Keyword()
 
-		// We cannot just take &kv here because it's the iterator. I
-		// learned this the hard way.
+		// Cannot take &kv because it's the iterator.
 		copy := new(KeyVal)
 		*copy = kv
 
@@ -206,8 +205,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 	for _, kv := range newEntry.AllKeys() {
 		key := kv.Keyword()
 
-		// We cannot just take &kv here because it's the iterator. I
-		// learned this the hard way.
+		// Cannot take &kv because it's the iterator.
 		copy := new(KeyVal)
 		*copy = kv
 
@@ -237,7 +235,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 		if diffs["tar_time"].Old == nil {
 			time, err := strconv.ParseFloat(timeStateT.Old.Value(), 64)
 			if err != nil {
-				panic(err)
+				return nil, fmt.Errorf("failed to parse old time: %s", err)
 			}
 
 			newTime := new(KeyVal)
@@ -247,7 +245,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 		} else if diffs["tar_time"].New == nil {
 			time, err := strconv.ParseFloat(timeStateT.New.Value(), 64)
 			if err != nil {
-				panic(err)
+				return nil, fmt.Errorf("failed to parse new time: %s", err)
 			}
 
 			newTime := new(KeyVal)
@@ -255,7 +253,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 
 			diffs["tar_time"].New = newTime
 		} else {
-			panic("time and tar_time set in the same manifest")
+			return nil, fmt.Errorf("time and tar_time set in the same manifest")
 		}
 	}
 
@@ -264,7 +262,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 	for name, diff := range diffs {
 		// Invalid
 		if diff.Old == nil && diff.New == nil {
-			panic("invalid state: both old and new are nil")
+			return nil, fmt.Errorf("invalid state: both old and new are nil: key=%s", name)
 		}
 
 		switch {
@@ -297,7 +295,7 @@ func compareEntry(oldEntry, newEntry Entry) []KeyDelta {
 		}
 	}
 
-	return results
+	return results, nil
 }
 
 // Compare compares two directory hierarchy manifests, and returns the
@@ -339,8 +337,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, err
 				return nil, err
 			}
 
-			// We cannot just take &e here because it's the iterator. I
-			// learned this the hard way.
+			// Cannot take &kv because it's the iterator.
 			copy := new(Entry)
 			*copy = e
 
@@ -360,8 +357,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, err
 				return nil, err
 			}
 
-			// We cannot just take &e here because it's the iterator. I
-			// learned this the hard way.
+			// Cannot take &kv because it's the iterator.
 			copy := new(Entry)
 			*copy = e
 
@@ -378,7 +374,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, err
 	for path, diff := range diffs {
 		// Invalid
 		if diff.Old == nil && diff.New == nil {
-			panic("invalid state: both old and new are nil")
+			return nil, fmt.Errorf("invalid state: both old and new are nil: path=%s", path)
 		}
 
 		switch {
@@ -400,7 +396,10 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, err
 
 		// Modified
 		default:
-			changed := compareEntry(*diff.Old, *diff.New)
+			changed, err := compareEntry(*diff.Old, *diff.New)
+			if err != nil {
+				return nil, fmt.Errorf("comparison failed %s: %s", path, err)
+			}
 
 			// Now remove "changed" entries that don't match the keys.
 			if keys != nil {

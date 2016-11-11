@@ -1,15 +1,17 @@
 hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
-updated: 2016-11-10T01:48:47.450889171+11:00
+updated: 2016-11-12T04:13:18.308332643+11:00
 imports:
 - name: github.com/blang/semver
   version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 7c4309715ec586b6ccf165b27fc6cb82ba0dce9d
+  version: 177e0b175f161ff36521e2829e4a8b70b1703591
   subpackages:
   - image/cas
   - image/generator
   - image/layer
   - system
+  - third_party/symlink
+  - third_party/user
 - name: github.com/inconshreveable/mousetrap
   version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/opencontainers/image-spec
@@ -23,16 +25,12 @@ imports:
   version: 27d5fd6616cc7cd4de36521e9a0c9c8cfc8234ca
   subpackages:
   - image
-- name: github.com/opencontainers/runc
-  version: 8779fa57eb4a810a7360187dfa5e168a76cf5d21
-  subpackages:
-  - libcontainer/user
 - name: github.com/opencontainers/runtime-spec
   version: 7dab1a245d3e13d0ad03b77409d0bf7e00a6ada4
   subpackages:
   - specs-go
 - name: github.com/opencontainers/runtime-tools
-  version: 553c260f75393e07530883481397cbfbc36b2aae
+  version: 081f39deb270a56739a997710f8f7b20359f466a
   subpackages:
   - cmd/runtimetest/mount
   - generate
@@ -53,7 +51,7 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: c7f15034cf7858abfeb498f4ec0e612f7e6e2e4e
+  version: 690c85d4e826b86e342d763814a04ff5a4544887
   subpackages:
   - xattr
 - name: github.com/xeipuuv/gojsonpointer
@@ -71,11 +69,11 @@ imports:
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: 40d3034e575b6eafbca34e64224da61de35ae04c
+  version: 0e2717dc3cc05907dc23096ef3a9086ea93f567f
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: 9a2e24c3733eddc63871eda99f253e2db29bd3b9
+  version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
   - unix
 - name: gopkg.in/airbrake/gobrake.v2
