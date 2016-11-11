@@ -22,7 +22,7 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 RUN zypper ar -f -p 10 -g obs://home:cyphar obs-home-cyphar && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
-RUN zypper -n in go git make skopeo go-mtree bats
+RUN zypper -n in go git make skopeo go-mtree bats jq
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH

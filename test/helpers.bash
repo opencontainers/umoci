@@ -32,7 +32,7 @@ function umoci() {
 }
 
 function gomtree() {
-	sane_run "$GOMTREE" "$@"
+	sane_run "$GOMTREE" -K sha256digest "$@"
 }
 
 function sane_run() {
