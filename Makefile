@@ -17,7 +17,9 @@ GO ?= go
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/cyphar/umoci
-UMOCI_LINK := vendor/$(PROJECT)
+
+# We use Docker because Go is just horrific to deal with.
+UMOCI_IMAGE := umoci_dev
 
 # Version information.
 VERSION := $(shell cat ./VERSION)
@@ -30,18 +32,20 @@ GO_SRC =  $(shell find . -name \*.go)
 umoci: $(GO_SRC)
 	$(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o umoci $(PROJECT)/cmd/umoci
 
+.PHONY: update-deps
 update-deps:
 	hack/vendor.sh
 
+.PHONY: clean
 clean:
 	rm -f umoci
 
-install-deps:
-	go get -u github.com/golang/lint/golint
-	go get -u github.com/vbatts/git-validation
+validate: umociimage
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-validate
 
 EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
-validate:
+.PHONY: local-validate
+local-validate:
 	test -z "$$(gofmt -s -l . | grep -v '^vendor/' | grep -v '^third_party/' | tee /dev/stderr)"
 	out="$$(golint $(PROJECT)/... | grep -v '/vendor/' | grep -v '/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores')"; \
 	if [ -n "$$out" ]; then \
@@ -52,7 +56,28 @@ validate:
 	#@echo "git-validation"
 	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
 
-test:
+# Used for tests.
+DOCKER_IMAGE :=opensuse/amd64:tumbleweed
+
+.PHONY: umociimage
+umociimage:
+	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
+
+.PHONY: test-unit
+test-unit: umociimage
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-unit
+
+.PHONY: local-test-unit
+local-test-unit: umoci
 	go test -v $(PROJECT)/...
 
-ci: umoci validate test
+.PHONY: test-integration
+test-integration: umociimage
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-integration
+
+.PHONY: local-test-integration
+local-test-integration: umoci
+	bats -t test/*.bats
+
+.PHONY: ci
+ci: umoci validate test-unit test-integration
