@@ -250,3 +250,24 @@ function teardown() {
 	! ( printf -- '%s\n' "${lines[*]}" | grep '^/another volume$' )
 	printf -- '%s\n' "${lines[*]}" | grep '^/\.\.final_volume$'
 }
+
+@test "umoci config --{os,architecture}" {
+	# Modify none of the configuration.
+	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --os "linux" --architecture "aarch9001"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Check that OS was set properly.
+	sane_run jq -SMr '.platform.os' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
+
+	# Check that arch was set properly.
+	sane_run jq -SMr '.platform.arch' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "aarch9001" ]]
+}
