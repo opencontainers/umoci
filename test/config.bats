@@ -412,7 +412,7 @@ function teardown() {
 	printf -- '%s\n' "${lines[*]}" | grep '^/\.\.final_volume$'
 }
 
-@test "umoci config --{os,architecture}" {
+@test "umoci config --[os+architecture]" {
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --os "linux" --architecture "aarch9001"
@@ -431,4 +431,27 @@ function teardown() {
 	sane_run jq -SMr '.platform.arch' "$BUNDLE_A/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "aarch9001" ]]
+}
+
+# XXX: This doesn't do any actual testing of the results of any of these flags.
+# This needs to be fixed after we implement raw-cat or something like that.
+@test "umoci config --[author+created+history]" {
+	# Modify everything.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00" \
+	             --clear=history --history '{"created_by": "ls -la", "comment": "should work", "author": "me", "empty_layer": false, "created": "2016-03-25T12:34:02.655002+11:00"}' \
+	             --history '{"created_by": "ls -la", "author": "me", "empty_layer": false}'
+	[ "$status" -eq 0 ]
+
+	# Make sure that --history doesn't work with a random string.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history "some random string"
+	[ "$status" -ne 0 ]
+	# FIXME It turns out that Go's JSON parser will ignore unknown keys...
+	#umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history '{"unknown key": 12, "created_by": "ls -la", "comment": "should not work"}'
+	#[ "$status" -ne 0 ]
+
+	# Make sure that --created doesn't work with a random string.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="not a date"
+	[ "$status" -ne 0 ]
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="Jan 04 2004"
+	[ "$status" -ne 0 ]
 }
