@@ -61,6 +61,7 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image) error {
 		g.SetProcessCwd(image.Config.WorkingDir)
 	}
 
+	g.ClearProcessEnv()
 	for _, env := range image.Config.Env {
 		g.AddProcessEnv(env)
 	}
