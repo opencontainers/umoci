@@ -56,6 +56,167 @@ function teardown() {
 	[ -z "$output" ]
 }
 
+@test "umoci config --config.user 'user'" {
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Modify /etc/passwd and /etc/group.
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
+
+	# Repack the image.
+	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	[ "$status" -eq 0 ]
+
+	# Modify the user.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 1337 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 8888 ]
+
+	# Make sure additionalGids were set.
+	sane_run jq -SMr '.process.user.additionalGids[]' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 2 ]
+
+	# Check mounts.
+	printf -- '%s\n' "${lines[*]}" | grep '^9001$'
+	printf -- '%s\n' "${lines[*]}" | grep '^2581$'
+
+	# Check that HOME is set.
+	sane_run jq -SMr '.process.env[]' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	export $output
+	[[ "$HOME" == "/my home dir " ]]
+}
+
+@test "umoci config --config.user 'user:group'" {
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Modify /etc/passwd and /etc/group.
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
+
+	# Repack the image.
+	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	[ "$status" -eq 0 ]
+
+	# Modify the user.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 1337 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 2222 ]
+
+	# Make sure additionalGids were not set.
+	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "null" ]]
+
+	# Check that HOME is set.
+	sane_run jq -SMr '.process.env[]' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	export $output
+	[[ "$HOME" == "/my home dir " ]]
+}
+
+@test "umoci config --config.user 'user:group' [parsed from rootfs]" {
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Modify /etc/passwd and /etc/group.
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
+
+	# Repack the image.
+	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	[ "$status" -eq 0 ]
+
+	# Modify the user.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 1337 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 2222 ]
+
+	# Check that HOME is set.
+	sane_run jq -SMr '.process.env[]' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	export $output
+	[[ "$HOME" == "/my home dir " ]]
+
+	# Modify /etc/passwd and /etc/group.
+	sed -i -e 's|^testuser:x:1337:8888:test user:/my home dir :|testuser:x:3333:2321:a:/another  home:|' "$BUNDLE_B/rootfs/etc/passwd"
+	sed -i -e 's|^emptygroup:x:2222:|emptygroup:x:4444:|' "$BUNDLE_B/rootfs/etc/group"
+
+	# Repack the image.
+	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B" --tag "${TAG}"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.uid' "$BUNDLE_C/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 3333 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.gid' "$BUNDLE_C/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 4444 ]
+
+	# Check that HOME is set.
+	sane_run jq -SMr '.process.env[]' "$BUNDLE_C/config.json"
+	[ "$status" -eq 0 ]
+	export $output
+	[[ "$HOME" == "/another  home" ]]
+}
+
 @test "umoci config --config.user [numeric]" {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.user="1337:8888"
