@@ -18,6 +18,7 @@ load helpers
 
 BUNDLE_A="$BATS_TMPDIR/bundle.a"
 BUNDLE_B="$BATS_TMPDIR/bundle.b"
+BUNDLE_C="$BATS_TMPDIR/bundle.c"
 
 function setup() {
 	setup_image
@@ -27,6 +28,7 @@ function teardown() {
 	teardown_image
 	rm -rf "$BUNDLE_A"
 	rm -rf "$BUNDLE_B"
+	rm -rf "$BUNDLE_C"
 }
 
 @test "umoci config" {
@@ -195,4 +197,56 @@ function teardown() {
 	[[ "$output" == "sh;-c;ls -la;" ]]
 }
 
-# TODO: Something about volumes.
+# XXX: This test is somewhat dodgy (since we don't actually set anything other than the destination for a volume).
+@test "umoci config --config.volume" {
+	# Modify none of the configuration.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Get set of mounts
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+
+	# Check mounts.
+	printf -- '%s\n' "${lines[*]}" | grep '^/volume$'
+	printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$'
+
+	# Make sure we're appending.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.volume "/another volume"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+
+	# Get set of mounts
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+
+	# Check mounts.
+	printf -- '%s\n' "${lines[*]}" | grep '^/volume$'
+	printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$'
+	printf -- '%s\n' "${lines[*]}" | grep '^/another volume$'
+
+	# Now clear the volumes
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --clear=config.volume --config.volume "/..final_volume"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+
+	# Get set of mounts
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_C/config.json"
+	[ "$status" -eq 0 ]
+
+	# Check mounts.
+	! ( printf -- '%s\n' "${lines[*]}" | grep '^/volume$' )
+	! ( printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$' )
+	! ( printf -- '%s\n' "${lines[*]}" | grep '^/another volume$' )
+	printf -- '%s\n' "${lines[*]}" | grep '^/\.\.final_volume$'
+}
