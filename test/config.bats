@@ -165,4 +165,34 @@ function teardown() {
 	[ "$output" -eq 1024 ]
 }
 
-# TODO: Something about volume.
+@test "umoci config --config.cmd" {
+	# Modify none of the configuration.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Ensure that the final args is entrypoint+cmd.
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "cat;/this is a file with spaces;-v;" ]]
+}
+
+@test "umoci config --config.[entrypoint+cmd]" {
+	# Modify none of the configuration.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image again.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+
+	# Ensure that the final args is entrypoint+cmd.
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "sh;-c;ls -la;" ]]
+}
+
+# TODO: Something about volumes.
