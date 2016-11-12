@@ -1,10 +1,10 @@
 hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
-updated: 2016-11-12T04:13:18.308332643+11:00
+updated: 2016-11-12T20:01:26.569750498+11:00
 imports:
 - name: github.com/blang/semver
   version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 177e0b175f161ff36521e2829e4a8b70b1703591
+  version: 8fb8c8142826673809f791c1563c16dfceedda74
   subpackages:
   - image/cas
   - image/generator
@@ -51,7 +51,7 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: 690c85d4e826b86e342d763814a04ff5a4544887
+  version: 350023bc2f196fe1caffbb92be6e2b16ab789c5f
   subpackages:
   - xattr
 - name: github.com/xeipuuv/gojsonpointer

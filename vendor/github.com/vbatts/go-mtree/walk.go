@@ -7,6 +7,7 @@ import (
 	"os/user"
 	"path/filepath"
 	"sort"
+	"strings"
 	"time"
 )
 
@@ -23,11 +24,16 @@ var defaultSetKeywords = []string{"type=file", "nlink=1", "flags=none", "mode=06
 func Walk(root string, exlcudes []ExcludeFunc, keywords []string) (*DirectoryHierarchy, error) {
 	creator := dhCreator{DH: &DirectoryHierarchy{}}
 	// insert signature and metadata comments first (user, machine, tree, date)
-	metadataEntries := signatureEntries(root)
-	for _, e := range metadataEntries {
+	for _, e := range signatureEntries(root) {
 		e.Pos = len(creator.DH.Entries)
 		creator.DH.Entries = append(creator.DH.Entries, e)
 	}
+	// insert keyword metadata next
+	for _, e := range keywordEntries(keywords) {
+		e.Pos = len(creator.DH.Entries)
+		creator.DH.Entries = append(creator.DH.Entries, e)
+	}
+	// walk the directory and add entries
 	err := startWalk(&creator, root, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			return err
@@ -359,4 +365,39 @@ func signatureEntries(root string) []Entry {
 	sigEntries = append(sigEntries, dateEntry)
 
 	return sigEntries
+}
+
+// keywordEntries returns a slice of entries that ensure that a manifest
+// generated with a particular keyword set will still be recognised as having
+// that keyword set. Namely this is [/set <keywords>, /set <none>].
+func keywordEntries(keywords []string) []Entry {
+	// Convert all of the keywords to zero-value keyvals.
+	kvs := []string{}
+	for _, kw := range keywords {
+		kvs = append(kvs, kw+"=")
+	}
+
+	// Create a /set <kvs> and an /unset.
+	return []Entry{
+		{
+			Type: CommentType,
+			Raw:  fmt.Sprintf("#%16s%s", "keywords: ", strings.Join(keywords, ",")),
+		},
+		{
+			Type: BlankType,
+		},
+		{
+			Type: CommentType,
+			Raw:  "# <keywords>",
+		},
+		{
+			Type:     SpecialType,
+			Name:     "/set",
+			Keywords: kvs,
+		},
+		{
+			Type: SpecialType,
+			Name: "/unset",
+		},
+	}
 }

@@ -76,8 +76,13 @@ func (ts *tarStream) readHeaders() {
 		Set:      nil,
 		Keywords: []string{"type=dir"},
 	}
-	metadataEntries := signatureEntries("<user specified tar archive>")
-	for _, e := range metadataEntries {
+	// insert signature and metadata comments first (user, machine, tree, date)
+	for _, e := range signatureEntries("<user specified tar archive>") {
+		e.Pos = len(ts.creator.DH.Entries)
+		ts.creator.DH.Entries = append(ts.creator.DH.Entries, e)
+	}
+	// insert keyword metadata next
+	for _, e := range keywordEntries(ts.keywords) {
 		e.Pos = len(ts.creator.DH.Entries)
 		ts.creator.DH.Entries = append(ts.creator.DH.Entries, e)
 	}
