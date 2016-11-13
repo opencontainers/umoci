@@ -3,7 +3,6 @@
 [![Build Status](https://img.shields.io/travis/cyphar/umoci/master.svg)](https://travis-ci.org/cyphar/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/cyphar/umoci.svg)
 
-
 **Status: Pre-Alpha**
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
@@ -45,8 +44,8 @@ that the OCI tooling didn't pick up on the transgressions).
 * [x] `umoci/image/generate`.
 * [x] `umoci config`.
 * [x] `umoci gc`.
-* [ ] `umoci init`.
-* [ ] `umoci ref`.
+* [x] `umoci create`.
+* [ ] `umoci tag`.
 * [ ] `umoci info`. (*optional*)
 * [ ] `umoci verify`. (*optional*)
 * [ ] `umoci sign`. (*optional*)
@@ -57,36 +56,15 @@ merged that are not merged upstream). This is because currently upstream
 projects are simply not mature enough to be used. It also means that this code
 is definitely not safe for production.
 
-* `go-mtree` needs to have better handling of comparing specifications and
-  directories. I have [an open pull request which is being reviewed and will
-  hopefully be merged soon][gomtree-pr].
-
-* Currently `image/layer` is a complete reimplementation of the proposed
-  implementation for [`oci-create-layer`][oci-create-layer]. This is because I
-  needed to use `[]gomtree.InodeDelta` but the hope is that my implementation
-  will eventually be pushed upstream (once `go-mtree` merges my PR and gets
-  more stable).
-
-* In addition, `image/cas` is also a complete reimplementation of [this
-  PR][oci-cas]. The reason for rewriting that code was because the proposed
-  code doesn't implement some of the nice interfaces I would like (and has some
-  other issues that I find frustrating). I hope that I can push my
-  implementation upstream.
-
-* Currently, `umoci` requires root privileges to extract the `rootfs` of an
-  image. This is simply ludicrous, and I'm hoping that [this upstream PR will
-  be merged][oci-ownership] so that I can use an `[]idtools.IDMap` to allow for
-  translation of the owners of files when generating the `tar` archives. There
-  are almost certainly hacky ways around this but I would prefer to avoid them.
+Also note that currently, `umoci` requires root privileges to extract the
+`rootfs` of an image. This is simply ludicrous, but this will be fixed before
+`0.0.0` and will be tracked by [this issue][unpriv-issue].
 
 Also, some of the vendored `opencontainers` libraries have bugs which means
 that I have to manually patch them after running `hack/vendor.sh`. Which is
 just bad on so many levels.
 
-[gomtree-pr]: https://github.com/vbatts/go-mtree/pull/48
-[oci-create-layer]: https://github.com/opencontainers/image-tools/pull/8
-[oci-cas]: https://github.com/opencontainers/image-tools/pull/5
-[oci-ownership]: https://github.com/opencontainers/image-tools/pull/3
+[unpriv-issue]: https://github.com/cyphar/umoci/issues/26
 
 ### License ###
 
