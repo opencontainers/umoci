@@ -21,6 +21,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
@@ -119,8 +120,8 @@ func unpack(ctx *cli.Context) error {
 		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
 	}
 
-	// FIXME: We should probably fix this so we don't use ':' in a pathname.
-	mtreePath := filepath.Join(bundlePath, fromDescriptor.Digest+".mtree")
+	mtreeName := strings.Replace(fromDescriptor.Digest, "sha256:", "sha256_", 1)
+	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
 	logrus.WithFields(logrus.Fields{

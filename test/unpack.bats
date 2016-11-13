@@ -46,7 +46,7 @@ function teardown() {
 	[ -e "$BUNDLE_A/rootfs/etc/group" ]
 
 	# Ensure that gomtree suceeds on the unpacked bundle.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_A"/sha256:*.mtree
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
@@ -75,7 +75,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Ensure that gomtree suceeds on the new unpacked bundle.
-	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256:*.mtree
+	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }

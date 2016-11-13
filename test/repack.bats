@@ -57,7 +57,7 @@ function teardown() {
 
 	# Ensure that gomtree suceeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256:*.mtree
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -93,7 +93,7 @@ function teardown() {
 
 	# Ensure that gomtree suceeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256:*.mtree
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -132,7 +132,7 @@ function teardown() {
 
 	# Ensure that gomtree suceeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256:*.mtree
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
