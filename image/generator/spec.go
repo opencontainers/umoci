@@ -70,9 +70,11 @@ func (g *Generator) init() {
 // may change in the future without warning and may be invalid images).
 func New() *Generator {
 	// FIXME: Come up with some sane default.
-	return &Generator{
+	g := &Generator{
 		image: v1.Image{},
 	}
+	g.init()
+	return g
 }
 
 // NewFromTemplate creates a new Generator with the initial template being

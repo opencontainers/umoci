@@ -217,6 +217,16 @@ function teardown() {
 	[[ "$HOME" == "/another  home" ]]
 }
 
+@test "umoci config --config.user 'user:group' [non-existent user]" {
+	# Modify the user.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
+	[ "$status" -eq 0 ]
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci config --config.user [numeric]" {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.user="1337:8888"

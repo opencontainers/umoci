@@ -236,7 +236,6 @@ func repack(ctx *cli.Context) error {
 	}
 
 	// Append our new layer to the set of DiffIDs.
-	// FIXME: This should be the *uncompressed* version of the layerDigest.
 	g.AddRootfsDiffID(layerDiffID)
 
 	// Update config and create a new blob for it.
