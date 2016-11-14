@@ -54,10 +54,11 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 		Size:       int64(len(data)),
 	}
 
+	te := newTarExtractor()
 	if err := ioutil.WriteFile(path, data, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 
@@ -147,10 +148,11 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 		Size:       0,
 	}
 
+	te := newTarExtractor()
 	if err := os.Mkdir(path, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 
@@ -233,10 +235,11 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 		Size:       0,
 	}
 
+	te := newTarExtractor()
 	if err := os.Symlink(linkname, path); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 

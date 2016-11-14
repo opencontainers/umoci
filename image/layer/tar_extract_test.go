@@ -62,7 +62,8 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) func(
 			ChangeTime: time.Now(),
 		}
 
-		if err := unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		te := newTarExtractor()
+		if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 			t.Fatalf("unexpected unpackEntry error: %s", err)
 		}
 
@@ -184,7 +185,8 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		ChangeTime: time.Now(),
 	}
 
-	if err := unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+	te := newTarExtractor()
+	if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 		t.Fatalf("unexpected unpackEntry error: %s", err)
 	}
 
@@ -270,7 +272,8 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 
-			if err := unpackEntry(dir, hdr, nil); err != nil {
+			te := newTarExtractor()
+			if err := te.unpackEntry(dir, hdr, nil); err != nil {
 				t.Fatalf("unexpected error in unpackEntry: %s", err)
 			}
 
@@ -322,6 +325,8 @@ func TestUnpackHardlink(t *testing.T) {
 		hardFileB = "hard link to symlink"
 	)
 
+	te := newTarExtractor()
+
 	// Regular file.
 	hdr = &tar.Header{
 		Name:       regFile,
@@ -334,7 +339,7 @@ func TestUnpackHardlink(t *testing.T) {
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
 	}
-	if err := unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+	if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 		t.Fatalf("regular: unexpected unpackEntry error: %s", err)
 	}
 
@@ -347,7 +352,7 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := unpackEntry(dir, hdr, nil); err != nil {
+	if err := te.unpackEntry(dir, hdr, nil); err != nil {
 		t.Fatalf("hardlinkA: unexpected unpackEntry error: %s", err)
 	}
 
@@ -359,7 +364,7 @@ func TestUnpackHardlink(t *testing.T) {
 		Typeflag: tar.TypeSymlink,
 		Linkname: filepath.Join("../../../", regFile),
 	}
-	if err := unpackEntry(dir, hdr, nil); err != nil {
+	if err := te.unpackEntry(dir, hdr, nil); err != nil {
 		t.Fatalf("symlink: unexpected unpackEntry error: %s", err)
 	}
 
@@ -372,7 +377,7 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := unpackEntry(dir, hdr, nil); err != nil {
+	if err := te.unpackEntry(dir, hdr, nil); err != nil {
 		t.Fatalf("hardlinkB: unexpected unpackEntry error: %s", err)
 	}
 

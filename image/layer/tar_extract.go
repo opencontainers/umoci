@@ -31,10 +31,19 @@ import (
 	"github.com/cyphar/umoci/third_party/symlink"
 )
 
+// FIXME: Add tarExtractor.
+type tarExtractor struct {
+}
+
+// newTarExtractor creates a new tarExtractor.
+func newTarExtractor() *tarExtractor {
+	return &tarExtractor{}
+}
+
 // applyMetadata applies the state described in tar.Header to the filesystem at
 // the given path. No sanity checking is done of the tar.Header's pathname or
 // other information.
-func applyMetadata(path string, hdr *tar.Header) error {
+func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Some of the tar.Header fields don't match the OS API.
 	fi := hdr.FileInfo()
 
@@ -99,7 +108,7 @@ func applyMetadata(path string, hdr *tar.Header) error {
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
-func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
+func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 	// Make the paths safe.
 	hdr.Name = CleanPath(hdr.Name)
 	root = filepath.Clean(root)
@@ -143,7 +152,7 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 		// Ensure that after everything we correctly re-apply the old metadata.
 		defer func() {
 			// Only overwrite the error if there wasn't one already.
-			if err := applyMetadata(dir, dirHdr); err != nil && Err == nil {
+			if err := te.applyMetadata(dir, dirHdr); err != nil && Err == nil {
 				Err = err
 			}
 		}()
@@ -313,7 +322,7 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 	// apply metadata for hardlinks, because hardlinks don't have any separate
 	// metadata from their link (and the tar headers might not be filled).
 	if hdr.Typeflag != tar.TypeLink {
-		if err := applyMetadata(path, hdr); err != nil {
+		if err := te.applyMetadata(path, hdr); err != nil {
 			return err
 		}
 	}

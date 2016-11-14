@@ -41,6 +41,7 @@ import (
 // state used to create the layer. If an error is returned, the state of root
 // is undefined (unpacking is not guaranteed to be atomic).
 func UnpackLayer(root string, layer io.Reader) error {
+	te := newTarExtractor()
 	tr := tar.NewReader(layer)
 	for {
 		hdr, err := tr.Next()
@@ -50,7 +51,7 @@ func UnpackLayer(root string, layer io.Reader) error {
 		if err != nil {
 			return err
 		}
-		if err := unpackEntry(root, hdr, tr); err != nil {
+		if err := te.unpackEntry(root, hdr, tr); err != nil {
 			return err
 		}
 	}
