@@ -93,7 +93,7 @@ func applyMetadata(path string, hdr *tar.Header) error {
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
-func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
+func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 	// Make the paths safe.
 	hdr.Name = CleanPath(hdr.Name)
 	root = filepath.Clean(root)
@@ -134,11 +134,11 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) error {
 			return err
 		}
 
-		// FIXME: This doesn't return an error, we should fix that by using the
-		//        (really dumb) (err error) construction.
+		// Ensure that after everything we correctly re-apply the old metadata.
 		defer func() {
-			if err := applyMetadata(dir, dirHdr); err != nil {
-				panic(err)
+			// Only overwrite the error if there wasn't one already.
+			if err := applyMetadata(dir, dirHdr); err != nil && Err == nil {
+				Err = err
 			}
 		}()
 	}
