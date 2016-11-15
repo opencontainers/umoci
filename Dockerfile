@@ -17,12 +17,13 @@ FROM opensuse/amd64:42.2
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # Use my personal repo because currently Go is broken in openSUSE (will be
-# fixed in https://build.opensuse.org/request/show/439834), and because skopeo
-# still isn't in Virtualization:containers or openSUSE:Factory.
-RUN zypper ar -f -p 10 -g obs://home:cyphar obs-home-cyphar && \
+# fixed in https://build.opensuse.org/request/show/439834) and also several
+# things (such as bats and go-mtree) aren't in an proper openSUSE repo.
+RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
+    zypper ar -f -p 10 -g obs://home:cyphar obs-cyphar && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
-RUN zypper -n in go git make skopeo go-mtree bats jq
+RUN zypper -n in 'go>=1.6' git make skopeo go-mtree bats jq
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
