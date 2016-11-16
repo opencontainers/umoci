@@ -38,12 +38,18 @@ func applyMetadata(path string, hdr *tar.Header) error {
 	// Some of the tar.Header fields don't match the OS API.
 	fi := hdr.FileInfo()
 
+	// Get the _actual_ file info to figure out if the path is a symlink.
+	isSymlink := hdr.Typeflag == tar.TypeSymlink
+	if realFi, err := os.Lstat(path); err == nil {
+		isSymlink = realFi.Mode()&os.ModeSymlink == os.ModeSymlink
+	}
+
 	// We cannot apply hdr.Mode to symlinks, because symlinks don't have a mode
 	// of their own (they're special in that way).
 	// XXX: Make sure that the same doesn't hold for hardlinks in a tar file
 	//      (hardlinks share their inode, but in a tar file they have separate
 	//      headers).
-	if hdr.Typeflag != tar.TypeSymlink {
+	if !isSymlink {
 		if err := os.Chmod(path, fi.Mode()); err != nil {
 			return fmt.Errorf("apply metadata: %s: %s", path, err)
 		}
@@ -166,15 +172,6 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 		return nil
 	}
 
-	// FIXME: Currently we cannot use os.Link because we have to wait until the
-	//        entire archive has been extracted to be sure that hardlinks will
-	//        work. There are a few ways of solving this, one of which is to
-	//        keep an inode index. For now we don't have any other option than
-	//        to "fake" hardlinks with symlinks.
-	if hdr.Typeflag == tar.TypeLink {
-		hdr.Typeflag = tar.TypeSymlink
-	}
-
 	// Get information about the path. This has to be done after we've dealt
 	// with whiteouts because it turns out that lstat(2) will return EPERM if
 	// you try to stat a whiteout on AUFS.
@@ -243,12 +240,26 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 
 	// hard link, symbolic link
 	case tar.TypeLink, tar.TypeSymlink:
+		// Hardlinks and symlinks act differently when it comes to the scoping.
+		linkname := hdr.Linkname
+
 		// In both cases, we have to just unlinkg and then re-link the given
 		// path. The only difference is the function we're using.
 		var linkFn func(string, string) error
 		switch hdr.Typeflag {
 		case tar.TypeLink:
 			linkFn = os.Link
+			// Because hardlinks are inode-based we need to scope the link to
+			// the rootfs using FollowSymlinkInScope. As before, we need to be
+			// careful that we don't resolve the last part of the link path (in
+			// case the user actually wanted to hardlink to a symlink).
+			linkname = filepath.Join(root, CleanPath(linkname))
+			linkdir, file := filepath.Split(linkname)
+			dir, err := symlink.FollowSymlinkInScope(linkdir, root)
+			if err != nil {
+				return err
+			}
+			linkname = filepath.Join(dir, file)
 		case tar.TypeSymlink:
 			linkFn = os.Symlink
 		}
@@ -259,7 +270,13 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 		}
 
 		// Link the new one.
-		if err := linkFn(hdr.Linkname, path); err != nil {
+		if err := linkFn(linkname, path); err != nil {
+			// FIXME: Currently this can break if tar hardlink entries occur
+			//        before we hit the entry those hardlinks link to. I have a
+			//        feeling that such archives are invalid, but the correct
+			//        way of handling this is to delay link creation until the
+			//        very end. Unfortunately this won't work with symlinks
+			//        (which can link to directories).
 			return err
 		}
 

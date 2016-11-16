@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 )
@@ -299,4 +300,130 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			}
 		}
 	}(t)
+}
+
+// TestUnpackHardlink makes sure that hardlinks are correctly unpacked in all
+// cases. In particular when it comes to hardlinks to symlinks.
+func TestUnpackHardlink(t *testing.T) {
+	// Create the files we're going to play with.
+	dir, err := ioutil.TempDir("", "umoci-TestUnpackHardlink")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	var (
+		hdr *tar.Header
+
+		ctrValue  = []byte("some content we won't check")
+		regFile   = "regular"
+		symFile   = "link"
+		hardFileA = "hard link"
+		hardFileB = "hard link to symlink"
+	)
+
+	// Regular file.
+	hdr = &tar.Header{
+		Name:       regFile,
+		Uid:        os.Getuid(),
+		Gid:        os.Getgid(),
+		Mode:       0644,
+		Size:       int64(len(ctrValue)),
+		Typeflag:   tar.TypeReg,
+		ModTime:    time.Now(),
+		AccessTime: time.Now(),
+		ChangeTime: time.Now(),
+	}
+	if err := unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		t.Fatalf("regular: unexpected unpackEntry error: %s", err)
+	}
+
+	// Hardlink to regFile.
+	// FIXME: Add a test to make sure that hardlinks don't apply their metadata.
+	hdr = &tar.Header{
+		Name:     hardFileA,
+		Typeflag: tar.TypeLink,
+		Linkname: filepath.Join("/", regFile),
+	}
+	if err := unpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("hardlinkA: unexpected unpackEntry error: %s", err)
+	}
+
+	// Symlink to regFile.
+	hdr = &tar.Header{
+		Name:     symFile,
+		Typeflag: tar.TypeSymlink,
+		Linkname: filepath.Join("../../../", regFile),
+	}
+	if err := unpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("symlink: unexpected unpackEntry error: %s", err)
+	}
+
+	// Hardlink to symlink.
+	hdr = &tar.Header{
+		Name:     hardFileB,
+		Typeflag: tar.TypeLink,
+		Linkname: filepath.Join("../../../", symFile),
+	}
+	if err := unpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("hardlinkB: unexpected unpackEntry error: %s", err)
+	}
+
+	// Quickly make sure that the contents are as expected.
+	ctrValueGot, err := ioutil.ReadFile(filepath.Join(dir, regFile))
+	if err != nil {
+		t.Fatalf("regular file was not created: %s", err)
+	}
+	if !bytes.Equal(ctrValueGot, ctrValue) {
+		t.Fatalf("regular file did not have expected values: expected=%s got=%s", ctrValue, ctrValueGot)
+	}
+
+	// Now we have to check the inode numbers.
+	regFi, err := os.Lstat(filepath.Join(dir, regFile))
+	if err != nil {
+		t.Fatalf("could not stat regular file: %s", err)
+	}
+	symFi, err := os.Lstat(filepath.Join(dir, symFile))
+	if err != nil {
+		t.Fatalf("could not stat symlink: %s", err)
+	}
+	hardAFi, err := os.Lstat(filepath.Join(dir, hardFileA))
+	if err != nil {
+		t.Fatalf("could not stat hardlinkA: %s", err)
+	}
+	hardBFi, err := os.Lstat(filepath.Join(dir, hardFileB))
+	if err != nil {
+		t.Fatalf("could not stat hardlinkB: %s", err)
+	}
+
+	// This test only runs on Linux anyway.
+	regIno := regFi.Sys().(*syscall.Stat_t).Ino
+	symIno := symFi.Sys().(*syscall.Stat_t).Ino
+	hardAIno := hardAFi.Sys().(*syscall.Stat_t).Ino
+	hardBIno := hardBFi.Sys().(*syscall.Stat_t).Ino
+
+	if regIno == symIno {
+		t.Errorf("regular and symlink have the same inode! ino=%d", regIno)
+	}
+	if hardAIno == hardBIno {
+		t.Errorf("both hardlinks have the same inode! ino=%d", hardAIno)
+	}
+	if hardAIno != regIno {
+		t.Errorf("hardlink to regular has a different inode: reg=%d hard=%d", regIno, hardAIno)
+	}
+	if hardBIno != symIno {
+		t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symIno, hardBIno)
+	}
+
+	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
+	if err != nil {
+		t.Errorf("unexpected error reading symlink: %s", err)
+	}
+	linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
+	if err != nil {
+		t.Errorf("unexpected error reading hardlink to symlink: %s", err)
+	}
+	if linknameA != linknameB {
+		t.Errorf("hardlink to symlink doesn't match linkname: link=%s hard=%s", linknameA, linknameB)
+	}
 }
