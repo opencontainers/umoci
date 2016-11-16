@@ -85,7 +85,8 @@ function teardown() {
 	[ "${#lines[@]}" -eq "$nblobs" ]
 
 	# Delete the old reference.
-	rm "$IMAGE/refs/$TAG"
+	umoci tag --image "$IMAGE" rm --tag "$TAG"
+	[ "$status" -eq 0 ]
 
 	# Now do a gc which should delete some blobs.
 	umoci gc --image "$IMAGE"
@@ -108,7 +109,14 @@ function teardown() {
 	[ "${#lines[@]}" -ne 0 ]
 
 	# Remove refs.
-	rm "$IMAGE"/refs/*
+	umoci tag --image "$IMAGE" list
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -gt 0 ]
+
+	for line in "${lines[*]}"; do
+		umoci tag --image "$IMAGE" rm --tag "$(echo "$line" | awk '{ print $1 }')"
+		[ "$status" -eq 0 ]
+	done
 
 	# Do a gc, which should remove all blobs.
 	umoci gc --image "$IMAGE"
