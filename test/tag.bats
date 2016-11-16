@@ -43,37 +43,37 @@ function teardown() {
 }
 
 @test "umoci tag add" {
-	# Get digest and mediatype that a tag references.
+	# Get blob and mediatype that a tag references.
 	umoci tag --image "$IMAGE" list
 	[ "$status" -eq 0 ]
 
-	# FIXME: This should really be "umoci tag stat" or something.
-	for line in "${lines[@]}"; do
-		tag="$(echo $line | awk '{ print $1 }')"
-		mediatype="$(echo $line | awk '{ print $2 }')"
-		digest="$(echo $line | awk '{ print $3 }')"
+	for tag in "${lines[@]}"; do
+		umoci tag --image "$IMAGE" stat --tag "$tag"
+		[ "$status" -eq 0 ]
+		mediatype="$(echo $output | jq -SMr '.mediatype')"
+		blob="$(echo $output | jq -SMr '.blob')"
 		[[ "$tag" != "$TAG" ]] || break
 	done
 	[[ "$tag" == "$TAG" ]]
 
 	# Add a new tag.
-	umoci tag --image "$IMAGE" add --tag "${TAG}-newtag" --blob "$digest" --media-type "$mediatype"
+	umoci tag --image "$IMAGE" add --tag "${TAG}-newtag" --blob "$blob" --media-type "$mediatype"
 	[ "$status" -eq 0 ]
 
 	# Make sure that the new tag is the same.
 	umoci tag --image "$IMAGE" list
 	[ "$status" -eq 0 ]
 
-	# FIXME: As above this should be "umoci tag stat".
-	for line in "${lines[@]}"; do
-		_tag="$(echo $line | awk '{ print $1 }')"
-		_mediatype="$(echo $line | awk '{ print $2 }')"
-		_digest="$(echo $line | awk '{ print $3 }')"
+	for _tag in "${lines[@]}"; do
+		umoci tag --image "$IMAGE" stat --tag "$tag"
+		[ "$status" -eq 0 ]
+		_mediatype="$(echo $output | jq -SMr '.mediatype')"
+		_blob="$(echo $output | jq -SMr '.blob')"
 		[[ "$_tag" != "${TAG}-newtag" ]] || break
 	done
 	[[ "$_tag" == "${TAG}-newtag" ]]
 	[[ "$_mediatype" == "$mediatype" ]]
-	[[ "$_digest" == "$digest" ]]
+	[[ "$_blob" == "$blob" ]]
 }
 
 @test "umoci tag rm" {
@@ -92,14 +92,40 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq "$(($nrefs - 1))" ]
 
-	# FIXME: This should really be "umoci tag stat" or something.
 	# Check that the lines don't contain that tag.
-	for line in "${lines[@]}"; do
-		tag="$(echo $line | awk '{ print $1 }')"
+	for tag in "${lines[@]}"; do
 		[[ "$tag" != "$TAG" ]]
 	done
 
 	# Make sure it's truly gone.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BATS_TMPDIR/notused"
 	[ "$status" -ne 0 ]
+}
+
+@test "umoci tag stat" {
+	# How many tags?
+	umoci tag --image "$IMAGE" list
+	[ "$status" -eq 0 ]
+
+	# Just run stat on each of those tags.
+	for tag in "${lines[@]}"; do
+		umoci tag --image "$IMAGE" stat --tag "$tag"
+		[ "$status" -eq 0 ]
+
+		echo "$output" > "$BATS_TMPDIR/tag-stat.$tag"
+
+		sane_run jq -SMr '.mediatype' "$BATS_TMPDIR/tag-stat.$tag"
+		[ "$status" -eq 0 ]
+		[[ "$output" == "application/vnd.oci.image.manifest.v1+json" ]]
+
+		sane_run jq -SMr '.blob' "$BATS_TMPDIR/tag-stat.$tag"
+		[ "$status" -eq 0 ]
+		[[ "$output" =~ "sha256:"* ]]
+
+		sane_run jq -SMr '.size' "$BATS_TMPDIR/tag-stat.$tag"
+		[ "$status" -eq 0 ]
+		[ "$output" -gt 0 ]
+
+		rm -f "$BATS_TMPDIR/tag-stat.$tag"
+	done
 }

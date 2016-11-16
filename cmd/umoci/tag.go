@@ -18,13 +18,12 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
-	"text/tabwriter"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
@@ -64,6 +63,7 @@ modify tags within the image specified.`,
 		tagAddCommand,
 		tagRemoveCommand,
 		tagListCommand,
+		tagStatCommand,
 	},
 }
 
@@ -206,13 +206,9 @@ var tagListCommand = cli.Command{
 	Usage:   "lists the set of references in an OCI image",
 	ArgsUsage: `
 
-Gives the full list of references in an OCI image in the format:
-
-    <tag-name> <media-type> <digest>
-
-Where "<tag-name>" is the name of the tag, "<media-type>" is the OCI image spec
-media type for the referenced blob, and "<digest>" is the digest of the
-referenced blob.`,
+Gives the full list of references in an OCI image, with each reference name on
+a single line. See umoci-tag-stat(2) to get more information about each
+reference.`,
 
 	Flags: []cli.Flag{
 	// FIXME: Add a --format or similar option to allow formatting to work properly.
@@ -240,17 +236,74 @@ func tagList(ctx *cli.Context) error {
 		return err
 	}
 
-	// FIXME: We should probably add more information.
-	w := tabwriter.NewWriter(os.Stdout, 0, 4, 2, ' ', 0)
-	//fmt.Fprintln(w, "TAG\tMEDIATYPE\tDIGEST")
 	for _, name := range names {
-		descriptor, err := engine.GetReference(context.TODO(), name)
-		if err != nil {
-			logrus.Warnf("could not get reference %s: %s", name, err)
-			continue
-		}
-		fmt.Fprintf(w, "%s\t%s\t%s\n", name, descriptor.MediaType, descriptor.Digest)
+		fmt.Printf("%s\n", name)
+	}
+	return nil
+}
+
+var tagStatCommand = cli.Command{
+	Name:  "stat",
+	Usage: "outputs information about a reference",
+	ArgsUsage: ` --tag <tag-name>
+
+Where "<tag-name>" is the name of the reference to output information about.
+The information outputted is a JSON blob with the following fields:
+
+{
+	"mediatype": "application/<mime>", # The media type of the blob.
+	"blob": "sha256:<hash>",           # The digest of the blob.
+	"size": 1337                       # The size of the blob.
+}`,
+
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "tag",
+			Usage: "name of tag to create",
+		},
+	},
+
+	Action: tagStat,
+}
+
+func tagStat(ctx *cli.Context) error {
+	// FIXME: Is there a nicer way of dealing with mandatory arguments?
+	imagePath := ctx.GlobalString("image")
+	if imagePath == "" {
+		return fmt.Errorf("image path cannot be empty")
+	}
+	tagName := ctx.String("tag")
+	if tagName == "" {
+		return fmt.Errorf("tag name cannot be empty")
 	}
 
-	return w.Flush()
+	// Get a reference to the CAS.
+	engine, err := cas.Open(imagePath)
+	if err != nil {
+		return err
+	}
+	defer engine.Close()
+
+	descriptor, err := engine.GetReference(context.TODO(), tagName)
+	if err != nil {
+		return err
+	}
+
+	// We wrap this so that we can be sure of the output format.
+	toencode := struct {
+		MediaType string `json:"mediatype"`
+		Blob      string `json:"blob"`
+		Size      int64  `json:"size"`
+	}{
+		MediaType: descriptor.MediaType,
+		Blob:      descriptor.Digest,
+		Size:      descriptor.Size,
+	}
+
+	if err := json.NewEncoder(os.Stdout).Encode(toencode); err != nil {
+		return err
+	}
+
+	os.Stdout.Sync()
+	return nil
 }
