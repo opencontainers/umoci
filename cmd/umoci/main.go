@@ -79,6 +79,7 @@ func main() {
 		repackCommand,
 		gcCommand,
 		createCommand,
+		tagCommand,
 	}
 
 	// Actually run umoci.
