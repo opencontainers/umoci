@@ -339,11 +339,13 @@ func TestUnpackHardlink(t *testing.T) {
 	}
 
 	// Hardlink to regFile.
-	// FIXME: Add a test to make sure that hardlinks don't apply their metadata.
 	hdr = &tar.Header{
 		Name:     hardFileA,
 		Typeflag: tar.TypeLink,
 		Linkname: filepath.Join("/", regFile),
+		// These should **not** be applied.
+		Uid: os.Getuid() + 1337,
+		Gid: os.Getgid() + 2020,
 	}
 	if err := unpackEntry(dir, hdr, nil); err != nil {
 		t.Fatalf("hardlinkA: unexpected unpackEntry error: %s", err)
@@ -352,6 +354,8 @@ func TestUnpackHardlink(t *testing.T) {
 	// Symlink to regFile.
 	hdr = &tar.Header{
 		Name:     symFile,
+		Uid:      os.Getuid(),
+		Gid:      os.Getgid(),
 		Typeflag: tar.TypeSymlink,
 		Linkname: filepath.Join("../../../", regFile),
 	}
@@ -364,6 +368,9 @@ func TestUnpackHardlink(t *testing.T) {
 		Name:     hardFileB,
 		Typeflag: tar.TypeLink,
 		Linkname: filepath.Join("../../../", symFile),
+		// These should **really not** be applied.
+		Uid: os.Getuid() + 1337,
+		Gid: os.Getgid() + 2020,
 	}
 	if err := unpackEntry(dir, hdr, nil); err != nil {
 		t.Fatalf("hardlinkB: unexpected unpackEntry error: %s", err)
@@ -415,6 +422,7 @@ func TestUnpackHardlink(t *testing.T) {
 		t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symIno, hardBIno)
 	}
 
+	// Double-check readlink.
 	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
 	if err != nil {
 		t.Errorf("unexpected error reading symlink: %s", err)
@@ -425,5 +433,23 @@ func TestUnpackHardlink(t *testing.T) {
 	}
 	if linknameA != linknameB {
 		t.Errorf("hardlink to symlink doesn't match linkname: link=%s hard=%s", linknameA, linknameB)
+	}
+
+	// Make sure that uid and gid don't apply to hardlinks.
+	regUID := int(regFi.Sys().(*syscall.Stat_t).Uid)
+	if regUID != os.Getuid() {
+		t.Errorf("regular file: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), regUID)
+	}
+	regGID := int(regFi.Sys().(*syscall.Stat_t).Gid)
+	if regGID != os.Getgid() {
+		t.Errorf("regular file: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), regGID)
+	}
+	symUID := int(symFi.Sys().(*syscall.Stat_t).Uid)
+	if symUID != os.Getuid() {
+		t.Errorf("symlink: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), symUID)
+	}
+	symGID := int(symFi.Sys().(*syscall.Stat_t).Gid)
+	if symGID != os.Getgid() {
+		t.Errorf("symlink: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), symGID)
 	}
 }

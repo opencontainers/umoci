@@ -309,9 +309,13 @@ func unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 		return fmt.Errorf("unpack entry: %s: unknown typeflag '\\x%x'", hdr.Name, hdr.Typeflag)
 	}
 
-	// Apply the metadata.
-	if err := applyMetadata(path, hdr); err != nil {
-		return err
+	// Apply the metadata, which will apply any mappings necessary. We don't
+	// apply metadata for hardlinks, because hardlinks don't have any separate
+	// metadata from their link (and the tar headers might not be filled).
+	if hdr.Typeflag != tar.TypeLink {
+		if err := applyMetadata(path, hdr); err != nil {
+			return err
+		}
 	}
 
 	return nil
