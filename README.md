@@ -45,10 +45,7 @@ that the OCI tooling didn't pick up on the transgressions).
 * [x] `umoci config`.
 * [x] `umoci gc`.
 * [x] `umoci create`.
-* [ ] `umoci tag`.
-* [ ] `umoci info`. (*optional*)
-* [ ] `umoci verify`. (*optional*)
-* [ ] `umoci sign`. (*optional*)
+* [x] `umoci tag`.
 
 Currently `umoci` relies on several from-scratch implementations of existing
 PRs against upstream projects (or aliased vendor projects that include PRs
