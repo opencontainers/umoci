@@ -54,14 +54,15 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 		Size:       int64(len(data)),
 	}
 
+	te := newTarExtractor(MapOptions{})
 	if err := ioutil.WriteFile(path, data, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 
-	tg := newTarGenerator(writer)
+	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -147,14 +148,15 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 		Size:       0,
 	}
 
+	te := newTarExtractor(MapOptions{})
 	if err := os.Mkdir(path, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 
-	tg := newTarGenerator(writer)
+	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -233,14 +235,15 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 		Size:       0,
 	}
 
+	te := newTarExtractor(MapOptions{})
 	if err := os.Symlink(linkname, path); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
-	if err := applyMetadata(path, expectedHdr); err != nil {
+	if err := te.applyMetadata(path, expectedHdr); err != nil {
 		t.Fatalf("apply metadata: %s", err)
 	}
 
-	tg := newTarGenerator(writer)
+	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -324,7 +327,7 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 		"dir/.",
 	}
 
-	tg := newTarGenerator(writer)
+	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the whiteout entries in a goroutine so we can parse the

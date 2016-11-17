@@ -30,6 +30,7 @@ import (
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layer"
+	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -68,6 +69,14 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Name:  "tag",
 			Usage: "tag name for repacked image",
 		},
+		cli.StringSliceFlag{
+			Name:  "uid-map",
+			Usage: "specifies a uid mapping to use when repacking",
+		},
+		cli.StringSliceFlag{
+			Name:  "gid-map",
+			Usage: "specifies a gid mapping to use when repacking",
+		},
 	},
 
 	Action: repack,
@@ -87,6 +96,27 @@ func repack(ctx *cli.Context) error {
 	if fromName == "" {
 		return fmt.Errorf("reference name cannot be empty")
 	}
+
+	// Parse map options.
+	mapOptions := layer.MapOptions{}
+	for _, uidmap := range ctx.StringSlice("uid-map") {
+		idMap, err := idtools.ParseMapping(uidmap)
+		if err != nil {
+			return fmt.Errorf("failure parsing --uid-map %s: %s", uidmap, err)
+		}
+		mapOptions.UIDMappings = append(mapOptions.UIDMappings, idMap)
+	}
+	for _, gidmap := range ctx.StringSlice("gid-map") {
+		idMap, err := idtools.ParseMapping(gidmap)
+		if err != nil {
+			return fmt.Errorf("failure parsing --gid-map %s: %s", gidmap, err)
+		}
+		mapOptions.GIDMappings = append(mapOptions.GIDMappings, idMap)
+	}
+	logrus.WithFields(logrus.Fields{
+		"map.uid": mapOptions.UIDMappings,
+		"map.gid": mapOptions.GIDMappings,
+	}).Infof("parsed mappings")
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -143,7 +173,7 @@ func repack(ctx *cli.Context) error {
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
-	reader, err := layer.GenerateLayer(fullRootfsPath, diffs)
+	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &mapOptions)
 	if err != nil {
 		return err
 	}
@@ -169,6 +199,7 @@ func repack(ctx *cli.Context) error {
 	go func() {
 		_, err := io.Copy(gzw, hashReader)
 		if err != nil {
+			logrus.Warnf("failed when copying to gzip: %s", err)
 			pipeWriter.CloseWithError(err)
 			return
 		}

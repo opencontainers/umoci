@@ -18,9 +18,61 @@
 package layer
 
 import (
+	"archive/tar"
 	"os"
 	"path/filepath"
+
+	"github.com/cyphar/umoci/pkg/idtools"
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
 )
+
+// MapOptions specifies the UID and GID mappings used when unpacking and
+// repacking images.
+type MapOptions struct {
+	// UIDMappings and GIDMappings are the UID and GID mappings to apply when
+	// packing and unpacking image rootfs layers.
+	UIDMappings []rspec.IDMapping
+	GIDMappings []rspec.IDMapping
+}
+
+// mapHeader maps a tar.Header generated from the filesystem so that it
+// describes the inode as it would be observed by a container process. In
+// particular this involves apply an ID mapping from the host filesystem to the
+// container mappings. Returns an error if it's not possible to map the given
+// UID.
+func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
+	newUID, err := idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
+	if err != nil {
+		return err
+	}
+	newGID, err := idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
+	if err != nil {
+		return err
+	}
+
+	hdr.Uid = newUID
+	hdr.Gid = newGID
+	return nil
+}
+
+// unmapHeader maps a tar.Header from a tar layer stream so that it describes
+// the inode as it would be exist on the host filesystem. In particular this
+// involves applying an ID mapping from the container filesystem to the host
+// mappings. Returns an error if it's not possible to map the given UID.
+func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
+	newUID, err := idtools.ToHost(hdr.Uid, mapOptions.UIDMappings)
+	if err != nil {
+		return err
+	}
+	newGID, err := idtools.ToHost(hdr.Gid, mapOptions.GIDMappings)
+	if err != nil {
+		return err
+	}
+
+	hdr.Uid = newUID
+	hdr.Gid = newGID
+	return nil
+}
 
 // CleanPath makes a path safe for use with filepath.Join. This is done by not
 // only cleaning the path, but also (if the path is relative) adding a leading

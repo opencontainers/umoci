@@ -32,6 +32,10 @@ import (
 type tarGenerator struct {
 	tw *tar.Writer
 
+	// mapOptions is the set of mapping options for modifying entries before
+	// they're added to the layer.
+	mapOptions MapOptions
+
 	// Hardlink mapping.
 	// XXX: Do we need to handle having a rootfs/ which is on more than one
 	//      filesystem? In which case this will have to be more complicated
@@ -52,9 +56,10 @@ type tarGenerator struct {
 
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
-func newTarGenerator(w io.Writer) *tarGenerator {
+func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
 	return &tarGenerator{
 		tw:          tar.NewWriter(w),
+		mapOptions:  opt,
 		inodes:      map[uint64]string{},
 		directories: map[string]bool{},
 	}
@@ -150,6 +155,10 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// XXX: What about xattrs.
 
+	// Apply any header mappings.
+	if err := mapHeader(hdr, tg.mapOptions); err != nil {
+		return err
+	}
 	if err := tg.tw.WriteHeader(hdr); err != nil {
 		return err
 	}
