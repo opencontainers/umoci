@@ -31,6 +31,7 @@ function teardown() {
 	rm -rf "$BUNDLE_C"
 }
 
+# FIXME: This test is __WAY__ too slow.
 @test "umoci unpack --uid-map --gid-map" {
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "8888:0:65535"
@@ -39,18 +40,12 @@ function teardown() {
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_A/config.json" ]
 
-	# Check that all of the files have a UID owner >=1337.
-	run find "$BUNDLE_A/rootfs" -exec stat -c '%u' {} \;
-	[ "$status" -eq 0 ]
-	for line in "${lines[@]}"; do
-		[ "$line" -ge 1337 ] && [ "$line" -lt "$((1337 + 65535))" ]
-	done
-
-	# Check that all of the files have a GID owner >=8888.
-	run find "$BUNDLE_A/rootfs" -exec stat -c '%g' {} \;
-	[ "$status" -eq 0 ]
-	for line in "${lines[@]}"; do
-		[ "$line" -ge 8888 ] && [ "$line" -lt "$((8888 + 65535))" ]
+	# Check that all of the files have a UID owner >=1337 and a GID owner >=8888.
+	find "$BUNDLE_A/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
+		uid=$(echo "$line" | cut -d: -f1)
+		gid=$(echo "$line" | cut -d: -f2)
+		[ "$uid" -ge 1337 ] && [ "$uid" -lt "$((1337 + 65535))" ]
+		[ "$gid" -ge 8888 ] && [ "$gid" -lt "$((8888 + 65535))" ]
 	done
 
 	# Unpack the image with a differen uid and gid mapping.
@@ -60,14 +55,12 @@ function teardown() {
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_B/config.json" ]
 
-	# Check that all of the files have a UID owner >=1337.
-	find "$BUNDLE_B/rootfs" -exec stat -c '%u' {} \; | while read -r line; do
-		[ "$line" -ge 8080 ] && [ "$line" -lt "$((8080 + 65535))" ]
-	done
-
-	# Check that all of the files have a GID owner >=8888.
-	find "$BUNDLE_B/rootfs" -exec stat -c '%g' {} \; | while read -r line; do
-		[ "$line" -ge 7777 ] && [ "$line" -lt "$((7777 + 65535))" ]
+	# Check that all of the files have a UID owner >=8080 and a GID owner >=7777.
+	find "$BUNDLE_B/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
+		uid=$(echo "$line" | cut -d: -f1)
+		gid=$(echo "$line" | cut -d: -f2)
+		[ "$uid" -ge 8080 ] && [ "$uid" -lt "$((8080 + 65535))" ]
+		[ "$gid" -ge 7777 ] && [ "$gid" -lt "$((7777 + 65535))" ]
 	done
 }
 
