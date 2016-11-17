@@ -26,6 +26,8 @@ import (
 	"syscall"
 	"testing"
 	"time"
+
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
 )
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.
@@ -457,4 +459,157 @@ func TestUnpackHardlink(t *testing.T) {
 	if symGID != os.Getgid() {
 		t.Errorf("symlink: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), symGID)
 	}
+}
+
+// TestUnpackEntryMap checks that the mapOptions handling works.
+func TestUnpackEntryMap(t *testing.T) {
+	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
+	func(t *testing.T) {
+		for _, test := range []struct {
+			uidMap rspec.IDMapping
+			gidMap rspec.IDMapping
+		}{
+			{rspec.IDMapping{HostID: 0, ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: 0, ContainerID: 0, Size: 100}},
+			{rspec.IDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
+			{rspec.IDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
+		} {
+			// Create the files we're going to play with.
+			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryMap")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+
+			t.Logf("running with uid=%#v gid=%#v", test.uidMap, test.gidMap)
+
+			var (
+				hdr            *tar.Header
+				hdrUID, hdrGID int
+
+				ctrValue = []byte("some content we won't check")
+				regFile  = "regular"
+				symFile  = "link"
+				regDir   = " a directory"
+				symDir   = "link-dir"
+			)
+
+			te := newTarExtractor(MapOptions{
+				UIDMappings: []rspec.IDMapping{test.uidMap},
+				GIDMappings: []rspec.IDMapping{test.gidMap},
+			})
+
+			// Regular file.
+			hdrUID, hdrGID = 0, 0
+			hdr = &tar.Header{
+				Name:       regFile,
+				Uid:        hdrUID,
+				Gid:        hdrGID,
+				Mode:       0644,
+				Size:       int64(len(ctrValue)),
+				Typeflag:   tar.TypeReg,
+				ModTime:    time.Now(),
+				AccessTime: time.Now(),
+				ChangeTime: time.Now(),
+			}
+			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regfile: unexpected unpackEntry error: %s", err)
+			}
+			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
+			} else {
+				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
+				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
+				if theUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				}
+				if theGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				}
+			}
+
+			// Regular directory.
+			hdrUID, hdrGID = 13, 42
+			hdr = &tar.Header{
+				Name:       regDir,
+				Uid:        hdrUID,
+				Gid:        hdrGID,
+				Mode:       0755,
+				Typeflag:   tar.TypeDir,
+				ModTime:    time.Now(),
+				AccessTime: time.Now(),
+				ChangeTime: time.Now(),
+			}
+			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			}
+			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
+			} else {
+				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
+				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
+				if theUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				}
+				if theGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				}
+			}
+
+			// Symlink to file.
+			hdrUID, hdrGID = 23, 22
+			hdr = &tar.Header{
+				Name:       symFile,
+				Uid:        hdrUID,
+				Gid:        hdrGID,
+				Typeflag:   tar.TypeSymlink,
+				Linkname:   regFile,
+				ModTime:    time.Now(),
+				AccessTime: time.Now(),
+				ChangeTime: time.Now(),
+			}
+			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			}
+			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
+			} else {
+				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
+				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
+				if theUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				}
+				if theGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				}
+			}
+
+			// Symlink to director.
+			hdrUID, hdrGID = 99, 88
+			hdr = &tar.Header{
+				Name:       symDir,
+				Uid:        hdrUID,
+				Gid:        hdrGID,
+				Typeflag:   tar.TypeSymlink,
+				Linkname:   regDir,
+				ModTime:    time.Now(),
+				AccessTime: time.Now(),
+				ChangeTime: time.Now(),
+			}
+			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			}
+			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
+			} else {
+				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
+				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
+				if theUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				}
+				if theGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				}
+			}
+		}
+	}(t)
 }
