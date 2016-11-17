@@ -1,14 +1,15 @@
 hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
-updated: 2016-11-12T20:01:26.569750498+11:00
+updated: 2016-11-17T23:13:45.838125447+11:00
 imports:
 - name: github.com/blang/semver
   version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 8fb8c8142826673809f791c1563c16dfceedda74
+  version: 8d19f36e1790ac4c5f9012743f47568ba4a555ac
   subpackages:
   - image/cas
   - image/generator
   - image/layer
+  - pkg/idtools
   - system
   - third_party/symlink
   - third_party/user
@@ -22,7 +23,7 @@ imports:
   - specs-go
   - specs-go/v1
 - name: github.com/opencontainers/image-tools
-  version: 27d5fd6616cc7cd4de36521e9a0c9c8cfc8234ca
+  version: 66832e747af76a933e502c4f92a02fa4905326fb
   subpackages:
   - image
 - name: github.com/opencontainers/runtime-spec
@@ -30,7 +31,7 @@ imports:
   subpackages:
   - specs-go
 - name: github.com/opencontainers/runtime-tools
-  version: 081f39deb270a56739a997710f8f7b20359f466a
+  version: 476f1fb7af4102951375ab58fdeca2118cf6ab31
   subpackages:
   - cmd/runtimetest/mount
   - generate
@@ -41,9 +42,9 @@ imports:
 - name: github.com/Sirupsen/logrus
   version: d26492970760ca5d33129d2d799e34be5c4782eb
 - name: github.com/spf13/cobra
-  version: 6e91dded25d73176bf7f60b40dd7aa1f0bf9be8d
+  version: 9495bc009a56819bdb0ddbc1a373e29c140bc674
 - name: github.com/spf13/pflag
-  version: 5ccb023bc27df288a957c5e994cd44fd19619465
+  version: 7b17cc4658ef5ca157b986ea5c0b43af7938532b
 - name: github.com/syndtr/gocapability
   version: 2c00daeb6c3b45114c80ac44119e7b8801fdd852
   subpackages:
@@ -69,7 +70,7 @@ imports:
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: 0e2717dc3cc05907dc23096ef3a9086ea93f567f
+  version: 4971afdc2f162e82d185353533d3cf16188a9f4e
   subpackages:
   - context
 - name: golang.org/x/sys

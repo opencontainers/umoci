@@ -464,6 +464,38 @@ func (g *Generator) SetLinuxResourcesMemorySwappiness(swappiness uint64) {
 	g.spec.Linux.Resources.Memory.Swappiness = &swappiness
 }
 
+// SetLinuxResourcesNetworkClassID sets g.spec.Linux.Resources.Network.ClassID.
+func (g *Generator) SetLinuxResourcesNetworkClassID(classid uint32) {
+	g.initSpecLinuxResourcesNetwork()
+	g.spec.Linux.Resources.Network.ClassID = &classid
+}
+
+// AddLinuxResourcesNetworkPriorities adds or sets g.spec.Linux.Resources.Network.Priorities.
+func (g *Generator) AddLinuxResourcesNetworkPriorities(name string, prio uint32) {
+	g.initSpecLinuxResourcesNetwork()
+	for i, netPriority := range g.spec.Linux.Resources.Network.Priorities {
+		if netPriority.Name == name {
+			g.spec.Linux.Resources.Network.Priorities[i].Priority = prio
+			return
+		}
+	}
+	interfacePrio := new(rspec.InterfacePriority)
+	interfacePrio.Name = name
+	interfacePrio.Priority = prio
+	g.spec.Linux.Resources.Network.Priorities = append(g.spec.Linux.Resources.Network.Priorities, *interfacePrio)
+}
+
+// DropLinuxResourcesNetworkPriorities drops one item from g.spec.Linux.Resources.Network.Priorities.
+func (g *Generator) DropLinuxResourcesNetworkPriorities(name string) {
+	g.initSpecLinuxResourcesNetwork()
+	for i, netPriority := range g.spec.Linux.Resources.Network.Priorities {
+		if netPriority.Name == name {
+			g.spec.Linux.Resources.Network.Priorities = append(g.spec.Linux.Resources.Network.Priorities[:i], g.spec.Linux.Resources.Network.Priorities[i+1:]...)
+			return
+		}
+	}
+}
+
 // SetLinuxResourcesPidsLimit sets g.spec.Linux.Resources.Pids.Limit.
 func (g *Generator) SetLinuxResourcesPidsLimit(limit int64) {
 	g.initSpecLinuxResourcesPids()
