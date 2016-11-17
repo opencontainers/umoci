@@ -68,6 +68,10 @@ creation with umoci-repack(1).`,
 			Name:  "gid-map",
 			Usage: "specifies a gid mapping to use when repacking",
 		},
+		cli.BoolFlag{
+			Name:  "rootless",
+			Usage: "enable rootless unpacking support",
+		},
 	},
 
 	Action: unpack,
@@ -108,7 +112,25 @@ func unpack(ctx *cli.Context) error {
 	}
 
 	// Parse map options.
-	mapOptions := layer.MapOptions{}
+	mapOptions := layer.MapOptions{
+		Rootless: ctx.Bool("rootless"),
+	}
+	// We need to set mappings if we're in rootless mode.
+	if mapOptions.Rootless {
+		if !ctx.IsSet("uid-map") {
+			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
+			logrus.WithFields(logrus.Fields{
+				"map.uid": ctx.StringSlice("uid-map"),
+			}).Info("setting default rootless --uid-map option")
+		}
+		if !ctx.IsSet("gid-map") {
+			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
+			logrus.WithFields(logrus.Fields{
+				"map.gid": ctx.StringSlice("gid-map"),
+			}).Info("setting default rootless --gid-map option")
+		}
+	}
+	// Parse and set up the mapping options.
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
@@ -201,7 +223,7 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, false)
+	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, mapOptions.Rootless)
 	if err != nil {
 		return fmt.Errorf("failed to generate mtree spec: %q", err)
 	}
