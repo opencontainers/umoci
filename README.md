@@ -33,20 +33,6 @@ to change (once all of the in progress points below have been addressed).
 
 ### In Progress ###
 
-Here is a laundry list of features that are being worked on [from the design
-document][design.md]. Checked items have been "completed" (noting that the UX
-is likely to change and that there are certain issues documented in the code
-that probably result in technically invalid OCI images -- though testing showed
-that the OCI tooling didn't pick up on the transgressions).
-
-* [x] `umoci unpack`.
-* [x] `umoci repack`.
-* [x] `umoci/image/generate`.
-* [x] `umoci config`.
-* [x] `umoci gc`.
-* [x] `umoci create`.
-* [x] `umoci tag`.
-
 Currently `umoci` relies on several from-scratch implementations of existing
 PRs against upstream projects (or aliased vendor projects that include PRs
 merged that are not merged upstream). This is because currently upstream
