@@ -44,7 +44,12 @@ func (ids inodeDeltas) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
 // provided path (which should be the rootfs of the layer that was diffed). The
 // returned reader is for the *raw* tar data, it is the caller's responsibility
 // to gzip it.
-func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error) {
+func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.ReadCloser, error) {
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+
 	reader, writer := io.Pipe()
 
 	go func() {
@@ -53,7 +58,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := newTarGenerator(writer)
+		tg := newTarGenerator(writer, mapOptions)
 		defer tg.tw.Close()
 
 		// Sort the delta paths.
@@ -73,7 +78,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta) (io.ReadCloser, error
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
 				if err := tg.AddFile(name, fullPath); err != nil {
-					logrus.Warnf("could not add file: %s", err)
+					logrus.Warnf("could not add file %s: %s", name, err)
 					writer.CloseWithError(err)
 					return
 				}

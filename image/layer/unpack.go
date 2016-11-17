@@ -30,6 +30,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
 	igen "github.com/cyphar/umoci/image/generator"
+	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/cyphar/umoci/system"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rgen "github.com/opencontainers/runtime-tools/generate"
@@ -40,8 +41,12 @@ import (
 // root. It ensures that the state of the root is as close as possible to the
 // state used to create the layer. If an error is returned, the state of root
 // is undefined (unpacking is not guaranteed to be atomic).
-func UnpackLayer(root string, layer io.Reader) error {
-	te := newTarExtractor()
+func UnpackLayer(root string, layer io.Reader, opt *MapOptions) error {
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+	te := newTarExtractor(mapOptions)
 	tr := tar.NewReader(layer)
 	for {
 		hdr, err := tr.Next()
@@ -74,7 +79,7 @@ func isLayerType(mediaType string) bool {
 // extraction.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest v1.Manifest) error {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest v1.Manifest, opt *MapOptions) error {
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -101,6 +106,19 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil {
 		return fmt.Errorf("unpack manifest: creating rootfs: %s", err)
+	}
+
+	// Make sure that the owner is correct.
+	rootUID, err := idtools.ToHost(0, opt.UIDMappings)
+	if err != nil {
+		return fmt.Errorf("unpack manifest: creating rootfs: tohost(uid): %s", err)
+	}
+	rootGID, err := idtools.ToHost(0, opt.GIDMappings)
+	if err != nil {
+		return fmt.Errorf("unpack manifest: creating rootfs: tohost(gid): %s", err)
+	}
+	if err := os.Lchown(rootfsPath, rootUID, rootGID); err != nil {
+		return fmt.Errorf("unpack manifest: creating rootfs: chown: %s", err)
 	}
 
 	// Currently, many different images in the wild don't specify what the
@@ -158,7 +176,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		layerHash := sha256.New()
 		layer := io.TeeReader(layerRaw, layerHash)
 
-		if err := UnpackLayer(rootfsPath, layer); err != nil {
+		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
 			return fmt.Errorf("unpack manifest: layer %s: %s", layerBlob.Digest, err)
 		}
 		layerGzip.Close()
@@ -170,8 +188,6 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	// Generate a runtime configuration file from v1.Image.
-	// FIXME: This currently doesn't support numeric user IDs, because it
-	//        doesn't know rootfsPath. We can fix this now, though.
 	logrus.WithFields(logrus.Fields{
 		"config": manifest.Config.Digest,
 	}).Infof("unpack manifest: unpacking config")

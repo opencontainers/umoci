@@ -33,17 +33,21 @@ import (
 
 // FIXME: Add tarExtractor.
 type tarExtractor struct {
+	// mapOptions is the set of mapping options to use when extracting filesystem layers.
+	mapOptions MapOptions
 }
 
 // newTarExtractor creates a new tarExtractor.
-func newTarExtractor() *tarExtractor {
-	return &tarExtractor{}
+func newTarExtractor(opt MapOptions) *tarExtractor {
+	return &tarExtractor{
+		mapOptions: opt,
+	}
 }
 
-// applyMetadata applies the state described in tar.Header to the filesystem at
-// the given path. No sanity checking is done of the tar.Header's pathname or
-// other information.
-func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
+// restoreMetadata applies the state described in tar.Header to the filesystem
+// at the given path. No sanity checking is done of the tar.Header's pathname
+// or other information. In addition, no mapping is done of the header.
+func restoreMetadata(path string, hdr *tar.Header) error {
 	// Some of the tar.Header fields don't match the OS API.
 	fi := hdr.FileInfo()
 
@@ -86,7 +90,10 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	// FIXME: This will almost certainly break horribly on RedHat.
+	// XXX: This will almost certainly break horribly on RedHat.
+	// FIXME: We really should not be clearing xattrs if the hdr has no Xattrs
+	//        entries (or something like that). Otherwise we're messing with
+	//        xattrs in rootless images.
 	if err := system.Lclearxattrs(path); err != nil {
 		return fmt.Errorf("apply metadata: %s: %s", path, err)
 	}
@@ -102,6 +109,21 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 
 	// TODO.
 	return nil
+}
+
+// applyMetadata applies the state described in tar.Header to the filesystem at
+// the given path, using the state of the tarExtractor to remap information
+// within the header. This should only be used with headers from a tar layer
+// (not from the filesystem). No sanity checking is done of the tar.Header's
+// pathname or other information.
+func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
+	// Modify the header.
+	if err := unmapHeader(hdr, te.mapOptions); err != nil {
+		return err
+	}
+
+	// Restore it on the filesystme.
+	return restoreMetadata(path, hdr)
 }
 
 // unpackEntry extracts the given tar.Header to the provided root, ensuring
@@ -149,11 +171,19 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			return err
 		}
 
+		// More faking to trick restoreMetadata to actually restore the directory.
+		dirHdr.Typeflag = tar.TypeDir
+		dirHdr.Linkname = ""
+
 		// Ensure that after everything we correctly re-apply the old metadata.
+		// We don't map this header because we're restoring files that already
+		// existed on the filesystem, not from a tar layer.
 		defer func() {
 			// Only overwrite the error if there wasn't one already.
-			if err := te.applyMetadata(dir, dirHdr); err != nil && Err == nil {
-				Err = err
+			if err := restoreMetadata(dir, dirHdr); err != nil {
+				if Err == nil {
+					Err = err
+				}
 			}
 		}()
 	}

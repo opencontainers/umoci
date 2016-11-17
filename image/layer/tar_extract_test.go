@@ -62,7 +62,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) func(
 			ChangeTime: time.Now(),
 		}
 
-		te := newTarExtractor()
+		te := newTarExtractor(MapOptions{})
 		if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 			t.Fatalf("unexpected unpackEntry error: %s", err)
 		}
@@ -185,7 +185,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		ChangeTime: time.Now(),
 	}
 
-	te := newTarExtractor()
+	te := newTarExtractor(MapOptions{})
 	if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 		t.Fatalf("unexpected unpackEntry error: %s", err)
 	}
@@ -272,7 +272,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 
-			te := newTarExtractor()
+			te := newTarExtractor(MapOptions{})
 			if err := te.unpackEntry(dir, hdr, nil); err != nil {
 				t.Fatalf("unexpected error in unpackEntry: %s", err)
 			}
@@ -325,7 +325,7 @@ func TestUnpackHardlink(t *testing.T) {
 		hardFileB = "hard link to symlink"
 	)
 
-	te := newTarExtractor()
+	te := newTarExtractor(MapOptions{})
 
 	// Regular file.
 	hdr = &tar.Header{

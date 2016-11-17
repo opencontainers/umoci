@@ -26,6 +26,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/cyphar/umoci/image/layer"
+	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -58,6 +59,14 @@ creation with umoci-repack(1).`,
 		cli.StringFlag{
 			Name:  "bundle",
 			Usage: "destination bundle path",
+		},
+		cli.StringSliceFlag{
+			Name:  "uid-map",
+			Usage: "specifies a uid mapping to use when repacking",
+		},
+		cli.StringSliceFlag{
+			Name:  "gid-map",
+			Usage: "specifies a gid mapping to use when repacking",
 		},
 	},
 
@@ -97,6 +106,27 @@ func unpack(ctx *cli.Context) error {
 	if fromName == "" {
 		return fmt.Errorf("reference name cannot be empty")
 	}
+
+	// Parse map options.
+	mapOptions := layer.MapOptions{}
+	for _, uidmap := range ctx.StringSlice("uid-map") {
+		idMap, err := idtools.ParseMapping(uidmap)
+		if err != nil {
+			return fmt.Errorf("failure parsing --uid-map %s: %s", uidmap, err)
+		}
+		mapOptions.UIDMappings = append(mapOptions.UIDMappings, idMap)
+	}
+	for _, gidmap := range ctx.StringSlice("gid-map") {
+		idMap, err := idtools.ParseMapping(gidmap)
+		if err != nil {
+			return fmt.Errorf("failure parsing --gid-map %s: %s", gidmap, err)
+		}
+		mapOptions.GIDMappings = append(mapOptions.GIDMappings, idMap)
+	}
+	logrus.WithFields(logrus.Fields{
+		"map.uid": mapOptions.UIDMappings,
+		"map.gid": mapOptions.GIDMappings,
+	}).Infof("parsed mappings")
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -153,7 +183,7 @@ func unpack(ctx *cli.Context) error {
 	//        extraction). I'm considering reimplementing it just so there are
 	//        competing implementations of this extraction functionality.
 	//           https://github.com/opencontainers/image-tools/issues/74
-	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest); err != nil {
+	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest, &mapOptions); err != nil {
 		return fmt.Errorf("failed to create runtime bundle: %q", err)
 	}
 
