@@ -64,9 +64,11 @@ DOCKER_IMAGE :=opensuse/amd64:tumbleweed
 umociimage:
 	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
 
+# FIXME: We really should make the pkg/unpriv tests less magical.
 .PHONY: test-unit
 test-unit: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-unit
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 $(UMOCI_IMAGE) go test -v $(PROJECT)/pkg/unpriv
 
 .PHONY: local-test-unit
 local-test-unit: umoci
