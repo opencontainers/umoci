@@ -1,27 +1,9 @@
 package mtree
 
 import (
-	"archive/tar"
-	"crypto/md5"
-	"crypto/sha1"
-	"crypto/sha256"
-	"crypto/sha512"
 	"fmt"
-	"hash"
-	"io"
-	"os"
 	"strings"
-
-	"golang.org/x/crypto/ripemd160"
 )
-
-// KeywordFunc is the type of a function called on each file to be included in
-// a DirectoryHierarchy, that will produce the string output of the keyword to
-// be included for the file entry. Otherwise, empty string.
-// io.Reader `r` is to the file stream for the file payload. While this
-// function takes an io.Reader, the caller needs to reset it to the beginning
-// for each new KeywordFunc
-type KeywordFunc func(path string, info os.FileInfo, r io.Reader) (string, error)
 
 // Keyword is the string name of a keyword, with some convenience functions for
 // determining whether it is a default or bsd standard keyword.
@@ -29,27 +11,87 @@ type Keyword string
 
 // Default returns whether this keyword is in the default set of keywords
 func (k Keyword) Default() bool {
-	return inSlice(string(k), DefaultKeywords)
+	return InKeywordSlice(k, DefaultKeywords)
 }
 
 // Bsd returns whether this keyword is in the upstream FreeBSD mtree(8)
 func (k Keyword) Bsd() bool {
-	return inSlice(string(k), BsdKeywords)
+	return InKeywordSlice(k, BsdKeywords)
+}
+
+// Synonym returns the canonical name for this keyword. This is provides the
+// same functionality as KeywordSynonym()
+func (k Keyword) Synonym() Keyword {
+	return KeywordSynonym(string(k))
+}
+
+// InKeywordSlice checks for the presence of `a` in `list`
+func InKeywordSlice(a Keyword, list []Keyword) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+func inKeyValSlice(a KeyVal, list []KeyVal) bool {
+	for _, b := range list {
+		if b == a {
+			return true
+		}
+	}
+	return false
+}
+
+// ToKeywords makes a list of Keyword from a list of string
+func ToKeywords(list []string) []Keyword {
+	ret := make([]Keyword, len(list))
+	for i := range list {
+		ret[i] = Keyword(list[i])
+	}
+	return ret
+}
+
+// FromKeywords makes a list of string from a list of Keyword
+func FromKeywords(list []Keyword) []string {
+	ret := make([]string, len(list))
+	for i := range list {
+		ret[i] = string(list[i])
+	}
+	return ret
+}
+
+// KeyValToString constructs a list of string from the list of KeyVal
+func KeyValToString(list []KeyVal) []string {
+	ret := make([]string, len(list))
+	for i := range list {
+		ret[i] = string(list[i])
+	}
+	return ret
+}
+
+// StringToKeyVals constructs a list of KeyVal from the list of strings, like "keyword=value"
+func StringToKeyVals(list []string) []KeyVal {
+	ret := make([]KeyVal, len(list))
+	for i := range list {
+		ret[i] = KeyVal(list[i])
+	}
+	return ret
 }
 
 // KeyVal is a "keyword=value"
 type KeyVal string
 
 // Keyword is the mapping to the available keywords
-func (kv KeyVal) Keyword() string {
+func (kv KeyVal) Keyword() Keyword {
 	if !strings.Contains(string(kv), "=") {
-		return ""
+		return Keyword("")
 	}
 	chunks := strings.SplitN(strings.TrimSpace(string(kv)), "=", 2)[0]
 	if !strings.Contains(chunks, ".") {
-		return chunks
+		return Keyword(chunks)
 	}
-	return strings.SplitN(chunks, ".", 2)[0]
+	return Keyword(strings.SplitN(chunks, ".", 2)[0])
 }
 
 // KeywordSuffix is really only used for xattr, as the keyword is a prefix to
@@ -78,7 +120,7 @@ func (kv KeyVal) ChangeValue(newval string) string {
 	return fmt.Sprintf("%s=%s", kv.Keyword(), newval)
 }
 
-// KeyValEqual returns whether two KeyVals are equivalent. This takes
+// KeyValEqual returns whether two KeyVal are equivalent. This takes
 // care of certain odd cases such as tar_mtime, and should be used over
 // using == comparisons directly unless you really know what you're
 // doing.
@@ -87,35 +129,49 @@ func KeyValEqual(a, b KeyVal) bool {
 	return a.Keyword() == b.Keyword() && a.Value() == b.Value()
 }
 
-// keywordSelector takes an array of "keyword=value" and filters out that only the set of words
-func keywordSelector(keyval, words []string) []string {
-	retList := []string{}
+// keyvalSelector takes an array of KeyVal ("keyword=value") and filters out that only the set of keywords
+func keyvalSelector(keyval []KeyVal, keyset []Keyword) []KeyVal {
+	retList := []KeyVal{}
 	for _, kv := range keyval {
-		if inSlice(KeyVal(kv).Keyword(), words) {
+		if InKeywordSlice(kv.Keyword(), keyset) {
 			retList = append(retList, kv)
 		}
 	}
 	return retList
 }
 
-// NewKeyVals constructs a list of KeyVal from the list of strings, like "keyword=value"
-func NewKeyVals(keyvals []string) KeyVals {
-	kvs := make(KeyVals, len(keyvals))
-	for i := range keyvals {
-		kvs[i] = KeyVal(keyvals[i])
+func keyValDifference(this, that []KeyVal) []KeyVal {
+	if len(this) == 0 {
+		return that
 	}
-	return kvs
+	diff := []KeyVal{}
+	for _, kv := range this {
+		if !inKeyValSlice(kv, that) {
+			diff = append(diff, kv)
+		}
+	}
+	return diff
 }
-
-// KeyVals is a list of KeyVal
-type KeyVals []KeyVal
+func keyValCopy(set []KeyVal) []KeyVal {
+	ret := make([]KeyVal, len(set))
+	for i := range set {
+		ret[i] = set[i]
+	}
+	return ret
+}
 
 // Has the "keyword" present in the list of KeyVal, and returns the
 // corresponding KeyVal, else an empty string.
-func (kvs KeyVals) Has(keyword string) KeyVal {
-	for i := range kvs {
-		if kvs[i].Keyword() == keyword {
-			return kvs[i]
+func Has(keyvals []KeyVal, keyword string) KeyVal {
+	return HasKeyword(keyvals, Keyword(keyword))
+}
+
+// HasKeyword the "keyword" present in the list of KeyVal, and returns the
+// corresponding KeyVal, else an empty string.
+func HasKeyword(keyvals []KeyVal, keyword Keyword) KeyVal {
+	for i := range keyvals {
+		if keyvals[i].Keyword() == keyword {
+			return keyvals[i]
 		}
 	}
 	return emptyKV
@@ -125,20 +181,27 @@ var emptyKV = KeyVal("")
 
 // MergeSet takes the current setKeyVals, and then applies the entryKeyVals
 // such that the entry's values win. The union is returned.
-func MergeSet(setKeyVals, entryKeyVals []string) KeyVals {
-	retList := NewKeyVals(append([]string{}, setKeyVals...))
-	eKVs := NewKeyVals(entryKeyVals)
-	seenKeywords := []string{}
+func MergeSet(setKeyVals, entryKeyVals []string) []KeyVal {
+	retList := StringToKeyVals(setKeyVals)
+	eKVs := StringToKeyVals(entryKeyVals)
+	return MergeKeyValSet(retList, eKVs)
+}
+
+// MergeKeyValSet does a merge of the two sets of KeyVal, and the KeyVal of
+// entryKeyVals win when there is a duplicate Keyword.
+func MergeKeyValSet(setKeyVals, entryKeyVals []KeyVal) []KeyVal {
+	retList := keyValCopy(setKeyVals)
+	seenKeywords := []Keyword{}
 	for i := range retList {
 		word := retList[i].Keyword()
-		if ekv := eKVs.Has(word); ekv != emptyKV {
+		if ekv := HasKeyword(entryKeyVals, word); ekv != emptyKV {
 			retList[i] = ekv
 		}
 		seenKeywords = append(seenKeywords, word)
 	}
-	for i := range eKVs {
-		if !inSlice(eKVs[i].Keyword(), seenKeywords) {
-			retList = append(retList, eKVs[i])
+	for i := range entryKeyVals {
+		if !InKeywordSlice(entryKeyVals[i].Keyword(), seenKeywords) {
+			retList = append(retList, entryKeyVals[i])
 		}
 	}
 	return retList
@@ -147,7 +210,7 @@ func MergeSet(setKeyVals, entryKeyVals []string) KeyVals {
 var (
 	// DefaultKeywords has the several default keyword producers (uid, gid,
 	// mode, nlink, type, size, mtime)
-	DefaultKeywords = []string{
+	DefaultKeywords = []Keyword{
 		"size",
 		"type",
 		"uid",
@@ -160,7 +223,7 @@ var (
 
 	// DefaultTarKeywords has keywords that should be used when creating a manifest from
 	// an archive. Currently, evaluating the # of hardlinks has not been implemented yet
-	DefaultTarKeywords = []string{
+	DefaultTarKeywords = []Keyword{
 		"size",
 		"type",
 		"uid",
@@ -171,7 +234,7 @@ var (
 	}
 
 	// BsdKeywords is the set of keywords that is only in the upstream FreeBSD mtree
-	BsdKeywords = []string{
+	BsdKeywords = []Keyword{
 		"cksum",
 		"device",
 		"flags", // this one is really mostly BSD specific ...
@@ -205,151 +268,36 @@ var (
 	}
 
 	// SetKeywords is the default set of keywords calculated for a `/set` SpecialType
-	SetKeywords = []string{
+	SetKeywords = []Keyword{
 		"uid",
 		"gid",
 	}
-	// KeywordFuncs is the map of all keywords (and the functions to produce them)
-	KeywordFuncs = map[string]KeywordFunc{
-		"size":            sizeKeywordFunc,                                     // The size, in bytes, of the file
-		"type":            typeKeywordFunc,                                     // The type of the file
-		"time":            timeKeywordFunc,                                     // The last modification time of the file
-		"link":            linkKeywordFunc,                                     // The target of the symbolic link when type=link
-		"uid":             uidKeywordFunc,                                      // The file owner as a numeric value
-		"gid":             gidKeywordFunc,                                      // The file group as a numeric value
-		"nlink":           nlinkKeywordFunc,                                    // The number of hard links the file is expected to have
-		"uname":           unameKeywordFunc,                                    // The file owner as a symbolic name
-		"mode":            modeKeywordFunc,                                     // The current file's permissions as a numeric (octal) or symbolic value
-		"cksum":           cksumKeywordFunc,                                    // The checksum of the file using the default algorithm specified by the cksum(1) utility
-		"md5":             hasherKeywordFunc("md5digest", md5.New),             // The MD5 message digest of the file
-		"md5digest":       hasherKeywordFunc("md5digest", md5.New),             // A synonym for `md5`
-		"rmd160":          hasherKeywordFunc("ripemd160digest", ripemd160.New), // The RIPEMD160 message digest of the file
-		"rmd160digest":    hasherKeywordFunc("ripemd160digest", ripemd160.New), // A synonym for `rmd160`
-		"ripemd160digest": hasherKeywordFunc("ripemd160digest", ripemd160.New), // A synonym for `rmd160`
-		"sha1":            hasherKeywordFunc("sha1digest", sha1.New),           // The SHA1 message digest of the file
-		"sha1digest":      hasherKeywordFunc("sha1digest", sha1.New),           // A synonym for `sha1`
-		"sha256":          hasherKeywordFunc("sha256digest", sha256.New),       // The SHA256 message digest of the file
-		"sha256digest":    hasherKeywordFunc("sha256digest", sha256.New),       // A synonym for `sha256`
-		"sha384":          hasherKeywordFunc("sha384digest", sha512.New384),    // The SHA384 message digest of the file
-		"sha384digest":    hasherKeywordFunc("sha384digest", sha512.New384),    // A synonym for `sha384`
-		"sha512":          hasherKeywordFunc("sha512digest", sha512.New),       // The SHA512 message digest of the file
-		"sha512digest":    hasherKeywordFunc("sha512digest", sha512.New),       // A synonym for `sha512`
-
-		"flags": flagsKeywordFunc, // NOTE: this is a noop, but here to support the presence of the "flags" keyword.
-
-		// This is not an upstreamed keyword, but used to vary from "time", as tar
-		// archives do not store nanosecond precision. So comparing on "time" will
-		// be only seconds level accurate.
-		"tar_time": tartimeKeywordFunc, // The last modification time of the file, from a tar archive mtime
-
-		// This is not an upstreamed keyword, but a needed attribute for file validation.
-		// The pattern for this keyword key is prefixed by "xattr." followed by the extended attribute "namespace.key".
-		// The keyword value is the SHA1 digest of the extended attribute's value.
-		// In this way, the order of the keys does not matter, and the contents of the value is not revealed.
-		"xattr":  xattrKeywordFunc,
-		"xattrs": xattrKeywordFunc,
-	}
 )
 
-var (
-	modeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		permissions := info.Mode().Perm()
-		if os.ModeSetuid&info.Mode() > 0 {
-			permissions |= (1 << 11)
-		}
-		if os.ModeSetgid&info.Mode() > 0 {
-			permissions |= (1 << 10)
-		}
-		if os.ModeSticky&info.Mode() > 0 {
-			permissions |= (1 << 9)
-		}
-		return fmt.Sprintf("mode=%#o", permissions), nil
+// KeywordSynonym returns the canonical name for keywords that have synonyms,
+// and just returns the name provided if there is no synonym. In this way it
+// ought to be safe to wrap any keyword name.
+func KeywordSynonym(name string) Keyword {
+	var retname string
+	switch name {
+	case "md5":
+		retname = "md5digest"
+	case "rmd160":
+		retname = "ripemd160digest"
+	case "rmd160digest":
+		retname = "ripemd160digest"
+	case "sha1":
+		retname = "sha1digest"
+	case "sha256":
+		retname = "sha256digest"
+	case "sha384":
+		retname = "sha384digest"
+	case "sha512":
+		retname = "sha512digest"
+	case "xattrs":
+		retname = "xattr"
+	default:
+		retname = name
 	}
-	sizeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		if sys, ok := info.Sys().(*tar.Header); ok {
-			if sys.Typeflag == tar.TypeSymlink {
-				return fmt.Sprintf("size=%d", len(sys.Linkname)), nil
-			}
-		}
-		return fmt.Sprintf("size=%d", info.Size()), nil
-	}
-	cksumKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		if !info.Mode().IsRegular() {
-			return "", nil
-		}
-		sum, _, err := cksum(r)
-		if err != nil {
-			return "", err
-		}
-		return fmt.Sprintf("cksum=%d", sum), nil
-	}
-	hasherKeywordFunc = func(name string, newHash func() hash.Hash) KeywordFunc {
-		return func(path string, info os.FileInfo, r io.Reader) (string, error) {
-			if !info.Mode().IsRegular() {
-				return "", nil
-			}
-			h := newHash()
-			if _, err := io.Copy(h, r); err != nil {
-				return "", err
-			}
-			return fmt.Sprintf("%s=%x", name, h.Sum(nil)), nil
-		}
-	}
-	tartimeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		return fmt.Sprintf("tar_time=%d.%9.9d", info.ModTime().Unix(), 0), nil
-	}
-	timeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		tSec := info.ModTime().Unix()
-		tNano := info.ModTime().Nanosecond()
-		return fmt.Sprintf("time=%d.%9.9d", tSec, tNano), nil
-	}
-	linkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		if sys, ok := info.Sys().(*tar.Header); ok {
-			if sys.Linkname != "" {
-				linkname, err := Vis(sys.Linkname)
-				if err != nil {
-					return "", err
-				}
-				return fmt.Sprintf("link=%s", linkname), nil
-			}
-			return "", nil
-		}
-
-		if info.Mode()&os.ModeSymlink != 0 {
-			str, err := os.Readlink(path)
-			if err != nil {
-				return "", err
-			}
-			linkname, err := Vis(str)
-			if err != nil {
-				return "", err
-			}
-			return fmt.Sprintf("link=%s", linkname), nil
-		}
-		return "", nil
-	}
-	typeKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		if info.Mode().IsDir() {
-			return "type=dir", nil
-		}
-		if info.Mode().IsRegular() {
-			return "type=file", nil
-		}
-		if info.Mode()&os.ModeSocket != 0 {
-			return "type=socket", nil
-		}
-		if info.Mode()&os.ModeSymlink != 0 {
-			return "type=link", nil
-		}
-		if info.Mode()&os.ModeNamedPipe != 0 {
-			return "type=fifo", nil
-		}
-		if info.Mode()&os.ModeDevice != 0 {
-			if info.Mode()&os.ModeCharDevice != 0 {
-				return "type=char", nil
-			}
-			return "type=device", nil
-		}
-		return "", nil
-	}
-)
+	return Keyword(retname)
+}

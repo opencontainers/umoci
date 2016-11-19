@@ -1,10 +1,8 @@
-hash: 839ea83a5fae7f64b04dbd270d3cbd672f353c830ff80ec4ea2513fa598be4d2
-updated: 2016-11-17T23:13:45.838125447+11:00
+hash: 6b24152b320174dbfe1fd1b64adde54b27fb008794410614847efc3bd24756d3
+updated: 2016-11-19T20:13:48.894948265+11:00
 imports:
-- name: github.com/blang/semver
-  version: aea32c919a18e5ef4537bbd283ff29594b1b0165
 - name: github.com/cyphar/umoci
-  version: 8d19f36e1790ac4c5f9012743f47568ba4a555ac
+  version: 01d57a95195bde778ad2a37378eb3111ec44a923
   subpackages:
   - image/cas
   - image/generator
@@ -13,17 +11,13 @@ imports:
   - system
   - third_party/symlink
   - third_party/user
-- name: github.com/inconshreveable/mousetrap
-  version: 76626ae9c91c4f2a10f34cad8ce83ea42c93bb75
 - name: github.com/opencontainers/image-spec
   version: 6e820ec55259e89ccd7092f3131c63e8419a349b
   subpackages:
-  - image
-  - schema
   - specs-go
   - specs-go/v1
 - name: github.com/opencontainers/image-tools
-  version: 66832e747af76a933e502c4f92a02fa4905326fb
+  version: b08291497d7aef21c66790114fcc42549c91c6d6
   subpackages:
   - image
 - name: github.com/opencontainers/runtime-spec
@@ -33,18 +27,10 @@ imports:
 - name: github.com/opencontainers/runtime-tools
   version: 476f1fb7af4102951375ab58fdeca2118cf6ab31
   subpackages:
-  - cmd/runtimetest/mount
   - generate
   - generate/seccomp
-  - validate
-- name: github.com/pkg/errors
-  version: 645ef00459ed84a119197bfb8d8205042c6df63d
 - name: github.com/Sirupsen/logrus
   version: d26492970760ca5d33129d2d799e34be5c4782eb
-- name: github.com/spf13/cobra
-  version: 9495bc009a56819bdb0ddbc1a373e29c140bc674
-- name: github.com/spf13/pflag
-  version: 7b17cc4658ef5ca157b986ea5c0b43af7938532b
 - name: github.com/syndtr/gocapability
   version: 2c00daeb6c3b45114c80ac44119e7b8801fdd852
   subpackages:
@@ -52,19 +38,9 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: 350023bc2f196fe1caffbb92be6e2b16ab789c5f
+  version: 13131d516bff732b0d7929330683beafa96cefd1
   subpackages:
   - xattr
-- name: github.com/xeipuuv/gojsonpointer
-  version: e0fe6f68307607d540ed8eac07a342c33fa1b54a
-- name: github.com/xeipuuv/gojsonreference
-  version: e02fc20de94c78484cd5ffb007f8af96be030a45
-- name: github.com/xeipuuv/gojsonschema
-  version: d5336c75940ef31c9ceeb0ae64cf92944bccb4ee
-- name: go4.org
-  version: 399a9d7bfe85437346a5ec4ef0450fc2f1084e61
-  subpackages:
-  - errorutil
 - name: golang.org/x/crypto
   version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
   subpackages:
@@ -77,26 +53,4 @@ imports:
   version: b699b7032584f0953262cb2788a0ca19bb494703
   subpackages:
   - unix
-- name: gopkg.in/airbrake/gobrake.v2
-  version: 5d77bd50d083834501349f8be70197b26963674d
-- name: gopkg.in/gemnasium/logrus-airbrake-hook.v2
-  version: bfee1239d796830ca346767650cce5ba90d58c57
-- name: gopkg.in/yaml.v2
-  version: a5b47d31c556af34a302ce5d659e6fea44d90de0
-testImports:
-- name: github.com/davecgh/go-spew
-  version: 346938d642f2ec3594ed81d874461961cd0faa76
-  subpackages:
-  - spew
-- name: github.com/pmezard/go-difflib
-  version: 792786c7400a136282c1664665ae0a8db921c6c2
-  subpackages:
-  - difflib
-- name: github.com/russross/blackfriday
-  version: 0b647d0506a698cca42caca173e55559b12a69f2
-- name: github.com/shurcooL/sanitized_anchor_name
-  version: 10ef21a441db47d8b13ebcc5fd2310f636973c77
-- name: github.com/stretchr/testify
-  version: 69483b4bd14f5845b5a1e55bca19e954e827f1d0
-  subpackages:
-  - assert
+testImports: []

@@ -12,46 +12,46 @@ import (
 )
 
 var (
-	flagsKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+	flagsKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		// ideally this will pull in from here https://www.freebsd.org/cgi/man.cgi?query=chflags&sektion=2
-		return "", nil
+		return emptyKV, nil
 	}
 
-	unameKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+	unameKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if hdr, ok := info.Sys().(*tar.Header); ok {
-			return fmt.Sprintf("uname=%s", hdr.Uname), nil
+			return KeyVal(fmt.Sprintf("uname=%s", hdr.Uname)), nil
 		}
 
 		stat := info.Sys().(*syscall.Stat_t)
 		u, err := user.LookupId(fmt.Sprintf("%d", stat.Uid))
 		if err != nil {
-			return "", err
+			return emptyKV, err
 		}
-		return fmt.Sprintf("uname=%s", u.Username), nil
+		return KeyVal(fmt.Sprintf("uname=%s", u.Username)), nil
 	}
-	uidKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+	uidKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if hdr, ok := info.Sys().(*tar.Header); ok {
-			return fmt.Sprintf("uid=%d", hdr.Uid), nil
+			return KeyVal(fmt.Sprintf("uid=%d", hdr.Uid)), nil
 		}
 		stat := info.Sys().(*syscall.Stat_t)
-		return fmt.Sprintf("uid=%d", stat.Uid), nil
+		return KeyVal(fmt.Sprintf("uid=%d", stat.Uid)), nil
 	}
-	gidKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+	gidKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if hdr, ok := info.Sys().(*tar.Header); ok {
-			return fmt.Sprintf("gid=%d", hdr.Gid), nil
+			return KeyVal(fmt.Sprintf("gid=%d", hdr.Gid)), nil
 		}
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-			return fmt.Sprintf("gid=%d", stat.Gid), nil
+			return KeyVal(fmt.Sprintf("gid=%d", stat.Gid)), nil
 		}
-		return "", nil
+		return emptyKV, nil
 	}
-	nlinkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
+	nlinkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if stat, ok := info.Sys().(*syscall.Stat_t); ok {
-			return fmt.Sprintf("nlink=%d", stat.Nlink), nil
+			return KeyVal(fmt.Sprintf("nlink=%d", stat.Nlink)), nil
 		}
-		return "", nil
+		return emptyKV, nil
 	}
-	xattrKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (string, error) {
-		return "", nil
+	xattrKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
+		return emptyKV, nil
 	}
 )

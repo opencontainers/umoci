@@ -6,16 +6,20 @@ package mtree
 //
 // This is equivalent to creating a new DirectoryHierarchy with Walk(root, nil,
 // keywords) and then doing a Compare(dh, newDh, keywords).
-func Check(root string, dh *DirectoryHierarchy, keywords []string) ([]InodeDelta, error) {
+func Check(root string, dh *DirectoryHierarchy, keywords []Keyword) ([]InodeDelta, error) {
 	if keywords == nil {
-		keywords = CollectUsedKeywords(dh)
+		used := dh.UsedKeywords()
+		newDh, err := Walk(root, nil, used)
+		if err != nil {
+			return nil, err
+		}
+		return Compare(dh, newDh, used)
 	}
 
 	newDh, err := Walk(root, nil, keywords)
 	if err != nil {
 		return nil, err
 	}
-
 	// TODO: Handle tar_time, if necessary.
 	return Compare(dh, newDh, keywords)
 }
@@ -23,9 +27,9 @@ func Check(root string, dh *DirectoryHierarchy, keywords []string) ([]InodeDelta
 // TarCheck is the tar equivalent of checking a file hierarchy spec against a
 // tar stream to determine if files have been changed. This is precisely
 // equivalent to Compare(dh, tarDH, keywords).
-func TarCheck(tarDH, dh *DirectoryHierarchy, keywords []string) ([]InodeDelta, error) {
+func TarCheck(tarDH, dh *DirectoryHierarchy, keywords []Keyword) ([]InodeDelta, error) {
 	if keywords == nil {
-		keywords = CollectUsedKeywords(dh)
+		return Compare(dh, tarDH, dh.UsedKeywords())
 	}
 	return Compare(dh, tarDH, keywords)
 }

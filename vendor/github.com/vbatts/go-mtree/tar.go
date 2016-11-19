@@ -17,11 +17,15 @@ type Streamer interface {
 	Hierarchy() (*DirectoryHierarchy, error)
 }
 
-var tarDefaultSetKeywords = []string{"type=file", "flags=none", "mode=0664"}
+var tarDefaultSetKeywords = []KeyVal{
+	"type=file",
+	"flags=none",
+	"mode=0664",
+}
 
 // NewTarStreamer streams a tar archive and creates a file hierarchy based off
 // of the tar metadata headers
-func NewTarStreamer(r io.Reader, keywords []string) Streamer {
+func NewTarStreamer(r io.Reader, excludes []ExcludeFunc, keywords []Keyword) Streamer {
 	pR, pW := io.Pipe()
 	ts := &tarStream{
 		pipeReader: pR,
@@ -31,6 +35,7 @@ func NewTarStreamer(r io.Reader, keywords []string) Streamer {
 		tarReader:  tar.NewReader(pR),
 		keywords:   keywords,
 		hardlinks:  map[string][]string{},
+		excludes:   excludes,
 	}
 
 	go ts.readHeaders()
@@ -45,17 +50,18 @@ type tarStream struct {
 	pipeWriter *io.PipeWriter
 	teeReader  io.Reader
 	tarReader  *tar.Reader
-	keywords   []string
+	keywords   []Keyword
+	excludes   []ExcludeFunc
 	err        error
 }
 
 func (ts *tarStream) readHeaders() {
 	// remove "time" keyword
-	notimekws := []string{}
+	notimekws := []Keyword{}
 	for _, kw := range ts.keywords {
-		if !inSlice(kw, notimekws) {
+		if !InKeywordSlice(kw, notimekws) {
 			if kw == "time" {
-				if !inSlice("tar_time", ts.keywords) {
+				if !InKeywordSlice("tar_time", ts.keywords) {
 					notimekws = append(notimekws, "tar_time")
 				}
 			} else {
@@ -74,7 +80,7 @@ func (ts *tarStream) readHeaders() {
 			Type: CommentType,
 		},
 		Set:      nil,
-		Keywords: []string{"type=dir"},
+		Keywords: []KeyVal{"type=dir"},
 	}
 	// insert signature and metadata comments first (user, machine, tree, date)
 	for _, e := range signatureEntries("<user specified tar archive>") {
@@ -86,12 +92,20 @@ func (ts *tarStream) readHeaders() {
 		e.Pos = len(ts.creator.DH.Entries)
 		ts.creator.DH.Entries = append(ts.creator.DH.Entries, e)
 	}
+hdrloop:
 	for {
 		hdr, err := ts.tarReader.Next()
 		if err != nil {
 			ts.pipeReader.CloseWithError(err)
 			return
 		}
+
+		for _, ex := range ts.excludes {
+			if ex(hdr.Name, hdr.FileInfo()) {
+				continue hdrloop
+			}
+		}
+
 		// Because the content of the file may need to be read by several
 		// KeywordFuncs, it needs to be an io.Seeker as well. So, just reading from
 		// ts.tarReader is not enough.
@@ -247,7 +261,7 @@ func populateTree(root, e *Entry, hdr *tar.Header) error {
 				Name:     encoded,
 				Type:     RelativeType,
 				Parent:   parent,
-				Keywords: []string{"type=dir"}, // temp data
+				Keywords: []KeyVal{"type=dir"}, // temp data
 				Set:      nil,                  // temp data
 			}
 			pathname, err := newEntry.Path()
@@ -281,7 +295,7 @@ func populateTree(root, e *Entry, hdr *tar.Header) error {
 //     root: the "head" of the sub-tree to flatten
 //  creator: a dhCreator that helps with the '/set' keyword
 // keywords: keywords specified by the user that should be evaluated
-func flatten(root *Entry, creator *dhCreator, keywords []string) {
+func flatten(root *Entry, creator *dhCreator, keywords []Keyword) {
 	if root == nil || creator == nil {
 		return
 	}
@@ -297,18 +311,19 @@ func flatten(root *Entry, creator *dhCreator, keywords []string) {
 
 		if root.Set != nil {
 			// Check if we need a new set
+			consolidatedKeys := keyvalSelector(append(tarDefaultSetKeywords, root.Set.Keywords...), keywords)
 			if creator.curSet == nil {
 				creator.curSet = &Entry{
 					Type:     SpecialType,
 					Name:     "/set",
-					Keywords: keywordSelector(append(tarDefaultSetKeywords, root.Set.Keywords...), keywords),
+					Keywords: consolidatedKeys,
 					Pos:      len(creator.DH.Entries),
 				}
 				creator.DH.Entries = append(creator.DH.Entries, *creator.curSet)
 			} else {
 				needNewSet := false
 				for _, k := range root.Set.Keywords {
-					if !inSlice(k, creator.curSet.Keywords) {
+					if !inKeyValSlice(k, creator.curSet.Keywords) {
 						needNewSet = true
 						break
 					}
@@ -318,7 +333,7 @@ func flatten(root *Entry, creator *dhCreator, keywords []string) {
 						Name:     "/set",
 						Type:     SpecialType,
 						Pos:      len(creator.DH.Entries),
-						Keywords: keywordSelector(append(tarDefaultSetKeywords, root.Set.Keywords...), keywords),
+						Keywords: consolidatedKeys,
 					}
 					creator.DH.Entries = append(creator.DH.Entries, *creator.curSet)
 				}
@@ -336,7 +351,7 @@ func flatten(root *Entry, creator *dhCreator, keywords []string) {
 	}
 	root.Set = creator.curSet
 	if creator.curSet != nil {
-		root.Keywords = setDifference(root.Keywords, creator.curSet.Keywords)
+		root.Keywords = keyValDifference(root.Keywords, creator.curSet.Keywords)
 	}
 	root.Pos = len(creator.DH.Entries)
 	creator.DH.Entries = append(creator.DH.Entries, *root)
@@ -381,11 +396,11 @@ func resolveHardlinks(root *Entry, hardlinks map[string][]string, countlinks boo
 			}
 			linkfile.Keywords = basefile.Keywords
 			if countlinks {
-				linkfile.Keywords = append(linkfile.Keywords, fmt.Sprintf("nlink=%d", len(links)+1))
+				linkfile.Keywords = append(linkfile.Keywords, KeyVal(fmt.Sprintf("nlink=%d", len(links)+1)))
 			}
 		}
 		if countlinks {
-			basefile.Keywords = append(basefile.Keywords, fmt.Sprintf("nlink=%d", len(links)+1))
+			basefile.Keywords = append(basefile.Keywords, KeyVal(fmt.Sprintf("nlink=%d", len(links)+1)))
 		}
 	}
 }
@@ -415,19 +430,6 @@ func filter(root *Entry, p func(*Entry) bool) []Entry {
 	return nil
 }
 
-func setDifference(this, that []string) []string {
-	if len(this) == 0 {
-		return that
-	}
-	diff := []string{}
-	for _, kv := range this {
-		if !inSlice(kv, that) {
-			diff = append(diff, kv)
-		}
-	}
-	return diff
-}
-
 func (ts *tarStream) setErr(err error) {
 	ts.err = err
 }
@@ -449,7 +451,7 @@ func (ts *tarStream) Hierarchy() (*DirectoryHierarchy, error) {
 	if ts.root == nil {
 		return nil, fmt.Errorf("root Entry not found, nothing to flatten")
 	}
-	resolveHardlinks(ts.root, ts.hardlinks, inSlice("nlink", ts.keywords))
+	resolveHardlinks(ts.root, ts.hardlinks, InKeywordSlice(Keyword("nlink"), ts.keywords))
 	flatten(ts.root, &ts.creator, ts.keywords)
 	return ts.creator.DH, nil
 }

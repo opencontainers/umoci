@@ -158,7 +158,7 @@ func repack(ctx *cli.Context) error {
 		return err
 	}
 
-	keywords := mtree.CollectUsedKeywords(spec)
+	keywords := spec.UsedKeywords()
 
 	logrus.WithFields(logrus.Fields{
 		"keywords": keywords,

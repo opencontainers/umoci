@@ -21,7 +21,7 @@ type Entry struct {
 	Pos        int      // order in the spec
 	Raw        string   // file or directory name
 	Name       string   // file or directory name
-	Keywords   []string // TODO(vbatts) maybe a keyword typed set of values?
+	Keywords   []KeyVal // TODO(vbatts) maybe a keyword typed set of values?
 	Type       EntryType
 }
 
@@ -94,23 +94,20 @@ func (e Entry) String() string {
 	if e.Type == DotDotType {
 		return e.Name
 	}
-	if e.Type == SpecialType || e.Type == FullType || inSlice("type=dir", e.Keywords) {
-		return fmt.Sprintf("%s %s", e.Name, strings.Join(e.Keywords, " "))
+	if e.Type == SpecialType || e.Type == FullType || inKeyValSlice("type=dir", e.Keywords) {
+		return fmt.Sprintf("%s %s", e.Name, strings.Join(KeyValToString(e.Keywords), " "))
 	}
-	return fmt.Sprintf("    %s %s", e.Name, strings.Join(e.Keywords, " "))
+	return fmt.Sprintf("    %s %s", e.Name, strings.Join(KeyValToString(e.Keywords), " "))
 }
 
-// AllKeys returns the full set of KeyVals for the given entry, based on the
+// AllKeys returns the full set of KeyVal for the given entry, based on the
 // /set keys as well as the entry-local keys. Entry-local keys always take
 // precedence.
-func (e Entry) AllKeys() KeyVals {
-	var kv KeyVals
+func (e Entry) AllKeys() []KeyVal {
 	if e.Set != nil {
-		kv = MergeSet(e.Set.Keywords, e.Keywords)
-	} else {
-		kv = NewKeyVals(e.Keywords)
+		return MergeKeyValSet(e.Set.Keywords, e.Keywords)
 	}
-	return kv
+	return e.Keywords
 }
 
 // EntryType are the formats of lines in an mtree spec file

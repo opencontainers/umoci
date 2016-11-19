@@ -88,12 +88,8 @@ clean() {
 	echo "done"
 }
 
-# First we do a glide-up, with the repository's mirror.yaml being used.
-# Hopefully the need for mirror.yaml will go away soon (I'm just waiting on the
-# go-mtree changes to be merged at the moment).
-rm -rf cache/
-glide --home=. up -v
-rm -rf cache/
+# Update everything.
+glide up -v
 
 # Clean up the vendor directory.
 clean

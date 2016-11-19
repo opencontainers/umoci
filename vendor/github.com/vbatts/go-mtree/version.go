@@ -3,6 +3,11 @@ package mtree
 import "fmt"
 
 const (
+	// AppName is the name ... of this library/application
+	AppName = "gomtree"
+)
+
+const (
 	// VersionMajor is for an API incompatible changes
 	VersionMajor = 0
 	// VersionMinor is for functionality in a backwards-compatible manner

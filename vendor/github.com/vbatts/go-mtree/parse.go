@@ -48,7 +48,7 @@ func ParseSpec(r io.Reader) (*DirectoryHierarchy, error) {
 			// parse the options
 			f := strings.Fields(str)
 			e.Name = f[0]
-			e.Keywords = f[1:]
+			e.Keywords = StringToKeyVals(f[1:])
 			if e.Name == "/set" {
 				creator.curSet = &e
 			} else if e.Name == "/unset" {
@@ -80,7 +80,7 @@ func ParseSpec(r io.Reader) (*DirectoryHierarchy, error) {
 			} else {
 				e.Type = RelativeType
 			}
-			e.Keywords = f[1:]
+			e.Keywords = StringToKeyVals(f[1:])
 			// TODO: gather keywords if using tar stream
 			e.Parent = creator.curDir
 			for i := range e.Keywords {

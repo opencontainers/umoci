@@ -123,7 +123,7 @@ func (i InodeDelta) String() string {
 // returned with InodeDelta.Diff().
 type KeyDelta struct {
 	diff DifferenceType
-	name string
+	name Keyword
 	old  string
 	new  string
 }
@@ -136,7 +136,7 @@ func (k KeyDelta) Type() DifferenceType {
 
 // Name returns the name (the key) of the KeyDeltaVal entry in the
 // DirectoryHierarchy.
-func (k KeyDelta) Name() string {
+func (k KeyDelta) Name() Keyword {
 	return k.name
 }
 
@@ -164,7 +164,7 @@ func (k KeyDelta) New() *string {
 func (k KeyDelta) MarshalJSON() ([]byte, error) {
 	return json.Marshal(struct {
 		Type DifferenceType `json:"type"`
-		Name string         `json:"name"`
+		Name Keyword        `json:"name"`
 		Old  string         `json:"old"`
 		New  string         `json:"new"`
 	}{
@@ -184,11 +184,17 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 		New *KeyVal
 	}
 
-	diffs := map[string]*stateT{}
+	diffs := map[Keyword]*stateT{}
+	oldKeys := oldEntry.AllKeys()
+	newKeys := newEntry.AllKeys()
 
 	// Fill the map with the old keys first.
-	for _, kv := range oldEntry.AllKeys() {
+	for _, kv := range oldKeys {
 		key := kv.Keyword()
+		// only add this diff if the new keys has this keyword
+		if key != "tar_time" && key != "time" && HasKeyword(newKeys, key) == emptyKV {
+			continue
+		}
 
 		// Cannot take &kv because it's the iterator.
 		copy := new(KeyVal)
@@ -202,8 +208,12 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	}
 
 	// Then fill the new keys.
-	for _, kv := range newEntry.AllKeys() {
+	for _, kv := range newKeys {
 		key := kv.Keyword()
+		// only add this diff if the old keys has this keyword
+		if key != "tar_time" && key != "time" && HasKeyword(oldKeys, key) == emptyKV {
+			continue
+		}
 
 		// Cannot take &kv because it's the iterator.
 		copy := new(KeyVal)
@@ -218,7 +228,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 
 	// We need a full list of the keys so we can deal with different keyvalue
 	// orderings.
-	var kws []string
+	var kws []Keyword
 	for kw := range diffs {
 		kws = append(kws, kw)
 	}
@@ -226,7 +236,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	// If both tar_time and time were specified in the set of keys, we have to
 	// mess with the diffs. This is an unfortunate side-effect of tar archives.
 	// TODO(cyphar): This really should be abstracted inside keywords.go
-	if inSlice("tar_time", kws) && inSlice("time", kws) {
+	if InKeywordSlice("tar_time", kws) && InKeywordSlice("time", kws) {
 		// Delete "time".
 		timeStateT := diffs["time"]
 		delete(diffs, "time")
@@ -312,17 +322,11 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 //
 // NB: The order of the parameters matters (old, new) because Extra and
 //     Missing are considered as different discrepancy types.
-func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, error) {
+func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
 	// Represents the new and old states for an entry.
 	type stateT struct {
 		Old *Entry
 		New *Entry
-	}
-
-	// Make dealing with the keys mapping easier.
-	keySet := map[string]struct{}{}
-	for _, key := range keys {
-		keySet[key] = struct{}{}
 	}
 
 	// To deal with different orderings of the entries, use a path-keyed
@@ -405,7 +409,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []string) ([]InodeDelta, err
 			if keys != nil {
 				var filterChanged []KeyDelta
 				for _, keyDiff := range changed {
-					if _, ok := keySet[keyDiff.name]; ok {
+					if InKeywordSlice(keyDiff.name, keys) {
 						filterChanged = append(filterChanged, keyDiff)
 					}
 				}
