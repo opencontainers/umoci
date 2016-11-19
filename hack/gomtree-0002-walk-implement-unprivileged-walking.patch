@@ -1,0 +1,261 @@
+From 7a773f0051cfd324bca298fab4bebf9261598739 Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <asarai@suse.de>
+Date: Fri, 18 Nov 2016 18:53:26 +1100
+Subject: [PATCH] walk: implement "unprivileged walking"
+
+When walking a directory as an unprivileged user, it is possible for
+open(2) to fail even though you still technically have the ability to
+grant yourself permissions to open the file [specifically if you're the
+owner you can change the mode to give yourself permission]. This is
+quite dodgy in some respects, so will need to be hidden behind a "trust
+me I'm a professional" flag.
+
+Signed-off-by: Aleksa Sarai <asarai@suse.de>
+---
+ check.go            |  6 ++---
+ creator.go          |  9 ++++---
+ unpriv.go           | 76 +++++++++++++++++++++++++++++++++++++++++++++++++++++
+ walk.go             | 32 ++++++++++------------
+ 9 files changed, 134 insertions(+), 61 deletions(-)
+ create mode 100644 unpriv.go
+
+diff --git a/check.go b/check.go
+index 2fff36fbb80a..0a8aab2bf665 100644
+--- a/check.go
++++ b/check.go
+@@ -6,17 +6,17 @@ package mtree
+ //
+ // This is equivalent to creating a new DirectoryHierarchy with Walk(root, nil,
+ // keywords) and then doing a Compare(dh, newDh, keywords).
+-func Check(root string, dh *DirectoryHierarchy, keywords []Keyword) ([]InodeDelta, error) {
++func Check(root string, dh *DirectoryHierarchy, keywords []Keyword, rootless bool) ([]InodeDelta, error) {
+ 	if keywords == nil {
+ 		used := dh.UsedKeywords()
+-		newDh, err := Walk(root, nil, used)
++		newDh, err := Walk(root, nil, used, rootless)
+ 		if err != nil {
+ 			return nil, err
+ 		}
+ 		return Compare(dh, newDh, used)
+ 	}
+ 
+-	newDh, err := Walk(root, nil, keywords)
++	newDh, err := Walk(root, nil, keywords, rootless)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+diff --git a/creator.go b/creator.go
+index 2a23a22e73f0..2ce1fdf51051 100644
+--- a/creator.go
++++ b/creator.go
+@@ -2,8 +2,9 @@ package mtree
+ 
+ // dhCreator is used in when building a DirectoryHierarchy
+ type dhCreator struct {
+-	DH     *DirectoryHierarchy
+-	curSet *Entry
+-	curDir *Entry
+-	curEnt *Entry
++	DH       *DirectoryHierarchy
++	operator operator
++	curSet   *Entry
++	curDir   *Entry
++	curEnt   *Entry
+ }
+diff --git a/unpriv.go b/unpriv.go
+new file mode 100644
+index 000000000000..f72c499074db
+--- /dev/null
++++ b/unpriv.go
+@@ -0,0 +1,76 @@
++package mtree
++
++import (
++	"io"
++	"os"
++
++	// NOTE: This is a hack done only for the umoci codebase. When this is
++	//       being handled upstream, we'll have to vendor this or otherwise
++	//       split it from umoci.
++	"github.com/cyphar/umoci/pkg/unpriv"
++)
++
++type operator struct {
++	Rootless bool
++}
++
++// open is a wrapper around unpriv.Open and os.Open, and will call the right
++// wrapper depending on whether o.Rootless is set.
++func (o operator) open(path string) (*os.File, error) {
++	if o.Rootless {
++		return unpriv.Open(path)
++	}
++	return os.Open(path)
++}
++
++// readlink is a wrapper around unpriv.Readlink and os.Readlink, and will call
++// the right wrapper depending on whether o.Rootless is set.
++func (o operator) readlink(path string) (string, error) {
++	if o.Rootless {
++		return unpriv.Readlink(path)
++	}
++	return os.Readlink(path)
++}
++
++// lstat is a wrapper around unpriv.Lstat and os.Lstat, and will call the right
++// wrapper depending on whether o.Rootless is set.
++func (o operator) lstat(path string) (os.FileInfo, error) {
++	if o.Rootless {
++		return unpriv.Lstat(path)
++	}
++	return os.Lstat(path)
++}
++
++// readdir is a wrapper around unpriv.Readdir and os.Open.Readdir, and will
++// call the right wrapper depending on whether o.Rootless is set.
++func (o operator) readdir(path string) ([]os.FileInfo, error) {
++	if o.Rootless {
++		return unpriv.Readdir(path)
++	}
++
++	// There's no wrapper for this in os.*, so we have to do it ourselves.
++	fh, err := os.Open(path)
++	if err != nil {
++		return nil, err
++	}
++	defer fh.Close()
++	return fh.Readdir(-1)
++}
++
++// keywordFunc will conditionally wrap a KeywordFunc with unpriv.Wrap, if
++// o.Rootless is set. Otherwise it returns the provided keywordFunc.
++func (o operator) keywordFunc(fn KeywordFunc) KeywordFunc {
++	if !o.Rootless {
++		return fn
++	}
++
++	return func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
++		var kv KeyVal
++		err := unpriv.Wrap(path, func(path string) error {
++			var err error
++			kv, err = fn(path, info, r)
++			return err
++		})
++		return kv, err
++	}
++}
+diff --git a/walk.go b/walk.go
+index 7f5b17144cdd..db976eb027a7 100644
+--- a/walk.go
++++ b/walk.go
+@@ -26,8 +26,9 @@ var defaultSetKeywords = []KeyVal{"type=file", "nlink=1", "flags=none", "mode=06
+ // Walk from root directory and assemble the DirectoryHierarchy. excludes
+ // provided are used to skip paths. keywords are the set to collect from the
+ // walked paths. The recommended default list is DefaultKeywords.
+-func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHierarchy, error) {
+-	creator := dhCreator{DH: &DirectoryHierarchy{}}
++func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, rootless bool) (*DirectoryHierarchy, error) {
++	operator := operator{Rootless: rootless}
++	creator := dhCreator{DH: &DirectoryHierarchy{}, operator: operator}
+ 	// insert signature and metadata comments first (user, machine, tree, date)
+ 	for _, e := range signatureEntries(root) {
+ 		e.Pos = len(creator.DH.Entries)
+@@ -88,7 +89,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 					err := func() error {
+ 						var r io.Reader
+ 						if info.Mode().IsRegular() {
+-							fh, err := os.Open(path)
++							fh, err := operator.open(path)
+ 							if err != nil {
+ 								return err
+ 							}
+@@ -99,7 +100,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 						if !ok {
+ 							return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+ 						}
+-						if str, err := keywordFunc(path, info, r); err == nil && str != "" {
++						if str, err := operator.keywordFunc(keywordFunc)(path, info, r); err == nil && str != "" {
+ 							e.Keywords = append(e.Keywords, str)
+ 						} else if err != nil {
+ 							return err
+@@ -119,7 +120,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 					err := func() error {
+ 						var r io.Reader
+ 						if info.Mode().IsRegular() {
+-							fh, err := os.Open(path)
++							fh, err := operator.open(path)
+ 							if err != nil {
+ 								return err
+ 							}
+@@ -130,7 +131,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 						if !ok {
+ 							return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+ 						}
+-						str, err := keywordFunc(path, info, r)
++						str, err := operator.keywordFunc(keywordFunc)(path, info, r)
+ 						if err != nil {
+ 							return err
+ 						}
+@@ -177,7 +178,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 			err := func() error {
+ 				var r io.Reader
+ 				if info.Mode().IsRegular() {
+-					fh, err := os.Open(path)
++					fh, err := operator.open(path)
+ 					if err != nil {
+ 						return err
+ 					}
+@@ -188,7 +189,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ 				if !ok {
+ 					return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+ 				}
+-				str, err := keywordFunc(path, info, r)
++				str, err := operator.keywordFunc(keywordFunc)(path, info, r)
+ 				if err != nil {
+ 					return err
+ 				}
+@@ -227,7 +228,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword) (*DirectoryHi
+ // large directories Walk can be inefficient.
+ // Walk does not follow symbolic links.
+ func startWalk(c *dhCreator, root string, walkFn filepath.WalkFunc) error {
+-	info, err := os.Lstat(root)
++	info, err := c.operator.lstat(root)
+ 	if err != nil {
+ 		return walkFn(root, nil, err)
+ 	}
+@@ -248,14 +249,14 @@ func walk(c *dhCreator, path string, info os.FileInfo, walkFn filepath.WalkFunc)
+ 		return nil
+ 	}
+ 
+-	names, err := readOrderedDirNames(path)
++	names, err := readOrderedDirNames(c, path)
+ 	if err != nil {
+ 		return walkFn(path, info, err)
+ 	}
+ 
+ 	for _, name := range names {
+ 		filename := filepath.Join(path, name)
+-		fileInfo, err := os.Lstat(filename)
++		fileInfo, err := c.operator.lstat(filename)
+ 		if err != nil {
+ 			if err := walkFn(filename, fileInfo, err); err != nil && err != filepath.SkipDir {
+ 				return err
+@@ -282,13 +283,8 @@ func walk(c *dhCreator, path string, info os.FileInfo, walkFn filepath.WalkFunc)
+ 
+ // readOrderedDirNames reads the directory and returns a sorted list of all
+ // entries with non-directories first, followed by directories.
+-func readOrderedDirNames(dirname string) ([]string, error) {
+-	f, err := os.Open(dirname)
+-	if err != nil {
+-		return nil, err
+-	}
+-	infos, err := f.Readdir(-1)
+-	f.Close()
++func readOrderedDirNames(c *dhCreator, dirname string) ([]string, error) {
++	infos, err := c.operator.readdir(dirname)
+ 	if err != nil {
+ 		return nil, err
+ 	}
+-- 
+2.10.2
+

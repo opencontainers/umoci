@@ -6,17 +6,17 @@ package mtree
 //
 // This is equivalent to creating a new DirectoryHierarchy with Walk(root, nil,
 // keywords) and then doing a Compare(dh, newDh, keywords).
-func Check(root string, dh *DirectoryHierarchy, keywords []Keyword) ([]InodeDelta, error) {
+func Check(root string, dh *DirectoryHierarchy, keywords []Keyword, rootless bool) ([]InodeDelta, error) {
 	if keywords == nil {
 		used := dh.UsedKeywords()
-		newDh, err := Walk(root, nil, used)
+		newDh, err := Walk(root, nil, used, rootless)
 		if err != nil {
 			return nil, err
 		}
 		return Compare(dh, newDh, used)
 	}
 
-	newDh, err := Walk(root, nil, keywords)
+	newDh, err := Walk(root, nil, keywords, rootless)
 	if err != nil {
 		return nil, err
 	}

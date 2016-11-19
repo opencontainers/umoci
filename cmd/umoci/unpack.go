@@ -201,7 +201,7 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords)
+	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, false)
 	if err != nil {
 		return fmt.Errorf("failed to generate mtree spec: %q", err)
 	}

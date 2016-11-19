@@ -51,7 +51,7 @@ func TestGenerate(t *testing.T) {
 	}
 
 	// Get initial.
-	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"))
+	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -64,7 +64,7 @@ func TestGenerate(t *testing.T) {
 	}
 
 	// Get post.
-	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords())
+	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -159,7 +159,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	}
 
 	// Get initial from the main directory.
-	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"))
+	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	}
 
 	// Get post.
-	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords())
+	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -229,7 +229,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	}
 
 	// Get initial from the main directory.
-	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"))
+	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), false)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -242,7 +242,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	}
 
 	// Get post.
-	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords())
+	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), false)
 	if err != nil {
 		t.Fatal(err)
 	}

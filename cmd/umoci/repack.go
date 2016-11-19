@@ -164,7 +164,7 @@ func repack(ctx *cli.Context) error {
 		"keywords": keywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	diffs, err := mtree.Check(fullRootfsPath, spec, keywords)
+	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, false)
 	if err != nil {
 		return err
 	}
