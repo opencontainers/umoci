@@ -52,14 +52,16 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 
 	reader, writer := io.Pipe()
 
-	go func() {
-		defer writer.Close()
+	go func() (Err error) {
+		// Close with the returned error.
+		defer func() {
+			writer.CloseWithError(Err)
+		}()
 
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
 		tg := newTarGenerator(writer, mapOptions)
-		defer tg.tw.Close()
 
 		// Sort the delta paths.
 		// FIXME: We need to add whiteouts first, otherwise we might end up
@@ -78,30 +80,23 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
 				if err := tg.AddFile(name, fullPath); err != nil {
-					logrus.Warnf("could not add file %s: %s", name, err)
-					writer.CloseWithError(err)
-					return
+					logrus.Warnf("generate layer: could not add file '%s': %s", name, err)
+					return err
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
-					logrus.Warnf("could not add whiteout header: %s", err)
-					writer.CloseWithError(err)
-					return
+					logrus.Warnf("generate layer: could not add whiteout '%s': %s", name, err)
+					return err
 				}
 			}
 		}
 
 		if err := tg.tw.Close(); err != nil {
-			logrus.Warnf("could not close layer: %s", err)
-			writer.CloseWithError(err)
-			return
+			logrus.Warnf("generate layer: could not close tar.Writer: %s", err)
+			return err
 		}
 
-		if err := writer.Close(); err != nil {
-			logrus.Warnf("failed to close writer: %s", err)
-			writer.CloseWithError(err)
-			return
-		}
+		return nil
 	}()
 
 	return reader, nil
