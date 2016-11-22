@@ -31,7 +31,7 @@ import (
 	"github.com/cyphar/umoci/image/cas"
 	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/pkg/idtools"
-	"github.com/cyphar/umoci/system"
+	"github.com/cyphar/umoci/pkg/system"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rgen "github.com/opencontainers/runtime-tools/generate"
 	"golang.org/x/net/context"

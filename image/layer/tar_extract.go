@@ -27,7 +27,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cyphar/umoci/system"
+	"github.com/cyphar/umoci/pkg/system"
 	"github.com/cyphar/umoci/third_party/symlink"
 )
 
