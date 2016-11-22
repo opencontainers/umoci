@@ -20,9 +20,4 @@ package system
 const (
 	// From uapi/linux/fcntl.h.
 	_AT_SYMLINK_NOFOLLOW = 0x100
-
-	// From uapi/asm-generic/fcntl.h
-	// XXX: This will almost certainly break on some architectures, but the
-	//      only way to properly fix this is to use a cgo import.
-	_O_PATH = 010000000
 )

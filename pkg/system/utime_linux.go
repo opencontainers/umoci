@@ -18,7 +18,8 @@
 package system
 
 import (
-	"fmt"
+	"os"
+	"path/filepath"
 	"syscall"
 	"time"
 	"unsafe"
@@ -32,27 +33,22 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	times[0] = syscall.NsecToTimespec(atime.UnixNano())
 	times[1] = syscall.NsecToTimespec(mtime.UnixNano())
 
-	// We can't use AT_FDCWD here. The reason is really stupid, and is because
-	// Go's RawSyscall requires uintptr arguments. But AT_FDCWD is defined to
-	// be a negative value. Go's own syscall.* implementations are not held to
-	// this restriction due to how they're compiled, but we have to instead
-	// fake our own AT_FDCWD by opening our current directory.
-	dirfd, err := syscall.Open(".", _O_PATH|syscall.O_DIRECTORY|syscall.O_NOFOLLOW, 0)
+	// Open the parent directory.
+	dirFile, err := os.OpenFile(filepath.Dir(path), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
 	if err != nil {
-		// This should really never be reached.
-		return fmt.Errorf("lutimes: opening .: %s", err)
+		return err
 	}
-	defer syscall.Close(dirfd)
+	defer dirFile.Close()
 
 	// The interface for this is really, really silly.
 	_, _, errno := syscall.RawSyscall6(syscall.SYS_UTIMENSAT, // int utimensat(
-		uintptr(dirfd),                     // int dirfd,
+		uintptr(dirFile.Fd()),              // int dirfd,
 		uintptr(assertPtrFromString(path)), // char *pathname,
 		uintptr(unsafe.Pointer(&times[0])), // struct timespec times[2],
 		uintptr(_AT_SYMLINK_NOFOLLOW),      // int flags);
 		0, 0)
 	if errno != 0 {
-		return fmt.Errorf("lutimes %s: %s", path, errno)
+		return &os.PathError{Op: "lutimes", Path: path, Err: errno}
 	}
 	return nil
 }
