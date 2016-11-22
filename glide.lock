@@ -1,14 +1,14 @@
 hash: 6b24152b320174dbfe1fd1b64adde54b27fb008794410614847efc3bd24756d3
-updated: 2016-11-19T20:13:48.894948265+11:00
+updated: 2016-11-22T23:47:57.936152065+11:00
 imports:
 - name: github.com/cyphar/umoci
-  version: 01d57a95195bde778ad2a37378eb3111ec44a923
+  version: a1fcf49bc49c3b9c4f3fbdd4a68cb83e3be55cac
   subpackages:
   - image/cas
   - image/generator
   - image/layer
   - pkg/idtools
-  - system
+  - pkg/system
   - third_party/symlink
   - third_party/user
 - name: github.com/opencontainers/image-spec
