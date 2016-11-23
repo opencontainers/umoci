@@ -3,7 +3,7 @@
 [![Build Status](https://img.shields.io/travis/cyphar/umoci/master.svg)](https://travis-ci.org/cyphar/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/cyphar/umoci.svg)
 
-**Status: Pre-Alpha**
+**Status: Alpha**
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
 what are you going to do. It also is a cool way for people to "dip their toe"
