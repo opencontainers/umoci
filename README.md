@@ -1,4 +1,4 @@
-## `umoci` ###
+## `umoci` [![Release](https://img.shields.io/github/release/cyphar/umoci.svg)](https://github.com/cyphar/umoci/releases/latest) ###
 
 [![Build Status](https://img.shields.io/travis/cyphar/umoci/master.svg)](https://travis-ci.org/cyphar/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/cyphar/umoci.svg)
