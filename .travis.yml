@@ -23,4 +23,5 @@ notifications:
 
 script:
   - make umoci
+  - make umoci.static
   - make DOCKER_IMAGE=$DOCKER_IMAGE ci
