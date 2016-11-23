@@ -131,7 +131,7 @@ func TestLutimesSymlink(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	path := filepath.Join(dir, " !! symlink here")
+	path := filepath.Join(dir, "  a symlink   ")
 
 	if err := os.Symlink(".", path); err != nil {
 		t.Fatal(err)
@@ -158,6 +158,86 @@ func TestLutimesSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 	fiParentNew, err := os.Lstat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	atimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Atim.Unix())
+	mtimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Atim.Unix())
+	mtimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+
+	if atimeOld.Equal(atimeNew) {
+		t.Errorf("atime was not changed at all!")
+	}
+	if !atimeNew.Equal(atime) {
+		t.Errorf("atime was not changed to expected value: expected='%s' got='%s' old='%s'", atime, atimeNew, atimeOld)
+	}
+	if mtimeOld.Equal(mtimeNew) {
+		t.Errorf("mtime was not changed at all!")
+	}
+	if !mtimeNew.Equal(mtime) {
+		t.Errorf("mtime was not changed: expected='%s' got='%s' old='%s'", mtime, mtimeNew, mtimeOld)
+	}
+
+	// Make sure that the parent directory was unchanged.
+	atimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Atim.Unix())
+	mtimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Atim.Unix())
+	mtimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+
+	if !atimeParentOld.Equal(atimeParentNew) {
+		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
+	}
+	if !mtimeParentOld.Equal(mtimeParentNew) {
+		t.Errorf("parent directory mtime was changed! old='%s' new='%s'", mtimeParentOld, mtimeParentNew)
+	}
+}
+
+func TestLutimesRelative(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesRelative")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	oldwd, err := os.Getwd()
+	if err != nil {
+		t.Fatal(err)
+	}
+	os.Chdir(dir)
+	defer os.Chdir(oldwd)
+
+	path := filepath.Join("some parent", " !! symlink here")
+
+	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink(".", path); err != nil {
+		t.Fatal(err)
+	}
+
+	atime := time.Unix(134858232, 258921237)
+	mtime := time.Unix(171257291, 425815288)
+
+	fiOld, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fiParentOld, err := os.Lstat(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	if err := Lutimes(path, atime, mtime); err != nil {
+		t.Errorf("unexpected error with system.lutimes: %s", err)
+	}
+
+	fiNew, err := os.Lstat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	fiParentNew, err := os.Lstat(".")
 	if err != nil {
 		t.Fatal(err)
 	}

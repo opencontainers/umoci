@@ -33,8 +33,13 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	times[0] = syscall.NsecToTimespec(atime.UnixNano())
 	times[1] = syscall.NsecToTimespec(mtime.UnixNano())
 
+	// Split up the path.
+	dir, file := filepath.Split(path)
+	dir = filepath.Clean(dir)
+	file = filepath.Clean(file)
+
 	// Open the parent directory.
-	dirFile, err := os.OpenFile(filepath.Dir(path), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
+	dirFile, err := os.OpenFile(filepath.Clean(dir), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
 	if err != nil {
 		return err
 	}
@@ -43,7 +48,7 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	// The interface for this is really, really silly.
 	_, _, errno := syscall.RawSyscall6(syscall.SYS_UTIMENSAT, // int utimensat(
 		uintptr(dirFile.Fd()),              // int dirfd,
-		uintptr(assertPtrFromString(path)), // char *pathname,
+		uintptr(assertPtrFromString(file)), // char *pathname,
 		uintptr(unsafe.Pointer(&times[0])), // struct timespec times[2],
 		uintptr(_AT_SYMLINK_NOFOLLOW),      // int flags);
 		0, 0)
