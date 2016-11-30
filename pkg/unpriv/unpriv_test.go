@@ -1269,4 +1269,9 @@ func TestRemoveAll(t *testing.T) {
 	if _, err := Lstat(filepath.Join(dir, "some")); err != nil {
 		t.Errorf("expected parent of deleted directory to not have error: %s", err)
 	}
+
+	// Make sure that trying to remove the directory after it's gone still won't fail.
+	if err := RemoveAll(filepath.Join(dir, "some", "parent")); err != nil {
+		t.Errorf("unexpected failure in unpriv.removeall (after deletion): %s", err)
+	}
 }

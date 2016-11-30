@@ -315,7 +315,7 @@ func RemoveAll(path string) error {
 		// If remove works, we're done.
 		err := os.Remove(path)
 		if err == nil || os.IsNotExist(err) {
-			return err
+			return nil
 		}
 
 		// Is this a directory?
