@@ -71,7 +71,7 @@ umociimage:
 .PHONY: test-unit
 test-unit: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-unit
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 $(UMOCI_IMAGE) go test -v $(PROJECT)/pkg/unpriv
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) go test -v $(PROJECT)/pkg/unpriv
 
 .PHONY: local-test-unit
 local-test-unit: umoci
@@ -80,6 +80,7 @@ local-test-unit: umoci
 .PHONY: test-integration
 test-integration: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-integration
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci

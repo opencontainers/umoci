@@ -16,20 +16,18 @@
 
 load helpers
 
-BUNDLE_A="$BATS_TMPDIR/bundle.a"
-BUNDLE_B="$BATS_TMPDIR/bundle.b"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$BUNDLE_A"
-	rm -rf "$BUNDLE_B"
 }
 
 @test "umoci repack" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -69,6 +67,9 @@ function teardown() {
 }
 
 @test "umoci repack [whiteout]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -79,9 +80,9 @@ function teardown() {
 	[ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
 
 	# Remove them.
-	rm -r "$BUNDLE_A/rootfs/etc"
-	rm "$BUNDLE_A/rootfs/bin/sh"
-	rm "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
+	chmod +w "$BUNDLE_A/rootfs/bin/." && rm "$BUNDLE_A/rootfs/bin/sh"
+	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under a new tag.
 	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}-new"
@@ -104,6 +105,9 @@ function teardown() {
 }
 
 @test "umoci repack [replace]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -114,11 +118,11 @@ function teardown() {
 	[ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
 
 	# Replace them.
-	rm -r "$BUNDLE_A/rootfs/etc"
+	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
 	echo "different" > "$BUNDLE_A/rootfs/etc"
-	rm "$BUNDLE_A/rootfs/bin/sh"
+	chmod +w "$BUNDLE_A/rootfs/bin/." && rm "$BUNDLE_A/rootfs/bin/sh"
 	mkdir "$BUNDLE_A/rootfs/bin/sh"
-	rm "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
 	# this currently breaks go-mtree but I've backported a patch to fix it in openSUSE
 	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
 

@@ -16,23 +16,22 @@
 
 load helpers
 
-BUNDLE_A="$BATS_TMPDIR/bundle.a"
-BUNDLE_B="$BATS_TMPDIR/bundle.b"
-BUNDLE_C="$BATS_TMPDIR/bundle.c"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$BUNDLE_A"
-	rm -rf "$BUNDLE_B"
-	rm -rf "$BUNDLE_C"
 }
 
 # FIXME: This test is __WAY__ too slow.
 @test "umoci unpack --uid-map --gid-map" {
+	# We do a bunch of remapping tricks, which we can't really do if we're not root.
+	requires root
+
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "8888:0:65535"
 	[ "$status" -eq 0 ]
@@ -66,6 +65,13 @@ function teardown() {
 
 # FIXME: It would be nice if we implemented this test with a manual chown.
 @test "umoci repack --uid-map --gid-map" {
+	# We do a bunch of remapping tricks, which we can't really do if we're not root.
+	requires root
+
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_C="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "7331:0:65535"
 	[ "$status" -eq 0 ]
