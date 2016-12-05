@@ -1,14 +1,15 @@
 hash: 6b24152b320174dbfe1fd1b64adde54b27fb008794410614847efc3bd24756d3
-updated: 2016-11-22T23:47:57.936152065+11:00
+updated: 2016-12-02T13:09:58.397031572+11:00
 imports:
 - name: github.com/cyphar/umoci
-  version: a1fcf49bc49c3b9c4f3fbdd4a68cb83e3be55cac
+  version: f57a2e2ab37222358cc20cbb4dfddedc52b15b43
   subpackages:
   - image/cas
   - image/generator
   - image/layer
   - pkg/idtools
   - pkg/system
+  - pkg/unpriv
   - third_party/symlink
   - third_party/user
 - name: github.com/opencontainers/image-spec
@@ -17,7 +18,7 @@ imports:
   - specs-go
   - specs-go/v1
 - name: github.com/opencontainers/image-tools
-  version: b08291497d7aef21c66790114fcc42549c91c6d6
+  version: 421458f7e467ac86175408693a07da6d29817bf7
   subpackages:
   - image
 - name: github.com/opencontainers/runtime-spec
@@ -25,7 +26,7 @@ imports:
   subpackages:
   - specs-go
 - name: github.com/opencontainers/runtime-tools
-  version: 476f1fb7af4102951375ab58fdeca2118cf6ab31
+  version: 893d9e32f4088f4928eac165ee3e38b312ea9582
   subpackages:
   - generate
   - generate/seccomp
@@ -38,19 +39,19 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: 13131d516bff732b0d7929330683beafa96cefd1
+  version: e42c679e8951078bfd79766fca74dcb4b986ad63
   subpackages:
   - xattr
 - name: golang.org/x/crypto
-  version: 9477e0b78b9ac3d0b03822fd95422e2fe07627cd
+  version: 7efbae5d109cb7a2dbc362886213f73c4c55dede
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: 4971afdc2f162e82d185353533d3cf16188a9f4e
+  version: 97edce0b2e423f6a8debb459af47f4a3cb4ff954
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: b699b7032584f0953262cb2788a0ca19bb494703
+  version: d5645953809d8b4752afb2c3224b1f1ad73dfa70
   subpackages:
   - unix
 testImports: []

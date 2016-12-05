@@ -33,6 +33,9 @@ type MapOptions struct {
 	// packing and unpacking image rootfs layers.
 	UIDMappings []rspec.IDMapping
 	GIDMappings []rspec.IDMapping
+
+	// Rootless specifies whether any to error out if chown fails.
+	Rootless bool
 }
 
 // mapHeader maps a tar.Header generated from the filesystem so that it
@@ -41,6 +44,13 @@ type MapOptions struct {
 // container mappings. Returns an error if it's not possible to map the given
 // UID.
 func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
+	// If we're in rootless mode, we assume all of the files are owned by
+	// (0, 0) in the container -- since we cannot map any other users.
+	if mapOptions.Rootless {
+		hdr.Uid, _ = idtools.ToHost(0, mapOptions.UIDMappings)
+		hdr.Gid, _ = idtools.ToHost(0, mapOptions.GIDMappings)
+	}
+
 	newUID, err := idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
 		return err
@@ -60,6 +70,14 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 // involves applying an ID mapping from the container filesystem to the host
 // mappings. Returns an error if it's not possible to map the given UID.
 func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
+	// If we're in rootless mode we assume that all of the files in the layer
+	// are owned by (0, 0) because we cannot map any other users in the
+	// container (and we cannot Lchown to any user other than ourselves).
+	if mapOptions.Rootless {
+		hdr.Uid = 0
+		hdr.Gid = 0
+	}
+
 	newUID, err := idtools.ToHost(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
 		return err

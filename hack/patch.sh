@@ -28,3 +28,4 @@ patch() {
 }
 
 patch github.com/vbatts/go-mtree gomtree-0001-entries-prepend-all-hierarchies-with-keyword-metadat.patch
+patch github.com/vbatts/go-mtree gomtree-0002-walk-implement-unprivileged-walking.patch

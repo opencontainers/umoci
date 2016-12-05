@@ -16,22 +16,18 @@
 
 load helpers
 
-BUNDLE_A="$BATS_TMPDIR/bundle.a"
-BUNDLE_B="$BATS_TMPDIR/bundle.b"
-BUNDLE_C="$BATS_TMPDIR/bundle.c"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$BUNDLE_A"
-	rm -rf "$BUNDLE_B"
-	rm -rf "$BUNDLE_C"
 }
 
 @test "umoci config" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -57,6 +53,9 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user'" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -105,6 +104,9 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group'" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -150,6 +152,10 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group' [parsed from rootfs]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_C="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -218,31 +224,35 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group' [non-existent user]" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify the user.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -ne 0 ]
 }
 
 @test "umoci config --config.user [numeric]" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.user="1337:8888"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_A/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 1337 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_A/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 8888 ]
 }
@@ -251,47 +261,53 @@ function teardown() {
 # TODO: Add further tests for --config.user resolution (and additional_gids).
 
 @test "umoci config --config.workingdir" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.workingdir "/a/fake/directory"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.cwd' "$BUNDLE_A/config.json"
+	sane_run jq -SM '.process.cwd' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = '"/a/fake/directory"' ]
 }
 
 @test "umoci config --clear=config.env" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --clear=config.env
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Make sure that only $HOME was set.
-	sane_run jq -SMr '.process.env[]' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "${lines[0]}" == *"HOME="* ]]
 	[ "${#lines[@]}" -eq 1 ]
 }
 
 @test "umoci config --config.env" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.env "VARIABLE1=test" --config.env "VARIABLE2=what"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SMr '.process.env[]' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Set the variables.
@@ -301,75 +317,103 @@ function teardown() {
 }
 
 @test "umoci config --config.memory.*" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.memory.limit 1000 --config.memory.swap 2000
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
-	# Make sure memory.limit and memory.reservation are set.
-	sane_run jq -SMr '.linux.resources.memory.limit' "$BUNDLE_A/config.json"
-	[ "$status" -eq 0 ]
-	[ "$output" -eq 1000 ]
-	sane_run jq -SMr '.linux.resources.memory.reservation' "$BUNDLE_A/config.json"
-	[ "$status" -eq 0 ]
-	[ "$output" -eq 1000 ]
+	if [ "$ROOTLESS" -ne 0 ]; then
+		# If we're rootless we only have to check that .linux.resources is null.
+		sane_run jq -SMr '.linux.resources' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[[ "$output" == "null" || "$output" == "{}" ]]
+	else
+		# Otherwise, check that the limits were set properly.
+		# Make sure memory.limit and memory.reservation are set.
+		sane_run jq -SMr '.linux.resources.memory.limit' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[ "$output" -eq 1000 ]
+		sane_run jq -SMr '.linux.resources.memory.reservation' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[ "$output" -eq 1000 ]
 
-	# Make sure memory.swap was set.
-	sane_run jq -SMr '.linux.resources.memory.swap' "$BUNDLE_A/config.json"
-	[ "$status" -eq 0 ]
-	[ "$output" -eq 2000 ]
+		# Make sure memory.swap was set.
+		sane_run jq -SMr '.linux.resources.memory.swap' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[ "$output" -eq 2000 ]
+	fi
 }
 
 @test "umoci config --config.cpu.shares" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.cpu.shares 1024
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
-	# Make sure memory.limit and memory.reservation are set.
-	sane_run jq -SMr '.linux.resources.cpu.shares' "$BUNDLE_A/config.json"
-	[ "$status" -eq 0 ]
-	[ "$output" -eq 1024 ]
+	if [ "$ROOTLESS" -ne 0 ]; then
+		# If we're rootless we only have to check that .linux.resources is null.
+		sane_run jq -SMr '.linux.resources' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[[ "$output" == "null" || "$output" == "{}" ]]
+	else
+		# Otherwise, check that the limits were set properly.
+		# Make sure memory.limit and memory.reservation are set.
+		sane_run jq -SMr '.linux.resources.cpu.shares' "$BUNDLE/config.json"
+		[ "$status" -eq 0 ]
+		[ "$output" -eq 1024 ]
+	fi
 }
 
 @test "umoci config --config.cmd" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Ensure that the final args is entrypoint+cmd.
-	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "cat;/this is a file with spaces;-v;" ]]
 }
 
 @test "umoci config --config.[entrypoint+cmd]" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Ensure that the final args is entrypoint+cmd.
-	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "sh;-c;ls -la;" ]]
 }
 
 # XXX: This test is somewhat dodgy (since we don't actually set anything other than the destination for a volume).
 @test "umoci config --config.volume" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_C="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
@@ -423,22 +467,24 @@ function teardown() {
 }
 
 @test "umoci config --[os+architecture]" {
+	BUNDLE="$(setup_bundle)"
+
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --os "linux" --architecture "aarch9001"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image again.
-	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Check that OS was set properly.
-	sane_run jq -SMr '.platform.os' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "linux" ]]
 
 	# Check that arch was set properly.
-	sane_run jq -SMr '.platform.arch' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "aarch9001" ]]
 }

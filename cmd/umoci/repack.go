@@ -77,6 +77,10 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Name:  "gid-map",
 			Usage: "specifies a gid mapping to use when repacking",
 		},
+		cli.BoolFlag{
+			Name:  "rootless",
+			Usage: "enable rootless unpacking support",
+		},
 	},
 
 	Action: repack,
@@ -98,7 +102,24 @@ func repack(ctx *cli.Context) error {
 	}
 
 	// Parse map options.
-	mapOptions := layer.MapOptions{}
+	mapOptions := layer.MapOptions{
+		Rootless: ctx.Bool("rootless"),
+	}
+	// We need to set mappings if we're in rootless mode.
+	if mapOptions.Rootless {
+		if !ctx.IsSet("uid-map") {
+			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
+			logrus.WithFields(logrus.Fields{
+				"map.uid": ctx.StringSlice("uid-map"),
+			}).Info("setting default rootless --uid-map option")
+		}
+		if !ctx.IsSet("gid-map") {
+			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
+			logrus.WithFields(logrus.Fields{
+				"map.gid": ctx.StringSlice("gid-map"),
+			}).Info("setting default rootless --gid-map option")
+		}
+	}
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
@@ -164,7 +185,7 @@ func repack(ctx *cli.Context) error {
 		"keywords": keywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	diffs, err := mtree.Check(fullRootfsPath, spec, keywords)
+	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, mapOptions.Rootless)
 	if err != nil {
 		return err
 	}

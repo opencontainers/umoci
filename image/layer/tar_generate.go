@@ -24,6 +24,8 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	"github.com/cyphar/umoci/pkg/unpriv"
 )
 
 // tarGenerator is a helper for generating layer diff tars. It should be noted
@@ -92,19 +94,43 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	return path, nil
 }
 
+func (tg *tarGenerator) open(path string) (*os.File, error) {
+	open := os.Open
+	if tg.mapOptions.Rootless {
+		open = unpriv.Open
+	}
+	return open(path)
+}
+
+func (tg *tarGenerator) lstat(path string) (os.FileInfo, error) {
+	lstat := os.Lstat
+	if tg.mapOptions.Rootless {
+		lstat = unpriv.Lstat
+	}
+	return lstat(path)
+}
+
+func (tg *tarGenerator) readlink(path string) (string, error) {
+	readlink := os.Readlink
+	if tg.mapOptions.Rootless {
+		readlink = unpriv.Readlink
+	}
+	return readlink(path)
+}
+
 // AddFile adds a file from the filesystem to the tar archive. It copies all of
 // the relevant stat information about the file, and also attempts to track
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
 func (tg *tarGenerator) AddFile(name, path string) error {
-	fi, err := os.Lstat(path)
+	fi, err := tg.lstat(path)
 	if err != nil {
 		return err
 	}
 
 	linkname := ""
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
-		if linkname, err = os.Readlink(path); err != nil {
+		if linkname, err = tg.readlink(path); err != nil {
 			return err
 		}
 	}
@@ -166,7 +192,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// Write the contents of regular files.
 	if hdr.Typeflag == tar.TypeReg {
 		// XXX: Do we need bufio here?
-		fh, err := os.Open(path)
+		fh, err := tg.open(path)
 		if err != nil {
 			return err
 		}

@@ -15,9 +15,26 @@ import (
 	"syscall"
 )
 
+// FsEval is a mock-friendly (and unpriv.*) friendly way of wrapping
+// filesystem-related functions. Note that this code (and all code referencing
+// it) comes from this fork and is not present in the upstream code.
+type FsEval struct {
+	Lstat    func(path string) (fi os.FileInfo, err error)
+	Readlink func(path string) (linkname string, err error)
+}
+
 // FollowSymlinkInScope is a wrapper around evalSymlinksInScope that returns an
 // absolute path. This function handles paths in a platform-agnostic manner.
 func FollowSymlinkInScope(path, root string) (string, error) {
+	return FsEval{}.FollowSymlinkInScope(path, root)
+}
+
+func (fs FsEval) FollowSymlinkInScope(path, root string) (string, error) {
+	// Default is os.*.
+	if fs.Lstat == nil || fs.Readlink == nil {
+		fs.Lstat = os.Lstat
+		fs.Readlink = os.Readlink
+	}
 	path, err := filepath.Abs(filepath.FromSlash(path))
 	if err != nil {
 		return "", err
@@ -26,7 +43,7 @@ func FollowSymlinkInScope(path, root string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return evalSymlinksInScope(path, root)
+	return fs.evalSymlinksInScope(path, root)
 }
 
 // isNotExist tells you if err is an error that implies that either the path
@@ -65,7 +82,7 @@ func isNotExist(err error) bool {
 // previously-safe path, unsafe. Example: if /foo/bar does not exist, evalSymlinksInScope("/foo/bar", "/foo")
 // would return "/foo/bar". If one makes /foo/bar a symlink to /baz subsequently, then "/foo/bar" should
 // no longer be considered safely contained in "/foo".
-func evalSymlinksInScope(path, root string) (string, error) {
+func (fs FsEval) evalSymlinksInScope(path, root string) (string, error) {
 	root = filepath.Clean(root)
 	if path == root {
 		return path, nil
@@ -120,7 +137,7 @@ func evalSymlinksInScope(path, root string) (string, error) {
 		}
 		fullP := filepath.Clean(root + cleanP)
 
-		fi, err := os.Lstat(fullP)
+		fi, err := fs.Lstat(fullP)
 		if isNotExist(err) {
 			// if p does not exist, accept it
 			b.WriteString(p)
@@ -137,7 +154,7 @@ func evalSymlinksInScope(path, root string) (string, error) {
 		}
 
 		// it's a symlink, put it at the front of path
-		dest, err := os.Readlink(fullP)
+		dest, err := fs.Readlink(fullP)
 		if err != nil {
 			return "", err
 		}

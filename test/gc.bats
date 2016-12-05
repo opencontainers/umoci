@@ -16,15 +16,12 @@
 
 load helpers
 
-BUNDLE="$BATS_TMPDIR/bundle"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$BUNDLE"
 }
 
 @test "umoci gc [consistent]" {
@@ -48,6 +45,8 @@ function teardown() {
 }
 
 @test "umoci gc" {
+	BUNDLE="$(setup_bundle)"
+
 	# Initial gc.
 	umoci gc --image "$IMAGE"
 	[ "$status" -eq 0 ]
@@ -61,9 +60,9 @@ function teardown() {
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
-	# Change the rootfs.
-	rm -r "$BUNDLE/rootfs/usr/bin"
-	rm -r "$BUNDLE/rootfs/etc"
+	# Change the rootfs. We need to chmod because of fedora.
+	chmod +w "$BUNDLE/rootfs/usr/bin/." && rm -rf "$BUNDLE/rootfs/usr/bin"
+	chmod +w "$BUNDLE/rootfs/etc/." && rm -rf "$BUNDLE/rootfs/etc"
 
 	# Repack the image under a new tag.
 	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE" --tag "${TAG}-new"

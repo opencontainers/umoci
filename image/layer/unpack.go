@@ -25,6 +25,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -33,6 +34,7 @@ import (
 	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/cyphar/umoci/pkg/system"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
 	"golang.org/x/net/context"
 )
@@ -80,6 +82,11 @@ func isLayerType(mediaType string) bool {
 //
 // FIXME: This interface is ugly.
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest v1.Manifest, opt *MapOptions) error {
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -196,9 +203,81 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config); err != nil {
 		return fmt.Errorf("unpack manifest: generating config.json: %s", err)
 	}
+
+	// Add UIDMapping / GIDMapping options.
+	if len(mapOptions.UIDMappings) > 0 || len(mapOptions.GIDMappings) > 0 {
+		g.AddOrReplaceLinuxNamespace("user", "")
+	}
+	g.ClearLinuxUIDMappings()
+	for _, m := range mapOptions.UIDMappings {
+		g.AddLinuxUIDMapping(m.HostID, m.ContainerID, m.Size)
+	}
+	g.ClearLinuxGIDMappings()
+	for _, m := range mapOptions.GIDMappings {
+		g.AddLinuxGIDMapping(m.HostID, m.ContainerID, m.Size)
+	}
+	if mapOptions.Rootless {
+		ToRootless(g.Spec())
+		g.AddBindMount("/etc/resolv.conf", "/etc/resolv.conf", []string{"bind", "ro"})
+	}
+
+	// Save the config.json.
 	if err := g.SaveToFile(configPath, rgen.ExportOptions{}); err != nil {
 		return fmt.Errorf("failed to write new config.json: %s", err)
 	}
 
 	return nil
+}
+
+// ToRootless converts a specification to a version that works with rootless
+// containers. This is done by removing options and other settings that clash
+// with unprivileged user namespaces.
+func ToRootless(spec *rspec.Spec) {
+	var namespaces []rspec.Namespace
+
+	// Remove networkns from the spec.
+	for _, ns := range spec.Linux.Namespaces {
+		switch ns.Type {
+		case rspec.NetworkNamespace, rspec.UserNamespace:
+			// Do nothing.
+		default:
+			namespaces = append(namespaces, ns)
+		}
+	}
+	// Add userns to the spec.
+	namespaces = append(namespaces, rspec.Namespace{
+		Type: rspec.UserNamespace,
+	})
+	spec.Linux.Namespaces = namespaces
+
+	// Fix up mounts.
+	var mounts []rspec.Mount
+	for _, mount := range spec.Mounts {
+		// Ignore all mounts that are under /sys.
+		if strings.HasPrefix(mount.Destination, "/sys") {
+			continue
+		}
+
+		// Remove all gid= and uid= mappings.
+		var options []string
+		for _, option := range mount.Options {
+			if !strings.HasPrefix(option, "gid=") && !strings.HasPrefix(option, "uid=") {
+				options = append(options, option)
+			}
+		}
+
+		mount.Options = options
+		mounts = append(mounts, mount)
+	}
+	// Add the sysfs mount as an rbind.
+	mounts = append(mounts, rspec.Mount{
+		Source:      "/sys",
+		Destination: "/sys",
+		Type:        "none",
+		Options:     []string{"rbind", "nosuid", "noexec", "nodev", "ro"},
+	})
+	spec.Mounts = mounts
+
+	// Remove cgroup settings.
+	spec.Linux.Resources = nil
 }

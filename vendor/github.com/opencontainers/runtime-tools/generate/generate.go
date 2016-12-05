@@ -337,6 +337,47 @@ func (g *Generator) AddProcessEnv(env string) {
 	g.spec.Process.Env = append(g.spec.Process.Env, env)
 }
 
+// AddProcessRlimits adds rlimit into g.spec.Process.Rlimits.
+func (g *Generator) AddProcessRlimits(rType string, rHard uint64, rSoft uint64) {
+	g.initSpec()
+	for i, rlimit := range g.spec.Process.Rlimits {
+		if rlimit.Type == rType {
+			g.spec.Process.Rlimits[i].Hard = rHard
+			g.spec.Process.Rlimits[i].Soft = rSoft
+			return
+		}
+	}
+
+	newRlimit := rspec.Rlimit{
+		Type: rType,
+		Hard: rHard,
+		Soft: rSoft,
+	}
+	g.spec.Process.Rlimits = append(g.spec.Process.Rlimits, newRlimit)
+}
+
+// RemoveProcessRlimits removes a rlimit from g.spec.Process.Rlimits.
+func (g *Generator) RemoveProcessRlimits(rType string) error {
+	if g.spec == nil {
+		return nil
+	}
+	for i, rlimit := range g.spec.Process.Rlimits {
+		if rlimit.Type == rType {
+			g.spec.Process.Rlimits = append(g.spec.Process.Rlimits[:i], g.spec.Process.Rlimits[i+1:]...)
+			return nil
+		}
+	}
+	return nil
+}
+
+// ClearProcessRlimits clear g.spec.Process.Rlimits.
+func (g *Generator) ClearProcessRlimits() {
+	if g.spec == nil {
+		return
+	}
+	g.spec.Process.Rlimits = []rspec.Rlimit{}
+}
+
 // ClearProcessAdditionalGids clear g.spec.Process.AdditionalGids.
 func (g *Generator) ClearProcessAdditionalGids() {
 	if g.spec == nil {

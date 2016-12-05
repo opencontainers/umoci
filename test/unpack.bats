@@ -16,53 +16,55 @@
 
 load helpers
 
-BUNDLE_A="$BATS_TMPDIR/bundle.a"
-BUNDLE_B="$BATS_TMPDIR/bundle.b"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$BUNDLE_A"
-	rm -rf "$BUNDLE_B"
 }
 
 @test "umoci unpack" {
+	BUNDLE="$(setup_bundle)"
+
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# We need to make sure these files properly exist.
-	[ -f "$BUNDLE_A/config.json" ]
-	[ -d "$BUNDLE_A/rootfs" ]
+	[ -f "$BUNDLE/config.json" ]
+	[ -d "$BUNDLE/rootfs" ]
 
 	# Check that the image appears about right.
 	# NOTE: Since we could be using different images, this will be fairly
 	#       generic.
-	[ -e "$BUNDLE_A/rootfs/bin/sh" ]
-	[ -e "$BUNDLE_A/rootfs/etc/passwd" ]
-	[ -e "$BUNDLE_A/rootfs/etc/group" ]
+	[ -e "$BUNDLE/rootfs/bin/sh" ]
+	[ -e "$BUNDLE/rootfs/etc/passwd" ]
+	[ -e "$BUNDLE/rootfs/etc/group" ]
 
 	# Ensure that gomtree suceeds on the unpacked bundle.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	gomtree -p "$BUNDLE/rootfs" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
+	BUNDLE="$(setup_bundle)"
+
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
+	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Ensure that we have a mount namespace enabled.
-	sane_run jq -SM 'reduce (.linux.namespaces[] | .type) as $type (false; $type == "mount")' "$BUNDLE_A/config.json"
+	sane_run jq -SM 'any(.linux.namespaces[] | .type; . == "mount")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
 }
 
 @test "umoci unpack [consistent results]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]

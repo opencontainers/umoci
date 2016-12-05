@@ -16,26 +16,17 @@
 
 load helpers
 
-NEWIMAGE="$BATS_TMPDIR/image"
-BUNDLE_A="$BATS_TMPDIR/bundle.a"
-BUNDLE_B="$BATS_TMPDIR/bundle.b"
-BUNDLE_C="$BATS_TMPDIR/bundle.c"
-
 function setup() {
 	setup_image
 }
 
 function teardown() {
 	teardown_image
-	rm -rf "$NEWIMAGE"
-	rm -rf "$BUNDLE_A"
-	rm -rf "$BUNDLE_B"
-	rm -rf "$BUNDLE_C"
 }
 
 @test "umoci create --image [empty]" {
 	# Setup up $NEWIMAGE.
-	export NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
+	NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with no tags.
@@ -58,6 +49,8 @@ function teardown() {
 }
 
 @test "umoci create --image --tag" {
+	BUNDLE="$(setup_bundle)"
+
 	# Setup up $NEWIMAGE.
 	export NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
 	rm -rf "$NEWIMAGE"
@@ -71,26 +64,26 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Unpack the image.
-	umoci unpack --image "$NEWIMAGE" --from "latest" --bundle "$BUNDLE_A"
+	umoci unpack --image "$NEWIMAGE" --from "latest" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 
 	# Make sure that the rootfs is empty.
-	sane_run find "$BUNDLE_A/rootfs"
+	sane_run find "$BUNDLE/rootfs"
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 1 ]
 
 	# Make sure that the config applied.
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_A/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 1234 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_A/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 1332 ]
 
 	# Make sure additionalGids were not set.
-	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "null" ]]
 }
