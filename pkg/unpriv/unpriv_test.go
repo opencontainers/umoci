@@ -1578,13 +1578,13 @@ func TestMkdirAllMissing(t *testing.T) {
 // Makes sure that if a parent directory only has +rw (-x) permissions, things
 // are handled correctly. This is modelled after fedora's root filesystem
 // (specifically /var/log/anaconda/pre-anaconda-logs/lvmdump).
-func TestRWPerm(t *testing.T) {
+func TestMkdirRWPerm(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Log("unpriv.* tests only work with non-root privileges")
 		t.Skip()
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAllMissing")
+	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRWPerm")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1692,6 +1692,100 @@ func TestRWPerm(t *testing.T) {
 		t.Errorf("unexpected unpriv.lstat error: %s", err)
 	}
 	if fi.Mode()&os.ModePerm != 0 {
+		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+}
+
+// Makes sure that if a parent directory only has +rx (-w) permissions, things
+// are handled correctly with Mkdir or Create.
+func TestMkdirRPerm(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Log("unpriv.* tests only work with non-root privileges")
+		t.Skip()
+	}
+
+	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRPerm")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer RemoveAll(dir)
+
+	fileContent := []byte("some content")
+
+	// Create some small structure.
+	if err := os.MkdirAll(filepath.Join(dir, "var", "log"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "var", "log"), 0555); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "var"), 0555); err != nil {
+		t.Fatal(err)
+	}
+
+	if fh, err := os.Create(filepath.Join(dir, "var", "log", "anaconda")); err == nil {
+		fh.Close()
+		t.Fatalf("expected error when using os.create for lvmdump/config_diff!")
+	}
+
+	// Try to do it with unpriv.
+	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda"))
+	if err != nil {
+		t.Fatalf("unexpected unpriv.create error: %s", err)
+	}
+	if err := fh.Chmod(0); err != nil {
+		t.Fatalf("unexpected unpriv.create.chmod error: %s", err)
+	}
+	defer fh.Close()
+
+	if n, err := fh.Write(fileContent); err != nil {
+		t.Fatal(err)
+	} else if n != len(fileContent) {
+		t.Fatalf("incomplete write to config_diff")
+	}
+
+	// Make some subdirectories.
+	if err := MkdirAll(filepath.Join(dir, "var", "log", "anaconda2", "childdir"), 0); err != nil {
+		t.Fatal(err)
+	}
+
+	// Check that they all have chmod(0).
+	var fi os.FileInfo
+
+	// Double check it was unchanged.
+	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda"))
+	if err != nil {
+		t.Errorf("unexpected unpriv.lstat error: %s", err)
+	}
+	if fi.Mode()&os.ModePerm != 0 {
+		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda2", "childdir"))
+	if err != nil {
+		t.Errorf("unexpected unpriv.lstat error: %s", err)
+	}
+	if fi.Mode()&os.ModePerm != 0 {
+		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda2"))
+	if err != nil {
+		t.Errorf("unexpected unpriv.lstat error: %s", err)
+	}
+	if fi.Mode()&os.ModePerm != 0 {
+		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+	fi, err = Lstat(filepath.Join(dir, "var", "log"))
+	if err != nil {
+		t.Errorf("unexpected unpriv.lstat error: %s", err)
+	}
+	if fi.Mode()&os.ModePerm != 0555 {
+		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+	fi, err = Lstat(filepath.Join(dir, "var"))
+	if err != nil {
+		t.Errorf("unexpected unpriv.lstat error: %s", err)
+	}
+	if fi.Mode()&os.ModePerm != 0555 {
 		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
 	}
 }
