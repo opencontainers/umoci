@@ -147,7 +147,6 @@ func (te *tarExtractor) create(path string) (*os.File, error) {
 	return create(path)
 }
 
-/*
 func (te *tarExtractor) mkdirall(path string, mode os.FileMode) error {
 	mkdirall := os.MkdirAll
 	if te.mapOptions.Rootless {
@@ -155,7 +154,6 @@ func (te *tarExtractor) mkdirall(path string, mode os.FileMode) error {
 	}
 	return mkdirall(path, mode)
 }
-*/
 
 func (te *tarExtractor) lstat(path string) (os.FileInfo, error) {
 	lstat := os.Lstat
@@ -327,7 +325,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
-	if err := os.MkdirAll(dir, 0777); err != nil {
+	if err := te.mkdirall(dir, 0777); err != nil {
 		return err
 	}
 
@@ -360,7 +358,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Attempt to create the directory. We do a MkdirAll here because even
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
-		if err := os.MkdirAll(path, 0777); err != nil {
+		if err := te.mkdirall(path, 0777); err != nil {
 			return err
 		}
 

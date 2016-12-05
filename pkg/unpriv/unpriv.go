@@ -382,3 +382,49 @@ func RemoveAll(path string) error {
 		return err
 	})
 }
+
+// Mkdir is a wrapper around os.Mkdir which has been wrapped with unpriv.Wrap
+// to make it possible to remove a path even if you do not currently have the
+// required access bits to modify or resolve the path.
+func Mkdir(path string, perm os.FileMode) error {
+	return Wrap(path, func(path string) error {
+		return os.Mkdir(path, perm)
+	})
+}
+
+// MkdirAll is similar to os.MkdirAll but in order to implement it properly all
+// of the internal functions were wrapped with unpriv.Wrap to make it possible
+// to create a path even if you do not currently have enough access bits.
+func MkdirAll(path string, perm os.FileMode) error {
+	return Wrap(path, func(path string) error {
+		// Check whether the path already exists.
+		fi, err := os.Stat(path)
+		if err == nil {
+			if fi.IsDir() {
+				return nil
+			}
+			return &os.PathError{Op: "mkdir", Path: path, Err: syscall.ENOTDIR}
+		}
+
+		// Create parent.
+		parent := filepath.Dir(path)
+		if parent != "." && parent != "/" {
+			err = MkdirAll(parent, perm)
+			if err != nil {
+				return err
+			}
+		}
+
+		// Parent exists, now we can create the path.
+		err = os.Mkdir(path, perm)
+		if err != nil {
+			// Handle "foo/.".
+			fi, err1 := os.Lstat(path)
+			if err1 == nil && fi.IsDir() {
+				return nil
+			}
+			return err
+		}
+		return nil
+	})
+}
