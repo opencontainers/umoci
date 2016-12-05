@@ -236,7 +236,10 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// If we got an entry for the root, then unsafeDir is the full path.
 		unsafeDir, file = unsafePath, "."
 	}
-	dir, err := symlink.FollowSymlinkInScope(unsafeDir, root)
+	dir, err := symlink.FsEval{
+		Lstat:    te.lstat,
+		Readlink: te.readlink,
+	}.FollowSymlinkInScope(unsafeDir, root)
 	if err != nil {
 		return err
 	}
