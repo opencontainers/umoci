@@ -51,7 +51,7 @@ function umoci() {
 	local args=("$@")
 
 	# We're rootless if we're asked to unpack something.
-	if [[ "$ROOTLESS" != 0 && ( "$1" == "unpack" || "$1" == "repack" ) ]]; then
+	if [[ "$ROOTLESS" != 0 && "$1" == "unpack" ]]; then
 		args+=("--rootless")
 	fi
 

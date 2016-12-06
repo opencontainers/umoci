@@ -66,7 +66,7 @@ function teardown() {
 	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
 
 	# Modify the user.
@@ -118,7 +118,7 @@ function teardown() {
 	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
 
 	# Modify the user.
@@ -167,7 +167,7 @@ function teardown() {
 	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
 
 	# Modify the user.
@@ -199,7 +199,7 @@ function teardown() {
 	sed -i -e 's|^emptygroup:x:2222:|emptygroup:x:4444:|' "$BUNDLE_B/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B" --tag "${TAG}"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_B" --tag "${TAG}"
 	[ "$status" -eq 0 ]
 
 	# Unpack the image.

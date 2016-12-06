@@ -46,7 +46,7 @@ function teardown() {
 	ln -s "this is a dummy symlink" "$BUNDLE_A/rootfs/newdir/link"
 
 	# Repack the image under a new tag.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}-new"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
 
 	# Unpack it again.
@@ -85,7 +85,7 @@ function teardown() {
 	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under a new tag.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}-new"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
 
 	# Unpack it again.
@@ -127,7 +127,7 @@ function teardown() {
 	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under the same tag.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
 
 	# Unpack it again.

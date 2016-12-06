@@ -30,7 +30,6 @@ import (
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layer"
-	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -40,11 +39,10 @@ import (
 var repackCommand = cli.Command{
 	Name:  "repack",
 	Usage: "repacks an OCI runtime bundle into a reference",
-	ArgsUsage: `--image <image-path> --from <reference> --bundle <bundle-path>
+	ArgsUsage: `--image <image-path> --bundle <bundle-path>
 
-Where "<image-path>" is the path to the OCI image, "<reference>" is the name of
-the reference descriptor which was used to generate the original runtime bundle
-and "<bundle-path>" is the destination to repack the image to.
+Where "<image-path>" is the path to the OCI image, and "<bundle-path>" is the
+bundle from which to generate the required layers.
 
 It should be noted that this is not the same as oci-create-layer because it
 uses go-mtree to create diff layers from runtime bundles unpacked with
@@ -58,28 +56,12 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Usage: "path to OCI image bundle",
 		},
 		cli.StringFlag{
-			Name:  "from",
-			Usage: "reference descriptor name to repack",
-		},
-		cli.StringFlag{
 			Name:  "bundle",
 			Usage: "destination bundle path",
 		},
 		cli.StringFlag{
 			Name:  "tag",
 			Usage: "tag name for repacked image",
-		},
-		cli.StringSliceFlag{
-			Name:  "uid-map",
-			Usage: "specifies a uid mapping to use when repacking",
-		},
-		cli.StringSliceFlag{
-			Name:  "gid-map",
-			Usage: "specifies a gid mapping to use when repacking",
-		},
-		cli.BoolFlag{
-			Name:  "rootless",
-			Usage: "enable rootless unpacking support",
 		},
 	},
 
@@ -96,48 +78,23 @@ func repack(ctx *cli.Context) error {
 	if bundlePath == "" {
 		return fmt.Errorf("bundle path cannot be empty")
 	}
-	fromName := ctx.String("from")
-	if fromName == "" {
-		return fmt.Errorf("reference name cannot be empty")
+
+	// Read the metadata first.
+	meta, err := ReadBundleMeta(bundlePath)
+	if err != nil {
+		return fmt.Errorf("error reading umoci.json metadata: %s", err)
 	}
 
-	// Parse map options.
-	mapOptions := layer.MapOptions{
-		Rootless: ctx.Bool("rootless"),
-	}
-	// We need to set mappings if we're in rootless mode.
-	if mapOptions.Rootless {
-		if !ctx.IsSet("uid-map") {
-			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
-			logrus.WithFields(logrus.Fields{
-				"map.uid": ctx.StringSlice("uid-map"),
-			}).Info("setting default rootless --uid-map option")
-		}
-		if !ctx.IsSet("gid-map") {
-			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
-			logrus.WithFields(logrus.Fields{
-				"map.gid": ctx.StringSlice("gid-map"),
-			}).Info("setting default rootless --gid-map option")
-		}
-	}
-	for _, uidmap := range ctx.StringSlice("uid-map") {
-		idMap, err := idtools.ParseMapping(uidmap)
-		if err != nil {
-			return fmt.Errorf("failure parsing --uid-map %s: %s", uidmap, err)
-		}
-		mapOptions.UIDMappings = append(mapOptions.UIDMappings, idMap)
-	}
-	for _, gidmap := range ctx.StringSlice("gid-map") {
-		idMap, err := idtools.ParseMapping(gidmap)
-		if err != nil {
-			return fmt.Errorf("failure parsing --gid-map %s: %s", gidmap, err)
-		}
-		mapOptions.GIDMappings = append(mapOptions.GIDMappings, idMap)
-	}
 	logrus.WithFields(logrus.Fields{
-		"map.uid": mapOptions.UIDMappings,
-		"map.gid": mapOptions.GIDMappings,
-	}).Infof("parsed mappings")
+		"version":     meta.Version,
+		"from":        meta.From,
+		"map_options": meta.MapOptions,
+	}).Debugf("umoci: loaded UmociMeta metadata")
+
+	// FIXME: Implement support for manifest lists.
+	if meta.From.MediaType != v1.MediaTypeImageManifest {
+		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType)
+	}
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -146,24 +103,13 @@ func repack(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
-	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
-	if err != nil {
-		return err
-	}
-
-	// FIXME: Implement support for manifest lists.
-	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
-	}
-
-	mtreeName := strings.Replace(fromDescriptor.Digest, "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
 	logrus.WithFields(logrus.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
-		"ref":    fromName,
 		"rootfs": layer.RootfsName,
 		"mtree":  mtreePath,
 	}).Debugf("umoci: repacking OCI image")
@@ -185,7 +131,7 @@ func repack(ctx *cli.Context) error {
 		"keywords": keywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, mapOptions.Rootless)
+	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, meta.MapOptions.Rootless)
 	if err != nil {
 		return err
 	}
@@ -194,7 +140,7 @@ func repack(ctx *cli.Context) error {
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
-	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &mapOptions)
+	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
 	if err != nil {
 		return err
 	}
@@ -250,7 +196,7 @@ func repack(ctx *cli.Context) error {
 		"size":   layerSize,
 	}).Debugf("umoci: generated new diff layer")
 
-	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
+	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
 	if err != nil {
 		return err
 	}
@@ -331,6 +277,7 @@ func repack(ctx *cli.Context) error {
 		"size":      newDescriptor.Size,
 	}).Infof("created new image")
 
+	// FIXME: This should be mandatory.
 	tagName := ctx.String("tag")
 	if tagName == "" {
 		return nil
