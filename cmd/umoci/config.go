@@ -250,6 +250,16 @@ func config(ctx *cli.Context) error {
 		return err
 	}
 
+	// Add a history entry about the fact we just changed the config.
+	// FIXME: It should be possible to disable this.
+	g.AddHistory(v1.History{
+		Created:    time.Now().Format(igen.ISO8601),
+		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
+		Author:     g.Author(),     // XXX: Should this be a cli flag?
+		Comment:    "",             // FIXME: Actually add support for this.
+		EmptyLayer: true,
+	})
+
 	// Update config and create a new blob for it.
 	*config = g.Image()
 	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)

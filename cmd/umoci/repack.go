@@ -238,6 +238,16 @@ func repack(ctx *cli.Context) error {
 	// Append our new layer to the set of DiffIDs.
 	g.AddRootfsDiffID(layerDiffID)
 
+	// We need to add a history entry here, since a lot of tooling depends on
+	// the EmptyLayer == false semantics of Docker's history.
+	g.AddHistory(v1.History{
+		Created:    time.Now().Format(igen.ISO8601),
+		CreatedBy:  "umoci repack",                               // XXX: Should we append argv to this?
+		Author:     g.Author(),                                   // XXX: Should this be a cli flag?
+		Comment:    fmt.Sprintf("repack diffid %s", layerDiffID), // FIXME: Actually add support for this in the CLi.
+		EmptyLayer: false,
+	})
+
 	// Update config and create a new blob for it.
 	*config = g.Image()
 	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
