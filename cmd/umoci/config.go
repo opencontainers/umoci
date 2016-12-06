@@ -18,7 +18,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -44,8 +43,7 @@ var configFlags = []cli.Flag{
 	// FIXME: These aren't really safe to expose.
 	//cli.StringFlag{Name: "rootfs.type"},
 	//cli.StringSliceFlag{Name: "rootfs.diffids"},
-	cli.StringSliceFlag{Name: "history"}, // FIXME: Implement this is a way that isn't super dodgy.
-	cli.StringFlag{Name: "created"},      // FIXME: Implement TimeFlag.
+	cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 	cli.StringFlag{Name: "author"},
 	cli.StringFlag{Name: "architecture"},
 	cli.StringFlag{Name: "os"},
@@ -101,8 +99,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 			case "rootfs.diffids":
 				//g.ClearRootfsDiffIDs()
 				return fmt.Errorf("clear rootfs.diffids is not safe")
-			case "history":
-				g.ClearHistory()
 			default:
 				return fmt.Errorf("unknown set to clear: %s", key)
 			}
@@ -172,17 +168,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 	if ctx.IsSet("rootfs.diffids") {
 		for _, diffid := range ctx.StringSlice("rootfs.diffid") {
 			g.AddRootfsDiffID(diffid)
-		}
-	}
-	// FIXME: Also implement this is a way that isn't broken (using string is broken).
-	if ctx.IsSet("history") {
-		// This is a JSON-encoded version of v1.History. I'm sorry.
-		for _, historyJSON := range ctx.StringSlice("history") {
-			var history v1.History
-			if err := json.Unmarshal([]byte(historyJSON), &history); err != nil {
-				return fmt.Errorf("error reading --history argument: %s", err)
-			}
-			g.AddHistory(history)
 		}
 	}
 	return nil

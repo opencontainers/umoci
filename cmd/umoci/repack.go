@@ -25,10 +25,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
-	"github.com/cyphar/umoci/image/generator"
+	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
@@ -229,7 +230,7 @@ func repack(ctx *cli.Context) error {
 		return fmt.Errorf("config blob type not implemented: %s", configBlob.MediaType)
 	}
 
-	g, err := generator.NewFromImage(*config)
+	g, err := igen.NewFromImage(*config)
 	if err != nil {
 		return err
 	}

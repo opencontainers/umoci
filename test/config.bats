@@ -491,19 +491,10 @@ function teardown() {
 
 # XXX: This doesn't do any actual testing of the results of any of these flags.
 # This needs to be fixed after we implement raw-cat or something like that.
-@test "umoci config --[author+created+history]" {
+@test "umoci config --[author+created]" {
 	# Modify everything.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00" \
-	             --clear=history --history '{"created_by": "ls -la", "comment": "should work", "author": "me", "empty_layer": false, "created": "2016-03-25T12:34:02.655002+11:00"}' \
-	             --history '{"created_by": "ls -la", "author": "me", "empty_layer": false}'
 	[ "$status" -eq 0 ]
-
-	# Make sure that --history doesn't work with a random string.
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history "some random string"
-	[ "$status" -ne 0 ]
-	# FIXME It turns out that Go's JSON parser will ignore unknown keys...
-	#umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history '{"unknown key": 12, "created_by": "ls -la", "comment": "should not work"}'
-	#[ "$status" -ne 0 ]
 
 	# Make sure that --created doesn't work with a random string.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="not a date"
@@ -511,3 +502,6 @@ function teardown() {
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="Jan 04 2004"
 	[ "$status" -ne 0 ]
 }
+
+# TODO: Add tests for --history. Especially that repack generates the necessary
+#       history information. Unfortunately there isn't a nice CLI flag for this.
