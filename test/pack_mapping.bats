@@ -64,7 +64,7 @@ function teardown() {
 }
 
 # FIXME: It would be nice if we implemented this test with a manual chown.
-@test "umoci repack --uid-map --gid-map" {
+@test "umoci repack [with unpack --uid-map --gid-map]" {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
 
@@ -84,11 +84,11 @@ function teardown() {
 	chown "2000:8000" "$BUNDLE_A/rootfs/new test file "
 
 	# Repack the image using the same mapping.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A" --tag "${TAG}-new" --uid-map "1337:0:65535" --gid-map "7331:0:65535"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
 
 	# Unpack it again with a different mapping.
-	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B"  --uid-map "4000:0:65535" --gid-map "4000:0:65535"
+	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B" --uid-map "4000:0:65535" --gid-map "4000:0:65535"
 	[ "$status" -eq 0 ]
 
 	# Make sure that the test file is different.

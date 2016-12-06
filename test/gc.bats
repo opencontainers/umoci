@@ -65,7 +65,7 @@ function teardown() {
 	chmod +w "$BUNDLE/rootfs/etc/." && rm -rf "$BUNDLE/rootfs/etc"
 
 	# Repack the image under a new tag.
-	umoci repack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE" --tag "${TAG}-new"
+	umoci repack --image "$IMAGE" --bundle "$BUNDLE" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
 
 	# Make sure the number of blobs has changed.

@@ -111,12 +111,13 @@ func unpack(ctx *cli.Context) error {
 		return fmt.Errorf("reference name cannot be empty")
 	}
 
+	var meta UmociMeta
+	meta.Version = ctx.App.Version
+
 	// Parse map options.
-	mapOptions := layer.MapOptions{
-		Rootless: ctx.Bool("rootless"),
-	}
 	// We need to set mappings if we're in rootless mode.
-	if mapOptions.Rootless {
+	meta.MapOptions.Rootless = ctx.Bool("rootless")
+	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
 			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
 			logrus.WithFields(logrus.Fields{
@@ -136,18 +137,18 @@ func unpack(ctx *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("failure parsing --uid-map %s: %s", uidmap, err)
 		}
-		mapOptions.UIDMappings = append(mapOptions.UIDMappings, idMap)
+		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
 	}
 	for _, gidmap := range ctx.StringSlice("gid-map") {
 		idMap, err := idtools.ParseMapping(gidmap)
 		if err != nil {
 			return fmt.Errorf("failure parsing --gid-map %s: %s", gidmap, err)
 		}
-		mapOptions.GIDMappings = append(mapOptions.GIDMappings, idMap)
+		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
 	logrus.WithFields(logrus.Fields{
-		"map.uid": mapOptions.UIDMappings,
-		"map.gid": mapOptions.GIDMappings,
+		"map.uid": meta.MapOptions.UIDMappings,
+		"map.gid": meta.MapOptions.GIDMappings,
 	}).Infof("parsed mappings")
 
 	// Get a reference to the CAS.
@@ -161,7 +162,9 @@ func unpack(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
-	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
+	meta.From = *fromDescriptor
+
+	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
 	if err != nil {
 		return err
 	}
@@ -169,10 +172,10 @@ func unpack(ctx *cli.Context) error {
 
 	// FIXME: Implement support for manifest lists.
 	if manifestBlob.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
+		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType)
 	}
 
-	mtreeName := strings.Replace(fromDescriptor.Digest, "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -188,7 +191,7 @@ func unpack(ctx *cli.Context) error {
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
-		return fmt.Errorf("failed to create bundle path: %q", err)
+		return fmt.Errorf("failed to create bundle path: %s", err)
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
@@ -205,8 +208,8 @@ func unpack(ctx *cli.Context) error {
 	//        extraction). I'm considering reimplementing it just so there are
 	//        competing implementations of this extraction functionality.
 	//           https://github.com/opencontainers/image-tools/issues/74
-	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest, &mapOptions); err != nil {
-		return fmt.Errorf("failed to create runtime bundle: %q", err)
+	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
+		return fmt.Errorf("failed to create runtime bundle: %s", err)
 	}
 
 	// Create the mtree manifest.
@@ -223,21 +226,31 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, mapOptions.Rootless)
+	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, meta.MapOptions.Rootless)
 	if err != nil {
-		return fmt.Errorf("failed to generate mtree spec: %q", err)
+		return fmt.Errorf("failed to generate mtree spec: %s", err)
 	}
 
 	fh, err := os.OpenFile(mtreePath, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open mtree spec for writing: %q", err)
+		return fmt.Errorf("failed to open mtree spec for writing: %s", err)
 	}
 	defer fh.Close()
 
 	logrus.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
-		return fmt.Errorf("failed to write mtree spec: %q", err)
+		return fmt.Errorf("failed to write mtree spec: %s", err)
+	}
+
+	logrus.WithFields(logrus.Fields{
+		"version":     meta.Version,
+		"from":        meta.From,
+		"map_options": meta.MapOptions,
+	}).Debugf("umoci: saving UmociMeta metadata")
+
+	if err := WriteBundleMeta(bundlePath, meta); err != nil {
+		return fmt.Errorf("failed to write umoci.json metadata: %s", err)
 	}
 
 	logrus.Debugf("umoci: unpacking complete")
