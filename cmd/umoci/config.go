@@ -18,7 +18,6 @@
 package main
 
 import (
-	"encoding/json"
 	"fmt"
 	"time"
 
@@ -44,8 +43,7 @@ var configFlags = []cli.Flag{
 	// FIXME: These aren't really safe to expose.
 	//cli.StringFlag{Name: "rootfs.type"},
 	//cli.StringSliceFlag{Name: "rootfs.diffids"},
-	cli.StringSliceFlag{Name: "history"}, // FIXME: Implement this is a way that isn't super dodgy.
-	cli.StringFlag{Name: "created"},      // FIXME: Implement TimeFlag.
+	cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 	cli.StringFlag{Name: "author"},
 	cli.StringFlag{Name: "architecture"},
 	cli.StringFlag{Name: "os"},
@@ -82,6 +80,24 @@ based.`,
 			Name:  "tag",
 			Usage: "tag name for repacked image",
 		},
+		// XXX: These flags are replicated for umoci-repack. This should be
+		//      refactored.
+		cli.StringFlag{
+			Name:  "history.comment",
+			Usage: "comment for the history entry corresponding to the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.created_by",
+			Usage: "created_by value for the history entry corresponding to the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.author",
+			Usage: "author value for the history entry corresponding to the the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.created",
+			Usage: "created value for the history entry corresponding to the the modified configuration",
+		},
 	},
 
 	Action: config,
@@ -101,8 +117,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 			case "rootfs.diffids":
 				//g.ClearRootfsDiffIDs()
 				return fmt.Errorf("clear rootfs.diffids is not safe")
-			case "history":
-				g.ClearHistory()
 			default:
 				return fmt.Errorf("unknown set to clear: %s", key)
 			}
@@ -172,17 +186,6 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 	if ctx.IsSet("rootfs.diffids") {
 		for _, diffid := range ctx.StringSlice("rootfs.diffid") {
 			g.AddRootfsDiffID(diffid)
-		}
-	}
-	// FIXME: Also implement this is a way that isn't broken (using string is broken).
-	if ctx.IsSet("history") {
-		// This is a JSON-encoded version of v1.History. I'm sorry.
-		for _, historyJSON := range ctx.StringSlice("history") {
-			var history v1.History
-			if err := json.Unmarshal([]byte(historyJSON), &history); err != nil {
-				return fmt.Errorf("error reading --history argument: %s", err)
-			}
-			g.AddHistory(history)
 		}
 	}
 	return nil
@@ -264,6 +267,36 @@ func config(ctx *cli.Context) error {
 	if err := mutateConfig(g, ctx); err != nil {
 		return err
 	}
+
+	var (
+		created   = ctx.String("history.created")
+		createdBy = ctx.String("history.created_by")
+		author    = ctx.String("history.author")
+		comment   = ctx.String("history.comment")
+	)
+
+	if created == "" {
+		// XXX: We really should make sure that the format of this is right.
+		//      Also, does this option _really_ make sense?
+		created = time.Now().Format(igen.ISO8601)
+	}
+	if createdBy == "" {
+		// XXX: Should we append argv to this?
+		createdBy = "umoci repack"
+	}
+	if author == "" {
+		author = g.Author()
+	}
+
+	// Add a history entry about the fact we just changed the config.
+	// FIXME: It should be possible to disable this.
+	g.AddHistory(v1.History{
+		Created:    created,
+		CreatedBy:  createdBy,
+		Author:     author,
+		Comment:    comment,
+		EmptyLayer: true,
+	})
 
 	// Update config and create a new blob for it.
 	*config = g.Image()

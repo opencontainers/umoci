@@ -25,10 +25,11 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
-	"github.com/cyphar/umoci/image/generator"
+	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
@@ -62,6 +63,24 @@ manifest and configuration information uses the new diff atop the old manifest.`
 		cli.StringFlag{
 			Name:  "tag",
 			Usage: "tag name for repacked image",
+		},
+		// XXX: These flags are replicated for umoci-config. This should be
+		//      refactored.
+		cli.StringFlag{
+			Name:  "history.comment",
+			Usage: "comment for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.created_by",
+			Usage: "created_by value for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.author",
+			Usage: "author value for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.created",
+			Usage: "created value for the history entry corresponding to the the modified configuration",
 		},
 	},
 
@@ -229,13 +248,46 @@ func repack(ctx *cli.Context) error {
 		return fmt.Errorf("config blob type not implemented: %s", configBlob.MediaType)
 	}
 
-	g, err := generator.NewFromImage(*config)
+	g, err := igen.NewFromImage(*config)
 	if err != nil {
 		return err
 	}
 
 	// Append our new layer to the set of DiffIDs.
 	g.AddRootfsDiffID(layerDiffID)
+
+	var (
+		created   = ctx.String("history.created")
+		createdBy = ctx.String("history.created_by")
+		author    = ctx.String("history.author")
+		comment   = ctx.String("history.comment")
+	)
+
+	if created == "" {
+		// XXX: We really should make sure that the format of this is right.
+		//      Also, does this option _really_ make sense?
+		created = time.Now().Format(igen.ISO8601)
+	}
+	if createdBy == "" {
+		// XXX: Should we append argv to this?
+		createdBy = "umoci repack"
+	}
+	if author == "" {
+		author = g.Author()
+	}
+	if comment == "" {
+		comment = fmt.Sprintf("repack diffid %s", layerDiffID)
+	}
+
+	// We need to add a history entry here, since a lot of tooling depends on
+	// the EmptyLayer == false semantics of Docker's history.
+	g.AddHistory(v1.History{
+		Created:    created,
+		CreatedBy:  createdBy,
+		Author:     author,
+		Comment:    comment,
+		EmptyLayer: false,
+	})
 
 	// Update config and create a new blob for it.
 	*config = g.Image()

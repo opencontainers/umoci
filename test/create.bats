@@ -86,4 +86,10 @@ function teardown() {
 	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "null" ]]
+
+	# Check that the history looks sane.
+	umoci stat --image "$NEWIMAGE" --tag "latest" --json
+	[ "$status" -eq 0 ]
+	# There should be no non-empty_layers.
+	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == false] | any')" == "false" ]]
 }

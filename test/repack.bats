@@ -64,6 +64,20 @@ function teardown() {
 	[ -d "$BUNDLE_B/rootfs/newdir" ]
 	[ -f "$BUNDLE_B/rootfs/newdir/anotherfile" ]
 	[ -L "$BUNDLE_B/rootfs/newdir/link" ]
+
+	# Make sure we added a new layer.
+	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SM '.history | length')"
+
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SM '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# Make sure that the new layer is a non-empty_layer.
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
 }
 
 @test "umoci repack [whiteout]" {
@@ -102,6 +116,11 @@ function teardown() {
 	! [ -e "$BUNDLE_A/rootfs/etc" ]
 	! [ -e "$BUNDLE_A/rootfs/bin/sh" ]
 	! [ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
+
+	# Make sure that the new layer is a non-empty_layer.
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
 }
 
 @test "umoci repack [replace]" {
@@ -144,6 +163,53 @@ function teardown() {
 	[ -f "$BUNDLE_A/rootfs/etc" ]
 	[ -d "$BUNDLE_A/rootfs/bin/sh" ]
 	[ -L "$BUNDLE_A/rootfs/usr/bin/env" ]
+
+	# Make sure that the new layer is a non-empty_layer.
+	umoci stat --image "$IMAGE" --tag "${TAG}" --json
+	[ "$status" -eq 0 ]
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+}
+
+@test "umoci repack --history.*" {
+	BUNDLE="$(setup_bundle)"
+
+	# Unpack the image.
+	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+
+	# Make some small change.
+	touch "$BUNDLE/a_small_change"
+	now="$(date --iso-8601=seconds)"
+
+	# Repack the image, setting history values.
+	umoci repack --image "$IMAGE" --bundle="$BUNDLE" --tag "${TAG}-new" \
+		--history.author="Some Author <jane@blogg.com>" \
+		--history.comment="Made a_small_change." \
+		--history.created_by="touch '$BUNDLE/a_small_change'" \
+		--history.created="$now"
+	[ "$status" -eq 0 ]
+
+	# Make sure that the history was modified.
+	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SMr '.history | length')"
+
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SMr '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# The final layer should not be an empty_layer now.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "false" ]]
+	# The author should've changed to --history.author.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Some Author <jane@blogg.com>" ]]
+	# The comment should be added.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].comment')" == "Made a_small_change." ]]
+	# The created_by should be set.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].created_by')" == "touch '$BUNDLE/a_small_change'" ]]
+	# The created should be set.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "$now" ]]
 }
 
 # TODO: Test hardlinks once we fix the hardlink issue. https://github.com/cyphar/umoci/issues/29

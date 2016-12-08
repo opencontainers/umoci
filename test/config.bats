@@ -50,6 +50,20 @@ function teardown() {
 	sane_run diff -u "$BATS_TMPDIR/a-config.json" "$BATS_TMPDIR/b-config.json"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+
+	# Make sure that the history was modified.
+	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SM '.history | length')"
+
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SM '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# The final layer should be an empty_layer now.
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "true" ]]
 }
 
 @test "umoci config --config.user 'user'" {
@@ -491,23 +505,64 @@ function teardown() {
 
 # XXX: This doesn't do any actual testing of the results of any of these flags.
 # This needs to be fixed after we implement raw-cat or something like that.
-@test "umoci config --[author+created+history]" {
+@test "umoci config --[author+created]" {
 	# Modify everything.
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00" \
-	             --clear=history --history '{"created_by": "ls -la", "comment": "should work", "author": "me", "empty_layer": false, "created": "2016-03-25T12:34:02.655002+11:00"}' \
-	             --history '{"created_by": "ls -la", "author": "me", "empty_layer": false}'
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00"
 	[ "$status" -eq 0 ]
 
-	# Make sure that --history doesn't work with a random string.
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history "some random string"
-	[ "$status" -ne 0 ]
-	# FIXME It turns out that Go's JSON parser will ignore unknown keys...
-	#umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --history '{"unknown key": 12, "created_by": "ls -la", "comment": "should not work"}'
-	#[ "$status" -ne 0 ]
-
 	# Make sure that --created doesn't work with a random string.
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="not a date"
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --created="not a date"
 	[ "$status" -ne 0 ]
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --created="Jan 04 2004"
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --created="Jan 04 2004"
 	[ "$status" -ne 0 ]
+
+	# Make sure that the history was modified and the author is now me.
+	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SMr '.history | length')"
+
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SMr '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# The final layer should be an empty_layer now.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "true" ]]
+	# The author should've changed.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <asarai@suse.com>" ]]
+}
+
+# XXX: We don't do any testing of --author and that the config is changed properly.
+@test "umoci config --history.*" {
+	# Modify something and set the history values.
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" \
+		--history.author="Not Aleksa <someone@else.com>" \
+		--history.comment="/* Not a real comment. */" \
+		--history.created_by="-- <bats> integration test --" \
+		--history.created="2016-12-09T04:45:40+11:00" \
+		--author="Aleksa Sarai <asarai@suse.com>"
+	[ "$status" -eq 0 ]
+
+	# Make sure that the history was modified.
+	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SMr '.history | length')"
+
+	umoci stat --image "$IMAGE" --tag "${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SMr '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# The final layer should be an empty_layer now.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "true" ]]
+	# The author should've changed to --history.author.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Not Aleksa <someone@else.com>" ]]
+	# The comment should be added.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].comment')" == "/* Not a real comment. */" ]]
+	# The created_by should be set.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].created_by')" == "-- <bats> integration test --" ]]
+	# The created should be set.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "2016-12-09T04:45:40+11:00" ]]
 }
