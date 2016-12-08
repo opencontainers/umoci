@@ -80,6 +80,7 @@ func main() {
 		gcCommand,
 		createCommand,
 		tagCommand,
+		statCommand,
 	}
 
 	// Actually run umoci.

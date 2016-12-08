@@ -47,7 +47,7 @@ func (e Entry) Descend(filename string) *Entry {
 func (e Entry) Find(filepath string) *Entry {
 	resultnode := &e
 	for _, path := range strings.Split(filepath, "/") {
-		encoded, err := Vis(path)
+		encoded, err := Vis(path, DefaultVisFlags)
 		if err != nil {
 			return nil
 		}
