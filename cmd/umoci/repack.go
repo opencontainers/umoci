@@ -64,6 +64,24 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Name:  "tag",
 			Usage: "tag name for repacked image",
 		},
+		// XXX: These flags are replicated for umoci-config. This should be
+		//      refactored.
+		cli.StringFlag{
+			Name:  "history.comment",
+			Usage: "comment for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.created_by",
+			Usage: "created_by value for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.author",
+			Usage: "author value for the history entry corresponding to the new layer",
+		},
+		cli.StringFlag{
+			Name:  "history.created",
+			Usage: "created value for the history entry corresponding to the the modified configuration",
+		},
 	},
 
 	Action: repack,
@@ -238,13 +256,36 @@ func repack(ctx *cli.Context) error {
 	// Append our new layer to the set of DiffIDs.
 	g.AddRootfsDiffID(layerDiffID)
 
+	var (
+		created   = ctx.String("history.created")
+		createdBy = ctx.String("history.created_by")
+		author    = ctx.String("history.author")
+		comment   = ctx.String("history.comment")
+	)
+
+	if created == "" {
+		// XXX: We really should make sure that the format of this is right.
+		//      Also, does this option _really_ make sense?
+		created = time.Now().Format(igen.ISO8601)
+	}
+	if createdBy == "" {
+		// XXX: Should we append argv to this?
+		createdBy = "umoci repack"
+	}
+	if author == "" {
+		author = g.Author()
+	}
+	if comment == "" {
+		comment = fmt.Sprintf("repack diffid %s", layerDiffID)
+	}
+
 	// We need to add a history entry here, since a lot of tooling depends on
 	// the EmptyLayer == false semantics of Docker's history.
 	g.AddHistory(v1.History{
-		Created:    time.Now().Format(igen.ISO8601),
-		CreatedBy:  "umoci repack",                               // XXX: Should we append argv to this?
-		Author:     g.Author(),                                   // XXX: Should this be a cli flag?
-		Comment:    fmt.Sprintf("repack diffid %s", layerDiffID), // FIXME: Actually add support for this in the CLi.
+		Created:    created,
+		CreatedBy:  createdBy,
+		Author:     author,
+		Comment:    comment,
 		EmptyLayer: false,
 	})
 

@@ -80,6 +80,24 @@ based.`,
 			Name:  "tag",
 			Usage: "tag name for repacked image",
 		},
+		// XXX: These flags are replicated for umoci-repack. This should be
+		//      refactored.
+		cli.StringFlag{
+			Name:  "history.comment",
+			Usage: "comment for the history entry corresponding to the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.created_by",
+			Usage: "created_by value for the history entry corresponding to the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.author",
+			Usage: "author value for the history entry corresponding to the the modified configuration",
+		},
+		cli.StringFlag{
+			Name:  "history.created",
+			Usage: "created value for the history entry corresponding to the the modified configuration",
+		},
 	},
 
 	Action: config,
@@ -250,13 +268,33 @@ func config(ctx *cli.Context) error {
 		return err
 	}
 
+	var (
+		created   = ctx.String("history.created")
+		createdBy = ctx.String("history.created_by")
+		author    = ctx.String("history.author")
+		comment   = ctx.String("history.comment")
+	)
+
+	if created == "" {
+		// XXX: We really should make sure that the format of this is right.
+		//      Also, does this option _really_ make sense?
+		created = time.Now().Format(igen.ISO8601)
+	}
+	if createdBy == "" {
+		// XXX: Should we append argv to this?
+		createdBy = "umoci repack"
+	}
+	if author == "" {
+		author = g.Author()
+	}
+
 	// Add a history entry about the fact we just changed the config.
 	// FIXME: It should be possible to disable this.
 	g.AddHistory(v1.History{
-		Created:    time.Now().Format(igen.ISO8601),
-		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
-		Author:     g.Author(),     // XXX: Should this be a cli flag?
-		Comment:    "",             // FIXME: Actually add support for this.
+		Created:    created,
+		CreatedBy:  createdBy,
+		Author:     author,
+		Comment:    comment,
 		EmptyLayer: true,
 	})
 
