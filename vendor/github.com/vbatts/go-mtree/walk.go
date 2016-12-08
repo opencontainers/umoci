@@ -163,7 +163,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, rootless bool
 				}
 			}
 		}
-		encodedEntryName, err := Vis(entryPathName)
+		encodedEntryName, err := Vis(entryPathName, DefaultVisFlags)
 		if err != nil {
 			return err
 		}

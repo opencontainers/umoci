@@ -128,7 +128,7 @@ hdrloop:
 			return
 		}
 		// Alright, it's either file or directory
-		encodedName, err := Vis(filepath.Base(hdr.Name))
+		encodedName, err := Vis(filepath.Base(hdr.Name), DefaultVisFlags)
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
@@ -248,7 +248,7 @@ func populateTree(root, e *Entry, hdr *tar.Header) error {
 	dirNames := strings.Split(wd, "/")
 	parent := root
 	for _, name := range dirNames[:] {
-		encoded, err := Vis(name)
+		encoded, err := Vis(name, DefaultVisFlags)
 		if err != nil {
 			return err
 		}

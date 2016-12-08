@@ -119,7 +119,7 @@ var (
 	linkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if sys, ok := info.Sys().(*tar.Header); ok {
 			if sys.Linkname != "" {
-				linkname, err := Vis(sys.Linkname)
+				linkname, err := Vis(sys.Linkname, DefaultVisFlags)
 				if err != nil {
 					return emptyKV, err
 				}
@@ -133,7 +133,7 @@ var (
 			if err != nil {
 				return emptyKV, err
 			}
-			linkname, err := Vis(str)
+			linkname, err := Vis(str, DefaultVisFlags)
 			if err != nil {
 				return emptyKV, err
 			}
