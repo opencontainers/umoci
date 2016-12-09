@@ -60,25 +60,21 @@ func init() {
 var configCommand = cli.Command{
 	Name:  "config",
 	Usage: "modifies the image configuration of an OCI image",
-	ArgsUsage: `--image <image-path> --from <reference>
+	ArgsUsage: `--image <image-path>[:<tag>] [--tag <new-tag>]
 
-Where "<image-path>" is the path to the OCI image, and "<reference>" is the
-name of the reference descriptor from which the config modifications will be
-based.`,
+Where "<image-path>" is the path to the OCI image, and "<tag>" is the name of
+the tagged image from which the config modifications will be based (if not
+specified, it defaults to "latest"). "<new-tag>" is the new reference name to
+save the new image as, if this is not specified then umoci will replace the old
+image.`,
+
+	// config modifies a particular image manifest.
+	Category: "image",
 
 	Flags: []cli.Flag{
-		// FIXME: This really should be a global option.
-		cli.StringFlag{
-			Name:  "image",
-			Usage: "path to OCI image bundle",
-		},
-		cli.StringFlag{
-			Name:  "from",
-			Usage: "reference descriptor name to modify",
-		},
 		cli.StringFlag{
 			Name:  "tag",
-			Usage: "tag name for repacked image",
+			Usage: "tag name for repacked image (if not specified then the original tag will be clobbered)",
 		},
 		// XXX: These flags are replicated for umoci-repack. This should be
 		//      refactored.
@@ -192,14 +188,13 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 }
 
 func config(ctx *cli.Context) error {
-	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.String("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
-	fromName := ctx.String("from")
-	if fromName == "" {
-		return fmt.Errorf("reference name cannot be empty")
+	imagePath := ctx.App.Metadata["layout"].(string)
+	fromName := ctx.App.Metadata["tag"].(string)
+
+	tagName := ctx.String("tag")
+	if tagName == "" {
+		// By default we clobber the old tag.
+		tagName = fromName
 	}
 
 	// Get a reference to the CAS.
@@ -336,11 +331,6 @@ func config(ctx *cli.Context) error {
 		"digest":    newDescriptor.Digest,
 		"size":      newDescriptor.Size,
 	}).Infof("created new image")
-
-	tagName := ctx.String("tag")
-	if tagName == "" {
-		return nil
-	}
 
 	// We have to clobber the old reference.
 	// XXX: Should we output some warning if we actually did remove an old

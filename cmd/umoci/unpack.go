@@ -36,26 +36,20 @@ import (
 var unpackCommand = cli.Command{
 	Name:  "unpack",
 	Usage: "unpacks a reference into an OCI runtime bundle",
-	ArgsUsage: `--image <image-path> --from <reference> --bundle <bundle-path>
+	ArgsUsage: `--image <image-path>[:<tag>] --bundle <bundle-path>
 
-Where "<image-path>" is the path to the OCI image, "<reference>" is the name of
-the reference descriptor to unpacka and "<bundle-path>" is the destination to
-unpack the image to.
+Where "<image-path>" is the path to the OCI image, "<tag>" is the name of the
+tagged image to unpack (if not specified, defaults to "latest") and
+"<bundle-path>" is the destination to unpack the image to.
 
 It should be noted that this is not the same as oci-create-runtime-bundle,
 because this command also will create an mtree specification to allow for layer
 creation with umoci-repack(1).`,
 
+	// unpack reads manifest information.
+	Category: "image",
+
 	Flags: []cli.Flag{
-		// FIXME: This really should be a global option.
-		cli.StringFlag{
-			Name:  "image",
-			Usage: "path to OCI image bundle",
-		},
-		cli.StringFlag{
-			Name:  "from",
-			Usage: "reference descriptor name to unpack",
-		},
 		cli.StringFlag{
 			Name:  "bundle",
 			Usage: "destination bundle path",
@@ -97,18 +91,12 @@ func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descrip
 }
 
 func unpack(ctx *cli.Context) error {
+	imagePath := ctx.App.Metadata["layout"].(string)
+	fromName := ctx.App.Metadata["tag"].(string)
 	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.String("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
 	bundlePath := ctx.String("bundle")
 	if bundlePath == "" {
 		return fmt.Errorf("bundle path cannot be empty")
-	}
-	fromName := ctx.String("from")
-	if fromName == "" {
-		return fmt.Errorf("reference name cannot be empty")
 	}
 
 	var meta UmociMeta

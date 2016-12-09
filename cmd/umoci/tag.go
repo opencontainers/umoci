@@ -43,21 +43,18 @@ func isValidMediaType(mediaType string) bool {
 	return ok
 }
 
+// TODO: Completely rework this command.
+
 var tagCommand = cli.Command{
 	Name:  "tag",
 	Usage: "manipulate the references in an OCI image",
-	ArgsUsage: `--image <image-path>
+	ArgsUsage: `--layout <image-path>
 
 Where "<image-path>" is the path to the OCI image. Use the subcommands to
 modify tags within the image specified.`,
 
-	Flags: []cli.Flag{
-		// FIXME: This really should be a global option.
-		cli.StringFlag{
-			Name:  "image",
-			Usage: "path to OCI image bundle",
-		},
-	},
+	// tag modifies an image layout.
+	Category: "layout",
 
 	Subcommands: []cli.Command{
 		tagAddCommand,
@@ -97,11 +94,8 @@ auto-detected).`,
 }
 
 func tagAdd(ctx *cli.Context) error {
+	imagePath := ctx.App.Metadata["layout"].(string)
 	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.GlobalString("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
 	tagName := ctx.String("tag")
 	if tagName == "" {
 		return fmt.Errorf("tag name cannot be empty")
@@ -175,11 +169,8 @@ emitted if the tag did not exist before running this command.`,
 }
 
 func tagRemove(ctx *cli.Context) error {
+	imagePath := ctx.App.Metadata["layout"].(string)
 	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.GlobalString("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
 	tagName := ctx.String("tag")
 	if tagName == "" {
 		return fmt.Errorf("tag name cannot be empty")
@@ -218,11 +209,7 @@ reference.`,
 }
 
 func tagList(ctx *cli.Context) error {
-	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.GlobalString("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
+	imagePath := ctx.App.Metadata["layout"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -267,11 +254,8 @@ The information outputted is a JSON blob with the following fields:
 }
 
 func tagStat(ctx *cli.Context) error {
+	imagePath := ctx.App.Metadata["layout"].(string)
 	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.GlobalString("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
 	tagName := ctx.String("tag")
 	if tagName == "" {
 		return fmt.Errorf("tag name cannot be empty")
