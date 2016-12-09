@@ -23,7 +23,7 @@ RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
     zypper ar -f -p 10 -g obs://home:cyphar obs-cyphar && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
-RUN zypper -n in 'go>=1.6' git make skopeo go-mtree bats jq
+RUN zypper -n in 'go>=1.6' git make skopeo go-mtree bats jq oci-image-tools
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH

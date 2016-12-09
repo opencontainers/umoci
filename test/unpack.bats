@@ -27,6 +27,8 @@ function teardown() {
 @test "umoci unpack" {
 	BUNDLE="$(setup_bundle)"
 
+	verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
@@ -46,10 +48,14 @@ function teardown() {
 	gomtree -p "$BUNDLE/rootfs" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+
+	verify "$IMAGE"
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
 	BUNDLE="$(setup_bundle)"
+
+	verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
@@ -59,11 +65,15 @@ function teardown() {
 	sane_run jq -SM 'any(.linux.namespaces[] | .type; . == "mount")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
+
+	verify "$IMAGE"
 }
 
 @test "umoci unpack [consistent results]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
+
+	verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
@@ -80,6 +90,8 @@ function teardown() {
 	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+
+	verify "$IMAGE"
 }
 
 # TODO: Add a test using OCI extraction and verify it with go-mtree.

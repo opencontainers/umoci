@@ -29,6 +29,8 @@ function teardown() {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
 
+	verify "$IMAGE"
+
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
@@ -61,12 +63,16 @@ function teardown() {
 		[ "$uid" -ge 8080 ] && [ "$uid" -lt "$((8080 + 65535))" ]
 		[ "$gid" -ge 7777 ] && [ "$gid" -lt "$((7777 + 65535))" ]
 	done
+
+	verify "$IMAGE"
 }
 
 # FIXME: It would be nice if we implemented this test with a manual chown.
 @test "umoci repack [with unpack --uid-map --gid-map]" {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
+
+	verify "$IMAGE"
 
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
@@ -86,6 +92,7 @@ function teardown() {
 	# Repack the image using the same mapping.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
+	verify "$IMAGE"
 
 	# Unpack it again with a different mapping.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B" --uid-map "4000:0:65535" --gid-map "4000:0:65535"
@@ -104,4 +111,6 @@ function teardown() {
 	sane_run stat -c '%u:%g' "$BUNDLE_C/rootfs/new test file "
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$((2000 - 1337)):$((8000 - 7331))" ]]
+
+	verify "$IMAGE"
 }

@@ -25,6 +25,8 @@ function teardown() {
 }
 
 @test "umoci stat --json" {
+	verify "$IMAGE"
+
 	# Make sure that stat looks about right.
 	umoci stat --image "$IMAGE" --tag "$TAG" --json
 	[ "$status" -eq 0 ]
@@ -41,6 +43,8 @@ function teardown() {
 	sane_run jq -SMr '[.history[] | .empty_layer == false] | any' "$statFile"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
+
+	verify "$IMAGE"
 }
 
 # TODO: Add a test to make sure that empty_layer and layer are mutually

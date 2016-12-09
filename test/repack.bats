@@ -28,6 +28,8 @@ function teardown() {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
+	verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -48,6 +50,7 @@ function teardown() {
 	# Repack the image under a new tag.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
+	verify "$IMAGE"
 
 	# Unpack it again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B"
@@ -78,11 +81,15 @@ function teardown() {
 	[ "$numLinesB" -gt "$numLinesA" ]
 	# Make sure that the new layer is a non-empty_layer.
 	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+
+	verify "$IMAGE"
 }
 
 @test "umoci repack [whiteout]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
+
+	verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
@@ -101,6 +108,7 @@ function teardown() {
 	# Repack the image under a new tag.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
+	verify "$IMAGE"
 
 	# Unpack it again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B"
@@ -127,6 +135,8 @@ function teardown() {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
+	verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
@@ -148,6 +158,7 @@ function teardown() {
 	# Repack the image under the same tag.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
+	verify "$IMAGE"
 
 	# Unpack it again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
@@ -168,10 +179,14 @@ function teardown() {
 	umoci stat --image "$IMAGE" --tag "${TAG}" --json
 	[ "$status" -eq 0 ]
 	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+
+	verify "$IMAGE"
 }
 
 @test "umoci repack --history.*" {
 	BUNDLE="$(setup_bundle)"
+
+	verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
@@ -188,6 +203,7 @@ function teardown() {
 		--history.created_by="touch '$BUNDLE/a_small_change'" \
 		--history.created="$now"
 	[ "$status" -eq 0 ]
+	verify "$IMAGE"
 
 	# Make sure that the history was modified.
 	umoci stat --image "$IMAGE" --tag "$TAG" --json
@@ -210,6 +226,8 @@ function teardown() {
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created_by')" == "touch '$BUNDLE/a_small_change'" ]]
 	# The created should be set.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "$now" ]]
+
+	verify "$IMAGE"
 }
 
 # TODO: Test hardlinks once we fix the hardlink issue. https://github.com/cyphar/umoci/issues/29

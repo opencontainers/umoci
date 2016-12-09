@@ -47,6 +47,10 @@ function requires() {
 	done
 }
 
+function verify() {
+	oci-image-validate --type "$imageLayout" "$@"
+}
+
 function umoci() {
 	local args=("$@")
 
