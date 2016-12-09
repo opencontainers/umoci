@@ -107,9 +107,11 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image) error {
 	g.SetLinuxResourcesMemorySwap(uint64(image.Config.MemorySwap))
 
 	for vol := range image.Config.Volumes {
-		// XXX: Is it fine to generate source=""?
-		g.AddBindMount("", vol, []string{"rw", "rbind"})
+		// XXX: This is _fine_ but might cause some issues in the future.
+		g.AddTmpfsMount(vol, []string{"rw"})
 	}
+
+	// TODO: Handle annotations (both manifest and config annotations).
 
 	return nil
 }

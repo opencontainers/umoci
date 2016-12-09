@@ -32,6 +32,7 @@ function teardown() {
 	# Create a new image with no tags.
 	umoci create --image "$NEWIMAGE"
 	[ "$status" -eq 0 ]
+	image-verify "$NEWIMAGE"
 
 	# Make sure that there's no references or blobs.
 	sane_run find "$NEWIMAGE/blobs" -type f
@@ -46,6 +47,8 @@ function teardown() {
 	[ -d "$NEWIMAGE/blobs" ]
 	[ -d "$NEWIMAGE/blobs/sha256" ]
 	[ -d "$NEWIMAGE/refs" ]
+
+	image-verify "$NEWIMAGE"
 }
 
 @test "umoci create --image --tag" {
@@ -58,14 +61,19 @@ function teardown() {
 	# Create a new image with another tag.
 	umoci create --image "$NEWIMAGE" --tag "latest"
 	[ "$status" -eq 0 ]
+	# XXX: oci-image-validate doesn't like empty images (without layers)
+	#image-verify "$NEWIMAGE"
 
 	# Modify the config.
 	umoci config --image "$NEWIMAGE" --from "latest" --tag "latest" --config.user "1234:1332"
 	[ "$status" -eq 0 ]
+	# XXX: oci-image-validate doesn't like empty images (without layers)
+	#image-verify "$NEWIMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$NEWIMAGE" --from "latest" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Make sure that the rootfs is empty.
 	sane_run find "$BUNDLE/rootfs"
@@ -92,4 +100,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	# There should be no non-empty_layers.
 	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == false] | any')" == "false" ]]
+
+	# XXX: oci-image-validate doesn't like empty images (without layers)
+	#image-verify "$NEWIMAGE"
 }

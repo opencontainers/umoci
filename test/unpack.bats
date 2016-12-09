@@ -27,9 +27,12 @@ function teardown() {
 @test "umoci unpack" {
 	BUNDLE="$(setup_bundle)"
 
+	image-verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# We need to make sure these files properly exist.
 	[ -f "$BUNDLE/config.json" ]
@@ -46,28 +49,38 @@ function teardown() {
 	gomtree -p "$BUNDLE/rootfs" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+
+	image-verify "$IMAGE"
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
 	BUNDLE="$(setup_bundle)"
 
+	image-verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Ensure that we have a mount namespace enabled.
 	sane_run jq -SM 'any(.linux.namespaces[] | .type; . == "mount")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
+
+	image-verify "$IMAGE"
 }
 
 @test "umoci unpack [consistent results]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
+	image-verify "$IMAGE"
+
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# Wait a beat.
 	sleep 5s
@@ -75,11 +88,14 @@ function teardown() {
 	# Unpack it again.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Ensure that gomtree suceeds on the new unpacked bundle.
 	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
+
+	image-verify "$IMAGE"
 }
 
 # TODO: Add a test using OCI extraction and verify it with go-mtree.
