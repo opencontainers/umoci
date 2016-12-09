@@ -47,8 +47,20 @@ function requires() {
 	done
 }
 
-function verify() {
+function image-verify() {
 	oci-image-validate --type "$imageLayout" "$@"
+	return $?
+}
+
+function bundle-verify() {
+	args=()
+
+	for arg in "$@"; do
+		args+=( --path="$arg" )
+	done
+
+	oci-runtime-tool validate "${args[@]}"
+	return $?
 }
 
 function umoci() {

@@ -28,11 +28,12 @@ function teardown() {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_A/config.json" ]
@@ -40,11 +41,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Make sure that the config was unchanged.
 	# First clean the config.
@@ -68,18 +70,19 @@ function teardown() {
 	# The final layer should be an empty_layer now.
 	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "true" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.user 'user'" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# Modify /etc/passwd and /etc/group.
 	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
@@ -89,16 +92,17 @@ function teardown() {
 	# Repack the image.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Modify the user.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
@@ -125,18 +129,19 @@ function teardown() {
 	export $output
 	[[ "$HOME" == "/my home dir " ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.user 'user:group'" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# Modify /etc/passwd and /etc/group.
 	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
@@ -147,16 +152,17 @@ function teardown() {
 	# Repack the image.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Modify the user.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
@@ -179,7 +185,7 @@ function teardown() {
 	export $output
 	[[ "$HOME" == "/my home dir " ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.user 'user:group' [parsed from rootfs]" {
@@ -187,11 +193,12 @@ function teardown() {
 	BUNDLE_B="$(setup_bundle)"
 	BUNDLE_C="$(setup_bundle)"
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# Modify /etc/passwd and /etc/group.
 	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
@@ -202,16 +209,17 @@ function teardown() {
 	# Repack the image.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Modify the user.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
@@ -236,11 +244,12 @@ function teardown() {
 	# Repack the image.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_B" --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_C"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.user.uid' "$BUNDLE_C/config.json"
@@ -258,7 +267,7 @@ function teardown() {
 	export $output
 	[[ "$HOME" == "/another  home" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.user 'user:group' [non-existent user]" {
@@ -267,13 +276,13 @@ function teardown() {
 	# Modify the user.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -ne 0 ]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.user [numeric]" {
@@ -282,11 +291,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.user="1337:8888"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
@@ -298,7 +308,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 8888 ]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # TODO: Add a test to make sure that --config.user is resolved on unpacking.
@@ -310,18 +320,19 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.workingdir "/a/fake/directory"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SM '.process.cwd' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" = '"/a/fake/directory"' ]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --clear=config.env" {
@@ -330,11 +341,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --clear=config.env
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Make sure that only $HOME was set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
@@ -342,7 +354,7 @@ function teardown() {
 	[[ "${lines[0]}" == *"HOME="* ]]
 	[ "${#lines[@]}" -eq 1 ]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.env" {
@@ -351,11 +363,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.env "VARIABLE1=test" --config.env "VARIABLE2=what"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Make sure numeric config was actually set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
@@ -366,7 +379,7 @@ function teardown() {
 	[[ "$VARIABLE1" == "test" ]]
 	[[ "$VARIABLE2" == "what" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.memory.*" {
@@ -375,11 +388,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.memory.limit 1000 --config.memory.swap 2000
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	if [ "$ROOTLESS" -ne 0 ]; then
 		# If we're rootless we only have to check that .linux.resources is null.
@@ -402,7 +416,7 @@ function teardown() {
 		[ "$output" -eq 2000 ]
 	fi
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.cpu.shares" {
@@ -411,11 +425,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --config.cpu.shares 1024
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	if [ "$ROOTLESS" -ne 0 ]; then
 		# If we're rootless we only have to check that .linux.resources is null.
@@ -430,7 +445,7 @@ function teardown() {
 		[ "$output" -eq 1024 ]
 	fi
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.cmd" {
@@ -439,18 +454,19 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Ensure that the final args is entrypoint+cmd.
 	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "cat;/this is a file with spaces;-v;" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --config.[entrypoint+cmd]" {
@@ -459,18 +475,19 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Ensure that the final args is entrypoint+cmd.
 	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "sh;-c;ls -la;" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # XXX: This test is somewhat dodgy (since we don't actually set anything other than the destination for a volume).
@@ -482,11 +499,12 @@ function teardown() {
 	# Modify none of the configuration.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# Get set of mounts
 	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_A/config.json"
@@ -499,11 +517,12 @@ function teardown() {
 	# Make sure we're appending.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --config.volume "/another volume"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Get set of mounts
 	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_B/config.json"
@@ -517,11 +536,12 @@ function teardown() {
 	# Now clear the volumes
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --clear=config.volume --config.volume "/..final_volume"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE_C"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
 
 	# Get set of mounts
 	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_C/config.json"
@@ -533,7 +553,7 @@ function teardown() {
 	! ( printf -- '%s\n' "${lines[*]}" | grep '^/another volume$' )
 	printf -- '%s\n' "${lines[*]}" | grep '^/\.\.final_volume$'
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 @test "umoci config --[os+architecture]" {
@@ -541,13 +561,14 @@ function teardown() {
 
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
-	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --os "linux" --architecture "aarch9001"
+	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}" --os "linux" --architecture "mips64"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image again.
 	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
 	# Check that OS was set properly.
 	sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
@@ -557,9 +578,9 @@ function teardown() {
 	# Check that arch was set properly.
 	sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	[[ "$output" == "aarch9001" ]]
+	[[ "$output" == "mips64" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # XXX: This doesn't do any actual testing of the results of any of these flags.
@@ -568,15 +589,15 @@ function teardown() {
 	# Modify everything.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Make sure that --created doesn't work with a random string.
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --created="not a date"
 	[ "$status" -ne 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 	umoci config --image "$IMAGE" --from "$TAG" --tag "${TAG}-new" --created="Jan 04 2004"
 	[ "$status" -ne 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Make sure that the history was modified and the author is now me.
 	umoci stat --image "$IMAGE" --tag "$TAG" --json
@@ -594,7 +615,7 @@ function teardown() {
 	# The author should've changed.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <asarai@suse.com>" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # XXX: We don't do any testing of --author and that the config is changed properly.
@@ -607,7 +628,7 @@ function teardown() {
 		--history.created="2016-12-09T04:45:40+11:00" \
 		--author="Aleksa Sarai <asarai@suse.com>"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Make sure that the history was modified.
 	umoci stat --image "$IMAGE" --tag "$TAG" --json
@@ -631,5 +652,5 @@ function teardown() {
 	# The created should be set.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "2016-12-09T04:45:40+11:00" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }

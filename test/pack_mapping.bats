@@ -29,7 +29,7 @@ function teardown() {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
@@ -37,6 +37,7 @@ function teardown() {
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "8888:0:65535"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_A/config.json" ]
@@ -52,6 +53,7 @@ function teardown() {
 	# Unpack the image with a differen uid and gid mapping.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_B" --uid-map "8080:0:65535" --gid-map "7777:0:65535"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_B/config.json" ]
@@ -64,7 +66,7 @@ function teardown() {
 		[ "$gid" -ge 7777 ] && [ "$gid" -lt "$((7777 + 65535))" ]
 	done
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # FIXME: It would be nice if we implemented this test with a manual chown.
@@ -72,7 +74,7 @@ function teardown() {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
@@ -81,6 +83,7 @@ function teardown() {
 	# Unpack the image.
 	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "7331:0:65535"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
 
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_A/config.json" ]
@@ -92,11 +95,12 @@ function teardown() {
 	# Repack the image using the same mapping.
 	umoci repack --image "$IMAGE" --bundle "$BUNDLE_A" --tag "${TAG}-new"
 	[ "$status" -eq 0 ]
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack it again with a different mapping.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_B" --uid-map "4000:0:65535" --gid-map "4000:0:65535"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
 
 	# Make sure that the test file is different.
 	sane_run stat -c '%u:%g' "$BUNDLE_B/rootfs/new test file "
@@ -106,11 +110,12 @@ function teardown() {
 	# Redo the unpacking with no mapping.
 	umoci unpack --image "$IMAGE" --from "${TAG}-new" --bundle "$BUNDLE_C"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
 
 	# Make sure that the test file was unpacked properly.
 	sane_run stat -c '%u:%g' "$BUNDLE_C/rootfs/new test file "
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$((2000 - 1337)):$((8000 - 7331))" ]]
 
-	verify "$IMAGE"
+	image-verify "$IMAGE"
 }
