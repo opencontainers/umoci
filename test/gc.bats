@@ -25,12 +25,12 @@ function teardown() {
 }
 
 @test "umoci gc [consistent]" {
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Initial gc.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check how many blobs there were.
 	sane_run find "$IMAGE/blobs" -type f
@@ -38,27 +38,27 @@ function teardown() {
 	nblobs="${#lines[@]}"
 
 	# Redo the gc.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure that another gc run does nothing.
 	sane_run find "$IMAGE/blobs" -type f
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq "$nblobs" ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci gc" {
 	BUNDLE="$(setup_bundle)"
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Initial gc.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check how many blobs there were.
 	sane_run find "$IMAGE/blobs" -type f
@@ -66,7 +66,7 @@ function teardown() {
 	nblobs="${#lines[@]}"
 
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -75,9 +75,9 @@ function teardown() {
 	chmod +w "$BUNDLE/rootfs/etc/." && rm -rf "$BUNDLE/rootfs/etc"
 
 	# Repack the image under a new tag.
-	umoci repack --image "$IMAGE" --bundle "$BUNDLE" --tag "${TAG}-new"
+	umoci repack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure the number of blobs has changed.
 	sane_run find "$IMAGE/blobs" -type f
@@ -86,9 +86,9 @@ function teardown() {
 	nblobs="${#lines[@]}"
 
 	# Make sure it is the same after doing a gc, because we used a new tag.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure that another gc run does nothing.
 	sane_run find "$IMAGE/blobs" -type f
@@ -96,30 +96,30 @@ function teardown() {
 	[ "${#lines[@]}" -eq "$nblobs" ]
 
 	# Delete the old reference.
-	umoci tag --image "$IMAGE" rm --tag "$TAG"
+	umoci tag --layout "${IMAGE}" rm --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Now do a gc which should delete some blobs.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure that another gc run does nothing.
 	sane_run find "$IMAGE/blobs" -type f
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -lt "$nblobs" ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci gc [empty]" {
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Initial gc.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check how many blobs there were.
 	sane_run find "$IMAGE/blobs" -type f
@@ -127,26 +127,26 @@ function teardown() {
 	[ "${#lines[@]}" -ne 0 ]
 
 	# Remove refs.
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -gt 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	for line in "${lines[*]}"; do
-		umoci tag --image "$IMAGE" rm --tag "$(echo "$line" | awk '{ print $1 }')"
+		umoci tag --layout "${IMAGE}" rm --tag "$(echo "$line" | awk '{ print $1 }')"
 		[ "$status" -eq 0 ]
-		image-verify "$IMAGE"
+		image-verify "${IMAGE}"
 	done
 
 	# Do a gc, which should remove all blobs.
-	umoci gc --image "$IMAGE"
+	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check how many blobs there were.
 	sane_run find "$IMAGE/blobs" -type f
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 0 ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }

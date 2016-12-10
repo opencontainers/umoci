@@ -25,10 +25,10 @@ function teardown() {
 }
 
 @test "umoci stat --json" {
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure that stat looks about right.
-	umoci stat --image "$IMAGE" --tag "$TAG" --json
+	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
 
 	statFile="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-stat.XXXXXX)"
@@ -44,7 +44,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 # TODO: Add a test to make sure that empty_layer and layer are mutually
