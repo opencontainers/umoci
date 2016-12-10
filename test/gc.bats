@@ -66,7 +66,7 @@ function teardown() {
 	nblobs="${#lines[@]}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -75,7 +75,7 @@ function teardown() {
 	chmod +w "$BUNDLE/rootfs/etc/." && rm -rf "$BUNDLE/rootfs/etc"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 

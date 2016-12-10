@@ -24,7 +24,6 @@ function teardown() {
 	teardown_image
 }
 
-# FIXME: This test is __WAY__ too slow.
 @test "umoci unpack --uid-map --gid-map" {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
@@ -35,7 +34,7 @@ function teardown() {
 	BUNDLE_B="$(setup_bundle)"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "8888:0:65535"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "8888:0:65535" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -53,7 +52,7 @@ function teardown() {
 	}'
 
 	# Unpack the image with a differen uid and gid mapping.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B" --uid-map "8080:0:65535" --gid-map "7777:0:65535"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "8080:0:65535" --gid-map "7777:0:65535" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -85,7 +84,7 @@ function teardown() {
 	BUNDLE_C="$(setup_bundle)"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A" --uid-map "1337:0:65535" --gid-map "7331:0:65535"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "7331:0:65535" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -97,12 +96,12 @@ function teardown() {
 	chown "2000:8000" "$BUNDLE_A/rootfs/new test file "
 
 	# Repack the image using the same mapping.
-	umoci repack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again with a different mapping.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_B" --uid-map "4000:0:65535" --gid-map "4000:0:65535"
+	umoci unpack --image "${IMAGE}:${TAG}-new" --uid-map "4000:0:65535" --gid-map "4000:0:65535" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -112,7 +111,7 @@ function teardown() {
 	[[ "$output" == "$((2000 - 1337 + 4000)):$((8000 - 7331 + 4000))" ]]
 
 	# Redo the unpacking with no mapping.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_C"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_C"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_C"
 

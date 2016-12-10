@@ -31,7 +31,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -44,7 +44,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -80,7 +80,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -90,7 +90,7 @@ function teardown() {
 	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -100,7 +100,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -139,7 +139,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -150,7 +150,7 @@ function teardown() {
 	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -160,7 +160,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -196,7 +196,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -207,7 +207,7 @@ function teardown() {
 	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -217,7 +217,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -242,12 +242,12 @@ function teardown() {
 	sed -i -e 's|^emptygroup:x:2222:|emptygroup:x:4444:|' "$BUNDLE_B/rootfs/etc/group"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_C"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_C"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_C"
 
@@ -279,7 +279,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -ne 0 ]
 
 	image-verify "${IMAGE}"
@@ -294,7 +294,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -323,7 +323,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -344,7 +344,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -366,7 +366,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -391,7 +391,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -428,7 +428,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -457,7 +457,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -478,7 +478,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -502,7 +502,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -520,7 +520,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -539,7 +539,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_C"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_C"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_C"
 
@@ -566,7 +566,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -666,7 +666,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -692,7 +692,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -719,7 +719,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -756,7 +756,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 

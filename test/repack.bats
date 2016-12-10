@@ -31,7 +31,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -49,12 +49,12 @@ function teardown() {
 	ln -s "this is a dummy symlink" "$BUNDLE_A/rootfs/newdir/link"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -69,6 +69,19 @@ function teardown() {
 	[ -d "$BUNDLE_B/rootfs/newdir" ]
 	[ -f "$BUNDLE_B/rootfs/newdir/anotherfile" ]
 	[ -L "$BUNDLE_B/rootfs/newdir/link" ]
+
+	# Make sure that unpack fails without a bundle path.
+	umoci repack --image "${IMAGE}:${TAG}-new2"
+	[ "$status" -ne 0 ]
+	umoci stat --image "${IMAGE}:${TAG}-new2" --json
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+	# ... or with too many
+	umoci repack --image "${IMAGE}:${TAG}-new3" too many arguments
+	[ "$status" -ne 0 ]
+	umoci stat --image "${IMAGE}:${TAG}-new3" --json
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
 	# Make sure we added a new layer.
 	umoci stat --image "${IMAGE}:${TAG}" --json
@@ -94,7 +107,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -109,12 +122,12 @@ function teardown() {
 	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -142,7 +155,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -161,12 +174,12 @@ function teardown() {
 	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under the same tag.
-	umoci repack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -195,7 +208,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -204,11 +217,11 @@ function teardown() {
 	now="$(date --iso-8601=seconds)"
 
 	# Repack the image, setting history values.
-	umoci repack --image "${IMAGE}:${TAG}-new" --bundle="$BUNDLE" \
+	umoci repack --image "${IMAGE}:${TAG}-new" \
 		--history.author="Some Author <jane@blogg.com>" \
 		--history.comment="Made a_small_change." \
 		--history.created_by="touch '$BUNDLE/a_small_change'" \
-		--history.created="$now"
+		--history.created="$now" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 

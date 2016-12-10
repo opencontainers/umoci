@@ -64,13 +64,15 @@ function bundle-verify() {
 }
 
 function umoci() {
-	local args=("$@")
+	local args=("$1")
 
 	# We're rootless if we're asked to unpack something.
 	if [[ "$ROOTLESS" != 0 && "$1" == "unpack" ]]; then
 		args+=("--rootless")
 	fi
 
+	shift
+	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 }
 
