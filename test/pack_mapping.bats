@@ -43,12 +43,14 @@ function teardown() {
 	[ -f "$BUNDLE_A/config.json" ]
 
 	# Check that all of the files have a UID owner >=1337 and a GID owner >=8888.
-	find "$BUNDLE_A/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
-		uid=$(echo "$line" | cut -d: -f1)
-		gid=$(echo "$line" | cut -d: -f2)
-		[ "$uid" -ge 1337 ] && [ "$uid" -lt "$((1337 + 65535))" ]
-		[ "$gid" -ge 8888 ] && [ "$gid" -lt "$((8888 + 65535))" ]
-	done
+	find "$BUNDLE_A/rootfs" | xargs stat -c '%u:%g' | awk -F: '{
+		uid = $1;
+		if (uid < 1337 || uid >= 1337 + 65535)
+			exit 1;
+		gid = $2;
+		if (gid < 8888 || gid >= 8888 + 65535)
+			exit 1;
+	}'
 
 	# Unpack the image with a differen uid and gid mapping.
 	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B" --uid-map "8080:0:65535" --gid-map "7777:0:65535"
@@ -59,12 +61,14 @@ function teardown() {
 	[ -f "$BUNDLE_B/config.json" ]
 
 	# Check that all of the files have a UID owner >=8080 and a GID owner >=7777.
-	find "$BUNDLE_B/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
-		uid=$(echo "$line" | cut -d: -f1)
-		gid=$(echo "$line" | cut -d: -f2)
-		[ "$uid" -ge 8080 ] && [ "$uid" -lt "$((8080 + 65535))" ]
-		[ "$gid" -ge 7777 ] && [ "$gid" -lt "$((7777 + 65535))" ]
-	done
+	find "$BUNDLE_B/rootfs" | xargs stat -c '%u:%g' | awk -F: '{
+		uid = $1;
+		if (uid < 8080 || uid >= 8080 + 65535)
+			exit 1;
+		gid = $2;
+		if (gid < 7777 || gid >= 7777 + 65535)
+			exit 1;
+	}'
 
 	image-verify "${IMAGE}"
 }
