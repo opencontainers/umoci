@@ -25,61 +25,61 @@ function teardown() {
 }
 
 @test "umoci tag list" {
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Get list of tags.
-	umoci tag --image "$IMAGE" ls
+	umoci tag --layout "${IMAGE}" ls
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -gt 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Get list of tags.
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -gt 0 ]
 	nrefs="${#lines[@]}"
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check how many refs there actually are.
 	sane_run find "$IMAGE/refs" -type f
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq "$nrefs" ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci tag add" {
 	# Get blob and mediatype that a tag references.
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	for tag in "${lines[@]}"; do
-		umoci tag --image "$IMAGE" stat --tag "$tag"
+		umoci tag --layout "${IMAGE}" stat --tag "$tag"
 		[ "$status" -eq 0 ]
 		mediatype="$(echo $output | jq -SMr '.mediatype')"
 		blob="$(echo $output | jq -SMr '.blob')"
-		image-verify "$IMAGE"
-		[[ "$tag" != "$TAG" ]] || break
+		image-verify "${IMAGE}"
+		[[ "$tag" != "${TAG}" ]] || break
 	done
-	[[ "$tag" == "$TAG" ]]
+	[[ "$tag" == "${TAG}" ]]
 
 	# Add a new tag.
-	umoci tag --image "$IMAGE" add --tag "${TAG}-newtag" --blob "$blob" --media-type "$mediatype"
+	umoci tag --layout "${IMAGE}" add --tag "${TAG}-newtag" --blob "$blob" --media-type "$mediatype"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure that the new tag is the same.
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	for _tag in "${lines[@]}"; do
-		umoci tag --image "$IMAGE" stat --tag "$tag"
+		umoci tag --layout "${IMAGE}" stat --tag "$tag"
 		[ "$status" -eq 0 ]
 		_mediatype="$(echo $output | jq -SMr '.mediatype')"
 		_blob="$(echo $output | jq -SMr '.blob')"
-		image-verify "$IMAGE"
+		image-verify "${IMAGE}"
 		[[ "$_tag" != "${TAG}-newtag" ]] || break
 	done
 	[[ "$_tag" == "${TAG}-newtag" ]]
@@ -89,48 +89,48 @@ function teardown() {
 
 @test "umoci tag rm" {
 	# How many tags?
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -gt 0 ]
 	nrefs="${#lines[@]}"
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Remove the default tag.
-	umoci tag --image "$IMAGE" rm --tag "${TAG}"
+	umoci tag --layout "${IMAGE}" rm --tag "${TAG}"
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Make sure the tag is no longer there.
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq "$(($nrefs - 1))" ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Check that the lines don't contain that tag.
 	for tag in "${lines[@]}"; do
-		[[ "$tag" != "$TAG" ]]
+		[[ "$tag" != "${TAG}" ]]
 	done
 
 	# Make sure it's truly gone.
-	umoci unpack --image "$IMAGE" --from "${TAG}" --bundle "$BATS_TMPDIR/notused"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BATS_TMPDIR/notused"
 	[ "$status" -ne 0 ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci tag stat" {
 	# How many tags?
-	umoci tag --image "$IMAGE" list
+	umoci tag --layout "${IMAGE}" list
 	[ "$status" -eq 0 ]
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Just run stat on each of those tags.
 	for tag in "${lines[@]}"; do
-		umoci tag --image "$IMAGE" stat --tag "$tag"
+		umoci tag --layout "${IMAGE}" stat --tag "$tag"
 		[ "$status" -eq 0 ]
 		echo "$output" > "$BATS_TMPDIR/tag-stat.$tag"
 
-		image-verify "$IMAGE"
+		image-verify "${IMAGE}"
 
 		sane_run jq -SMr '.mediatype' "$BATS_TMPDIR/tag-stat.$tag"
 		[ "$status" -eq 0 ]
@@ -147,5 +147,5 @@ function teardown() {
 		rm -f "$BATS_TMPDIR/tag-stat.$tag"
 	done
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }

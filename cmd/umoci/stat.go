@@ -31,25 +31,19 @@ import (
 var statCommand = cli.Command{
 	Name:  "stat",
 	Usage: "displays status information of an image manifest",
-	ArgsUsage: `--image <image-path> --tag <reference>
+	ArgsUsage: `--image <image-path>[:<tag>]
 
-Where "<image-path>" is the path to the OCI image, and "<reference>" is the
-name of the reference descriptor to stat.
+Where "<image-path>" is the path to the OCI image, and "<tag>" is the name of
+the tagged image to stat.
 
 WARNING: Do not depend on the output of this tool unless you're using --json.
 The intention of the default formatting of this tool is that it is easy for
 humans to read, and might change in future versions.`,
 
+	// stat gives information about a manifest.
+	Category: "image",
+
 	Flags: []cli.Flag{
-		// FIXME: This really should be a global option.
-		cli.StringFlag{
-			Name:  "image",
-			Usage: "path to OCI image bundle",
-		},
-		cli.StringFlag{
-			Name:  "tag",
-			Usage: "reference descriptor name to stat",
-		},
 		cli.BoolFlag{
 			Name:  "json",
 			Usage: "output the stat information as a JSON encoded blob",
@@ -60,15 +54,8 @@ humans to read, and might change in future versions.`,
 }
 
 func stat(ctx *cli.Context) error {
-	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.String("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
-	tagName := ctx.String("tag")
-	if tagName == "" {
-		return fmt.Errorf("reference name cannot be empty")
-	}
+	imagePath := ctx.App.Metadata["layout"].(string)
+	tagName := ctx.App.Metadata["tag"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)

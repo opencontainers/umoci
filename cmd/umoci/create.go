@@ -32,12 +32,14 @@ import (
 	"golang.org/x/net/context"
 )
 
+// TODO: This command needs to be split into umoci-init(1) and umoci-create(1).
+
 var createCommand = cli.Command{
 	Name:  "create",
-	Usage: "creates an OCI image and/or base manifest",
-	ArgsUsage: `--image <image-path> [--tag <new-manifest>]
+	Usage: "creates an OCI layout and/or base manifest",
+	ArgsUsage: `--layout <image-path> [--tag <new-tag>]
 
-Where "<image-path>" is the path to the OCI image, and "<new-manifest>" is an
+Where "<image-path>" is the path to the OCI image, and "<new-tag>" is an
 optional tag which will be linked to a new empty manifest.
 
 If --tag is specified, the empty manifest created is such that you can use
@@ -45,12 +47,10 @@ umoci-unpack(1), umoci-repack(1), and umoci-config(1) to modify the new
 manifest as you see fit. This allows you to create entirely new images without
 needing a base image to start from.`,
 
+	// create modifies an image layout.
+	Category: "layout",
+
 	Flags: []cli.Flag{
-		// FIXME: This really should be a global option.
-		cli.StringFlag{
-			Name:  "image",
-			Usage: "path to OCI image bundle",
-		},
 		cli.StringFlag{
 			Name:  "tag",
 			Usage: "tag name for new manifest",
@@ -61,14 +61,10 @@ needing a base image to start from.`,
 }
 
 func create(ctx *cli.Context) error {
-	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	imagePath := ctx.String("image")
-	if imagePath == "" {
-		return fmt.Errorf("image path cannot be empty")
-	}
+	imagePath := ctx.App.Metadata["layout"].(string)
 
 	if fi, err := os.Stat(imagePath); os.IsNotExist(err) {
-		logrus.Infof("creating non-existent image")
+		logrus.Infof("creating non-existent layout")
 		if err := cas.CreateLayout(imagePath); err != nil {
 			return err
 		}
@@ -100,8 +96,10 @@ func create(ctx *cli.Context) error {
 		g.SetCreated(createTime)
 		g.SetOS(runtime.GOOS)
 		g.SetArchitecture(runtime.GOARCH)
+		// XXX: Should we include this?
 		g.AddHistory(v1.History{
-			CreatedBy:  fmt.Sprintf("umoci create [at '%s']", createTime),
+			CreatedBy:  fmt.Sprintf("umoci create"),
+			Created:    createTime.Format(igen.ISO8601),
 			EmptyLayer: true,
 		})
 
@@ -157,7 +155,7 @@ func create(ctx *cli.Context) error {
 			"mediatype": descriptor.MediaType,
 			"digest":    descriptor.Digest,
 			"size":      descriptor.Size,
-		}).Infof("created new image")
+		}).Infof("created new layout")
 
 		// We have to clobber the old reference.
 		// XXX: Should we output some warning if we actually did remove an old

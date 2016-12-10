@@ -24,13 +24,13 @@ function teardown() {
 	teardown_image
 }
 
-@test "umoci create --image [empty]" {
+@test "umoci create --layout [empty]" {
 	# Setup up $NEWIMAGE.
 	NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with no tags.
-	umoci create --image "$NEWIMAGE"
+	umoci create --layout "$NEWIMAGE"
 	[ "$status" -eq 0 ]
 	image-verify "$NEWIMAGE"
 
@@ -51,7 +51,7 @@ function teardown() {
 	image-verify "$NEWIMAGE"
 }
 
-@test "umoci create --image --tag" {
+@test "umoci create --layout --tag" {
 	BUNDLE="$(setup_bundle)"
 
 	# Setup up $NEWIMAGE.
@@ -59,19 +59,19 @@ function teardown() {
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with another tag.
-	umoci create --image "$NEWIMAGE" --tag "latest"
+	umoci create --layout "$NEWIMAGE" --tag "latest"
 	[ "$status" -eq 0 ]
 	# XXX: oci-image-validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
 
 	# Modify the config.
-	umoci config --image "$NEWIMAGE" --from "latest" --tag "latest" --config.user "1234:1332"
+	umoci config --image "${NEWIMAGE}" --config.user "1234:1332"
 	[ "$status" -eq 0 ]
 	# XXX: oci-image-validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
 
 	# Unpack the image.
-	umoci unpack --image "$NEWIMAGE" --from "latest" --bundle "$BUNDLE"
+	umoci unpack --image "${NEWIMAGE}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -96,7 +96,7 @@ function teardown() {
 	[[ "$output" == "null" ]]
 
 	# Check that the history looks sane.
-	umoci stat --image "$NEWIMAGE" --tag "latest" --json
+	umoci stat --image "${NEWIMAGE}" --json
 	[ "$status" -eq 0 ]
 	# There should be no non-empty_layers.
 	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == false] | any')" == "false" ]]

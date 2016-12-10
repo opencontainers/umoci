@@ -27,10 +27,10 @@ function teardown() {
 @test "umoci unpack" {
 	BUNDLE="$(setup_bundle)"
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -50,16 +50,16 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
 	BUNDLE="$(setup_bundle)"
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -68,17 +68,17 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 @test "umoci unpack [consistent results]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -86,7 +86,7 @@ function teardown() {
 	sleep 5s
 
 	# Unpack it again.
-	umoci unpack --image "$IMAGE" --from "$TAG" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -95,7 +95,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
-	image-verify "$IMAGE"
+	image-verify "${IMAGE}"
 }
 
 # TODO: Add a test using OCI extraction and verify it with go-mtree.
