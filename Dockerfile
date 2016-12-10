@@ -28,6 +28,7 @@ RUN zypper -n in \
 		git \
 		'go>=1.6' \
 		go-mtree \
+		golang-github-cpuguy83-go-md2man \
 		jq \
 		make \
 		oci-image-tools \
