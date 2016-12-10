@@ -36,11 +36,11 @@ import (
 var unpackCommand = cli.Command{
 	Name:  "unpack",
 	Usage: "unpacks a reference into an OCI runtime bundle",
-	ArgsUsage: `--image <image-path>[:<tag>] --bundle <bundle-path>
+	ArgsUsage: `--image <image-path>[:<tag>] <bundle>
 
 Where "<image-path>" is the path to the OCI image, "<tag>" is the name of the
-tagged image to unpack (if not specified, defaults to "latest") and
-"<bundle-path>" is the destination to unpack the image to.
+tagged image to unpack (if not specified, defaults to "latest") and "<bundle>"
+is the destination to unpack the image to.
 
 It should be noted that this is not the same as oci-create-runtime-bundle,
 because this command also will create an mtree specification to allow for layer
@@ -50,10 +50,6 @@ creation with umoci-repack(1).`,
 	Category: "image",
 
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "bundle",
-			Usage: "destination bundle path",
-		},
 		cli.StringSliceFlag{
 			Name:  "uid-map",
 			Usage: "specifies a uid mapping to use when repacking",
@@ -69,6 +65,17 @@ creation with umoci-repack(1).`,
 	},
 
 	Action: unpack,
+
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 1 {
+			return fmt.Errorf("invalid number of positional arguments: expected <bundle>")
+		}
+		if ctx.Args().First() == "" {
+			return fmt.Errorf("bundle path cannot be empty")
+		}
+		ctx.App.Metadata["bundle"] = ctx.Args().First()
+		return nil
+	},
 }
 
 func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descriptor) (v1.Image, error) {
@@ -93,11 +100,7 @@ func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descrip
 func unpack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["layout"].(string)
 	fromName := ctx.App.Metadata["tag"].(string)
-	// FIXME: Is there a nicer way of dealing with mandatory arguments?
-	bundlePath := ctx.String("bundle")
-	if bundlePath == "" {
-		return fmt.Errorf("bundle path cannot be empty")
-	}
+	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	var meta UmociMeta
 	meta.Version = ctx.App.Version

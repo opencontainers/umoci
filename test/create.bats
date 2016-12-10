@@ -76,7 +76,7 @@ function teardown() {
 	#image-verify "$NEWIMAGE"
 
 	# Unpack the image.
-	umoci unpack --image "${NEWIMAGE}" --bundle "$BUNDLE"
+	umoci unpack --image "${NEWIMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 

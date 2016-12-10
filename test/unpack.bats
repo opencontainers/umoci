@@ -30,7 +30,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -50,6 +50,16 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
+	# Make sure that unpack fails without a bundle path.
+	umoci unpack --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	# ... or with too many
+	umoci unpack --image "${IMAGE}:${TAG}" too many arguments
+	[ "$status" -ne 0 ]
+	! [ -d too ]
+	! [ -d many ]
+	! [ -d arguments ]
+
 	image-verify "${IMAGE}"
 }
 
@@ -59,7 +69,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
@@ -78,7 +88,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -86,7 +96,7 @@ function teardown() {
 	sleep 5s
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}" --bundle "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
