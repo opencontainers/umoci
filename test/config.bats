@@ -654,3 +654,124 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci config --config.label" {
+	BUNDLE="$(setup_bundle)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--clear=config.labels --clear=manifest.annotations \
+		--config.label="com.cyphar.test=1" --config.label="com.cyphar.empty="
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -SMr '.annotations["com.cyphar.test"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "1" ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci config --manifest.annotation" {
+	BUNDLE="$(setup_bundle)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--clear=config.labels --clear=manifest.annotations \
+		--manifest.annotation="com.cyphar.test=1" --manifest.annotation="com.cyphar.empty="
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -SMr '.annotations["com.cyphar.test"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "1" ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci config --config.label --manifest.annotation" {
+	BUNDLE="$(setup_bundle)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--clear=config.labels --clear=manifest.annotations \
+		--config.label="com.cyphar.label_test={another value}" --config.label="com.cyphar.label_empty=" \
+		--manifest.annotation="com.cyphar.manifest_test= another valu=e  " --manifest.annotation="com.cyphar.manifest_empty="
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -SMr '.annotations["com.cyphar.label_test"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "{another value}" ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.label_empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.manifest_test"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == " another valu=e  " ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.manifest_empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	image-verify "${IMAGE}"
+}
+
+# XXX: This is currently not in any spec. So we'll just test our own behaviour
+#      here and we can fix it after opencontainers/image-spec#479 is fixed.
+@test "umoci config --config.label --manifest.annotation [clobber]" {
+	BUNDLE="$(setup_bundle)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--clear=config.labels --clear=manifest.annotations \
+		--config.label="com.cyphar.test= this_is SOEM VALUE" --config.label="com.cyphar.label_empty=" \
+		--manifest.annotation="com.cyphar.test== __ --a completely different VALuE    " --manifest.annotation="com.cyphar.manifest_empty="
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" --bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Manifest beats config.
+	sane_run jq -SMr '.annotations["com.cyphar.test"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "= __ --a completely different VALuE    " ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.label_empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	sane_run jq -SMr '.annotations["com.cyphar.manifest_empty"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "" ]]
+
+	image-verify "${IMAGE}"
+}
