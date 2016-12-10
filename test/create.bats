@@ -99,7 +99,7 @@ function teardown() {
 	umoci stat --image "${NEWIMAGE}" --json
 	[ "$status" -eq 0 ]
 	# There should be no non-empty_layers.
-	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == false] | any')" == "false" ]]
+	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == null] | any')" == "false" ]]
 
 	# XXX: oci-image-validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"

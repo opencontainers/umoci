@@ -40,7 +40,7 @@ function teardown() {
 	[ "$output" -ge 1 ]
 
 	# There should be at least one non-empty_layer.
-	sane_run jq -SMr '[.history[] | .empty_layer == false] | any' "$statFile"
+	sane_run jq -SMr '[.history[] | .empty_layer == null] | any' "$statFile"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
 
