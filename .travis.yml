@@ -12,6 +12,9 @@ go:
   #- 1.6
   #- master
 
+before_install:
+  - go get -u github.com/cpuguy83/go-md2man
+
 env:
   - DOCKER_IMAGE="opensuse/amd64:42.2"
   - DOCKER_IMAGE="fedora:latest"

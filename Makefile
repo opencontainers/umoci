@@ -14,6 +14,7 @@
 # limitations under the License.
 
 GO ?= go
+GO_MD2MAN ?= go-md2man
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/cyphar/umoci
@@ -60,6 +61,15 @@ local-validate:
 	#@echo "git-validation"
 	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
 
+MANPAGES_MD := $(wildcard man/*.md)
+MANPAGES    := $(MANPAGES_MD:%.md=%)
+
+man/%.1: man/%.1.md
+	$(GO_MD2MAN) -in $< -out $@
+
+.PHONY: doc
+doc: $(MANPAGES)
+
 # Used for tests.
 DOCKER_IMAGE :=opensuse/amd64:tumbleweed
 
@@ -87,4 +97,4 @@ local-test-integration: umoci
 	bats -t test/*.bats
 
 .PHONY: ci
-ci: umoci validate test-unit test-integration
+ci: umoci validate doc test-unit test-integration
