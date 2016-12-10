@@ -96,7 +96,7 @@ function teardown() {
 	[ "${#lines[@]}" -eq "$nblobs" ]
 
 	# Delete the old reference.
-	umoci tag --layout "${IMAGE}" rm --tag "${TAG}"
+	umoci rm --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -127,13 +127,13 @@ function teardown() {
 	[ "${#lines[@]}" -ne 0 ]
 
 	# Remove refs.
-	umoci tag --layout "${IMAGE}" list
+	umoci ls --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -gt 0 ]
 	image-verify "${IMAGE}"
 
 	for line in "${lines[*]}"; do
-		umoci tag --layout "${IMAGE}" rm --tag "$(echo "$line" | awk '{ print $1 }')"
+		umoci rm --image "${IMAGE}:${line}"
 		[ "$status" -eq 0 ]
 		image-verify "${IMAGE}"
 	done
