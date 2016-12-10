@@ -200,7 +200,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}).Infof("unpack manifest: unpacking config")
 
 	g := rgen.New()
-	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config); err != nil {
+	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config, manifest); err != nil {
 		return fmt.Errorf("unpack manifest: generating config.json: %s", err)
 	}
 

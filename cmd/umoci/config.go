@@ -19,6 +19,7 @@ package main
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -39,6 +40,7 @@ var configFlags = []cli.Flag{
 	cli.StringSliceFlag{Name: "config.entrypoint"}, // FIXME: This interface is weird.
 	cli.StringSliceFlag{Name: "config.cmd"},        // FIXME: This interface is weird.
 	cli.StringSliceFlag{Name: "config.volume"},
+	cli.StringSliceFlag{Name: "config.label"},
 	cli.StringFlag{Name: "config.workingdir"},
 	// FIXME: These aren't really safe to expose.
 	//cli.StringFlag{Name: "rootfs.type"},
@@ -47,6 +49,7 @@ var configFlags = []cli.Flag{
 	cli.StringFlag{Name: "author"},
 	cli.StringFlag{Name: "architecture"},
 	cli.StringFlag{Name: "os"},
+	cli.StringSliceFlag{Name: "manifest.annotation"},
 	cli.StringSliceFlag{Name: "clear"},
 }
 
@@ -100,10 +103,14 @@ image.`,
 }
 
 // TODO: This can be scripted by have a list of mappings to mutation methods.
-func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
+func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 	if ctx.IsSet("clear") {
 		for _, key := range ctx.StringSlice("clear") {
 			switch key {
+			case "config.labels":
+				g.ClearConfigLabels()
+			case "manifest.annotations":
+				m.Annotations = nil
 			case "config.exposedports":
 				g.ClearConfigExposedPorts()
 			case "config.env":
@@ -175,6 +182,12 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 			g.AddConfigVolume(volume)
 		}
 	}
+	if ctx.IsSet("config.label") {
+		for _, label := range ctx.StringSlice("config.label") {
+			parts := strings.SplitN(label, "=", 2)
+			g.AddConfigLabel(parts[0], parts[1])
+		}
+	}
 	// FIXME: These aren't really safe to expose.
 	if ctx.IsSet("rootfs.type") {
 		g.SetRootfsType(ctx.String("rootfs.type"))
@@ -184,6 +197,16 @@ func mutateConfig(g *igen.Generator, ctx *cli.Context) error {
 			g.AddRootfsDiffID(diffid)
 		}
 	}
+	if ctx.IsSet("manifest.annotation") {
+		if m.Annotations == nil {
+			m.Annotations = map[string]string{}
+		}
+		for _, label := range ctx.StringSlice("manifest.annotation") {
+			parts := strings.SplitN(label, "=", 2)
+			m.Annotations[parts[0]] = parts[1]
+		}
+	}
+
 	return nil
 }
 
@@ -259,7 +282,7 @@ func config(ctx *cli.Context) error {
 	}
 
 	// Now we mutate the config.
-	if err := mutateConfig(g, ctx); err != nil {
+	if err := mutateConfig(g, manifest, ctx); err != nil {
 		return err
 	}
 

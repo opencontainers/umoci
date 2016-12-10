@@ -13,7 +13,7 @@ import:
   subpackages:
   - generate
 - package: github.com/opencontainers/image-spec
-  version: v1.0.0-rc2
+  version: v1.0.0-rc3
   subpackages:
   - specs-go
 - package: github.com/opencontainers/runtime-spec
@@ -21,4 +21,4 @@ import:
   subpackages:
   - specs-go
 - package: github.com/vbatts/go-mtree
-  version: master
+  version: ~v0.3.0

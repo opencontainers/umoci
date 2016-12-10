@@ -31,9 +31,9 @@ import (
 // configuration appropriate for use, which is templated on the default
 // configuration specified by the OCI runtime-tools. It is equivalent to
 // MutateRuntimeSpec("runtime-tools/generate".New(), image).Spec().
-func ToRuntimeSpec(rootfs string, image v1.Image) (rspec.Spec, error) {
+func ToRuntimeSpec(rootfs string, image v1.Image, manifest v1.Manifest) (rspec.Spec, error) {
 	g := rgen.New()
-	if err := MutateRuntimeSpec(g, rootfs, image); err != nil {
+	if err := MutateRuntimeSpec(g, rootfs, image, manifest); err != nil {
 		return rspec.Spec{}, err
 	}
 	return *g.Spec(), nil
@@ -42,7 +42,7 @@ func ToRuntimeSpec(rootfs string, image v1.Image) (rspec.Spec, error) {
 // MutateRuntimeSpec mutates a given runtime specification generator with the
 // image configuration provided. It returns the original generator, and does
 // not modify any fields directly (to allow for chaining).
-func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image) error {
+func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image, manifest v1.Manifest) error {
 	if image.OS != "linux" {
 		return fmt.Errorf("unsupported OS: %s", image.OS)
 	}
@@ -111,7 +111,17 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image) error {
 		g.AddTmpfsMount(vol, []string{"rw"})
 	}
 
-	// TODO: Handle annotations (both manifest and config annotations).
+	// XXX: This order-of-addition is actually not codified in the spec.
+	//      However, this will be sorted once I write a proposal for it.
+	//      opencontainers/image-spec#479
+
+	g.ClearAnnotations()
+	for key, value := range image.Config.Labels {
+		g.AddAnnotation(key, value)
+	}
+	for key, value := range manifest.Annotations {
+		g.AddAnnotation(key, value)
+	}
 
 	return nil
 }

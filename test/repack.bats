@@ -82,7 +82,7 @@ function teardown() {
 	# Number of lines should be greater.
 	[ "$numLinesB" -gt "$numLinesA" ]
 	# Make sure that the new layer is a non-empty_layer.
-	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "null" ]]
 
 	image-verify "${IMAGE}"
 }
@@ -132,7 +132,7 @@ function teardown() {
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}-new" --json
 	[ "$status" -eq 0 ]
-	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "null" ]]
 }
 
 @test "umoci repack [replace]" {
@@ -184,7 +184,7 @@ function teardown() {
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
-	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "false" ]]
+	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "null" ]]
 
 	image-verify "${IMAGE}"
 }
@@ -224,7 +224,7 @@ function teardown() {
 	# Number of lines should be greater.
 	[ "$numLinesB" -gt "$numLinesA" ]
 	# The final layer should not be an empty_layer now.
-	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "false" ]]
+	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "null" ]]
 	# The author should've changed to --history.author.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Some Author <jane@blogg.com>" ]]
 	# The comment should be added.
