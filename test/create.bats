@@ -24,13 +24,13 @@ function teardown() {
 	teardown_image
 }
 
-@test "umoci create --layout [empty]" {
+@test "umoci init --layout [empty]" {
 	# Setup up $NEWIMAGE.
 	NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with no tags.
-	umoci create --layout "$NEWIMAGE"
+	umoci init --layout "$NEWIMAGE"
 	[ "$status" -eq 0 ]
 	image-verify "$NEWIMAGE"
 
@@ -51,15 +51,20 @@ function teardown() {
 	image-verify "$NEWIMAGE"
 }
 
-@test "umoci create --layout --tag" {
+@test "umoci new --image" {
 	BUNDLE="$(setup_bundle)"
 
 	# Setup up $NEWIMAGE.
 	export NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
 	rm -rf "$NEWIMAGE"
 
+	# Create a new image with no tags.
+	umoci init --layout "$NEWIMAGE"
+	[ "$status" -eq 0 ]
+	image-verify "$NEWIMAGE"
+
 	# Create a new image with another tag.
-	umoci create --layout "$NEWIMAGE" --tag "latest"
+	umoci new --image "${NEWIMAGE}:latest"
 	[ "$status" -eq 0 ]
 	# XXX: oci-image-validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
