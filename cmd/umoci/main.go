@@ -85,7 +85,9 @@ func main() {
 		gcCommand,
 		initCommand,
 		newCommand,
-		tagCommand,
+		tagAddCommand,
+		tagRemoveCommand,
+		tagListCommand,
 		statCommand,
 	}
 
