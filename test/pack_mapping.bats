@@ -43,7 +43,7 @@ function teardown() {
 	[ -f "$BUNDLE_A/config.json" ]
 
 	# Check that all of the files have a UID owner >=1337 and a GID owner >=8888.
-	find "$BUNDLE_A/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
+	find "$BUNDLE_A/rootfs" | xargs stat -c '%u:%g' | while read -r line; do
 		uid=$(echo "$line" | cut -d: -f1)
 		gid=$(echo "$line" | cut -d: -f2)
 		[ "$uid" -ge 1337 ] && [ "$uid" -lt "$((1337 + 65535))" ]
@@ -59,7 +59,7 @@ function teardown() {
 	[ -f "$BUNDLE_B/config.json" ]
 
 	# Check that all of the files have a UID owner >=8080 and a GID owner >=7777.
-	find "$BUNDLE_B/rootfs" -exec stat -c '%u:%g' {} \; | while read -r line; do
+	find "$BUNDLE_B/rootfs" | xargs stat -c '%u:%g' | while read -r line; do
 		uid=$(echo "$line" | cut -d: -f1)
 		gid=$(echo "$line" | cut -d: -f2)
 		[ "$uid" -ge 8080 ] && [ "$uid" -lt "$((8080 + 65535))" ]
