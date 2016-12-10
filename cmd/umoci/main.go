@@ -83,7 +83,8 @@ func main() {
 		unpackCommand,
 		repackCommand,
 		gcCommand,
-		createCommand,
+		initCommand,
+		newCommand,
 		tagCommand,
 		statCommand,
 	}
