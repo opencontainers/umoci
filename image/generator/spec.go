@@ -57,6 +57,9 @@ func (g *Generator) init() {
 	if g.image.Config.Volumes == nil {
 		g.ClearConfigVolumes()
 	}
+	if g.image.Config.Labels == nil {
+		g.ClearConfigLabels()
+	}
 	if g.image.RootFS.DiffIDs == nil {
 		g.ClearRootfsDiffIDs()
 	}
@@ -259,6 +262,31 @@ func (g *Generator) ConfigVolumes() map[string]struct{} {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	copy := map[string]struct{}{}
 	for k, v := range g.image.Config.Volumes {
+		copy[k] = v
+	}
+	return copy
+}
+
+// ClearConfigLabels clears the set of arbitrary metadata for the container.
+func (g *Generator) ClearConfigLabels() {
+	g.image.Config.Labels = map[string]string{}
+}
+
+// AddConfigLabel adds a label to the set of arbitrary metadata for the container.
+func (g *Generator) AddConfigLabel(label, value string) {
+	g.image.Config.Labels[label] = value
+}
+
+// RemoveConfigLabel removes a label from the set of arbitrary metadata for the container.
+func (g *Generator) RemoveConfigLabel(label string) {
+	delete(g.image.Config.Labels, label)
+}
+
+// ConfigLabels returns the set of arbitrary metadata for the container.
+func (g *Generator) ConfigLabels() map[string]string {
+	// We have to make a copy to preserve the privacy of g.image.Config.
+	copy := map[string]string{}
+	for k, v := range g.image.Config.Labels {
 		copy[k] = v
 	}
 	return copy
