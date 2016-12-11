@@ -31,37 +31,9 @@ import (
 	"golang.org/x/net/context"
 )
 
-var configFlags = []cli.Flag{
-	cli.StringFlag{Name: "config.user"},
-	cli.Int64Flag{Name: "config.memory.limit"},
-	cli.Int64Flag{Name: "config.memory.swap"},
-	cli.Int64Flag{Name: "config.cpu.shares"},
-	cli.StringSliceFlag{Name: "config.exposedports"},
-	cli.StringSliceFlag{Name: "config.env"},
-	cli.StringSliceFlag{Name: "config.entrypoint"}, // FIXME: This interface is weird.
-	cli.StringSliceFlag{Name: "config.cmd"},        // FIXME: This interface is weird.
-	cli.StringSliceFlag{Name: "config.volume"},
-	cli.StringSliceFlag{Name: "config.label"},
-	cli.StringFlag{Name: "config.workingdir"},
-	// FIXME: These aren't really safe to expose.
-	//cli.StringFlag{Name: "rootfs.type"},
-	//cli.StringSliceFlag{Name: "rootfs.diffids"},
-	cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
-	cli.StringFlag{Name: "author"},
-	cli.StringFlag{Name: "architecture"},
-	cli.StringFlag{Name: "os"},
-	cli.StringSliceFlag{Name: "manifest.annotation"},
-	cli.StringSliceFlag{Name: "clear"},
-}
-
-// FIXME: This is ugly.
-func init() {
-	configCommand.Flags = append(configCommand.Flags, configFlags...)
-}
-
 // FIXME: We should also implement a raw mode that just does modifications of
 //        JSON blobs (allowing this all to be used outside of our build setup).
-var configCommand = cli.Command{
+var configCommand = uxHistory(uxTag(cli.Command{
 	Name:  "config",
 	Usage: "modifies the image configuration of an OCI image",
 	ArgsUsage: `--image <image-path>[:<tag>] [--tag <new-tag>]
@@ -75,33 +47,42 @@ image.`,
 	// config modifies a particular image manifest.
 	Category: "image",
 
+	// Verify the metadata.
+	Before: func(ctx *cli.Context) error {
+		if _, ok := ctx.App.Metadata["--image-path"]; !ok {
+			return errors.Errorf("missing mandatory argument: --image")
+		}
+		if _, ok := ctx.App.Metadata["--image-tag"]; !ok {
+			return errors.Errorf("missing mandatory argument: --image")
+		}
+		return nil
+	},
+
 	Flags: []cli.Flag{
-		cli.StringFlag{
-			Name:  "tag",
-			Usage: "tag name for repacked image (if not specified then the original tag will be clobbered)",
-		},
-		// XXX: These flags are replicated for umoci-repack. This should be
-		//      refactored.
-		cli.StringFlag{
-			Name:  "history.comment",
-			Usage: "comment for the history entry corresponding to the modified configuration",
-		},
-		cli.StringFlag{
-			Name:  "history.created_by",
-			Usage: "created_by value for the history entry corresponding to the modified configuration",
-		},
-		cli.StringFlag{
-			Name:  "history.author",
-			Usage: "author value for the history entry corresponding to the the modified configuration",
-		},
-		cli.StringFlag{
-			Name:  "history.created",
-			Usage: "created value for the history entry corresponding to the the modified configuration",
-		},
+		cli.StringFlag{Name: "config.user"},
+		cli.Int64Flag{Name: "config.memory.limit"},
+		cli.Int64Flag{Name: "config.memory.swap"},
+		cli.Int64Flag{Name: "config.cpu.shares"},
+		cli.StringSliceFlag{Name: "config.exposedports"},
+		cli.StringSliceFlag{Name: "config.env"},
+		cli.StringSliceFlag{Name: "config.entrypoint"}, // FIXME: This interface is weird.
+		cli.StringSliceFlag{Name: "config.cmd"},        // FIXME: This interface is weird.
+		cli.StringSliceFlag{Name: "config.volume"},
+		cli.StringSliceFlag{Name: "config.label"},
+		cli.StringFlag{Name: "config.workingdir"},
+		// FIXME: These aren't really safe to expose.
+		//cli.StringFlag{Name: "rootfs.type"},
+		//cli.StringSliceFlag{Name: "rootfs.diffids"},
+		cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
+		cli.StringFlag{Name: "author"},
+		cli.StringFlag{Name: "architecture"},
+		cli.StringFlag{Name: "os"},
+		cli.StringSliceFlag{Name: "manifest.annotation"},
+		cli.StringSliceFlag{Name: "clear"},
 	},
 
 	Action: config,
-}
+}))
 
 // TODO: This can be scripted by have a list of mappings to mutation methods.
 func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
@@ -212,13 +193,13 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 }
 
 func config(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	fromName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	fromName := ctx.App.Metadata["--image-tag"].(string)
 
-	tagName := ctx.String("tag")
-	if tagName == "" {
-		// By default we clobber the old tag.
-		tagName = fromName
+	// By default we clobber the old tag.
+	tagName := fromName
+	if val, ok := ctx.App.Metadata["--tag"]; ok {
+		tagName = val.(string)
 	}
 
 	// Get a reference to the CAS.
@@ -288,23 +269,23 @@ func config(ctx *cli.Context) error {
 	}
 
 	var (
-		created   = ctx.String("history.created")
-		createdBy = ctx.String("history.created_by")
-		author    = ctx.String("history.author")
-		comment   = ctx.String("history.comment")
+		author    = g.Author()
+		comment   = ""
+		created   = time.Now().Format(igen.ISO8601)
+		createdBy = "umoci config" // XXX: should we append argv to this?
 	)
 
-	if created == "" {
-		// XXX: We really should make sure that the format of this is right.
-		//      Also, does this option _really_ make sense?
-		created = time.Now().Format(igen.ISO8601)
+	if val, ok := ctx.App.Metadata["--history.author"]; ok {
+		author = val.(string)
 	}
-	if createdBy == "" {
-		// XXX: Should we append argv to this?
-		createdBy = "umoci repack"
+	if val, ok := ctx.App.Metadata["--history.comment"]; ok {
+		comment = val.(string)
 	}
-	if author == "" {
-		author = g.Author()
+	if val, ok := ctx.App.Metadata["--history.created"]; ok {
+		created = val.(string)
+	}
+	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
+		createdBy = val.(string)
 	}
 
 	// Add a history entry about the fact we just changed the config.

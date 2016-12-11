@@ -38,7 +38,7 @@ import (
 	"golang.org/x/net/context"
 )
 
-var repackCommand = cli.Command{
+var repackCommand = uxHistory(cli.Command{
 	Name:  "repack",
 	Usage: "repacks an OCI runtime bundle into a reference",
 	ArgsUsage: `--image <image-path>[:<new-tag>] <bundle>
@@ -65,27 +65,6 @@ manifest and configuration information uses the new diff atop the old manifest.`
 	// repack creates a new image, with a given tag.
 	Category: "image",
 
-	Flags: []cli.Flag{
-		// XXX: These flags are replicated for umoci-config. This should be
-		//      refactored.
-		cli.StringFlag{
-			Name:  "history.comment",
-			Usage: "comment for the history entry corresponding to the new layer",
-		},
-		cli.StringFlag{
-			Name:  "history.created_by",
-			Usage: "created_by value for the history entry corresponding to the new layer",
-		},
-		cli.StringFlag{
-			Name:  "history.author",
-			Usage: "author value for the history entry corresponding to the new layer",
-		},
-		cli.StringFlag{
-			Name:  "history.created",
-			Usage: "created value for the history entry corresponding to the the modified configuration",
-		},
-	},
-
 	Action: repack,
 
 	Before: func(ctx *cli.Context) error {
@@ -98,11 +77,11 @@ manifest and configuration information uses the new diff atop the old manifest.`
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
 	},
-}
+})
 
 func repack(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	tagName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	tagName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	// Read the metadata first.
@@ -264,26 +243,23 @@ func repack(ctx *cli.Context) error {
 	g.AddRootfsDiffID(layerDiffID)
 
 	var (
-		created   = ctx.String("history.created")
-		createdBy = ctx.String("history.created_by")
-		author    = ctx.String("history.author")
-		comment   = ctx.String("history.comment")
+		author    = g.Author()
+		comment   = fmt.Sprintf("repack diffid %s", layerDiffID)
+		created   = time.Now().Format(igen.ISO8601)
+		createdBy = "umoci repack" // XXX: should we append argv to this?
 	)
 
-	if created == "" {
-		// XXX: We really should make sure that the format of this is right.
-		//      Also, does this option _really_ make sense?
-		created = time.Now().Format(igen.ISO8601)
+	if val, ok := ctx.App.Metadata["--history.author"]; ok {
+		author = val.(string)
 	}
-	if createdBy == "" {
-		// XXX: Should we append argv to this?
-		createdBy = "umoci repack"
+	if val, ok := ctx.App.Metadata["--history.comment"]; ok {
+		comment = val.(string)
 	}
-	if author == "" {
-		author = g.Author()
+	if val, ok := ctx.App.Metadata["--history.created"]; ok {
+		created = val.(string)
 	}
-	if comment == "" {
-		comment = fmt.Sprintf("repack diffid %s", layerDiffID)
+	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
+		createdBy = val.(string)
 	}
 
 	// We need to add a history entry here, since a lot of tooling depends on

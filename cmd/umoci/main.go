@@ -20,8 +20,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"regexp"
-	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/pkg/errors"
@@ -36,11 +34,12 @@ var version = ""
 // populated on build by make.
 var gitCommit = ""
 
-// refRegexp defines the regexp that a given OCI tag must obey.
-var refRegexp = regexp.MustCompile(`^([A-Za-z0-9._-]+)+$`)
-
 const (
 	usage = `umoci modifies Open Container images`
+
+	// Categories used to automatically monkey-patch flags to commands.
+	categoryLayout = "layout"
+	categoryImage  = "image"
 )
 
 func main() {
@@ -94,98 +93,39 @@ func main() {
 
 	app.Metadata = map[string]interface{}{}
 
-	// In order to consolidate a lot of the --image and --layout handling, we
-	// have to do some monkey-patching of commands. In particular, we set up
-	// the --image and --layout flags (for image and layout category commands)
-	// and then add parsing code to cmd.Before so that we can validate and
-	// parse the required arguments. It's definitely not pretty, but it's the
-	// best we can do without making them all global flags and then having odd
-	// semantics.
-
+	// In order to make the uxXyz wrappers not too cumbersome we automatically
+	// add them to images with categories set to categoryImage or
+	// categoryLayout. Monkey patching was never this neat.
 	for idx, cmd := range app.Commands {
-		var flag cli.Flag
-		oldBefore := cmd.Before
-
 		switch cmd.Category {
-		case "image":
-			// Does the command modify images (manifests)?
-			flag = cli.StringFlag{
-				Name:  "image",
-				Usage: "OCI image URI of the form 'path[:tag]'",
-			}
-
-			// Add BeforeFunc that will verify code.
+		case categoryImage:
+			oldBefore := cmd.Before
 			cmd.Before = func(ctx *cli.Context) error {
-				// Parse --image.
-				image := ctx.String("image")
-
-				var dir, tag string
-				sep := strings.LastIndex(image, ":")
-				if sep == -1 {
-					dir = image
-					tag = "latest"
-				} else {
-					dir = image[:sep]
-					tag = image[sep+1:]
+				if _, ok := ctx.App.Metadata["--image-path"]; !ok {
+					return errors.Errorf("missing mandatory argument: --image")
 				}
-
-				// Verify directory value.
-				if strings.Contains(dir, ":") {
-					return errors.Wrap(fmt.Errorf("directory contains ':' character: '%s'", dir), "invalid --image")
+				if _, ok := ctx.App.Metadata["--image-tag"]; !ok {
+					return errors.Errorf("missing mandatory argument: --image")
 				}
-				if dir == "" {
-					return errors.Wrap(fmt.Errorf("directory is empty"), "invalid --image")
-				}
-
-				// Verify tag value.
-				if !refRegexp.MatchString(tag) {
-					return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --image")
-				}
-				if tag == "" {
-					return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --image")
-				}
-
-				ctx.App.Metadata["layout"] = dir
-				ctx.App.Metadata["tag"] = tag
-
 				if oldBefore != nil {
 					return oldBefore(ctx)
 				}
 				return nil
 			}
-
-		case "layout":
-			// Does the command modify an OCI image layout itself?
-			flag = cli.StringFlag{
-				Name:  "layout",
-				Usage: "OCI image URI of the form 'path'",
-			}
-
-			// Add BeforeFunc that will verify code.
+			cmd = uxImage(cmd)
+		case categoryLayout:
+			oldBefore := cmd.Before
 			cmd.Before = func(ctx *cli.Context) error {
-				dir := ctx.String("layout")
-				// Verify directory value.
-				if strings.Contains(dir, ":") {
-					return errors.Wrap(fmt.Errorf("directory contains ':' character: '%s'", dir), "invalid --layout")
+				if _, ok := ctx.App.Metadata["--image-path"]; !ok {
+					return errors.Errorf("missing mandatory argument: --layout")
 				}
-				if dir == "" {
-					return errors.Wrap(fmt.Errorf("invalid --layout: directory is empty"), "invalid --layout")
-				}
-
-				ctx.App.Metadata["layout"] = dir
-
 				if oldBefore != nil {
 					return oldBefore(ctx)
 				}
 				return nil
 			}
-		default:
-			// This is a programming error. All umoci commands should fall into
-			// one of the above categories.
-			panic("Unknown command category: " + cmd.Category)
+			cmd = uxLayout(cmd)
 		}
-
-		cmd.Flags = append([]cli.Flag{flag}, cmd.Flags...)
 		app.Commands[idx] = cmd
 	}
 

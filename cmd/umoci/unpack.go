@@ -99,8 +99,8 @@ func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descrip
 }
 
 func unpack(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	fromName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	fromName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	var meta UmociMeta

@@ -18,7 +18,6 @@
 package main
 
 import (
-	"fmt"
 	"runtime"
 	"time"
 
@@ -52,8 +51,8 @@ needing a base image to start from.`,
 }
 
 func newImage(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	tagName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -75,12 +74,7 @@ func newImage(ctx *cli.Context) error {
 	g.SetCreated(createTime)
 	g.SetOS(runtime.GOOS)
 	g.SetArchitecture(runtime.GOARCH)
-	// XXX: Should we include this?
-	g.AddHistory(v1.History{
-		CreatedBy:  fmt.Sprintf("umoci new"),
-		Created:    createTime.Format(igen.ISO8601),
-		EmptyLayer: true,
-	})
+	g.ClearHistory()
 
 	// Make sure we have no diffids.
 	g.SetRootfsType("layers")
