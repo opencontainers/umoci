@@ -20,5 +20,15 @@ already exists, it will be replaced. The original *tag* will be unchanged.
   valid OCI image and *tag* must be a valid tag in the image. If *tag* is not
   provided it defaults to "latest".
 
+# EXAMPLE
+The following swaps two image tags in an OCI image.
+
+```
+% umoci tag --image image:to-change new
+% umoci tag --image image:latest to-change
+% umoci tag --image image:new latest
+% umoci rm --image image:new
+```
+
 # SEE ALSO
 **umoci**(1), **umoci-remove**(1)

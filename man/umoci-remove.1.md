@@ -23,5 +23,13 @@ removed -- in order to remove all unused blobs see **umoci-gc**(1).
   an error if the tag did not exist). If *tag* is not provided it defaults to
   "latest".
 
+# EXAMPLE
+The following creates a copy of a tag and then deletes the original.
+
+```
+% umoci tag --image image:tag new-tag
+% umoci rm --image image:tag
+```
+
 # SEE ALSO
 **umoci**(1), **umoci-tag**(1), **umoci-gc**(1)

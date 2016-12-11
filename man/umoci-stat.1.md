@@ -51,6 +51,19 @@ In future versions of **umoci**(1) there may be extra fields added to the above
 structure. However, the currently defined fields will always be set (until a
 backwards-incompatible release is made).
 
+# EXAMPLE
+
+The following gets information about an image downloaded from a **docker**(1)
+registry using **skopeo**(1).
+
+```
+% skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
+% umoci stat --image image
+LAYER                                                                   CREATED                        CREATED BY                                                                                        SIZE     COMMENT
+<none>                                                                  2016-12-05T22:52:33.085510751Z /bin/sh -c #(nop)  MAINTAINER SUSE Containers Team <containers@suse.com>                          <none>
+sha256:e800e72a0a88984bd1b47f4eca1c188d3d333dc8e799bfa0a02ea5c2697216d5 2016-12-05T22:52:46.570617134Z /bin/sh -c #(nop) ADD file:6e0044405547c4c209fac622b3c6ddc75e7370682197f7920ec66e4e5e00b180 in /  49.25 MB
+```
+
 # SEE ALSO
 **umoci**(1)
 

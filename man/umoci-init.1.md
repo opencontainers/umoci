@@ -1,8 +1,8 @@
-% umoci-init(1) # umoci init - Modifies the inituration of an OCI image
+% umoci-init(1) # umoci init - Create a new OCI image layout
 % Aleksa Sarai
 % DECEMBER 2016
 # NAME
-umoci init - Modifies the inituration of an OCI image
+umoci init - Create a new OCI image layout
 
 # SYNOPSIS
 **umoci init**
@@ -20,6 +20,16 @@ The global options are defined in **umoci**(1).
 **--layout**=*image*
   The path where the OCI image layout will be created. The path must not exist
   already or **umoci-init**(1) will return an error.
+
+# EXAMPLE
+
+The following creates a brand new OCI image layout and then creates a blank tag
+for further manipulation with **umoci-repack**(1) and **umoci-config**(1).
+
+```
+% umoci init --layout image
+% umoci new --image image:tag
+```
 
 # SEE ALSO
 **umoci**(1), **umoci-new**(1)

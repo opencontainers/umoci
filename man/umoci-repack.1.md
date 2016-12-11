@@ -62,5 +62,17 @@ The global options are defined in **umoci**(1).
   the image. This must be an ISO8601 formatted timestamp (see **date**(1)). If
   unspecified, the current time is used.
 
+# EXAMPLE
+The following downloads an image from a **docker**(1) registry using
+**skopeo**(1), unpacks it with **umoci-unpack**(1), modifies it and then
+repacks it.
+
+```
+% skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
+# umoci unpack --image image bundle
+# touch bundle/rootfs/a_new_file
+# umoci repack --image image:new-42.2 bundle
+```
+
 # SEE ALSO
 **umoci**(1), **umoci-unpack**(1)

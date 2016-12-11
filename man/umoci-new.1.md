@@ -27,6 +27,15 @@ The global options are defined in **umoci**(1).
   exists with the name *tag* it will be overwritten. If *tag* is not provided
   it defaults to "latest".
 
+# EXAMPLE
+The following creates a brand new OCI image layout and then creates a blank tag
+for further manipulation with **umoci-repack**(1) and **umoci-config**(1).
+
+```
+% umoci init --layout image
+% umoci new --image image:tag
+```
+
 # SEE ALSO
 **umoci**(1), **umoci-unpack**(1), **umoci-repack**(1), **umoci-config**(1)
 

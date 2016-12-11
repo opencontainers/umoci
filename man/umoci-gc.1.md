@@ -20,5 +20,15 @@ The global options are defined in **umoci**(1).
   The OCI image layout to be garbage collected. *image* must be a path to a
   valid OCI image.
 
+# EXAMPLE
+
+The following deletes a tag from an OCI image and clean conducts a garbage
+collection in order to clean up the remaining unused blobs.
+
+```
+% umoci rm --image image:sometag
+% umoci gc --layout image
+```
+
 # SEE ALSO
-**umoci**(1)
+**umoci**(1), **umoci-remove**(1)

@@ -42,5 +42,31 @@ The global options are defined in **umoci**(1).
   is almost always not possible to perfectly extract an OCI image with
   **--rootless**, but it will be as close as possible.
 
+# EXAMPLE
+The following downloads an image from a **docker**(1) registry using
+**skopeo**(1), unpacks said image and then creates a new container using the
+extracted OCI runtime bundle with **runc**(8). Then, the image is repacked with
+**umoci-repack**(1).
+
+```
+% skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
+# umoci unpack --image image bundle
+# runc run -b bundle ctr
+[ container session ]
+# umoci repack --image image bundle
+```
+
+With **--rootless** it is also possible to do the above example without root
+privileges. **umoci** will generate a configuration that works with rootless
+containers in **runc**(8).
+
+```
+% skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
+% umoci unpack --image image --rootless bundle
+% runc --root $HOME/runc run -b bundle ctr
+[ rootless container session ]
+% umoci repack --image image --rootless bundle
+```
+
 # SEE ALSO
-**umoci**(1), **umoci-repack**(1)
+**umoci**(1), **umoci-repack**(1), **runc**(8)
