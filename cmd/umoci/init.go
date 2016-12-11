@@ -45,7 +45,7 @@ commands.`,
 }
 
 func initLayout(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
 		if err == nil {

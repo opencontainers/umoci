@@ -24,6 +24,11 @@ function teardown() {
 	teardown_image
 }
 
+@test "umoci gc [missing args]" {
+	umoci gc
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci gc [consistent]" {
 	image-verify "${IMAGE}"
 

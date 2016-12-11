@@ -37,11 +37,19 @@ root set of references. All other blobs will be removed.`,
 
 	// create modifies an image layout.
 	Category: "layout",
-	Action:   gc,
+
+	Before: func(ctx *cli.Context) error {
+		if _, ok := ctx.App.Metadata["--image-path"]; !ok {
+			return errors.Errorf("missing mandatory argument: --layout")
+		}
+		return nil
+	},
+
+	Action: gc,
 }
 
 func gc(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)

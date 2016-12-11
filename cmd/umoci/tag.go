@@ -71,8 +71,8 @@ the tag and "<new-tag>" is the new name of the tag.`,
 }
 
 func tagAdd(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	fromName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	fromName := ctx.App.Metadata["--image-tag"].(string)
 	tagName := ctx.App.Metadata["new-tag"].(string)
 
 	// Get a reference to the CAS.
@@ -113,8 +113,8 @@ tag to remove.`,
 }
 
 func tagRemove(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	tagName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -149,7 +149,7 @@ line. See umoci-stat(1) to get more information about each tagged image.`,
 }
 
 func tagList(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)

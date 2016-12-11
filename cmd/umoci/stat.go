@@ -55,8 +55,8 @@ humans to read, and might change in future versions.`,
 }
 
 func stat(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["layout"].(string)
-	tagName := ctx.App.Metadata["tag"].(string)
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)

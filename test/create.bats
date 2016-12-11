@@ -24,6 +24,11 @@ function teardown() {
 	teardown_image
 }
 
+@test "umoci init [missing args]" {
+	umoci init
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci init --layout [empty]" {
 	# Setup up $NEWIMAGE.
 	NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
@@ -49,6 +54,11 @@ function teardown() {
 	[ -d "$NEWIMAGE/refs" ]
 
 	image-verify "$NEWIMAGE"
+}
+
+@test "umoci new [missing args]" {
+	umoci new
+	[ "$status" -ne 0 ]
 }
 
 @test "umoci new --image" {

@@ -73,6 +73,11 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config [missing args]" {
+	umoci config
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci config --config.user 'user'" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"

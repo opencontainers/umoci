@@ -48,6 +48,14 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci list [missing args]" {
+	umoci ls
+	[ "$status" -ne 0 ]
+
+	umoci list
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci tag" {
 	# Get blob and mediatype that a tag references.
 	umoci list --layout "${IMAGE}"
@@ -77,7 +85,15 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci rm" {
+@test "umoci tag [missing args]" {
+	umoci tag --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	umoci tag new-tag
+	[ "$status" -ne 0 ]
+}
+
+@test "umoci remove" {
 	# How many tags?
 	umoci list --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -110,4 +126,12 @@ function teardown() {
 	[ "$status" -ne 0 ]
 
 	image-verify "${IMAGE}"
+}
+
+@test "umoci remove [missing args]" {
+	umoci remove
+	[ "$status" -ne 0 ]
+
+	umoci rm
+	[ "$status" -ne 0 ]
 }
