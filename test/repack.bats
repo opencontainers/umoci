@@ -100,6 +100,19 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci repack [missing args]" {
+	BUNDLE="$(setup_bundle)"
+
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+
+	umoci repack --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	umoci repack "$BUNDLE"
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci repack [whiteout]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"

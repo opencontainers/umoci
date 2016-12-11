@@ -47,5 +47,10 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci stat [missing args]" {
+	umoci stat
+	[ "$status" -ne 0 ]
+}
+
 # TODO: Add a test to make sure that empty_layer and layer are mutually
 #       exclusive. Unfortunately, jq doesn't provide an XOR operator...

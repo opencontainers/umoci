@@ -63,6 +63,16 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci unpack [missing args]" {
+	BUNDLE="$(setup_bundle)"
+
+	umoci unpack --image="${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	umoci unpack "$BUNDLE"
+	[ "$status" -ne 0 ]
+}
+
 @test "umoci unpack [config.json contains mount namespace]" {
 	BUNDLE="$(setup_bundle)"
 
