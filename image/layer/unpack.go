@@ -36,6 +36,7 @@ import (
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -56,10 +57,10 @@ func UnpackLayer(root string, layer io.Reader, opt *MapOptions) error {
 			break
 		}
 		if err != nil {
-			return err
+			return errors.Wrap(err, "read next entry")
 		}
 		if err := te.unpackEntry(root, hdr, tr); err != nil {
-			return err
+			return errors.Wrapf(err, "unpack entry: %s", hdr.Name)
 		}
 	}
 	return nil
@@ -91,7 +92,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
 	if err := os.MkdirAll(bundle, 0755); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir bundle")
 	}
 
 	configPath := filepath.Join(bundle, "config.json")
@@ -99,33 +100,33 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if _, err := os.Lstat(configPath); !os.IsNotExist(err) {
 		if err == nil {
-			err = fmt.Errorf("config.json: file already exists")
+			err = fmt.Errorf("config.json already exists")
 		}
-		return fmt.Errorf("unpack manifest: checking bundle path is empty: %s", err)
+		return errors.Wrap(err, "bundle path empty")
 	}
 
 	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) {
 		if err == nil {
-			err = fmt.Errorf("%s: file already exists", RootfsName)
+			err = fmt.Errorf("%s already exists", RootfsName)
 		}
-		return fmt.Errorf("unpack manifest: checking bundle path is empty: %s", err)
+		return errors.Wrap(err, "bundle path empty")
 	}
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil {
-		return fmt.Errorf("unpack manifest: creating rootfs: %s", err)
+		return errors.Wrap(err, "mkdir rootfs")
 	}
 
 	// Make sure that the owner is correct.
 	rootUID, err := idtools.ToHost(0, opt.UIDMappings)
 	if err != nil {
-		return fmt.Errorf("unpack manifest: creating rootfs: tohost(uid): %s", err)
+		return errors.Wrap(err, "ensure rootuid has mapping")
 	}
 	rootGID, err := idtools.ToHost(0, opt.GIDMappings)
 	if err != nil {
-		return fmt.Errorf("unpack manifest: creating rootfs: tohost(gid): %s", err)
+		return errors.Wrap(err, "ensure rootgid has mapping")
 	}
 	if err := os.Lchown(rootfsPath, rootUID, rootGID); err != nil {
-		return fmt.Errorf("unpack manifest: creating rootfs: chown: %s", err)
+		return errors.Wrap(err, "chown rootfs")
 	}
 
 	// Currently, many different images in the wild don't specify what the
@@ -135,7 +136,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// (which is as good of an arbitrary choice as any).
 	epoch := time.Unix(0, 0)
 	if err := system.Lutimes(rootfsPath, epoch, epoch); err != nil {
-		return fmt.Errorf("unpack manifest: setting initial root time: %s", err)
+		return errors.Wrap(err, "set initial root time")
 	}
 
 	// In order to verify the DiffIDs as we extract layers, we have to get the
@@ -143,17 +144,17 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// config) until after we have the full rootfs generated.
 	configBlob, err := cas.FromDescriptor(ctx, engine, &manifest.Config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get config blob")
 	}
 	defer configBlob.Close()
 	if configBlob.MediaType != v1.MediaTypeImageConfig {
-		return fmt.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", v1.MediaTypeImageConfig, configBlob.MediaType)
+		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", v1.MediaTypeImageConfig, configBlob.MediaType)
 	}
 	config := configBlob.Data.(*v1.Image)
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
-		return fmt.Errorf("unpack manifest: config: unsupported rootfs.type: %s", config.RootFS.Type)
+		return errors.Errorf("unpack manifest: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
 	// Layer extraction.
@@ -165,11 +166,11 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 		layerBlob, err := cas.FromDescriptor(ctx, engine, &layerDescriptor)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "get layer blob")
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.MediaType) {
-			return fmt.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
+			return errors.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
 		}
 		layerGzip := layerBlob.Data.(io.ReadCloser)
 
@@ -178,19 +179,19 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		// sha256 sum of the *uncompressed* layer).
 		layerRaw, err := gzip.NewReader(layerGzip)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "create gzip reader")
 		}
 		layerHash := sha256.New()
 		layer := io.TeeReader(layerRaw, layerHash)
 
 		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
-			return fmt.Errorf("unpack manifest: layer %s: %s", layerBlob.Digest, err)
+			return errors.Wrap(err, "unpack layer")
 		}
 		layerGzip.Close()
 
 		layerDigest := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, layerHash.Sum(nil))
 		if layerDigest != layerDiffID {
-			return fmt.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
+			return errors.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}
 	}
 
@@ -201,7 +202,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	g := rgen.New()
 	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config, manifest); err != nil {
-		return fmt.Errorf("unpack manifest: generating config.json: %s", err)
+		return errors.Wrap(err, "generate config.json")
 	}
 
 	// Add UIDMapping / GIDMapping options.
@@ -223,9 +224,8 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	// Save the config.json.
 	if err := g.SaveToFile(configPath, rgen.ExportOptions{}); err != nil {
-		return fmt.Errorf("failed to write new config.json: %s", err)
+		return errors.Wrap(err, "write config.json")
 	}
-
 	return nil
 }
 

@@ -8,11 +8,12 @@ package symlink
 
 import (
 	"bytes"
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
+
+	"github.com/pkg/errors"
 )
 
 // FsEval is a mock-friendly (and unpriv.*) friendly way of wrapping
@@ -49,12 +50,12 @@ func (fs FsEval) FollowSymlinkInScope(path, root string) (string, error) {
 // isNotExist tells you if err is an error that implies that either the path
 // accessed does not exist (or path components don't exist).
 func isNotExist(err error) bool {
-	if os.IsNotExist(err) {
+	if os.IsNotExist(errors.Cause(err)) {
 		return true
 	}
 
 	// Check that it's not actually an ENOTDIR.
-	perr, ok := err.(*os.PathError)
+	perr, ok := errors.Cause(err).(*os.PathError)
 	if !ok {
 		return false
 	}
@@ -88,7 +89,7 @@ func (fs FsEval) evalSymlinksInScope(path, root string) (string, error) {
 		return path, nil
 	}
 	if !strings.HasPrefix(path, root) {
-		return "", errors.New("evalSymlinksInScope: " + path + " is not in " + root)
+		return "", errors.Errorf("evalSymlinksInScope: %s is not in %s", path, root)
 	}
 	const maxIter = 255
 	originalPath := path
@@ -98,7 +99,7 @@ func (fs FsEval) evalSymlinksInScope(path, root string) (string, error) {
 		path = string(filepath.Separator) + path
 	}
 	if !strings.HasPrefix(path, string(filepath.Separator)) {
-		return "", errors.New("evalSymlinksInScope: " + path + " is not in " + root)
+		return "", errors.Errorf("evalSymlinksInScope: %s is not in %s", path, root)
 	}
 	path = filepath.Clean(path)
 	// consume path by taking each frontmost path element,
@@ -109,7 +110,7 @@ func (fs FsEval) evalSymlinksInScope(path, root string) (string, error) {
 	// filepath.Clean after the loop to trim the trailing slash
 	for n := 0; path != ""; n++ {
 		if n > maxIter {
-			return "", errors.New("evalSymlinksInScope: too many links in " + originalPath)
+			return "", errors.Errorf("evalSymlinksInScope: too many links in %s", originalPath)
 		}
 
 		// find next path component, p
@@ -156,7 +157,7 @@ func (fs FsEval) evalSymlinksInScope(path, root string) (string, error) {
 		// it's a symlink, put it at the front of path
 		dest, err := fs.Readlink(fullP)
 		if err != nil {
-			return "", err
+			return "", errors.Wrap(err, "evalSymlinksInScope: read symlink components")
 		}
 		if filepath.IsAbs(dest) {
 			b.Reset()

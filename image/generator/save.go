@@ -20,6 +20,8 @@ package generator
 import (
 	"encoding/json"
 	"io"
+
+	"github.com/pkg/errors"
 )
 
 // fakeBuffer implements the io.Writer interface but just counts the number of
@@ -46,7 +48,7 @@ func (g *Generator) WriteTo(w io.Writer) (n int64, err error) {
 	w = io.MultiWriter(w, &fb)
 
 	if err := json.NewEncoder(w).Encode(g.image); err != nil {
-		return fb.n, err
+		return fb.n, errors.Wrap(err, "encode image")
 	}
 
 	// XXX: Should we also generate a digest?

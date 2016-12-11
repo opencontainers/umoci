@@ -22,6 +22,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -182,13 +183,13 @@ func GC(ctx context.Context, engine Engine) error {
 
 	names, err := engine.ListReferences(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get roots")
 	}
 
 	for _, name := range names {
 		descriptor, err := engine.GetReference(ctx, name)
 		if err != nil {
-			return err
+			return errors.Wrapf(err, "get root %s", name)
 		}
 		logrus.WithFields(logrus.Fields{
 			"name":   name,
@@ -203,19 +204,19 @@ func GC(ctx context.Context, engine Engine) error {
 		black:  map[string]struct{}{},
 	}
 
-	for _, descriptor := range root {
+	for idx, descriptor := range root {
 		logrus.WithFields(logrus.Fields{
 			"digest": descriptor.Digest,
 		}).Debugf("GC: marking from root")
 		if err := gc.mark(ctx, descriptor); err != nil {
-			return err
+			return errors.Wrapf(err, "marking root %d", idx)
 		}
 	}
 
 	// Sweep all blobs in the white set.
 	blobs, err := engine.ListBlobs(ctx)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get blob list")
 	}
 
 	n := 0
@@ -228,7 +229,7 @@ func GC(ctx context.Context, engine Engine) error {
 			"digest": digest,
 		}).Infof("GC: garbage collecting blob")
 		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			return err
+			return errors.Wrapf(err, "remove unmarked blob %s", digest)
 		}
 		n++
 	}

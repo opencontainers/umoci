@@ -18,11 +18,11 @@
 package idtools
 
 import (
-	"fmt"
 	"strconv"
 	"strings"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
 )
 
 // ToHost translates a remapped container ID to an unmapped host ID using the
@@ -39,7 +39,7 @@ func ToHost(contID int, idMap []rspec.IDMapping) (int, error) {
 		}
 	}
 
-	return -1, fmt.Errorf("container id %d cannot be mapped to a host id", contID)
+	return -1, errors.Errorf("container id %d cannot be mapped to a host id", contID)
 }
 
 // ToContainer takes an unmapped host ID and translates it to a remapped
@@ -57,7 +57,7 @@ func ToContainer(hostID int, idMap []rspec.IDMapping) (int, error) {
 		}
 	}
 
-	return -1, fmt.Errorf("host id %d cannot be mapped to a container id", hostID)
+	return -1, errors.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
 // ParseMapping takes a mapping string of the form "host:container[:size]" and
@@ -72,22 +72,22 @@ func ParseMapping(spec string) (rspec.IDMapping, error) {
 	case 3:
 		size, err = strconv.Atoi(parts[2])
 		if err != nil {
-			return rspec.IDMapping{}, fmt.Errorf("invalid size field: %s", err)
+			return rspec.IDMapping{}, errors.Wrap(err, "invalid size in mapping")
 		}
 	case 2:
 		size = 1
 	default:
-		return rspec.IDMapping{}, fmt.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
+		return rspec.IDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
 	}
 
 	hostID, err = strconv.Atoi(parts[0])
 	if err != nil {
-		return rspec.IDMapping{}, fmt.Errorf("invalid hostID field: %s", err)
+		return rspec.IDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
 	}
 
 	contID, err = strconv.Atoi(parts[1])
 	if err != nil {
-		return rspec.IDMapping{}, fmt.Errorf("invalid containerID field: %s", err)
+		return rspec.IDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
 	}
 
 	return rspec.IDMapping{

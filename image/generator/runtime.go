@@ -18,13 +18,13 @@
 package generator
 
 import (
-	"fmt"
 	"path/filepath"
 
 	"github.com/cyphar/umoci/third_party/user"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
+	"github.com/pkg/errors"
 )
 
 // ToRuntimeSpec converts the given OCI image configuration to a runtime
@@ -44,7 +44,7 @@ func ToRuntimeSpec(rootfs string, image v1.Image, manifest v1.Manifest) (rspec.S
 // not modify any fields directly (to allow for chaining).
 func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image, manifest v1.Manifest) error {
 	if image.OS != "linux" {
-		return fmt.Errorf("unsupported OS: %s", image.OS)
+		return errors.Errorf("unsupported OS: %s", image.OS)
 	}
 
 	// FIXME: We need to figure out if we're modifying an incompatible runtime spec.
@@ -87,7 +87,7 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image, manifest
 	}
 	execUser, err := user.GetExecUserPath(image.Config.User, nil, passwdPath, groupPath)
 	if err != nil {
-		return fmt.Errorf("cannot parse user spec '%s': %s", image.Config.User, err)
+		return errors.Wrapf(err, "cannot parse user spec: '%s'", image.Config.User)
 	}
 
 	g.SetProcessUID(uint32(execUser.Uid))

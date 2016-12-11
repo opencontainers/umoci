@@ -24,6 +24,7 @@ import (
 
 	"github.com/cyphar/umoci/pkg/idtools"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
 )
 
 // MapOptions specifies the UID and GID mappings used when unpacking and
@@ -53,11 +54,11 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 
 	newUID, err := idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "map uid to container")
 	}
 	newGID, err := idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "map gid to container")
 	}
 
 	hdr.Uid = newUID
@@ -80,11 +81,11 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 
 	newUID, err := idtools.ToHost(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "map uid to host")
 	}
 	newGID, err := idtools.ToHost(hdr.Gid, mapOptions.GIDMappings)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "map gid to host")
 	}
 
 	hdr.Uid = newUID

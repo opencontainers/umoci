@@ -18,7 +18,6 @@
 package cas
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -26,6 +25,7 @@ import (
 	"strings"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -48,15 +48,15 @@ const (
 // Exposed errors.
 var (
 	// ErrInvalid is returned when an image was detected as being invalid.
-	ErrInvalid = errors.New("invalid image detected")
+	ErrInvalid = fmt.Errorf("invalid image detected")
 
 	// ErrNotImplemented is returned when a requested operation has not been
 	// implementing the backing image store.
-	ErrNotImplemented = errors.New("operation not implemented")
+	ErrNotImplemented = fmt.Errorf("operation not implemented")
 
 	// ErrClobber is returned when a requested operation would require clobbering a
 	// reference or blob which already exists.
-	ErrClobber = errors.New("operation would clobber existing object")
+	ErrClobber = fmt.Errorf("operation would clobber existing object")
 )
 
 // Engine is an interface that provides methods for accessing and modifying an
@@ -131,14 +131,14 @@ func Open(path string) (Engine, error) {
 func blobPath(digest string) (string, error) {
 	fields := strings.SplitN(digest, ":", 2)
 	if len(fields) != 2 {
-		return "", fmt.Errorf("invalid digest: %q", digest)
+		return "", errors.Errorf("invalid digest: %q", digest)
 	}
 
 	algo := fields[0]
 	hash := fields[1]
 
 	if algo != BlobAlgorithm {
-		return "", fmt.Errorf("unsupported algorithm: %q", algo)
+		return "", errors.Errorf("unsupported algorithm: %q", algo)
 	}
 
 	return filepath.Join(blobDirectory, algo, hash), nil

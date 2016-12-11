@@ -25,6 +25,8 @@ import (
 	"path/filepath"
 	"testing"
 	"time"
+
+	"github.com/pkg/errors"
 )
 
 func TestWrapNoTricks(t *testing.T) {
@@ -141,7 +143,7 @@ func TestLstat(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -225,13 +227,13 @@ func TestReadlink(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -317,13 +319,13 @@ func TestSymlink(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -461,7 +463,7 @@ func TestOpen(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -573,7 +575,7 @@ func TestReaddir(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 
@@ -668,7 +670,7 @@ func TestWrapWrite(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -821,19 +823,19 @@ func TestLink(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -941,19 +943,19 @@ func TestChtimes(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -1103,19 +1105,19 @@ func TestLutimes(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -1189,16 +1191,16 @@ func TestRemove(t *testing.T) {
 	}
 
 	// Check that they are gone.
-	if _, err := Lstat(filepath.Join(dir, "some", "parent", "directories")); !os.IsNotExist(err) {
+	if _, err := Lstat(filepath.Join(dir, "some", "parent", "directories")); !os.IsNotExist(errors.Cause(err)) {
 		t.Errorf("expected deleted directory to give ENOENT: %s", err)
 	}
-	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !os.IsNotExist(err) {
+	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !os.IsNotExist(errors.Cause(err)) {
 		t.Errorf("expected deleted directory to give ENOENT: %s", err)
 	}
-	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !os.IsNotExist(err) {
+	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !os.IsNotExist(errors.Cause(err)) {
 		t.Errorf("expected deleted file to give ENOENT: %s", err)
 	}
-	if _, err := Lstat(filepath.Join(dir, "some", "parent", "file2")); !os.IsNotExist(err) {
+	if _, err := Lstat(filepath.Join(dir, "some", "parent", "file2")); !os.IsNotExist(errors.Cause(err)) {
 		t.Errorf("expected deleted file to give ENOENT: %s", err)
 	}
 }
@@ -1263,7 +1265,7 @@ func TestRemoveAll(t *testing.T) {
 	}
 
 	// Check that they are gone.
-	if _, err := Lstat(filepath.Join(dir, "some", "parent")); !os.IsNotExist(err) {
+	if _, err := Lstat(filepath.Join(dir, "some", "parent")); !os.IsNotExist(errors.Cause(err)) {
 		t.Errorf("expected deleted directory to give ENOENT: %s", err)
 	}
 	if _, err := Lstat(filepath.Join(dir, "some")); err != nil {
@@ -1344,19 +1346,19 @@ func TestMkdir(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "child"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }
@@ -1464,19 +1466,19 @@ func TestMkdirAll(t *testing.T) {
 	fi, err = os.Lstat(filepath.Join(dir, "some", "child"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 	fi, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
 	if err == nil {
 		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !os.IsPermission(err) {
+	} else if !os.IsPermission(errors.Cause(err)) {
 		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
 	}
 }

@@ -19,6 +19,7 @@ package main
 
 import (
 	"github.com/cyphar/umoci/image/cas"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -45,10 +46,10 @@ func gc(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	// Run the GC.
-	return cas.GC(context.TODO(), engine)
+	return errors.Wrap(cas.GC(context.TODO(), engine), "gc")
 }

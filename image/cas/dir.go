@@ -29,6 +29,7 @@ import (
 	"reflect"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -54,27 +55,27 @@ func CreateLayout(path string) error {
 	dir := filepath.Dir(path)
 	if dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return err
+			return errors.Wrap(err, "mkdir parent")
 		}
 	}
 	if err := os.Mkdir(path, 0755); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir")
 	}
 
 	// Create the necessary directories and "oci-layout" file.
 	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir blobdir")
 	}
 	if err := os.Mkdir(filepath.Join(path, blobDirectory, BlobAlgorithm), 0755); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir algorithm")
 	}
 	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir refdir")
 	}
 
 	fh, err := os.Create(filepath.Join(path, layoutFile))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create oci-layout")
 	}
 	defer fh.Close()
 
@@ -83,7 +84,7 @@ func CreateLayout(path string) error {
 	}
 
 	if err := json.NewEncoder(fh).Encode(ociLayout); err != nil {
-		return err
+		return errors.Wrap(err, "encode oci-layout")
 	}
 
 	// Everything is now set up.
@@ -104,18 +105,18 @@ func (e dirEngine) validate() error {
 		if os.IsNotExist(err) {
 			err = ErrInvalid
 		}
-		return err
+		return errors.Wrap(err, "read oci-layout")
 	}
 
 	var ociLayout ImageLayout
 	if err := json.Unmarshal(content, &ociLayout); err != nil {
-		return err
+		return errors.Wrap(err, "parse oci-layout")
 	}
 
 	// XXX: Currently the meaning of this field is not adequately defined by
 	//      the spec, nor is the "official" value determined by the spec.
 	if ociLayout.Version != ImageLayoutVersion {
-		return ErrInvalid
+		return errors.Wrap(ErrInvalid, "layout version is supported")
 	}
 
 	// Check that "blobs" and "refs" exist in the image.
@@ -126,18 +127,18 @@ func (e dirEngine) validate() error {
 		if os.IsNotExist(err) {
 			err = ErrInvalid
 		}
-		return err
+		return errors.Wrap(err, "check blobdir")
 	} else if !fi.IsDir() {
-		return ErrInvalid
+		return errors.Wrap(ErrInvalid, "blobdir is directory")
 	}
 
 	if fi, err := os.Stat(filepath.Join(e.path, refDirectory)); err != nil {
 		if os.IsNotExist(err) {
 			err = ErrInvalid
 		}
-		return err
+		return errors.Wrap(err, "check refdir")
 	} else if !fi.IsDir() {
-		return ErrInvalid
+		return errors.Wrap(ErrInvalid, "refdir is directory")
 	}
 
 	return nil
@@ -154,7 +155,7 @@ func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64
 	// but also to avoid half-writing an invalid blob.
 	fh, err := ioutil.TempFile(e.temp, "blob-")
 	if err != nil {
-		return "", -1, err
+		return "", -1, errors.Wrap(err, "create temporary blob")
 	}
 	tempPath := fh.Name()
 	defer fh.Close()
@@ -162,7 +163,7 @@ func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64
 	writer := io.MultiWriter(fh, hash)
 	size, err := io.Copy(writer, reader)
 	if err != nil {
-		return "", -1, err
+		return "", -1, errors.Wrap(err, "copy to temporary blob")
 	}
 	fh.Close()
 
@@ -170,13 +171,13 @@ func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64
 	digest := fmt.Sprintf("%s:%x", algo, hash.Sum(nil))
 	path, err := blobPath(digest)
 	if err != nil {
-		return "", -1, err
+		return "", -1, errors.Wrap(err, "compute blob name")
 	}
 
 	// Move the blob to its correct path.
 	path = filepath.Join(e.path, path)
 	if err := os.Rename(tempPath, path); err != nil {
-		return "", -1, err
+		return "", -1, errors.Wrap(err, "rename temporary blob")
 	}
 
 	return digest, int64(size), nil
@@ -190,7 +191,7 @@ func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64
 func (e dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
-		return "", -1, err
+		return "", -1, errors.Wrap(err, "encode JSON")
 	}
 	return e.PutBlob(ctx, &buffer)
 }
@@ -208,34 +209,34 @@ func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *v1
 			return ErrClobber
 		}
 		return nil
-	} else if !os.IsNotExist(err) {
-		return err
+	} else if !os.IsNotExist(errors.Cause(err)) {
+		return errors.Wrap(err, "get old reference")
 	}
 
 	// We copy this into a temporary file to avoid half-writing an invalid
 	// reference.
 	fh, err := ioutil.TempFile(e.temp, "ref."+name+"-")
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create temporary ref")
 	}
 	tempPath := fh.Name()
 	defer fh.Close()
 
 	// Write out descriptor.
 	if err := json.NewEncoder(fh).Encode(descriptor); err != nil {
-		return err
+		return errors.Wrap(err, "encode temporary ref")
 	}
 	fh.Close()
 
 	path, err := refPath(name)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "compute ref path")
 	}
 
 	// Move the ref to its correct path.
 	path = filepath.Join(e.path, path)
 	if err := os.Rename(tempPath, path); err != nil {
-		return err
+		return errors.Wrap(err, "rename temporary ref")
 	}
 
 	return nil
@@ -246,9 +247,10 @@ func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *v1
 func (e dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "compute blob path")
 	}
-	return os.Open(filepath.Join(e.path, path))
+	fh, err := os.Open(filepath.Join(e.path, path))
+	return fh, errors.Wrap(err, "open blob")
 }
 
 // GetReference returns a reference from the image. Returns os.ErrNotExist
@@ -256,17 +258,17 @@ func (e dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, e
 func (e dirEngine) GetReference(ctx context.Context, name string) (*v1.Descriptor, error) {
 	path, err := refPath(name)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "compute ref path")
 	}
 
 	content, err := ioutil.ReadFile(filepath.Join(e.path, path))
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "read ref")
 	}
 
 	var descriptor v1.Descriptor
 	if err := json.Unmarshal(content, &descriptor); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "parse ref")
 	}
 
 	// XXX: Do we need to validate the descriptor?
@@ -279,12 +281,12 @@ func (e dirEngine) GetReference(ctx context.Context, name string) (*v1.Descripto
 func (e dirEngine) DeleteBlob(ctx context.Context, digest string) error {
 	path, err := blobPath(digest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "compute blob path")
 	}
 
 	err = os.Remove(filepath.Join(e.path, path))
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return errors.Wrap(err, "remove blob")
 	}
 	return nil
 }
@@ -295,12 +297,12 @@ func (e dirEngine) DeleteBlob(ctx context.Context, digest string) error {
 func (e dirEngine) DeleteReference(ctx context.Context, name string) error {
 	path, err := refPath(name)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "compute ref path")
 	}
 
 	err = os.Remove(filepath.Join(e.path, path))
 	if err != nil && !os.IsNotExist(err) {
-		return err
+		return errors.Wrap(err, "remove ref")
 	}
 	return nil
 }
@@ -321,7 +323,7 @@ func (e dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
 		digests = append(digests, digest)
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "walk blobdir")
 	}
 
 	return digests, nil
@@ -342,7 +344,7 @@ func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 		refs = append(refs, filepath.Base(path))
 		return nil
 	}); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "walk refdir")
 	}
 
 	return refs, nil
@@ -351,7 +353,7 @@ func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 // Close releases all references held by the e. Subsequent operations may
 // fail.
 func (e dirEngine) Close() error {
-	return os.RemoveAll(e.temp)
+	return errors.Wrap(os.RemoveAll(e.temp), "remove tempdir")
 }
 
 func newDirEngine(path string) (*dirEngine, error) {
@@ -360,12 +362,12 @@ func newDirEngine(path string) (*dirEngine, error) {
 	}
 
 	if err := engine.validate(); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "validate")
 	}
 
 	tempDir, err := ioutil.TempDir(engine.path, "tmp-")
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "create tempdir")
 	}
 	engine.temp = tempDir
 	return engine, nil
