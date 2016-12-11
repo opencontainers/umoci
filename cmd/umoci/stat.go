@@ -24,6 +24,7 @@ import (
 
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -60,35 +61,35 @@ func stat(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	manifestDescriptor, err := engine.GetReference(context.TODO(), tagName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get reference")
 	}
 
 	// FIXME: Implement support for manifest lists.
 	if manifestDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType)
+		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType), "invalid saved from descriptor")
 	}
 
 	// Get stat information.
 	ms, err := Stat(context.TODO(), engine, *manifestDescriptor)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "stat")
 	}
 
 	// Output the stat information.
 	if ctx.Bool("json") {
 		// Use JSON.
 		if err := json.NewEncoder(os.Stdout).Encode(ms); err != nil {
-			return err
+			return errors.Wrap(err, "encoding stat")
 		}
 	} else {
 		if err := ms.Format(os.Stdout); err != nil {
-			return err
+			return errors.Wrap(err, "format stat")
 		}
 	}
 

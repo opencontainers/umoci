@@ -23,6 +23,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/image/cas"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -50,11 +51,11 @@ func initLayout(ctx *cli.Context) error {
 		if err == nil {
 			err = fmt.Errorf("path already exists: %s", imagePath)
 		}
-		return fmt.Errorf("image creation failed: %s", err)
+		return errors.Wrap(err, "image layout creation")
 	}
 
 	if err := cas.CreateLayout(imagePath); err != nil {
-		return err
+		return errors.Wrap(err, "image layout creation")
 	}
 
 	logrus.WithFields(logrus.Fields{

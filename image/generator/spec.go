@@ -24,6 +24,7 @@ import (
 	"time"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 )
 
 // FIXME: Because we are not a part of upstream, we have to add some tests that
@@ -86,7 +87,7 @@ func New() *Generator {
 func NewFromTemplate(r io.Reader) (*Generator, error) {
 	var image v1.Image
 	if err := json.NewDecoder(r).Decode(&image); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "decode image")
 	}
 
 	// TODO: Should we validate the image here?
@@ -105,7 +106,7 @@ func NewFromTemplate(r io.Reader) (*Generator, error) {
 func NewFromFile(path string) (*Generator, error) {
 	fh, err := os.Open(path)
 	if err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "open image data")
 	}
 	defer fh.Close()
 

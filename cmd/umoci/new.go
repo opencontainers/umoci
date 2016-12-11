@@ -27,6 +27,7 @@ import (
 	igen "github.com/cyphar/umoci/image/generator"
 	ispec "github.com/opencontainers/image-spec/specs-go"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -57,7 +58,7 @@ func newImage(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
@@ -89,7 +90,7 @@ func newImage(ctx *cli.Context) error {
 	config := g.Image()
 	configDigest, configSize, err := engine.PutBlobJSON(context.TODO(), &config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "put config blob")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -113,6 +114,9 @@ func newImage(ctx *cli.Context) error {
 	}
 
 	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	if err != nil {
+		return errors.Wrap(err, "put manifest blob")
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"digest": manifestDigest,
@@ -139,10 +143,10 @@ func newImage(ctx *cli.Context) error {
 	// XXX: Should we output some warning if we actually did remove an old
 	//      reference?
 	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
-		return err
+		return errors.Wrap(err, "delete old tag")
 	}
 	if err := engine.PutReference(context.TODO(), tagName, &descriptor); err != nil {
-		return err
+		return errors.Wrap(err, "add new tag")
 	}
 
 	return nil

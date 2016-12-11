@@ -28,6 +28,7 @@ import (
 	"github.com/cyphar/umoci/image/layer"
 	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
@@ -68,10 +69,10 @@ creation with umoci-repack(1).`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return fmt.Errorf("invalid number of positional arguments: expected <bundle>")
+			return errors.Errorf("invalid number of positional arguments: expected <bundle>")
 		}
 		if ctx.Args().First() == "" {
-			return fmt.Errorf("bundle path cannot be empty")
+			return errors.Errorf("bundle path cannot be empty")
 		}
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
@@ -81,7 +82,7 @@ creation with umoci-repack(1).`,
 func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descriptor) (v1.Image, error) {
 	// FIXME: Implement support for manifest lists.
 	if manDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return v1.Image{}, fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType)
+		return v1.Image{}, errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType), "invalid --image tag")
 	}
 
 	manBlob, err := cas.FromDescriptor(ctx, engine, manDescriptor)
@@ -126,14 +127,14 @@ func unpack(ctx *cli.Context) error {
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
-			return fmt.Errorf("failure parsing --uid-map %s: %s", uidmap, err)
+			return errors.Wrapf(err, "failure parsing --uid-map %s: %s", uidmap)
 		}
 		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
 	}
 	for _, gidmap := range ctx.StringSlice("gid-map") {
 		idMap, err := idtools.ParseMapping(gidmap)
 		if err != nil {
-			return fmt.Errorf("failure parsing --gid-map %s: %s", gidmap, err)
+			return errors.Wrapf(err, "failure parsing --gid-map %s: %s", gidmap)
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
@@ -145,25 +146,25 @@ func unpack(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get descriptor")
 	}
 	meta.From = *fromDescriptor
 
 	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get manifest")
 	}
 	defer manifestBlob.Close()
 
 	// FIXME: Implement support for manifest lists.
 	if manifestBlob.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType)
+		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
 	}
 
 	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
@@ -182,7 +183,7 @@ func unpack(ctx *cli.Context) error {
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
-		return fmt.Errorf("failed to create bundle path: %s", err)
+		return errors.Wrap(err, "create bundle path")
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
@@ -200,7 +201,7 @@ func unpack(ctx *cli.Context) error {
 	//        competing implementations of this extraction functionality.
 	//           https://github.com/opencontainers/image-tools/issues/74
 	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
-		return fmt.Errorf("failed to create runtime bundle: %s", err)
+		return errors.Wrap(err, "create runtime bundle")
 	}
 
 	// Create the mtree manifest.
@@ -219,19 +220,19 @@ func unpack(ctx *cli.Context) error {
 
 	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, meta.MapOptions.Rootless)
 	if err != nil {
-		return fmt.Errorf("failed to generate mtree spec: %s", err)
+		return errors.Wrap(err, "generate mtree spec")
 	}
 
 	fh, err := os.OpenFile(mtreePath, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
-		return fmt.Errorf("failed to open mtree spec for writing: %s", err)
+		return errors.Wrap(err, "open mtree")
 	}
 	defer fh.Close()
 
 	logrus.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
-		return fmt.Errorf("failed to write mtree spec: %s", err)
+		return errors.Wrap(err, "write mtree")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -241,7 +242,7 @@ func unpack(ctx *cli.Context) error {
 	}).Debugf("umoci: saving UmociMeta metadata")
 
 	if err := WriteBundleMeta(bundlePath, meta); err != nil {
-		return fmt.Errorf("failed to write umoci.json metadata: %s", err)
+		return errors.Wrap(err, "write umoci.json metadata")
 	}
 
 	logrus.Debugf("umoci: unpacking complete")

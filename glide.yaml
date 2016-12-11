@@ -22,3 +22,5 @@ import:
   - specs-go
 - package: github.com/vbatts/go-mtree
   version: ~v0.3.0
+- package: github.com/pkg/errors
+  version: ~v0.8.0

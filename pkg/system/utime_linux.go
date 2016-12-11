@@ -23,6 +23,8 @@ import (
 	"syscall"
 	"time"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 // Lutimes is a wrapper around utimensat(2), with the AT_SYMLINK_NOFOLLOW flag
@@ -41,7 +43,7 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	// Open the parent directory.
 	dirFile, err := os.OpenFile(filepath.Clean(dir), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "lutimes: open parent directory")
 	}
 	defer dirFile.Close()
 

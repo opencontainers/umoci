@@ -19,13 +19,13 @@ package layer
 
 import (
 	"archive/tar"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
 	"time"
 
 	"github.com/cyphar/umoci/pkg/unpriv"
+	"github.com/pkg/errors"
 )
 
 // tarGenerator is a helper for generating layer diff tars. It should be noted
@@ -81,7 +81,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	// of the tar archive. While this might seem paranoid, it is a legitimate
 	// concern.
 	if "/"+path != filepath.Join("/", path) {
-		return "", fmt.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
+		return "", errors.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
 	}
 
 	// With some other tar formats, you needed to have a '/' at the end of a
@@ -125,24 +125,24 @@ func (tg *tarGenerator) readlink(path string) (string, error) {
 func (tg *tarGenerator) AddFile(name, path string) error {
 	fi, err := tg.lstat(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "add file lstat")
 	}
 
 	linkname := ""
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		if linkname, err = tg.readlink(path); err != nil {
-			return err
+			return errors.Wrap(err, "add file readlink")
 		}
 	}
 
 	hdr, err := tar.FileInfoHeader(fi, linkname)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "convert fi to hdr")
 	}
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "normalise path")
 	}
 	hdr.Name = name
 
@@ -158,7 +158,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// a tar header. In principle, tar.FileInfoHeader should've done it for us
 	// but we might as well double-check it.
 	if err := updateHeader(hdr, fi); err != nil {
-		return err
+		return errors.Wrap(err, "update hdr header")
 	}
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to
@@ -166,7 +166,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// right now.
 	ino, err := getInode(fi)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get inode")
 	}
 
 	// Handle hardlinks.
@@ -183,10 +183,10 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Apply any header mappings.
 	if err := mapHeader(hdr, tg.mapOptions); err != nil {
-		return err
+		return errors.Wrap(err, "map header")
 	}
 	if err := tg.tw.WriteHeader(hdr); err != nil {
-		return err
+		return errors.Wrap(err, "write header")
 	}
 
 	// Write the contents of regular files.
@@ -194,16 +194,16 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		// XXX: Do we need bufio here?
 		fh, err := tg.open(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "open file")
 		}
 		defer fh.Close()
 
 		n, err := io.Copy(tg.tw, fh)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "copy to layer")
 		}
 		if n != hdr.Size {
-			return io.ErrShortWrite
+			return errors.Wrap(io.ErrShortWrite, "copy to layer")
 		}
 	}
 
@@ -222,7 +222,7 @@ const whPrefix = ".wh."
 func (tg *tarGenerator) AddWhiteout(name string) error {
 	name, err := normalise(name, false)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "normalise path")
 	}
 
 	// Create the explicit whiteout for the file.
@@ -253,7 +253,7 @@ func (tg *tarGenerator) AddWhiteout(name string) error {
 		AccessTime: timestamp,
 		ChangeTime: timestamp,
 	}); err != nil {
-		return err
+		return errors.Wrap(err, "write whiteout header")
 	}
 
 	return nil

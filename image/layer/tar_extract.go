@@ -30,6 +30,7 @@ import (
 	"github.com/cyphar/umoci/pkg/system"
 	"github.com/cyphar/umoci/pkg/unpriv"
 	"github.com/cyphar/umoci/third_party/symlink"
+	"github.com/pkg/errors"
 )
 
 // FIXME: Add tarExtractor.
@@ -65,14 +66,14 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	//      headers).
 	if !isSymlink {
 		if err := te.chmod(path, fi.Mode()); err != nil {
-			return fmt.Errorf("apply metadata: %s: %s", path, err)
+			return errors.Wrapf(err, "restore chmod metadata: %s", path)
 		}
 	}
 
 	// Apply owner (only used in rootless case).
 	if !te.mapOptions.Rootless {
 		if err := os.Lchown(path, hdr.Uid, hdr.Gid); err != nil {
-			return fmt.Errorf("apply metadata: %s: %s", path, err)
+			return errors.Wrapf(err, "restore chown metadata: %s", path)
 		}
 	}
 
@@ -99,17 +100,17 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	//        xattrs in rootless images.
 	if !te.mapOptions.Rootless {
 		if err := system.Lclearxattrs(path); err != nil {
-			return fmt.Errorf("apply metadata: %s: %s", path, err)
+			return errors.Wrapf(err, "clear xattr metadata: %s", path)
 		}
 		for name, value := range hdr.Xattrs {
 			if err := system.Lsetxattr(path, name, []byte(value), 0); err != nil {
-				return fmt.Errorf("apply metadata: %s: %s", path, err)
+				return errors.Wrapf(err, "restore xattr metadata: %s", path)
 			}
 		}
 	}
 
 	if err := te.lutimes(path, atime, mtime); err != nil {
-		return fmt.Errorf("apply metadata: %s: %s", path, err)
+		return errors.Wrapf(err, "restore lutimes metadata: %s", path)
 	}
 
 	// TODO.
@@ -124,7 +125,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Modify the header.
 	if err := unmapHeader(hdr, te.mapOptions); err != nil {
-		return err
+		return errors.Wrap(err, "unmap header")
 	}
 
 	// Restore it on the filesystme.
@@ -241,7 +242,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		Readlink: te.readlink,
 	}.FollowSymlinkInScope(unsafeDir, root)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "sanitise symlinks in root")
 	}
 	path := filepath.Join(dir, file)
 
@@ -256,7 +257,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		link, _ := te.readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "convert hdr to fi")
 		}
 
 		// More faking to trick restoreMetadata to actually restore the directory.
@@ -270,7 +271,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			// Only overwrite the error if there wasn't one already.
 			if err := te.restoreMetadata(dir, dirHdr); err != nil {
 				if Err == nil {
-					Err = err
+					Err = errors.Wrap(err, "restore parent directory")
 				}
 			}
 		}()
@@ -294,7 +295,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Just remove the path. The defer will reapply the correct parent
 		// metadata. We have nothing left to do here.
 		if err := te.removeall(path); err != nil {
-			return fmt.Errorf("whiteout removeAll: %s", err)
+			return errors.Wrap(err, "whiteout remove all")
 		}
 		return nil
 	}
@@ -316,7 +317,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	//     type is reason enough to purge the old type.
 	if hdrFi.Mode()&os.ModeType != fi.Mode()&os.ModeType {
 		if err := te.removeall(path); err != nil {
-			return err
+			return errors.Wrap(err, "replace removeall")
 		}
 	}
 
@@ -329,7 +330,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
 	if err := te.mkdirall(dir, 0777); err != nil {
-		return err
+		return errors.Wrap(err, "mkdir parent")
 	}
 
 	// Now create or otherwise modify the state of the path. Right now, either
@@ -342,7 +343,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Truncate file, then just copy the data.
 		fh, err := te.create(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "create regular")
 		}
 		defer fh.Close()
 
@@ -350,7 +351,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		if n, err := io.Copy(fh, r); err != nil {
 			return err
 		} else if int64(n) != hdr.Size {
-			return fmt.Errorf("unpack entry: regular file %s: incomplete write", hdr.Name)
+			return errors.Wrap(io.ErrShortWrite, "unpack to regular file")
 		}
 
 		// Force close here so that we don't affect the metadata.
@@ -362,7 +363,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
 		if err := te.mkdirall(path, 0777); err != nil {
-			return err
+			return errors.Wrap(err, "mkdirall")
 		}
 
 	// hard link, symbolic link
@@ -384,7 +385,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			linkdir, file := filepath.Split(linkname)
 			dir, err := symlink.FollowSymlinkInScope(linkdir, root)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "sanitise hardlink target in root")
 			}
 			linkname = filepath.Join(dir, file)
 		case tar.TypeSymlink:
@@ -393,7 +394,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		// Unlink the old path, and ignore it if the path didn't exist.
 		if err := te.removeall(path); err != nil {
-			return err
+			return errors.Wrap(err, "remove link old")
 		}
 
 		// Link the new one.
@@ -404,7 +405,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			//        way of handling this is to delay link creation until the
 			//        very end. Unfortunately this won't work with symlinks
 			//        (which can link to directories).
-			return err
+			return errors.Wrap(err, "link")
 		}
 
 	// character device node, block device node
@@ -413,11 +414,11 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		if te.mapOptions.Rootless {
 			fh, err := te.create(path)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "create rootless block")
 			}
 			defer fh.Close()
 			if err := fh.Chmod(0); err != nil {
-				return err
+				return errors.Wrap(err, "chmod 0 rootless block")
 			}
 			goto out
 		}
@@ -439,12 +440,12 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		// Unlink the old path, and ignore it if the path didn't exist.
 		if err := te.removeall(path); err != nil {
-			return err
+			return errors.Wrap(err, "remove block old")
 		}
 
 		// Create the node.
 		if err := system.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {
-			return err
+			return errors.Wrap(err, "mknod")
 		}
 
 	// We should never hit any other headers (Go abstracts them away from us),
@@ -459,7 +460,7 @@ out:
 	// metadata from their link (and the tar headers might not be filled).
 	if hdr.Typeflag != tar.TypeLink {
 		if err := te.applyMetadata(path, hdr); err != nil {
-			return err
+			return errors.Wrap(err, "apply hdr metadata")
 		}
 	}
 

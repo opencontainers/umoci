@@ -32,6 +32,7 @@ import (
 	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/cyphar/umoci/image/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
@@ -89,10 +90,10 @@ manifest and configuration information uses the new diff atop the old manifest.`
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return fmt.Errorf("invalid number of positional arguments: expected <bundle>")
+			return errors.Errorf("invalid number of positional arguments: expected <bundle>")
 		}
 		if ctx.Args().First() == "" {
-			return fmt.Errorf("bundle path cannot be empty")
+			return errors.Errorf("bundle path cannot be empty")
 		}
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
@@ -107,7 +108,7 @@ func repack(ctx *cli.Context) error {
 	// Read the metadata first.
 	meta, err := ReadBundleMeta(bundlePath)
 	if err != nil {
-		return fmt.Errorf("error reading umoci.json metadata: %s", err)
+		return errors.Wrap(err, "read umoci.json metadata")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -118,13 +119,13 @@ func repack(ctx *cli.Context) error {
 
 	// FIXME: Implement support for manifest lists.
 	if meta.From.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType)
+		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid saved from descriptor")
 	}
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
@@ -141,13 +142,13 @@ func repack(ctx *cli.Context) error {
 
 	mfh, err := os.Open(mtreePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open mtree")
 	}
 	defer mfh.Close()
 
 	spec, err := mtree.ParseSpec(mfh)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "parse mtree")
 	}
 
 	keywords := spec.UsedKeywords()
@@ -158,7 +159,7 @@ func repack(ctx *cli.Context) error {
 
 	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, meta.MapOptions.Rootless)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "check mtree")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -167,7 +168,7 @@ func repack(ctx *cli.Context) error {
 
 	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "generate diff layer")
 	}
 	defer reader.Close()
 
@@ -201,7 +202,7 @@ func repack(ctx *cli.Context) error {
 
 	layerDigest, layerSize, err := engine.PutBlob(context.TODO(), pipeReader)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "put layer blob")
 	}
 	reader.Close()
 	// XXX: Should we defer a DeleteBlob?
@@ -223,7 +224,7 @@ func repack(ctx *cli.Context) error {
 
 	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get manifest blob")
 	}
 	defer manifestBlob.Close()
 
@@ -234,13 +235,13 @@ func repack(ctx *cli.Context) error {
 	manifest, ok := manifestBlob.Data.(*v1.Manifest)
 	if !ok {
 		// Should never be reached.
-		return fmt.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
+		return errors.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
 	}
 
 	// We also need to update the config. Fun.
 	configBlob, err := cas.FromDescriptor(context.TODO(), engine, &manifest.Config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get config blob")
 	}
 	defer configBlob.Close()
 
@@ -251,7 +252,7 @@ func repack(ctx *cli.Context) error {
 	config, ok := configBlob.Data.(*v1.Image)
 	if !ok {
 		// Should not be reached.
-		return fmt.Errorf("config blob type not implemented: %s", configBlob.MediaType)
+		return errors.Errorf("config blob type not implemented: %s", configBlob.MediaType)
 	}
 
 	g, err := igen.NewFromImage(*config)
@@ -299,7 +300,7 @@ func repack(ctx *cli.Context) error {
 	*config = g.Image()
 	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "put config blob")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -313,6 +314,9 @@ func repack(ctx *cli.Context) error {
 	manifest.Config.Digest = newConfigDigest
 	manifest.Config.Size = newConfigSize
 	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	if err != nil {
+		return errors.Wrap(err, "put manifest blob")
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"digest": newManifestDigest,

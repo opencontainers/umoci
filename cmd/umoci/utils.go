@@ -14,6 +14,7 @@ import (
 	"github.com/cyphar/umoci/image/layer"
 	"github.com/docker/go-units"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -59,12 +60,12 @@ func (m UmociMeta) WriteTo(w io.Writer) (int64, error) {
 func WriteBundleMeta(bundle string, meta UmociMeta) error {
 	fh, err := os.Create(filepath.Join(bundle, UmociMetaName))
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create metadata")
 	}
 	defer fh.Close()
 
 	_, err = meta.WriteTo(fh)
-	return err
+	return errors.Wrap(err, "write metadata")
 }
 
 // ReadBundleMeta reads and parses the umoci.json file from a given bundle path.
@@ -73,12 +74,12 @@ func ReadBundleMeta(bundle string) (UmociMeta, error) {
 
 	fh, err := os.Open(filepath.Join(bundle, UmociMetaName))
 	if err != nil {
-		return meta, err
+		return meta, errors.Wrap(err, "open metadata")
 	}
 	defer fh.Close()
 
 	err = json.NewDecoder(fh).Decode(&meta)
-	return meta, err
+	return meta, errors.Wrap(err, "decode metadata")
 }
 
 // ManifestStat has information about a given OCI manifest.
@@ -148,7 +149,7 @@ func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descr
 	var stat ManifestStat
 
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return stat, fmt.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type '%s'", manifestDescriptor.MediaType)
+		return stat, errors.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type '%s'", manifestDescriptor.MediaType)
 	}
 
 	// We have to get the actual manifest.
@@ -158,17 +159,17 @@ func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descr
 	}
 	manifest, ok := manifestBlob.Data.(*ispec.Manifest)
 	if !ok {
-		return stat, fmt.Errorf("stat: cannot convert manifestBlob to manifest")
+		return stat, errors.Errorf("stat: cannot convert manifestBlob to manifest")
 	}
 
 	// Now get the config.
 	configBlob, err := cas.FromDescriptor(ctx, engine, &manifest.Config)
 	if err != nil {
-		return stat, err
+		return stat, errors.Wrap(err, "stat")
 	}
 	config, ok := configBlob.Data.(*ispec.Image)
 	if !ok {
-		return stat, fmt.Errorf("stat: cannot convert configBlob to config")
+		return stat, errors.Errorf("stat: cannot convert configBlob to config")
 	}
 
 	// TODO: This should probably be moved into separate functions.

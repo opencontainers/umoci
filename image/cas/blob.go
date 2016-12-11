@@ -23,6 +23,7 @@ import (
 	"io"
 
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -52,7 +53,7 @@ type Blob struct {
 func (b *Blob) load(ctx context.Context, engine Engine) error {
 	reader, err := engine.GetBlob(ctx, b.Digest)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get blob")
 	}
 
 	// The layer media types are special, we don't want to do any parsing (or
@@ -87,7 +88,7 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 	}
 
 	if err := json.NewDecoder(reader).Decode(parsed); err != nil {
-		return err
+		return errors.Wrap(err, "parse blob")
 	}
 
 	// TODO: We should really check that parsed.MediaType == b.MediaType.
@@ -115,7 +116,7 @@ func FromDescriptor(ctx context.Context, engine Engine, descriptor *v1.Descripto
 	}
 
 	if err := blob.load(ctx, engine); err != nil {
-		return nil, err
+		return nil, errors.Wrap(err, "load")
 	}
 
 	return blob, nil

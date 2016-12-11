@@ -26,6 +26,7 @@ import (
 	"github.com/cyphar/umoci/image/cas"
 	igen "github.com/cyphar/umoci/image/generator"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -119,9 +120,9 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 				g.ClearConfigVolumes()
 			case "rootfs.diffids":
 				//g.ClearRootfsDiffIDs()
-				return fmt.Errorf("clear rootfs.diffids is not safe")
+				return errors.Errorf("--clear=rootfs.diffids is not safe")
 			default:
-				return fmt.Errorf("unknown set to clear: %s", key)
+				return errors.Errorf("unknown key to --clear: %s", key)
 			}
 		}
 	}
@@ -131,7 +132,7 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 		// How do we handle other formats?
 		created, err := time.Parse(igen.ISO8601, ctx.String("created"))
 		if err != nil {
-			return err
+			return errors.Wrap(err, "parse --created")
 		}
 		g.SetCreated(created)
 	}
@@ -223,18 +224,18 @@ func config(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get from reference")
 	}
 
 	// FIXME: Implement support for manifest lists.
 	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return fmt.Errorf("--from descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType)
+		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType), "invalid --image tag")
 	}
 
 	// TODO TODO: Implement the configuration modification. The rest comes from
@@ -245,7 +246,7 @@ func config(ctx *cli.Context) error {
 
 	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get from manifest")
 	}
 	defer manifestBlob.Close()
 
@@ -256,13 +257,13 @@ func config(ctx *cli.Context) error {
 	manifest, ok := manifestBlob.Data.(*v1.Manifest)
 	if !ok {
 		// Should never be reached.
-		return fmt.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
+		return errors.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
 	}
 
 	// We also need to update the config. Fun.
 	configBlob, err := cas.FromDescriptor(context.TODO(), engine, &manifest.Config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get from config")
 	}
 	defer configBlob.Close()
 
@@ -273,17 +274,17 @@ func config(ctx *cli.Context) error {
 	config, ok := configBlob.Data.(*v1.Image)
 	if !ok {
 		// Should not be reached.
-		return fmt.Errorf("config blob type not implemented: %s", configBlob.MediaType)
+		return errors.Errorf("config blob type not implemented: %s", configBlob.MediaType)
 	}
 
 	g, err := igen.NewFromImage(*config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "create new generator")
 	}
 
 	// Now we mutate the config.
 	if err := mutateConfig(g, manifest, ctx); err != nil {
-		return err
+		return errors.Wrap(err, "mutate config")
 	}
 
 	var (
@@ -320,7 +321,7 @@ func config(ctx *cli.Context) error {
 	*config = g.Image()
 	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "put config blob")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -333,6 +334,9 @@ func config(ctx *cli.Context) error {
 	manifest.Config.Digest = newConfigDigest
 	manifest.Config.Size = newConfigSize
 	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	if err != nil {
+		return errors.Wrap(err, "put manifest blob")
+	}
 
 	logrus.WithFields(logrus.Fields{
 		"digest": newManifestDigest,
@@ -359,10 +363,10 @@ func config(ctx *cli.Context) error {
 	// XXX: Should we output some warning if we actually did remove an old
 	//      reference?
 	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
-		return err
+		return errors.Wrap(err, "delete old tag")
 	}
 	if err := engine.PutReference(context.TODO(), tagName, newDescriptor); err != nil {
-		return err
+		return errors.Wrap(err, "add new tag")
 	}
 
 	return nil

@@ -19,7 +19,6 @@ package unpriv
 
 import (
 	"archive/tar"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -28,6 +27,7 @@ import (
 	"time"
 
 	"github.com/cyphar/umoci/pkg/system"
+	"github.com/pkg/errors"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given
@@ -56,12 +56,12 @@ func splitpath(path string) []string {
 // isNotExist tells you if err is an error that implies that either the path
 // accessed does not exist (or path components don't exist).
 func isNotExist(err error) bool {
-	if os.IsNotExist(err) {
+	if os.IsNotExist(errors.Cause(err)) {
 		return true
 	}
 
 	// Check that it's not actually an ENOTDIR.
-	perr, ok := err.(*os.PathError)
+	perr, ok := errors.Cause(err).(*os.PathError)
 	if !ok {
 		return false
 	}
@@ -81,7 +81,7 @@ func isNotExist(err error) bool {
 // trickery is reverted when this function returns (which is when fn returns).
 func Wrap(path string, fn func(path string) error) error {
 	// FIXME: Should we be calling fn() here first?
-	if err := fn(path); err == nil || !os.IsPermission(err) {
+	if err := fn(path); err == nil || !os.IsPermission(errors.Cause(err)) {
 		return err
 	}
 
@@ -100,7 +100,7 @@ func Wrap(path string, fn func(path string) error) error {
 		}
 		if !os.IsPermission(err) {
 			// This is a legitimate error.
-			return fmt.Errorf("unpriv.Wrap %s: cannot lstat parent: %s", current, err)
+			return errors.Wrapf(err, "unpriv.wrap: lstat parent: %s", current)
 		}
 		start--
 	}
@@ -109,12 +109,12 @@ func Wrap(path string, fn func(path string) error) error {
 		current := filepath.Join(parts[:i]...)
 		fi, err := os.Lstat(current)
 		if err != nil {
-			return fmt.Errorf("unpriv.Wrap %s: cannot lstat parent: %s", current, err)
+			return errors.Wrapf(err, "unpriv.wrap: lstat parent: %s", current)
 		}
 		// Add +rwx permissions to directories. If we have the access to change
 		// the mode at all then we are the user owner (not just a group owner).
 		if err := os.Chmod(current, fi.Mode()|0700); err != nil {
-			return fmt.Errorf("unpriv.Wrap %s: cannot chmod parent: %s", current, err)
+			return errors.Wrapf(err, "unpriv.wrap: chmod parent: %s", current)
 		}
 		defer fiRestore(current, fi)
 	}
@@ -135,12 +135,12 @@ func Open(path string) (*os.File, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "lstat file")
 		}
 
 		// Add +r permissions to the file.
 		if err := os.Chmod(path, fi.Mode()|0400); err != nil {
-			return err
+			return errors.Wrap(err, "chmod +r")
 		}
 		defer fiRestore(path, fi)
 
@@ -148,7 +148,7 @@ func Open(path string) (*os.File, error) {
 		fh, err = os.Open(path)
 		return err
 	})
-	return fh, err
+	return fh, errors.Wrap(err, "unpriv.open")
 }
 
 // Create is a wrapper around os.Create which has been wrapped with unpriv.Wrap
@@ -163,7 +163,7 @@ func Create(path string) (*os.File, error) {
 		fh, err = os.Create(path)
 		return err
 	})
-	return fh, err
+	return fh, errors.Wrap(err, "unpriv.create")
 }
 
 // Readdir is a wrapper around (*os.File).Readdir which has been wrapper with
@@ -178,19 +178,19 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "lstat dir")
 		}
 
 		// Add +rx permissions to the file.
 		if err := os.Chmod(path, fi.Mode()|0500); err != nil {
-			return err
+			return errors.Wrap(err, "chmod +rx")
 		}
 		defer fiRestore(path, fi)
 
 		// Open the damn thing.
 		fh, err := os.Open(path)
 		if err != nil {
-			return err
+			return errors.Wrap(err, "opendir")
 		}
 		defer fh.Close()
 
@@ -198,7 +198,7 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		infos, err = fh.Readdir(-1)
 		return err
 	})
-	return infos, err
+	return infos, errors.Wrap(err, "unpriv.readdir")
 }
 
 // Lstat is a wrapper around os.Lstat which has been wrapped with unpriv.Wrap
@@ -214,7 +214,7 @@ func Lstat(path string) (os.FileInfo, error) {
 		fi, err = os.Lstat(path)
 		return err
 	})
-	return fi, err
+	return fi, errors.Wrap(err, "unpriv.lstat")
 }
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
@@ -230,7 +230,7 @@ func Readlink(path string) (string, error) {
 		linkname, err = os.Readlink(path)
 		return err
 	})
-	return linkname, err
+	return linkname, errors.Wrap(err, "unpriv.readlink")
 }
 
 // Symlink is a wrapper around os.Symlink which has been wrapped with
@@ -239,9 +239,9 @@ func Readlink(path string) (string, error) {
 // may not have resolve access after this function returns because all of the
 // trickery is reverted by unpriv.Wrap.
 func Symlink(linkname, path string) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return os.Symlink(linkname, path)
-	})
+	}), "unpriv.symlink")
 }
 
 // Link is a wrapper around os.Link which has been wrapped with unpriv.Wrap to
@@ -250,23 +250,23 @@ func Symlink(linkname, path string) error {
 // resolve access after this function returns because all of the trickery is
 // reverted by unpriv.Wrap.
 func Link(linkname, path string) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		// We have to double-wrap this, because you need search access to the
 		// linkname. This is safe because any common ancestors will be reverted
 		// in reverse call stack order.
-		return Wrap(linkname, func(linkname string) error {
+		return errors.Wrap(Wrap(linkname, func(linkname string) error {
 			return os.Link(linkname, path)
-		})
-	})
+		}), "unpriv.wrap linkname")
+	}), "unpriv.link")
 }
 
 // Chmod is a wrapper around os.Chmod which has been wrapped with unpriv.Wrap
 // to make it possible to change the permission bits of a path even if you do
 // not currently have the required access bits to access the path.
 func Chmod(path string, mode os.FileMode) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return os.Chmod(path, mode)
-	})
+	}), "unpriv.chmod")
 }
 
 // Lchown is a wrapper around os.Lchown which has been wrapped with unpriv.Wrap
@@ -276,34 +276,34 @@ func Chmod(path string, mode os.FileMode) error {
 //
 // FIXME: This probably should be removed because it's questionably useful.
 func Lchown(path string, uid, gid int) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return os.Lchown(path, uid, gid)
-	})
+	}), "unpriv.lchown")
 }
 
 // Chtimes is a wrapper around os.Chtimes which has been wrapped with
 // unpriv.Wrap to make it possible to change the modified times of a path even
 // if you do not currently have the required access bits to access the path.
 func Chtimes(path string, atime, mtime time.Time) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return os.Chtimes(path, atime, mtime)
-	})
+	}), "unpriv.chtimes")
 }
 
 // Lutimes is a wrapper around system.Lutimes which has been wrapped with
 // unpriv.Wrap to make it possible to change the modified times of a path even
 // if you do no currently have the required access bits to access the path.
 func Lutimes(path string, atime, mtime time.Time) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return system.Lutimes(path, atime, mtime)
-	})
+	}), "unpriv.lutimes")
 }
 
 // Remove is a wrapper around os.Remove which has been wrapped with unpriv.Wrap
 // to make it possible to remove a path even if you do not currently have the
 // required access bits to modify or resolve the path.
 func Remove(path string) error {
-	return Wrap(path, os.Remove)
+	return errors.Wrap(Wrap(path, os.Remove), "unpriv.remove")
 }
 
 // RemoveAll is similar to os.RemoveAll but in order to implement it properly
@@ -311,34 +311,34 @@ func Remove(path string) error {
 // possible to remove a path (even if it has child paths) even if you do not
 // currently have enough access bits.
 func RemoveAll(path string) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		// If remove works, we're done.
 		err := os.Remove(path)
-		if err == nil || os.IsNotExist(err) {
+		if err == nil || os.IsNotExist(errors.Cause(err)) {
 			return nil
 		}
 
 		// Is this a directory?
 		fi, serr := os.Lstat(path)
 		if serr != nil {
-			if isNotExist(serr) {
+			if isNotExist(errors.Cause(serr)) {
 				serr = nil
 			}
-			return serr
+			return errors.Wrap(serr, "lstat")
 		}
 		// Return error from remove if it's not a directory.
 		if !fi.IsDir() {
-			return err
+			return errors.Wrap(err, "remove non-directory")
 		}
 
 		// Open the directory.
 		fd, err := Open(path)
 		if err != nil {
 			// We hit a race, but don't worry about it.
-			if os.IsNotExist(err) {
+			if os.IsNotExist(errors.Cause(err)) {
 				err = nil
 			}
-			return err
+			return errors.Wrap(err, "opendir")
 		}
 
 		// We need to change the mode to Readdirnames. We don't need to worry
@@ -373,30 +373,30 @@ func RemoveAll(path string) error {
 
 		// Remove the directory. This should now work.
 		err1 := os.Remove(path)
-		if err1 == nil || os.IsNotExist(err1) {
+		if err1 == nil || os.IsNotExist(errors.Cause(err1)) {
 			return nil
 		}
 		if err == nil {
 			err = err1
 		}
-		return err
-	})
+		return errors.Wrap(err, "remove")
+	}), "unpriv.removeall")
 }
 
 // Mkdir is a wrapper around os.Mkdir which has been wrapped with unpriv.Wrap
 // to make it possible to remove a path even if you do not currently have the
 // required access bits to modify or resolve the path.
 func Mkdir(path string, perm os.FileMode) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		return os.Mkdir(path, perm)
-	})
+	}), "unpriv.mkdir")
 }
 
 // MkdirAll is similar to os.MkdirAll but in order to implement it properly all
 // of the internal functions were wrapped with unpriv.Wrap to make it possible
 // to create a path even if you do not currently have enough access bits.
 func MkdirAll(path string, perm os.FileMode) error {
-	return Wrap(path, func(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
 		// Check whether the path already exists.
 		fi, err := os.Stat(path)
 		if err == nil {
@@ -426,5 +426,5 @@ func MkdirAll(path string, perm os.FileMode) error {
 			return err
 		}
 		return nil
-	})
+	}), "unpriv.mkdirall")
 }

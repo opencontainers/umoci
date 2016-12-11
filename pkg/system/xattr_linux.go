@@ -19,9 +19,10 @@ package system
 
 import (
 	"bytes"
-	"fmt"
 	"syscall"
 	"unsafe"
+
+	"github.com/pkg/errors"
 )
 
 // Llistxattr is a wrapper around llistxattr(2).
@@ -31,7 +32,7 @@ func Llistxattr(path string) ([]string, error) {
 		0, // char *list,
 		0) // size_t size);
 	if err != 0 {
-		return nil, fmt.Errorf("llistxattr: getting bufsize: %s", err)
+		return nil, errors.Wrap(err, "llistxattr: get bufsize")
 	}
 
 	if bufsize == 0 {
@@ -44,9 +45,9 @@ func Llistxattr(path string) ([]string, error) {
 		uintptr(unsafe.Pointer(&buffer[0])), // char *list,
 		uintptr(bufsize))                    // size_t size);
 	if err == syscall.ERANGE || n != bufsize {
-		return nil, fmt.Errorf("llistxattr: getting buffer: xattr set changed")
+		return nil, errors.Errorf("llistxattr: get buffer: xattr set changed")
 	} else if err != 0 {
-		return nil, fmt.Errorf("llistxattr: getting buffer: %s", err)
+		return nil, errors.Wrap(err, "llistxattr: get buffer")
 	}
 
 	var xattrs []string
@@ -63,7 +64,7 @@ func Lremovexattr(path, name string) error {
 		uintptr(assertPtrFromString(name)), //.   char *name);
 		0)
 	if err != 0 {
-		return fmt.Errorf("lremovexattr(%s, %s): %s", path, name, err)
+		return errors.Wrapf(err, "lremovexattr(%s, %s)", path, name)
 	}
 	return nil
 }
@@ -78,7 +79,7 @@ func Lsetxattr(path, name string, value []byte, flags int) error {
 		uintptr(flags),                     //.   int flags);
 		0)
 	if err != 0 {
-		return fmt.Errorf("lsetxattr(%s, %s, %s, %d): %s", path, name, value, flags, err)
+		return errors.Wrapf(err, "lsetxattr(%s, %s, %s, %d): %s", path, name, value, flags)
 	}
 	return nil
 }
@@ -92,7 +93,7 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 		0, // size_t size);
 		0, 0)
 	if err != 0 {
-		return nil, fmt.Errorf("lgetxattr: getting bufsize: %s", err)
+		return nil, errors.Wrap(err, "lgetxattr: get bufsize")
 	}
 
 	if bufsize == 0 {
@@ -107,9 +108,9 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 		uintptr(bufsize),                    // size_t size);
 		0, 0)
 	if err == syscall.ERANGE || n != bufsize {
-		return nil, fmt.Errorf("lgetxattr: getting buffer: xattr set changed")
+		return nil, errors.Errorf("lgetxattr: get buffer: xattr set changed")
 	} else if err != 0 {
-		return nil, fmt.Errorf("lgetxattr: getting buffer: %s", err)
+		return nil, errors.Wrap(err, "lgetxattr: get buffer")
 	}
 
 	return buffer, nil
@@ -120,11 +121,11 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 func Lclearxattrs(path string) error {
 	names, err := Llistxattr(path)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "lclearxattrs")
 	}
 	for _, name := range names {
 		if err := Lremovexattr(path, name); err != nil {
-			return err
+			return errors.Wrap(err, "lclearxattrs")
 		}
 	}
 	return nil

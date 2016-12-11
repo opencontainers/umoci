@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -130,18 +131,18 @@ func main() {
 
 				// Verify directory value.
 				if strings.Contains(dir, ":") {
-					return fmt.Errorf("invalid --image: directory contains ':' character: '%s'", dir)
+					return errors.Wrap(fmt.Errorf("directory contains ':' character: '%s'", dir), "invalid --image")
 				}
 				if dir == "" {
-					return fmt.Errorf("invalid --image: directory is empty")
+					return errors.Wrap(fmt.Errorf("directory is empty"), "invalid --image")
 				}
 
 				// Verify tag value.
 				if !refRegexp.MatchString(tag) {
-					return fmt.Errorf("invalid --image: tag contains invalid characters: '%s'", tag)
+					return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --image")
 				}
 				if tag == "" {
-					return fmt.Errorf("invalid --image: tag is empty")
+					return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --image")
 				}
 
 				ctx.App.Metadata["layout"] = dir
@@ -165,10 +166,10 @@ func main() {
 				dir := ctx.String("layout")
 				// Verify directory value.
 				if strings.Contains(dir, ":") {
-					return fmt.Errorf("invalid --layout: directory contains ':' character: '%s'", dir)
+					return errors.Wrap(fmt.Errorf("directory contains ':' character: '%s'", dir), "invalid --layout")
 				}
 				if dir == "" {
-					return fmt.Errorf("invalid --layout: directory is empty")
+					return errors.Wrap(fmt.Errorf("invalid --layout: directory is empty"), "invalid --layout")
 				}
 
 				ctx.App.Metadata["layout"] = dir

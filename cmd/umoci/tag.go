@@ -22,6 +22,7 @@ import (
 
 	"github.com/cyphar/umoci/image/cas"
 	"github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
@@ -56,13 +57,13 @@ the tag and "<new-tag>" is the new name of the tag.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return fmt.Errorf("invalid number of positional arguments: expected <new-tag>")
+			return errors.Errorf("invalid number of positional arguments: expected <new-tag>")
 		}
 		if ctx.Args().First() == "" {
-			return fmt.Errorf("new tag cannot be empty")
+			return errors.Errorf("new tag cannot be empty")
 		}
 		if !refRegexp.MatchString(ctx.Args().First()) {
-			return fmt.Errorf("new tag is an invalid reference")
+			return errors.Errorf("new tag is an invalid reference")
 		}
 		ctx.App.Metadata["new-tag"] = ctx.Args().First()
 		return nil
@@ -77,19 +78,19 @@ func tagAdd(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	// Get original descriptor.
 	descriptor, err := engine.GetReference(context.TODO(), fromName)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "get reference")
 	}
 
 	// Add it.
 	if err := engine.PutReference(context.TODO(), tagName, descriptor); err != nil {
-		return err
+		return errors.Wrap(err, "put reference")
 	}
 
 	return nil
@@ -118,13 +119,13 @@ func tagRemove(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	// Add it.
 	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
-		return err
+		return errors.Wrap(err, "delete reference")
 	}
 
 	return nil
@@ -153,13 +154,13 @@ func tagList(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
 	if err != nil {
-		return err
+		return errors.Wrap(err, "open CAS")
 	}
 	defer engine.Close()
 
 	names, err := engine.ListReferences(context.TODO())
 	if err != nil {
-		return err
+		return errors.Wrap(err, "list references")
 	}
 
 	for _, name := range names {
