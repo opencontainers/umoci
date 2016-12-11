@@ -9,7 +9,7 @@ umoci - umoci modifies Open Container images
 [**--debug**]
 [**--help**|**-h**]
 [**--version**|**-v**]
-<command> [<args>]
+*command* [*args*]
 
 # DESCRIPTION
 **umoci** is a tool that allows for high-level modification of an OCI image

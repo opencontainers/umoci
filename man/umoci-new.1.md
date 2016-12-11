@@ -24,7 +24,8 @@ The global options are defined in **umoci**(1).
 **--image**=*image*[:*tag*]
   The destination of the blank tag in the OCI image. *image* must be a path to
   a valid OCI image, and *tag* must be a valid tag name. If a tag already
-  exists with the name *tag* it will be overwritten.
+  exists with the name *tag* it will be overwritten. If *tag* is not provided
+  it defaults to "latest".
 
 # SEE ALSO
 **umoci**(1), **umoci-unpack**(1), **umoci-repack**(1), **umoci-config**(1)

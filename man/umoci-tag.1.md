@@ -10,7 +10,8 @@ umoci tag - Create tags in OCI images
 *new-tag*
 
 # DESCRIPTION
-Creates a new tag that is a copy of *tag*.
+Creates a new tag that is a copy of *tag* with the name *new-tag*. If *new-tag*
+already exists, it will be replaced. The original *tag* will be unchanged.
 
 # OPTIONS
 

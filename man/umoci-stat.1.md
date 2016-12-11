@@ -23,7 +23,7 @@ The global options are defined in **umoci**(1).
 
 **--image**=*image*[:*tag*]
   The OCI image tag to display information about. *image* must be a path to a
-  valid OCI image and *tag* must be a valid tag in the image. If *<tag>* is not
+  valid OCI image and *tag* must be a valid tag in the image. If *tag* is not
   provided it defaults to "latest".
 
 **--json**
