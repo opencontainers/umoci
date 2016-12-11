@@ -30,13 +30,22 @@ umoci config - Modifies the configuration of an OCI image
 [**--os**=[*value*]]
 [**--manifest.annotation**=[*value*]]
 
+# DESCRIPTION
+Modify the configuration and manifest data for a particular tagged OCI image.
+In addition, a history entry is appended to the tagged OCI image for this
+change (with the various **--history.** flags controlling the values used). To
+view the history, see **umoci-stat**(1).
+
+Note that the original image tag (the argument to **--image**) will **not** be
+modified unless the target of **umoci-config**(1) is the original image tag.
+
 # OPTIONS
 The global options are defined in **umoci**(1).
 
 **--image**=*image*[:*tag*]
   The source tagged OCI image whose config will be modified. *image* must be
   a path to a valid OCI image and *tag* must be a valid tag in the image. If
-  *<tag>* is not provided it defaults to "latest".
+  *tag* is not provided it defaults to "latest".
 
 **--tag**=*new-tag*
   Tag name for the repacked image, if unspecified then the original tag

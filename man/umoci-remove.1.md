@@ -12,7 +12,8 @@ umoci remove - Removes tags from OCI images
 **--image**=*image*[:*tag*]
 
 # DESCRIPTION
-Removes the given tag from the OCI image.
+Removes the given tag from the OCI image. The relevant blobs are **not**
+removed -- in order to remove all unused blobs see **umoci-gc**(1).
 
 # OPTIONS
 
@@ -23,4 +24,4 @@ Removes the given tag from the OCI image.
   "latest".
 
 # SEE ALSO
-**umoci**(1), **umoci-tag**(1)
+**umoci**(1), **umoci-tag**(1), **umoci-gc**(1)

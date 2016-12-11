@@ -11,19 +11,27 @@ umoci repack - Repacks an OCI runtime bundle into an image tag
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
 [**--history-created**=*date*]
-*<bundle>*
+*bundle*
 
 # DESCRIPTION
-Given a modified bundle extracted with **umoci-unpack**(1), **umoci-repack**(1)
-computes the filesystem delta for the OCI bundle's *rootfs*. The delta is used
-to generate a delta layer, which is then appended to the original image
-manifest (that was used as an argument to **umoci-unpack**(1)) and tagged as a
-new image tag. Between a call to **umoci-unpack**(1) and **umoci-repack**(1)
-users SHOULD NOT modify the OCI image in any way.
+Given a modified OCI bundle extracted with **umoci-unpack**(1) (at the given
+path *bundle*), **umoci-repack**(1) computes the filesystem delta for the OCI
+bundle's *rootfs*. The delta is used to generate a delta layer, which is then
+appended to the original image manifest (that was used as an argument to
+**umoci-unpack**(1)) and tagged as a new image tag. Between a call to
+**umoci-unpack**(1) and **umoci-repack**(1) users SHOULD NOT modify the OCI
+image in any way (specifically you MUST NOT use **umoci-gc**(1)).
 
 All **--uid-map** and **--gid-map** settings are implied from the saved values
 specified in **umoci-unpack**(1), so they are not available for
 **umoci-repack**(1).
+
+In addition, a history entry is appended to the tagged OCI image for this
+change (with the various **--history.** flags controlling the values used). To
+view the history, see **umoci-stat**(1).
+
+Note that the original image tag (used with **umoci-unpack**(1)) will **not**
+be modified unless the target of **umoci-repack**(1) is the original image tag.
 
 # OPTIONS
 The global options are defined in **umoci**(1).
@@ -32,7 +40,8 @@ The global options are defined in **umoci**(1).
   The destination tag for the repacked OCI image. *image* must be a path to a
   valid OCI image (and the same *image* used in **umoci-unpack**(1) to create
   the *bundle*) and *tag* must be a valid tag name. If another tag already has
-  the same name as *tag* it will be overwritten.
+  the same name as *tag* it will be overwritten. If *tag* is not provided it
+  defaults to "latest".
 
 **--history.comment**=*comment*
   Comment for the history entry corresponding to this modification of the image
