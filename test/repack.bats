@@ -263,5 +263,61 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# TODO: Add a hardlink-based test, to make sure that hardlinks are unpacked as
-#       hardlinks (not copies).
+@test "umoci {un,repack} [hardlink]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Create a file and some hardlinks.
+	echo "this has some contents" >> "$BUNDLE_A/rootfs/small_change"
+	ln -f "$BUNDLE_A/rootfs/small_change" "$BUNDLE_A/rootfs/link_hard"
+	mkdir -p "$BUNDLE_A/rootfs/tmp" && ln -f "$BUNDLE_A/rootfs/small_change" "$BUNDLE_A/rootfs/tmp/link_hard"
+	mkdir -p "$BUNDLE_A/rootfs/another/link/dir" && ln -f "$BUNDLE_A/rootfs/link_hard" "$BUNDLE_A/rootfs/another/link/dir/hard"
+
+	# Symlink + hardlink.
+	ln -sf "/../../.././small_change" "$BUNDLE_A/rootfs/symlink"
+	ln -Pf "$BUNDLE_A/rootfs/symlink" "$BUNDLE_A/rootfs/tmp/symlink_hard"
+
+	# Repack the image, setting history values.
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Now make sure that the paths all have the same inode numbers.
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/small_change"
+	[ "$status" -eq 0 ]
+	originalA="$output"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/link_hard"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$originalA" ]]
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/tmp/link_hard"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$originalA" ]]
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/another/link/dir/hard"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$originalA" ]]
+
+	# Now make sure that the paths all have the same inode numbers.
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/symlink"
+	[ "$status" -eq 0 ]
+	originalB="$output"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/tmp/symlink_hard"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$originalB" ]]
+
+	# Make sure that hardlink->symlink != hardlink.
+	[[ "$originalA" != "$originalB" ]]
+
+	image-verify "${IMAGE}"
+}
