@@ -83,13 +83,13 @@ func tagAdd(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Get original descriptor.
-	descriptor, err := engine.GetReference(context.TODO(), fromName)
+	descriptor, err := engine.GetReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get reference")
 	}
 
 	// Add it.
-	if err := engine.PutReference(context.TODO(), tagName, descriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, descriptor); err != nil {
 		return errors.Wrap(err, "put reference")
 	}
 
@@ -124,7 +124,7 @@ func tagRemove(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Add it.
-	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
+	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return errors.Wrap(err, "delete reference")
 	}
 
@@ -158,7 +158,7 @@ func tagList(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
-	names, err := engine.ListReferences(context.TODO())
+	names, err := engine.ListReferences(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "list references")
 	}

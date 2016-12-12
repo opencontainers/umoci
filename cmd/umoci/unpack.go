@@ -150,13 +150,13 @@ func unpack(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
-	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
+	fromDescriptor, err := engine.GetReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
 	meta.From = *fromDescriptor
 
-	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
+	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, &meta.From)
 	if err != nil {
 		return errors.Wrap(err, "get manifest")
 	}
@@ -200,7 +200,7 @@ func unpack(ctx *cli.Context) error {
 	//        extraction). I'm considering reimplementing it just so there are
 	//        competing implementations of this extraction functionality.
 	//           https://github.com/opencontainers/image-tools/issues/74
-	if err := layer.UnpackManifest(context.TODO(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
+	if err := layer.UnpackManifest(context.Background(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 
