@@ -40,8 +40,6 @@ func isValidMediaType(mediaType string) bool {
 	return ok
 }
 
-// TODO: Completely rework this command.
-
 var tagAddCommand = cli.Command{
 	Name:  "tag",
 	Usage: "creates a new tag in an OCI image",

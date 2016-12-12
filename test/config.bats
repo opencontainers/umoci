@@ -316,9 +316,6 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# TODO: Add a test to make sure that --config.user is resolved on unpacking.
-# TODO: Add further tests for --config.user resolution (and additional_gids).
-
 @test "umoci config --config.workingdir" {
 	BUNDLE="$(setup_bundle)"
 

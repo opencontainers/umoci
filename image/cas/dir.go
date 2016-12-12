@@ -33,13 +33,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// ImageLayout is the structure in the "oci-layout" file, found in the root
-// of an OCI Image-layout directory.
-// XXX: This comes from the spec, but hasn't been vendored.
-type ImageLayout struct {
-	Version string `json:"imageLayoutVersion"`
-}
-
 // ImageLayoutVersion is the version of the image layout we support. This value
 // is *not* the same as imagespec.Version, and the meaning of this field is
 // still under discussion in the spec. For now we'll just hardcode the value
@@ -79,7 +72,7 @@ func CreateLayout(path string) error {
 	}
 	defer fh.Close()
 
-	ociLayout := &ImageLayout{
+	ociLayout := &v1.ImageLayout{
 		Version: ImageLayoutVersion,
 	}
 
@@ -97,8 +90,6 @@ type dirEngine struct {
 }
 
 // verify ensures that the image is valid.
-// FIXME: Actually validate the full image, not just the layoutFile.
-// FIXME: Return more information about what was invalid about the image.
 func (e dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
@@ -108,7 +99,7 @@ func (e dirEngine) validate() error {
 		return errors.Wrap(err, "read oci-layout")
 	}
 
-	var ociLayout ImageLayout
+	var ociLayout v1.ImageLayout
 	if err := json.Unmarshal(content, &ociLayout); err != nil {
 		return errors.Wrap(err, "parse oci-layout")
 	}

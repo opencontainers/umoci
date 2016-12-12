@@ -263,4 +263,5 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# TODO: Test hardlinks once we fix the hardlink issue. https://github.com/cyphar/umoci/issues/29
+# TODO: Add a hardlink-based test, to make sure that hardlinks are unpacked as
+#       hardlinks (not copies).

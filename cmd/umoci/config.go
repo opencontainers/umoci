@@ -70,9 +70,6 @@ image.`,
 		cli.StringSliceFlag{Name: "config.volume"},
 		cli.StringSliceFlag{Name: "config.label"},
 		cli.StringFlag{Name: "config.workingdir"},
-		// FIXME: These aren't really safe to expose.
-		//cli.StringFlag{Name: "rootfs.type"},
-		//cli.StringSliceFlag{Name: "rootfs.diffids"},
 		cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 		cli.StringFlag{Name: "author"},
 		cli.StringFlag{Name: "architecture"},
@@ -108,7 +105,6 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 		}
 	}
 
-	// FIXME: Implement TimeFlag.
 	if ctx.IsSet("created") {
 		// How do we handle other formats?
 		created, err := time.Parse(igen.ISO8601, ctx.String("created"))
@@ -170,15 +166,6 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 			g.AddConfigLabel(parts[0], parts[1])
 		}
 	}
-	// FIXME: These aren't really safe to expose.
-	if ctx.IsSet("rootfs.type") {
-		g.SetRootfsType(ctx.String("rootfs.type"))
-	}
-	if ctx.IsSet("rootfs.diffids") {
-		for _, diffid := range ctx.StringSlice("rootfs.diffid") {
-			g.AddRootfsDiffID(diffid)
-		}
-	}
 	if ctx.IsSet("manifest.annotation") {
 		if m.Annotations == nil {
 			m.Annotations = map[string]string{}
@@ -218,9 +205,6 @@ func config(ctx *cli.Context) error {
 	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
 		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType), "invalid --image tag")
 	}
-
-	// TODO TODO: Implement the configuration modification. The rest comes from
-	//            repack, and should be mostly unchanged.
 
 	// XXX: I get the feeling all of this should be moved to a separate package
 	//      which abstracts this nicely.

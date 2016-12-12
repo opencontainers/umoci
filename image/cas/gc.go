@@ -32,7 +32,6 @@ import (
 var descriptorType = reflect.TypeOf(v1.Descriptor{})
 
 // isDescriptor returns whether the given T is a v1.Descriptor.
-// XXX: Should we be using .PkgPath() + .Name() here?
 func isDescriptor(T reflect.Type) bool {
 	return T.AssignableTo(descriptorType) && descriptorType.AssignableTo(T)
 }
@@ -42,7 +41,6 @@ func isDescriptor(T reflect.Type) bool {
 // struct pointer stuff going on things won't end well.
 // FIXME: Should we implement this in a way that avoids cycle issues?
 func childDescriptors(i interface{}) []v1.Descriptor {
-	// XXX: Is this correct?
 	V := reflect.ValueOf(i)
 	logrus.WithFields(logrus.Fields{
 		"V": V,

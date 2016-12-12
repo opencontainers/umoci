@@ -39,18 +39,7 @@ type tarGenerator struct {
 	mapOptions MapOptions
 
 	// Hardlink mapping.
-	// XXX: Do we need to handle having a rootfs/ which is on more than one
-	//      filesystem? In which case this will have to be more complicated
-	//      than a simple inode mapping.
 	inodes map[uint64]string
-
-	// Parent directory mappings, so we can add dummy entries for any parent
-	// directory we wanted to modify.
-	// XXX: Is this actually necessary? Docker does this to "preserve
-	//      permissions" but I'm not entirely convinced it's necessary and as
-	//      far as I can tell there's no explicit requirement in the image-spec
-	//      that mandates this behaviour.
-	directories map[string]bool
 
 	// XXX: Should we add a saftey check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
@@ -60,10 +49,9 @@ type tarGenerator struct {
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
 	return &tarGenerator{
-		tw:          tar.NewWriter(w),
-		mapOptions:  opt,
-		inodes:      map[uint64]string{},
-		directories: map[string]bool{},
+		tw:         tar.NewWriter(w),
+		mapOptions: opt,
+		inodes:     map[uint64]string{},
 	}
 }
 
@@ -191,7 +179,6 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Write the contents of regular files.
 	if hdr.Typeflag == tar.TypeReg {
-		// XXX: Do we need bufio here?
 		fh, err := tg.open(path)
 		if err != nil {
 			return errors.Wrap(err, "open file")
@@ -214,11 +201,6 @@ const whPrefix = ".wh."
 
 // AddWhiteout adds a whiteout file for the given name inside the tar archive.
 // It's not recommended to add a file with AddFile and then white it out.
-//
-// TODO: We don't use opaque whiteouts if we have a directory which has had
-//       many children removed. While this is fine for the image-spec (in fact
-//       it recommends it) I am not entirely sure this is the best idea in the
-//       world.
 func (tg *tarGenerator) AddWhiteout(name string) error {
 	name, err := normalise(name, false)
 	if err != nil {
@@ -226,24 +208,9 @@ func (tg *tarGenerator) AddWhiteout(name string) error {
 	}
 
 	// Create the explicit whiteout for the file.
-	// FIXME: Currently we are not ignoring directories which have been entirely
-	//        removed. This means that we will generate an explicit whiteout
-	//        file for every file underneath a deleted directory. I'm not
-	//        entirely sure this is actually correct.
-
 	dir, file := filepath.Split(name)
 	whiteout := filepath.Join(dir, whPrefix+file)
 	timestamp := time.Now()
-
-	// FIXME: Do we need to ensure that the parent paths have all been added to
-	//        the archive? I haven't found any tar specification that makes
-	//        this mandatory, but I have a feeling that some people might rely
-	//        on it.
-	//
-	//        The big issue with implementing it for whiteouts is that you then
-	//        have to ensure you match the old FileInfo in a lower layer (which
-	//        we don't have access to in this context). In addition, I don't
-	//        really buy why it would be necessary.
 
 	// Add a dummy header for the whiteout file.
 	if err := tg.tw.WriteHeader(&tar.Header{

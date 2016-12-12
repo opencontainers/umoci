@@ -51,6 +51,5 @@ func (g *Generator) WriteTo(w io.Writer) (n int64, err error) {
 		return fb.n, errors.Wrap(err, "encode image")
 	}
 
-	// XXX: Should we also generate a digest?
 	return fb.n, nil
 }
