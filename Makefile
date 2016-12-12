@@ -96,5 +96,8 @@ test-integration: umociimage
 local-test-integration: umoci
 	bats -t test/*.bats
 
+shell: umociimage
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
+
 .PHONY: ci
 ci: umoci validate doc test-unit test-integration

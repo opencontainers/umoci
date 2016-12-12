@@ -31,8 +31,6 @@ import (
 //        ensure that this set of getters and setters is complete. This should
 //        be possible through some reflection.
 
-// FIXME: Implement initConfig which makes sure everything has a valid zero value.
-
 // Generator allows you to generate a mutable OCI image-spec configuration
 // which can be written to a file (and its digest computed). It is the
 // recommended way of handling modification and generation of image-spec

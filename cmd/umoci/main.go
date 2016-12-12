@@ -63,7 +63,6 @@ func main() {
 	}
 	app.Version = v
 
-	// FIXME: Should --image be a global option?
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
 			Name:  "debug",

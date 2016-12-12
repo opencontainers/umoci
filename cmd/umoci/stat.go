@@ -65,7 +65,7 @@ func stat(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
-	manifestDescriptor, err := engine.GetReference(context.TODO(), tagName)
+	manifestDescriptor, err := engine.GetReference(context.Background(), tagName)
 	if err != nil {
 		return errors.Wrap(err, "get reference")
 	}
@@ -76,7 +76,7 @@ func stat(ctx *cli.Context) error {
 	}
 
 	// Get stat information.
-	ms, err := Stat(context.TODO(), engine, *manifestDescriptor)
+	ms, err := Stat(context.Background(), engine, *manifestDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "stat")
 	}

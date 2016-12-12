@@ -82,7 +82,7 @@ func newImage(ctx *cli.Context) error {
 
 	// Update config and create a new blob for it.
 	config := g.Image()
-	configDigest, configSize, err := engine.PutBlobJSON(context.TODO(), &config)
+	configDigest, configSize, err := engine.PutBlobJSON(context.Background(), &config)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -107,7 +107,7 @@ func newImage(ctx *cli.Context) error {
 		Layers: []v1.Descriptor{},
 	}
 
-	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		return errors.Wrap(err, "put manifest blob")
 	}
@@ -136,10 +136,10 @@ func newImage(ctx *cli.Context) error {
 	// We have to clobber the old reference.
 	// XXX: Should we output some warning if we actually did remove an old
 	//      reference?
-	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
+	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return errors.Wrap(err, "delete old tag")
 	}
-	if err := engine.PutReference(context.TODO(), tagName, &descriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, &descriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

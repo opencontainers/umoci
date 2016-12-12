@@ -72,7 +72,6 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# FIXME: It would be nice if we implemented this test with a manual chown.
 @test "umoci repack [with unpack --uid-map --gid-map]" {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root

@@ -70,9 +70,6 @@ image.`,
 		cli.StringSliceFlag{Name: "config.volume"},
 		cli.StringSliceFlag{Name: "config.label"},
 		cli.StringFlag{Name: "config.workingdir"},
-		// FIXME: These aren't really safe to expose.
-		//cli.StringFlag{Name: "rootfs.type"},
-		//cli.StringSliceFlag{Name: "rootfs.diffids"},
 		cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 		cli.StringFlag{Name: "author"},
 		cli.StringFlag{Name: "architecture"},
@@ -108,7 +105,6 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 		}
 	}
 
-	// FIXME: Implement TimeFlag.
 	if ctx.IsSet("created") {
 		// How do we handle other formats?
 		created, err := time.Parse(igen.ISO8601, ctx.String("created"))
@@ -170,15 +166,6 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 			g.AddConfigLabel(parts[0], parts[1])
 		}
 	}
-	// FIXME: These aren't really safe to expose.
-	if ctx.IsSet("rootfs.type") {
-		g.SetRootfsType(ctx.String("rootfs.type"))
-	}
-	if ctx.IsSet("rootfs.diffids") {
-		for _, diffid := range ctx.StringSlice("rootfs.diffid") {
-			g.AddRootfsDiffID(diffid)
-		}
-	}
 	if ctx.IsSet("manifest.annotation") {
 		if m.Annotations == nil {
 			m.Annotations = map[string]string{}
@@ -209,7 +196,7 @@ func config(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
-	fromDescriptor, err := engine.GetReference(context.TODO(), fromName)
+	fromDescriptor, err := engine.GetReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get from reference")
 	}
@@ -219,13 +206,10 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType), "invalid --image tag")
 	}
 
-	// TODO TODO: Implement the configuration modification. The rest comes from
-	//            repack, and should be mostly unchanged.
-
 	// XXX: I get the feeling all of this should be moved to a separate package
 	//      which abstracts this nicely.
 
-	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, fromDescriptor)
+	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, fromDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "get from manifest")
 	}
@@ -242,7 +226,7 @@ func config(ctx *cli.Context) error {
 	}
 
 	// We also need to update the config. Fun.
-	configBlob, err := cas.FromDescriptor(context.TODO(), engine, &manifest.Config)
+	configBlob, err := cas.FromDescriptor(context.Background(), engine, &manifest.Config)
 	if err != nil {
 		return errors.Wrap(err, "get from config")
 	}
@@ -300,7 +284,7 @@ func config(ctx *cli.Context) error {
 
 	// Update config and create a new blob for it.
 	*config = g.Image()
-	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
+	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.Background(), config)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -314,7 +298,7 @@ func config(ctx *cli.Context) error {
 	// for it.
 	manifest.Config.Digest = newConfigDigest
 	manifest.Config.Size = newConfigSize
-	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		return errors.Wrap(err, "put manifest blob")
 	}
@@ -343,10 +327,10 @@ func config(ctx *cli.Context) error {
 	// We have to clobber the old reference.
 	// XXX: Should we output some warning if we actually did remove an old
 	//      reference?
-	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
+	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return errors.Wrap(err, "delete old tag")
 	}
-	if err := engine.PutReference(context.TODO(), tagName, newDescriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, newDescriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

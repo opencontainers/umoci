@@ -179,7 +179,7 @@ func repack(ctx *cli.Context) error {
 		pipeWriter.Close()
 	}()
 
-	layerDigest, layerSize, err := engine.PutBlob(context.TODO(), pipeReader)
+	layerDigest, layerSize, err := engine.PutBlob(context.Background(), pipeReader)
 	if err != nil {
 		return errors.Wrap(err, "put layer blob")
 	}
@@ -201,7 +201,7 @@ func repack(ctx *cli.Context) error {
 		"size":   layerSize,
 	}).Debugf("umoci: generated new diff layer")
 
-	manifestBlob, err := cas.FromDescriptor(context.TODO(), engine, &meta.From)
+	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, &meta.From)
 	if err != nil {
 		return errors.Wrap(err, "get manifest blob")
 	}
@@ -218,7 +218,7 @@ func repack(ctx *cli.Context) error {
 	}
 
 	// We also need to update the config. Fun.
-	configBlob, err := cas.FromDescriptor(context.TODO(), engine, &manifest.Config)
+	configBlob, err := cas.FromDescriptor(context.Background(), engine, &manifest.Config)
 	if err != nil {
 		return errors.Wrap(err, "get config blob")
 	}
@@ -274,7 +274,7 @@ func repack(ctx *cli.Context) error {
 
 	// Update config and create a new blob for it.
 	*config = g.Image()
-	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.TODO(), config)
+	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.Background(), config)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -289,7 +289,7 @@ func repack(ctx *cli.Context) error {
 	manifest.Layers = append(manifest.Layers, *layerDescriptor)
 	manifest.Config.Digest = newConfigDigest
 	manifest.Config.Size = newConfigSize
-	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.TODO(), manifest)
+	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		return errors.Wrap(err, "put manifest blob")
 	}
@@ -318,10 +318,10 @@ func repack(ctx *cli.Context) error {
 	// We have to clobber the old reference.
 	// XXX: Should we output some warning if we actually did remove an old
 	//      reference?
-	if err := engine.DeleteReference(context.TODO(), tagName); err != nil {
+	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return err
 	}
-	if err := engine.PutReference(context.TODO(), tagName, newDescriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, newDescriptor); err != nil {
 		return err
 	}
 

@@ -33,7 +33,6 @@ import (
 	"github.com/pkg/errors"
 )
 
-// FIXME: Add tarExtractor.
 type tarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting filesystem layers.
 	mapOptions MapOptions
@@ -61,9 +60,6 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 
 	// We cannot apply hdr.Mode to symlinks, because symlinks don't have a mode
 	// of their own (they're special in that way).
-	// XXX: Make sure that the same doesn't hold for hardlinks in a tar file
-	//      (hardlinks share their inode, but in a tar file they have separate
-	//      headers).
 	if !isSymlink {
 		if err := te.chmod(path, fi.Mode()); err != nil {
 			return errors.Wrapf(err, "restore chmod metadata: %s", path)
@@ -95,9 +91,6 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
 	// XXX: This will almost certainly break horribly on RedHat.
-	// FIXME: We really should not be clearing xattrs if the hdr has no Xattrs
-	//        entries (or something like that). Otherwise we're messing with
-	//        xattrs in rootless images.
 	if !te.mapOptions.Rootless {
 		if err := system.Lclearxattrs(path); err != nil {
 			return errors.Wrapf(err, "clear xattr metadata: %s", path)
@@ -113,7 +106,6 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		return errors.Wrapf(err, "restore lutimes metadata: %s", path)
 	}
 
-	// TODO.
 	return nil
 }
 
@@ -312,9 +304,9 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 	// If the type of the file has changed, there's nothing we can do other
 	// than just remove the old path and replace it.
-	// XXX Is this actually valid according to the spec? Do you need to have a
-	//     whiteout in this case, or can we just assume that a change in the
-	//     type is reason enough to purge the old type.
+	// XXX: Is this actually valid according to the spec? Do you need to have a
+	//      whiteout in this case, or can we just assume that a change in the
+	//      type is reason enough to purge the old type.
 	if hdrFi.Mode()&os.ModeType != fi.Mode()&os.ModeType {
 		if err := te.removeall(path); err != nil {
 			return errors.Wrap(err, "replace removeall")
@@ -430,10 +422,6 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// We have to remove and then create the device. In the FIFO case we
 		// could choose not to do so, but we do it anyway just to be on the
 		// safe side.
-		// FIXME: What is the right thing to do here? If we don't remove an
-		//        existing node we might end up with a container having
-		//        unexpected buffered data. If we do remove it we might remove
-		//        data that we shouldn't have.
 
 		mode := system.Tarmode(hdr.Typeflag)
 		dev := system.Makedev(uint64(hdr.Devmajor), uint64(hdr.Devminor))
