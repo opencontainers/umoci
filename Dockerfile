@@ -16,11 +16,11 @@
 FROM opensuse/amd64:42.2
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
-# Use my personal repo because currently Go is broken in openSUSE (will be
-# fixed in https://build.opensuse.org/request/show/439834) and also several
-# things (such as bats and go-mtree) aren't in an proper openSUSE repo.
+# We have to use out-of-tree repos because several packages haven't been merged
+# into openSUSE:Factory yet.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
-    zypper ar -f -p 10 -g obs://home:cyphar obs-cyphar && \
+    zypper ar -f -p 10 -g obs://devel:languages:go obs-dlg && \
+    zypper ar -f -p 15 -g obs://home:cyphar obs-home-cyphar && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
