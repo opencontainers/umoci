@@ -18,16 +18,14 @@
 package main
 
 import (
-	"compress/gzip"
-	"crypto/sha256"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/cyphar/umoci/oci/layer"
@@ -59,7 +57,7 @@ new layer.
 
 It should be noted that this is not the same as oci-create-layer because it
 uses go-mtree to create diff layers from runtime bundles unpacked with
-umoci-unpack(1). In addition, it modifies the layout so that all of the relevant
+umoci-unpack(1). In addition, it modifies the image so that all of the relevant
 manifest and configuration information uses the new diff atop the old manifest.`,
 
 	// repack creates a new image, with a given tag.
@@ -108,16 +106,22 @@ func repack(ctx *cli.Context) error {
 	}
 	defer engine.Close()
 
+	// Create the mutator.
+	mutator, err := mutate.New(engine, meta.From)
+	if err != nil {
+		return errors.Wrap(err, "create mutator for base image")
+	}
+
 	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
 	logrus.WithFields(logrus.Fields{
-		"layout": imagePath,
+		"image":  imagePath,
 		"bundle": bundlePath,
 		"rootfs": layer.RootfsName,
 		"mtree":  mtreePath,
-	}).Debugf("umoci: repacking OCI layout")
+	}).Debugf("umoci: repacking OCI image")
 
 	mfh, err := os.Open(mtreePath)
 	if err != nil {
@@ -151,169 +155,48 @@ func repack(ctx *cli.Context) error {
 	}
 	defer reader.Close()
 
-	// XXX: I get the feeling all of this should be moved to a separate package
-	//      which abstracts this nicely.
-
-	// We need to store the gzip'd layer (which has a blob digest) but we also
-	// need to grab the diffID (which is the digest of the *uncompressed*
-	// layer). But because we have a Reader from GenerateLayer() we need to use
-	// a goroutine.
-	// FIXME: This is all super-ugly.
-
-	diffIDHash := sha256.New()
-	hashReader := io.TeeReader(reader, diffIDHash)
-
-	pipeReader, pipeWriter := io.Pipe()
-	defer pipeReader.Close()
-
-	gzw := gzip.NewWriter(pipeWriter)
-	defer gzw.Close()
-	go func() {
-		_, err := io.Copy(gzw, hashReader)
-		if err != nil {
-			logrus.Warnf("failed when copying to gzip: %s", err)
-			pipeWriter.CloseWithError(err)
-			return
-		}
-		gzw.Close()
-		pipeWriter.Close()
-	}()
-
-	layerDigest, layerSize, err := engine.PutBlob(context.Background(), pipeReader)
+	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "put layer blob")
-	}
-	reader.Close()
-	// XXX: Should we defer a DeleteBlob?
-
-	layerDiffID := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, diffIDHash.Sum(nil))
-
-	layerDescriptor := &v1.Descriptor{
-		// FIXME: This should probably be configurable, so someone can specify
-		//        that a layer is not distributable.
-		MediaType: v1.MediaTypeImageLayer,
-		Digest:    layerDigest,
-		Size:      layerSize,
+		return errors.Wrap(err, "get image metadata")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"digest": layerDigest,
-		"size":   layerSize,
-	}).Debugf("umoci: generated new diff layer")
-
-	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, &meta.From)
-	if err != nil {
-		return errors.Wrap(err, "get manifest blob")
+	history := v1.History{
+		Author:     imageMeta.Author,
+		Comment:    "",
+		Created:    time.Now().Format(igen.ISO8601),
+		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
+		EmptyLayer: false,
 	}
-	defer manifestBlob.Close()
-
-	logrus.WithFields(logrus.Fields{
-		"digest": manifestBlob.Digest,
-	}).Debugf("umoci: got original manifest")
-
-	manifest, ok := manifestBlob.Data.(*v1.Manifest)
-	if !ok {
-		// Should never be reached.
-		return errors.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
-	}
-
-	// We also need to update the config. Fun.
-	configBlob, err := cas.FromDescriptor(context.Background(), engine, &manifest.Config)
-	if err != nil {
-		return errors.Wrap(err, "get config blob")
-	}
-	defer configBlob.Close()
-
-	logrus.WithFields(logrus.Fields{
-		"digest": configBlob.Digest,
-	}).Debugf("umoci: got original config")
-
-	config, ok := configBlob.Data.(*v1.Image)
-	if !ok {
-		// Should not be reached.
-		return errors.Errorf("config blob type not implemented: %s", configBlob.MediaType)
-	}
-
-	g, err := igen.NewFromImage(*config)
-	if err != nil {
-		return err
-	}
-
-	// Append our new layer to the set of DiffIDs.
-	g.AddRootfsDiffID(layerDiffID)
-
-	var (
-		author    = g.Author()
-		comment   = fmt.Sprintf("repack diffid %s", layerDiffID)
-		created   = time.Now().Format(igen.ISO8601)
-		createdBy = "umoci repack" // XXX: should we append argv to this?
-	)
 
 	if val, ok := ctx.App.Metadata["--history.author"]; ok {
-		author = val.(string)
+		history.Author = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.comment"]; ok {
-		comment = val.(string)
+		history.Comment = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created"]; ok {
-		created = val.(string)
+		history.Created = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
-		createdBy = val.(string)
+		history.CreatedBy = val.(string)
 	}
 
-	// We need to add a history entry here, since a lot of tooling depends on
-	// the EmptyLayer == false semantics of Docker's history.
-	g.AddHistory(v1.History{
-		Created:    created,
-		CreatedBy:  createdBy,
-		Author:     author,
-		Comment:    comment,
-		EmptyLayer: false,
-	})
+	// TODO: We should add a flag to allow for a new layer to be made
+	//       non-distributable.
+	if err := mutator.Add(context.Background(), reader, history); err != nil {
+		return errors.Wrap(err, "add diff layer")
+	}
 
-	// Update config and create a new blob for it.
-	*config = g.Image()
-	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.Background(), config)
+	newDescriptor, err := mutator.Commit(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "put config blob")
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"digest": newConfigDigest,
-		"size":   newConfigSize,
-	}).Debugf("umoci: added new config")
-
-	// Update the manifest to include the new layer, and also point at the new
-	// config. Then create a new blob for it.
-	manifest.Layers = append(manifest.Layers, *layerDescriptor)
-	manifest.Config.Digest = newConfigDigest
-	manifest.Config.Size = newConfigSize
-	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
-	if err != nil {
-		return errors.Wrap(err, "put manifest blob")
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"digest": newManifestDigest,
-		"size":   newManifestSize,
-	}).Debugf("umoci: added new manifest")
-
-	// Now create a new reference, and either add it to the engine or spew it
-	// to stdout.
-
-	newDescriptor := &v1.Descriptor{
-		// FIXME: Support manifest lists.
-		MediaType: v1.MediaTypeImageManifest,
-		Digest:    newManifestDigest,
-		Size:      newManifestSize,
+		return errors.Wrap(err, "commit mutated image")
 	}
 
 	logrus.WithFields(logrus.Fields{
 		"mediatype": newDescriptor.MediaType,
 		"digest":    newDescriptor.Digest,
 		"size":      newDescriptor.Size,
-	}).Infof("created new layout")
+	}).Infof("created new image")
 
 	// We have to clobber the old reference.
 	// XXX: Should we output some warning if we actually did remove an old
@@ -321,7 +204,7 @@ func repack(ctx *cli.Context) error {
 	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return err
 	}
-	if err := engine.PutReference(context.Background(), tagName, newDescriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, &newDescriptor); err != nil {
 		return err
 	}
 

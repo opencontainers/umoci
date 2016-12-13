@@ -18,11 +18,11 @@
 package main
 
 import (
-	"fmt"
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/opencontainers/image-spec/specs-go/v1"
@@ -81,15 +81,79 @@ image.`,
 	Action: config,
 }))
 
-// TODO: This can be scripted by have a list of mappings to mutation methods.
-func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
+func toImage(config v1.ImageConfig, meta mutate.Meta) v1.Image {
+	return v1.Image{
+		Config:       config,
+		Created:      meta.Created,
+		Author:       meta.Author,
+		Architecture: meta.Architecture,
+		OS:           meta.OS,
+	}
+}
+
+func fromImage(image v1.Image) (v1.ImageConfig, mutate.Meta) {
+	return image.Config, mutate.Meta{
+		Created:      image.Created,
+		Author:       image.Author,
+		Architecture: image.Architecture,
+		OS:           image.OS,
+	}
+}
+
+func config(ctx *cli.Context) error {
+	imagePath := ctx.App.Metadata["--image-path"].(string)
+	fromName := ctx.App.Metadata["--image-tag"].(string)
+
+	// By default we clobber the old tag.
+	tagName := fromName
+	if val, ok := ctx.App.Metadata["--tag"]; ok {
+		tagName = val.(string)
+	}
+
+	// Get a reference to the CAS.
+	engine, err := cas.Open(imagePath)
+	if err != nil {
+		return errors.Wrap(err, "open CAS")
+	}
+	defer engine.Close()
+
+	fromDescriptor, err := engine.GetReference(context.Background(), fromName)
+	if err != nil {
+		return errors.Wrap(err, "get from reference")
+	}
+
+	mutator, err := mutate.New(engine, *fromDescriptor)
+	if err != nil {
+		return errors.Wrap(err, "create mutator for manifest")
+	}
+
+	imageConfig, err := mutator.Config(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "get base config")
+	}
+
+	imageMeta, err := mutator.Meta(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "get base metadata")
+	}
+
+	annotations, err := mutator.Annotations(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "get base annotations")
+	}
+
+	g, err := igen.NewFromImage(toImage(imageConfig, imageMeta))
+	if err != nil {
+		return errors.Wrap(err, "create new generator")
+	}
+
 	if ctx.IsSet("clear") {
 		for _, key := range ctx.StringSlice("clear") {
 			switch key {
 			case "config.labels":
 				g.ClearConfigLabels()
 			case "manifest.annotations":
-				m.Annotations = nil
+				annotations = nil
 			case "config.exposedports":
 				g.ClearConfigExposedPorts()
 			case "config.env":
@@ -167,155 +231,44 @@ func mutateConfig(g *igen.Generator, m *v1.Manifest, ctx *cli.Context) error {
 		}
 	}
 	if ctx.IsSet("manifest.annotation") {
-		if m.Annotations == nil {
-			m.Annotations = map[string]string{}
+		if annotations == nil {
+			annotations = map[string]string{}
 		}
 		for _, label := range ctx.StringSlice("manifest.annotation") {
 			parts := strings.SplitN(label, "=", 2)
-			m.Annotations[parts[0]] = parts[1]
+			annotations[parts[0]] = parts[1]
 		}
 	}
 
-	return nil
-}
-
-func config(ctx *cli.Context) error {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-
-	// By default we clobber the old tag.
-	tagName := fromName
-	if val, ok := ctx.App.Metadata["--tag"]; ok {
-		tagName = val.(string)
+	history := v1.History{
+		Author:     g.Author(),
+		Comment:    "",
+		Created:    time.Now().Format(igen.ISO8601),
+		CreatedBy:  "umoci config",
+		EmptyLayer: true,
 	}
-
-	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
-	if err != nil {
-		return errors.Wrap(err, "open CAS")
-	}
-	defer engine.Close()
-
-	fromDescriptor, err := engine.GetReference(context.Background(), fromName)
-	if err != nil {
-		return errors.Wrap(err, "get from reference")
-	}
-
-	// FIXME: Implement support for manifest lists.
-	if fromDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", fromDescriptor.MediaType), "invalid --image tag")
-	}
-
-	// XXX: I get the feeling all of this should be moved to a separate package
-	//      which abstracts this nicely.
-
-	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, fromDescriptor)
-	if err != nil {
-		return errors.Wrap(err, "get from manifest")
-	}
-	defer manifestBlob.Close()
-
-	logrus.WithFields(logrus.Fields{
-		"digest": manifestBlob.Digest,
-	}).Debugf("umoci: got original manifest")
-
-	manifest, ok := manifestBlob.Data.(*v1.Manifest)
-	if !ok {
-		// Should never be reached.
-		return errors.Errorf("manifest blob type not implemented: %s", manifestBlob.MediaType)
-	}
-
-	// We also need to update the config. Fun.
-	configBlob, err := cas.FromDescriptor(context.Background(), engine, &manifest.Config)
-	if err != nil {
-		return errors.Wrap(err, "get from config")
-	}
-	defer configBlob.Close()
-
-	logrus.WithFields(logrus.Fields{
-		"digest": configBlob.Digest,
-	}).Debugf("umoci: got original config")
-
-	config, ok := configBlob.Data.(*v1.Image)
-	if !ok {
-		// Should not be reached.
-		return errors.Errorf("config blob type not implemented: %s", configBlob.MediaType)
-	}
-
-	g, err := igen.NewFromImage(*config)
-	if err != nil {
-		return errors.Wrap(err, "create new generator")
-	}
-
-	// Now we mutate the config.
-	if err := mutateConfig(g, manifest, ctx); err != nil {
-		return errors.Wrap(err, "mutate config")
-	}
-
-	var (
-		author    = g.Author()
-		comment   = ""
-		created   = time.Now().Format(igen.ISO8601)
-		createdBy = "umoci config" // XXX: should we append argv to this?
-	)
 
 	if val, ok := ctx.App.Metadata["--history.author"]; ok {
-		author = val.(string)
+		history.Author = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.comment"]; ok {
-		comment = val.(string)
+		history.Comment = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created"]; ok {
-		created = val.(string)
+		history.Created = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
-		createdBy = val.(string)
+		history.CreatedBy = val.(string)
 	}
 
-	// Add a history entry about the fact we just changed the config.
-	// FIXME: It should be possible to disable this.
-	g.AddHistory(v1.History{
-		Created:    created,
-		CreatedBy:  createdBy,
-		Author:     author,
-		Comment:    comment,
-		EmptyLayer: true,
-	})
+	newConfig, newMeta := fromImage(g.Image())
+	if err := mutator.Set(context.Background(), newConfig, newMeta, annotations, history); err != nil {
+		return errors.Wrap(err, "set modified configuration")
+	}
 
-	// Update config and create a new blob for it.
-	*config = g.Image()
-	newConfigDigest, newConfigSize, err := engine.PutBlobJSON(context.Background(), config)
+	newDescriptor, err := mutator.Commit(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "put config blob")
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"digest": newConfigDigest,
-		"size":   newConfigSize,
-	}).Debugf("umoci: added new config")
-
-	// Update the manifest to point at the new config, then create a new blob
-	// for it.
-	manifest.Config.Digest = newConfigDigest
-	manifest.Config.Size = newConfigSize
-	newManifestDigest, newManifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
-	if err != nil {
-		return errors.Wrap(err, "put manifest blob")
-	}
-
-	logrus.WithFields(logrus.Fields{
-		"digest": newManifestDigest,
-		"size":   newManifestSize,
-	}).Debugf("umoci: added new manifest")
-
-	// Now create a new reference, and either add it to the engine or spew it
-	// to stdout.
-
-	newDescriptor := &v1.Descriptor{
-		// FIXME: Support manifest lists.
-		MediaType: v1.MediaTypeImageManifest,
-		Digest:    newManifestDigest,
-		Size:      newManifestSize,
+		return errors.Wrap(err, "commit mutated image")
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -330,7 +283,7 @@ func config(ctx *cli.Context) error {
 	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 		return errors.Wrap(err, "delete old tag")
 	}
-	if err := engine.PutReference(context.Background(), tagName, newDescriptor); err != nil {
+	if err := engine.PutReference(context.Background(), tagName, &newDescriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 
