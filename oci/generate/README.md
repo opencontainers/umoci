@@ -1,4 +1,4 @@
-### `umoci/image/generator` ###
+### `umoci/oci/generator` ###
 
 This intends to be a library like `runtime-tools/generate` which allows you to
 generate modifications to an OCI image configuration blob (of type

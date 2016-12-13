@@ -10,8 +10,8 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cyphar/umoci/image/cas"
-	"github.com/cyphar/umoci/image/layer"
+	"github.com/cyphar/umoci/oci/cas"
+	"github.com/cyphar/umoci/oci/layer"
 	"github.com/docker/go-units"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"

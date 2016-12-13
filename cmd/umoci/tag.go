@@ -20,7 +20,7 @@ package main
 import (
 	"fmt"
 
-	"github.com/cyphar/umoci/image/cas"
+	"github.com/cyphar/umoci/oci/cas"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"

@@ -28,9 +28,9 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cyphar/umoci/image/cas"
-	igen "github.com/cyphar/umoci/image/generator"
-	"github.com/cyphar/umoci/image/layer"
+	"github.com/cyphar/umoci/oci/cas"
+	igen "github.com/cyphar/umoci/oci/generate"
+	"github.com/cyphar/umoci/oci/layer"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"

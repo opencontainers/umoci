@@ -29,8 +29,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cyphar/umoci/image/cas"
-	igen "github.com/cyphar/umoci/image/generator"
+	"github.com/cyphar/umoci/oci/cas"
+	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/cyphar/umoci/pkg/system"
 	"github.com/opencontainers/image-spec/specs-go/v1"

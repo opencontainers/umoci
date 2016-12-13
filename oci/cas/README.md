@@ -1,4 +1,4 @@
-### `umoci/image/cas` ###
+### `umoci/oci/cas` ###
 
 This is a reimplemented version of the currently in-flight [`image-tools` CAS
 PR][cas-pr], which combines the `cas` and `refs` interfaces into a single
