@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/cyphar/umoci/oci/cas"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -29,12 +29,12 @@ import (
 
 func isValidMediaType(mediaType string) bool {
 	validTypes := map[string]struct{}{
-		v1.MediaTypeImageManifest:              {},
-		v1.MediaTypeImageManifestList:          {},
-		v1.MediaTypeImageConfig:                {},
-		v1.MediaTypeDescriptor:                 {},
-		v1.MediaTypeImageLayer:                 {},
-		v1.MediaTypeImageLayerNonDistributable: {},
+		ispec.MediaTypeImageManifest:              {},
+		ispec.MediaTypeImageManifestList:          {},
+		ispec.MediaTypeImageConfig:                {},
+		ispec.MediaTypeDescriptor:                 {},
+		ispec.MediaTypeImageLayer:                 {},
+		ispec.MediaTypeImageLayerNonDistributable: {},
 	}
 	_, ok := validTypes[mediaType]
 	return ok

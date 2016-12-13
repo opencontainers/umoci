@@ -23,7 +23,7 @@ import (
 	"os"
 
 	"github.com/cyphar/umoci/oci/cas"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -71,8 +71,8 @@ func stat(ctx *cli.Context) error {
 	}
 
 	// FIXME: Implement support for manifest lists.
-	if manifestDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType), "invalid saved from descriptor")
+	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType), "invalid saved from descriptor")
 	}
 
 	// Get stat information.

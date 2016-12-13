@@ -25,7 +25,7 @@ import (
 	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -81,8 +81,8 @@ image.`,
 	Action: config,
 }))
 
-func toImage(config v1.ImageConfig, meta mutate.Meta) v1.Image {
-	return v1.Image{
+func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
+	return ispec.Image{
 		Config:       config,
 		Created:      meta.Created,
 		Author:       meta.Author,
@@ -91,7 +91,7 @@ func toImage(config v1.ImageConfig, meta mutate.Meta) v1.Image {
 	}
 }
 
-func fromImage(image v1.Image) (v1.ImageConfig, mutate.Meta) {
+func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 	return image.Config, mutate.Meta{
 		Created:      image.Created,
 		Author:       image.Author,
@@ -240,7 +240,7 @@ func config(ctx *cli.Context) error {
 		}
 	}
 
-	history := v1.History{
+	history := ispec.History{
 		Author:     g.Author(),
 		Comment:    "",
 		Created:    time.Now().Format(igen.ISO8601),

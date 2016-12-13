@@ -29,7 +29,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -261,11 +261,11 @@ func TestEngineReference(t *testing.T) {
 
 	for _, test := range []struct {
 		name       string
-		descriptor v1.Descriptor
+		descriptor ispec.Descriptor
 	}{
-		{"ref1", v1.Descriptor{}},
-		{"ref2", v1.Descriptor{MediaType: v1.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
-		{"ref3", v1.Descriptor{MediaType: v1.MediaTypeImageLayerNonDistributable, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
+		{"ref1", ispec.Descriptor{}},
+		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
+		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributable, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
 	} {
 		if err := engine.PutReference(ctx, test.name, &test.descriptor); err != nil {
 			t.Errorf("PutReference: unexpected error: %+v", err)

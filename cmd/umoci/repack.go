@@ -29,7 +29,7 @@ import (
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/cyphar/umoci/oci/layer"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -95,8 +95,8 @@ func repack(ctx *cli.Context) error {
 	}).Debugf("umoci: loaded UmociMeta metadata")
 
 	// FIXME: Implement support for manifest lists.
-	if meta.From.MediaType != v1.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid saved from descriptor")
+	if meta.From.MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid saved from descriptor")
 	}
 
 	// Get a reference to the CAS.
@@ -160,7 +160,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "get image metadata")
 	}
 
-	history := v1.History{
+	history := ispec.History{
 		Author:     imageMeta.Author,
 		Comment:    "",
 		Created:    time.Now().Format(igen.ISO8601),

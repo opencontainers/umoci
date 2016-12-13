@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -41,12 +41,12 @@ type Blob struct {
 	// typed according to the media type. The mapping from MIME => type is as
 	// follows.
 	//
-	// v1.MediaTypeDescriptor => *v1.Descriptor
-	// v1.MediaTypeImageManifest => *v1.Manifest
-	// v1.MediaTypeImageManifestList => *v1.ManifestList
-	// v1.MediaTypeImageLayer => io.ReadCloser
-	// v1.MediaTypeImageLayerNonDistributable => io.ReadCloser
-	// v1.MediaTypeImageConfig => *v1.Image
+	// ispec.MediaTypeDescriptor => *ispec.Descriptor
+	// ispec.MediaTypeImageManifest => *ispec.Manifest
+	// ispec.MediaTypeImageManifestList => *ispec.ManifestList
+	// ispec.MediaTypeImageLayer => io.ReadCloser
+	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
+	// ispec.MediaTypeImageConfig => *ispec.Image
 	Data interface{}
 }
 
@@ -59,9 +59,9 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 	// The layer media types are special, we don't want to do any parsing (or
 	// close the blob reference).
 	switch b.MediaType {
-	// v1.MediaTypeImageLayer => io.ReadCloser
-	// v1.MediaTypeImageLayerNonDistributable => io.ReadCloser
-	case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerNonDistributable:
+	// ispec.MediaTypeImageLayer => io.ReadCloser
+	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
+	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable:
 		// There isn't anything else we can practically do here.
 		b.Data = reader
 		return nil
@@ -71,18 +71,18 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 
 	var parsed interface{}
 	switch b.MediaType {
-	// v1.MediaTypeDescriptor => *v1.Descriptor
-	case v1.MediaTypeDescriptor:
-		parsed = &v1.Descriptor{}
-	// v1.MediaTypeImageManifest => *v1.Manifest
-	case v1.MediaTypeImageManifest:
-		parsed = &v1.Manifest{}
-	// v1.MediaTypeImageManifestList => *v1.ManifestList
-	case v1.MediaTypeImageManifestList:
-		parsed = &v1.ManifestList{}
-	// v1.MediaTypeImageConfig => *v1.ImageConfig
-	case v1.MediaTypeImageConfig:
-		parsed = &v1.Image{}
+	// ispec.MediaTypeDescriptor => *ispec.Descriptor
+	case ispec.MediaTypeDescriptor:
+		parsed = &ispec.Descriptor{}
+	// ispec.MediaTypeImageManifest => *ispec.Manifest
+	case ispec.MediaTypeImageManifest:
+		parsed = &ispec.Manifest{}
+	// ispec.MediaTypeImageManifestList => *ispec.ManifestList
+	case ispec.MediaTypeImageManifestList:
+		parsed = &ispec.ManifestList{}
+	// ispec.MediaTypeImageConfig => *ispec.ImageConfig
+	case ispec.MediaTypeImageConfig:
+		parsed = &ispec.Image{}
 	default:
 		return fmt.Errorf("cas blob: unsupported mediatype: %s", b.MediaType)
 	}
@@ -100,7 +100,7 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 // Close cleans up all of the resources for the opened blob.
 func (b *Blob) Close() {
 	switch b.MediaType {
-	case v1.MediaTypeImageLayer, v1.MediaTypeImageLayerNonDistributable:
+	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable:
 		if b.Data != nil {
 			b.Data.(io.Closer).Close()
 		}
@@ -108,7 +108,7 @@ func (b *Blob) Close() {
 }
 
 // FromDescriptor parses the blob referenced by the given descriptor.
-func FromDescriptor(ctx context.Context, engine Engine, descriptor *v1.Descriptor) (*Blob, error) {
+func FromDescriptor(ctx context.Context, engine Engine, descriptor *ispec.Descriptor) (*Blob, error) {
 	blob := &Blob{
 		MediaType: descriptor.MediaType,
 		Digest:    descriptor.Digest,

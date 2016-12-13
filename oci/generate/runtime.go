@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/cyphar/umoci/third_party/user"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/pkg/errors"
@@ -31,7 +31,7 @@ import (
 // configuration appropriate for use, which is templated on the default
 // configuration specified by the OCI runtime-tools. It is equivalent to
 // MutateRuntimeSpec("runtime-tools/generate".New(), image).Spec().
-func ToRuntimeSpec(rootfs string, image v1.Image, manifest v1.Manifest) (rspec.Spec, error) {
+func ToRuntimeSpec(rootfs string, image ispec.Image, manifest ispec.Manifest) (rspec.Spec, error) {
 	g := rgen.New()
 	if err := MutateRuntimeSpec(g, rootfs, image, manifest); err != nil {
 		return rspec.Spec{}, err
@@ -42,7 +42,7 @@ func ToRuntimeSpec(rootfs string, image v1.Image, manifest v1.Manifest) (rspec.S
 // MutateRuntimeSpec mutates a given runtime specification generator with the
 // image configuration provided. It returns the original generator, and does
 // not modify any fields directly (to allow for chaining).
-func MutateRuntimeSpec(g rgen.Generator, rootfs string, image v1.Image, manifest v1.Manifest) error {
+func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manifest ispec.Manifest) error {
 	if image.OS != "linux" {
 		return errors.Errorf("unsupported OS: %s", image.OS)
 	}

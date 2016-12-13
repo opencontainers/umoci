@@ -27,7 +27,7 @@ import (
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/cyphar/umoci/oci/layer"
 	"github.com/cyphar/umoci/pkg/idtools"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -79,23 +79,23 @@ creation with umoci-repack(1).`,
 	},
 }
 
-func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *v1.Descriptor) (v1.Image, error) {
+func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *ispec.Descriptor) (ispec.Image, error) {
 	// FIXME: Implement support for manifest lists.
-	if manDescriptor.MediaType != v1.MediaTypeImageManifest {
-		return v1.Image{}, errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType), "invalid --image tag")
+	if manDescriptor.MediaType != ispec.MediaTypeImageManifest {
+		return ispec.Image{}, errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType), "invalid --image tag")
 	}
 
 	manBlob, err := cas.FromDescriptor(ctx, engine, manDescriptor)
 	if err != nil {
-		return v1.Image{}, err
+		return ispec.Image{}, err
 	}
 
-	configBlob, err := cas.FromDescriptor(ctx, engine, &manBlob.Data.(*v1.Manifest).Config)
+	configBlob, err := cas.FromDescriptor(ctx, engine, &manBlob.Data.(*ispec.Manifest).Config)
 	if err != nil {
-		return v1.Image{}, err
+		return ispec.Image{}, err
 	}
 
-	return *configBlob.Data.(*v1.Image), nil
+	return *configBlob.Data.(*ispec.Image), nil
 }
 
 func unpack(ctx *cli.Context) error {
@@ -163,8 +163,8 @@ func unpack(ctx *cli.Context) error {
 	defer manifestBlob.Close()
 
 	// FIXME: Implement support for manifest lists.
-	if manifestBlob.MediaType != v1.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to v1.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
+	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
 	}
 
 	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
@@ -179,7 +179,7 @@ func unpack(ctx *cli.Context) error {
 	}).Debugf("umoci: unpacking OCI image")
 
 	// Get the manifest.
-	manifest := manifestBlob.Data.(*v1.Manifest)
+	manifest := manifestBlob.Data.(*ispec.Manifest)
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {

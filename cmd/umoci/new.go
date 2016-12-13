@@ -24,8 +24,8 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
-	ispec "github.com/opencontainers/image-spec/specs-go"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	imeta "github.com/opencontainers/image-spec/specs-go"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -94,17 +94,17 @@ func newImage(ctx *cli.Context) error {
 
 	// Create a new manifest that just points to the config and has an
 	// empty layer set. FIXME: Implement ManifestList support.
-	manifest := v1.Manifest{
-		Versioned: ispec.Versioned{
+	manifest := ispec.Manifest{
+		Versioned: imeta.Versioned{
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
-			MediaType:     v1.MediaTypeImageManifest,
+			MediaType:     ispec.MediaTypeImageManifest,
 		},
-		Config: v1.Descriptor{
-			MediaType: v1.MediaTypeImageConfig,
+		Config: ispec.Descriptor{
+			MediaType: ispec.MediaTypeImageConfig,
 			Digest:    configDigest,
 			Size:      configSize,
 		},
-		Layers: []v1.Descriptor{},
+		Layers: []ispec.Descriptor{},
 	}
 
 	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
@@ -120,9 +120,9 @@ func newImage(ctx *cli.Context) error {
 	// Now create a new reference, and either add it to the engine or spew it
 	// to stdout.
 
-	descriptor := v1.Descriptor{
+	descriptor := ispec.Descriptor{
 		// FIXME: Support manifest lists.
-		MediaType: v1.MediaTypeImageManifest,
+		MediaType: ispec.MediaTypeImageManifest,
 		Digest:    manifestDigest,
 		Size:      manifestSize,
 	}
