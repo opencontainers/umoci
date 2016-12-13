@@ -162,12 +162,10 @@ only ~2MB in size.
 All of the above tooling is available from various [OBS repositories][obs] on
 [openSUSE][opensuse]. In particular:
 
-* `skopeo` is available from [`Virtualization:containers`][obs-vc].
-* `oci-runtime-tool` is available as a package in
-  [`devel:languages:go`][obs-dlg], but this will eventually be put into
+* `skopeo` and `umoci` are available from [`Virtualization:containers`][obs-vc].
+* `oci-runtime-tools` and `oci-image-tools` are available as packages in
+  [`devel:languages:go`][obs-dlg], but they will eventually be put into
   `Virtualization:containers`.
-* `umoci` is currently available from [`home:cyphar`][obs-home] but I will be
-  submitting it to `Virtualization:containers` soon.
 
 [opensuse]: https://www.opensuse.org/
 [oci-runtime-tools]: https://github.com/opencontainers/image-tools
