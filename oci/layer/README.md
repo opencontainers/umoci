@@ -1,4 +1,4 @@
-### `umoci/image/layer` ###
+### `umoci/oci/layer` ###
 
 This is my own implementation of the [currently under development
 `oci-create-layer` functions][create-layer]. The reason for implementing this

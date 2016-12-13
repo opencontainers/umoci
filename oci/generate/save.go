@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package generator
+package generate
 
 import (
 	"encoding/json"

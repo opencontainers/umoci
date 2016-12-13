@@ -24,8 +24,8 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cyphar/umoci/image/cas"
-	"github.com/cyphar/umoci/image/layer"
+	"github.com/cyphar/umoci/oci/cas"
+	"github.com/cyphar/umoci/oci/layer"
 	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"

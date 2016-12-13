@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/cyphar/umoci/image/cas"
+	"github.com/cyphar/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )

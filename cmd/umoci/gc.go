@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/cyphar/umoci/image/cas"
+	"github.com/cyphar/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
