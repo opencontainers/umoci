@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -72,7 +72,7 @@ func CreateLayout(path string) error {
 	}
 	defer fh.Close()
 
-	ociLayout := &v1.ImageLayout{
+	ociLayout := &ispec.ImageLayout{
 		Version: ImageLayoutVersion,
 	}
 
@@ -99,7 +99,7 @@ func (e dirEngine) validate() error {
 		return errors.Wrap(err, "read oci-layout")
 	}
 
-	var ociLayout v1.ImageLayout
+	var ociLayout ispec.ImageLayout
 	if err := json.Unmarshal(content, &ociLayout); err != nil {
 		return errors.Wrap(err, "parse oci-layout")
 	}
@@ -192,7 +192,7 @@ func (e dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, i
 // without implying "because of this PutReference() call". ErrClobber is
 // returned if there is already a descriptor stored at NAME, but does not
 // match the descriptor requested to be stored.
-func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *v1.Descriptor) error {
+func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) error {
 
 	if oldDescriptor, err := e.GetReference(ctx, name); err == nil {
 		// We should not return an error if the two descriptors are identical.
@@ -246,7 +246,7 @@ func (e dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, e
 
 // GetReference returns a reference from the image. Returns os.ErrNotExist
 // if the name was not found.
-func (e dirEngine) GetReference(ctx context.Context, name string) (*v1.Descriptor, error) {
+func (e dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descriptor, error) {
 	path, err := refPath(name)
 	if err != nil {
 		return nil, errors.Wrap(err, "compute ref path")
@@ -257,7 +257,7 @@ func (e dirEngine) GetReference(ctx context.Context, name string) (*v1.Descripto
 		return nil, errors.Wrap(err, "read ref")
 	}
 
-	var descriptor v1.Descriptor
+	var descriptor ispec.Descriptor
 	if err := json.Unmarshal(content, &descriptor); err != nil {
 		return nil, errors.Wrap(err, "parse ref")
 	}

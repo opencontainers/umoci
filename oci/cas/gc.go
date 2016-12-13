@@ -21,38 +21,38 @@ import (
 	"reflect"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
 // Used by gcState.mark() to determine which struct members are descriptors to
 // recurse into them. We aren't interested in struct members which are not
-// either a slice of v1.Descriptor or v1.Descriptor themselves.
-var descriptorType = reflect.TypeOf(v1.Descriptor{})
+// either a slice of ispec.Descriptor or ispec.Descriptor themselves.
+var descriptorType = reflect.TypeOf(ispec.Descriptor{})
 
-// isDescriptor returns whether the given T is a v1.Descriptor.
+// isDescriptor returns whether the given T is a ispec.Descriptor.
 func isDescriptor(T reflect.Type) bool {
 	return T.AssignableTo(descriptorType) && descriptorType.AssignableTo(T)
 }
 
-// childDescriptors returns all child v1.Descriptors given a particular
+// childDescriptors returns all child ispec.Descriptors given a particular
 // interface{}. This is recursively evaluated, so if you have some cyclic
 // struct pointer stuff going on things won't end well.
 // FIXME: Should we implement this in a way that avoids cycle issues?
-func childDescriptors(i interface{}) []v1.Descriptor {
+func childDescriptors(i interface{}) []ispec.Descriptor {
 	V := reflect.ValueOf(i)
 	logrus.WithFields(logrus.Fields{
 		"V": V,
 	}).Debugf("childDescriptors")
 	if !V.IsValid() {
 		// nil value
-		return []v1.Descriptor{}
+		return []ispec.Descriptor{}
 	}
 
-	// First check that V isn't actually a v1.Descriptor.
+	// First check that V isn't actually a ispec.Descriptor.
 	if isDescriptor(V.Type()) {
-		return []v1.Descriptor{V.Interface().(v1.Descriptor)}
+		return []ispec.Descriptor{V.Interface().(ispec.Descriptor)}
 	}
 
 	// Recurse into all the types.
@@ -63,7 +63,7 @@ func childDescriptors(i interface{}) []v1.Descriptor {
 			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
 		}).Debugf("recursing into ptr")
 		if V.IsNil() {
-			return []v1.Descriptor{}
+			return []ispec.Descriptor{}
 		}
 		return childDescriptors(V.Elem().Interface())
 
@@ -76,7 +76,7 @@ func childDescriptors(i interface{}) []v1.Descriptor {
 
 	case reflect.Slice:
 		// Iterate over each element and append them to childDescriptors.
-		children := []v1.Descriptor{}
+		children := []ispec.Descriptor{}
 		for idx := 0; idx < V.Len(); idx++ {
 			logrus.WithFields(logrus.Fields{
 				"name": V.Type().PkgPath() + "::" + V.Type().Name(),
@@ -87,17 +87,17 @@ func childDescriptors(i interface{}) []v1.Descriptor {
 		return children
 
 	case reflect.Struct:
-		// We are only ever going to be interested in v1.* types.
+		// We are only ever going to be interested in ispec.* types.
 		if V.Type().PkgPath() != descriptorType.PkgPath() {
 			logrus.WithFields(logrus.Fields{
 				"name":   V.Type().PkgPath() + "::" + V.Type().Name(),
 				"v1path": descriptorType.PkgPath(),
-			}).Debugf("detected escape to outside v1.* namespace")
-			return []v1.Descriptor{}
+			}).Debugf("detected escape to outside ispec.* namespace")
+			return []ispec.Descriptor{}
 		}
 
 		// We can now actually iterate through a struct to find all descriptors.
-		children := []v1.Descriptor{}
+		children := []ispec.Descriptor{}
 		for idx := 0; idx < V.NumField(); idx++ {
 			logrus.WithFields(logrus.Fields{
 				"name":  V.Type().PkgPath() + "::" + V.Type().Name(),
@@ -112,7 +112,7 @@ func childDescriptors(i interface{}) []v1.Descriptor {
 		// FIXME: Should we log something here? While this will be hit normally
 		//        (namely when we hit an io.ReadCloser) this seems a bit
 		//        careless.
-		return []v1.Descriptor{}
+		return []ispec.Descriptor{}
 	}
 
 	// Unreachable.
@@ -130,7 +130,7 @@ type gcState struct {
 	black map[string]struct{}
 }
 
-func (gc *gcState) mark(ctx context.Context, descriptor v1.Descriptor) error {
+func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error {
 	logrus.WithFields(logrus.Fields{
 		"digest": descriptor.Digest,
 	}).Debugf("gc.mark")
@@ -177,7 +177,7 @@ func (gc *gcState) mark(ctx context.Context, descriptor v1.Descriptor) error {
 // challenged.
 func GC(ctx context.Context, engine Engine) error {
 	// Generate the root set of descriptors.
-	var root []v1.Descriptor
+	var root []ispec.Descriptor
 
 	names, err := engine.ListReferences(ctx)
 	if err != nil {

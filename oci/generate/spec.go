@@ -23,7 +23,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
 
@@ -36,7 +36,7 @@ import (
 // recommended way of handling modification and generation of image-spec
 // configuration blobs.
 type Generator struct {
-	image v1.Image
+	image ispec.Image
 }
 
 // init makes sure everything has a "proper" zero value.
@@ -73,7 +73,7 @@ func (g *Generator) init() {
 func New() *Generator {
 	// FIXME: Come up with some sane default.
 	g := &Generator{
-		image: v1.Image{},
+		image: ispec.Image{},
 	}
 	g.init()
 	return g
@@ -81,9 +81,9 @@ func New() *Generator {
 
 // NewFromTemplate creates a new Generator with the initial template being
 // unmarshaled from JSON read from the provided reader (which must unmarshal
-// into a valid v1.Image).
+// into a valid ispec.Image).
 func NewFromTemplate(r io.Reader) (*Generator, error) {
-	var image v1.Image
+	var image ispec.Image
 	if err := json.NewDecoder(r).Decode(&image); err != nil {
 		return nil, errors.Wrap(err, "decode image")
 	}
@@ -100,7 +100,7 @@ func NewFromTemplate(r io.Reader) (*Generator, error) {
 
 // NewFromFile creates a new Generator with the initial template being
 // unmarshaled from JSON read from the provided file (which must unmarshal
-// into a valid v1.Image).
+// into a valid ispec.Image).
 func NewFromFile(path string) (*Generator, error) {
 	fh, err := os.Open(path)
 	if err != nil {
@@ -112,8 +112,8 @@ func NewFromFile(path string) (*Generator, error) {
 }
 
 // NewFromImage generates a new generator with the initial template being the
-// given v1.Image.
-func NewFromImage(image v1.Image) (*Generator, error) {
+// given ispec.Image.
+func NewFromImage(image ispec.Image) (*Generator, error) {
 	g := &Generator{
 		image: image,
 	}
@@ -123,7 +123,7 @@ func NewFromImage(image v1.Image) (*Generator, error) {
 }
 
 // Image returns a copy of the current state of the generated image.
-func (g *Generator) Image() v1.Image {
+func (g *Generator) Image() ispec.Image {
 	return g.image
 }
 
@@ -332,17 +332,17 @@ func (g *Generator) RootfsDiffIDs() []string {
 
 // ClearHistory clears the history of each layer.
 func (g *Generator) ClearHistory() {
-	g.image.History = []v1.History{}
+	g.image.History = []ispec.History{}
 }
 
 // AddHistory appends to the history of the layers.
-func (g *Generator) AddHistory(history v1.History) {
+func (g *Generator) AddHistory(history ispec.History) {
 	g.image.History = append(g.image.History, history)
 }
 
 // History returns the history of each layer.
-func (g *Generator) History() []v1.History {
-	copy := []v1.History{}
+func (g *Generator) History() []ispec.History {
+	copy := []ispec.History{}
 	for _, v := range g.image.History {
 		copy = append(copy, v)
 	}

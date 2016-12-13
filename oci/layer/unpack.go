@@ -33,7 +33,7 @@ import (
 	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/cyphar/umoci/pkg/idtools"
 	"github.com/cyphar/umoci/pkg/system"
-	"github.com/opencontainers/image-spec/specs-go/v1"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/pkg/errors"
@@ -73,7 +73,7 @@ const RootfsName = "rootfs"
 // isLayerType returns if the given MediaType is the media type of an image
 // layer blob. This includes both distributable and non-distributable images.
 func isLayerType(mediaType string) bool {
-	return mediaType == v1.MediaTypeImageLayer || mediaType == v1.MediaTypeImageLayerNonDistributable
+	return mediaType == ispec.MediaTypeImageLayer || mediaType == ispec.MediaTypeImageLayerNonDistributable
 }
 
 // UnpackManifest extracts all of the layers in the given manifest, as well as
@@ -82,7 +82,7 @@ func isLayerType(mediaType string) bool {
 // extraction.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest v1.Manifest, opt *MapOptions) error {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) error {
 	var mapOptions MapOptions
 	if opt != nil {
 		mapOptions = *opt
@@ -147,10 +147,10 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		return errors.Wrap(err, "get config blob")
 	}
 	defer configBlob.Close()
-	if configBlob.MediaType != v1.MediaTypeImageConfig {
-		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", v1.MediaTypeImageConfig, configBlob.MediaType)
+	if configBlob.MediaType != ispec.MediaTypeImageConfig {
+		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
 	}
-	config := configBlob.Data.(*v1.Image)
+	config := configBlob.Data.(*ispec.Image)
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
@@ -195,7 +195,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}
 
-	// Generate a runtime configuration file from v1.Image.
+	// Generate a runtime configuration file from ispec.Image.
 	logrus.WithFields(logrus.Fields{
 		"config": manifest.Config.Digest,
 	}).Infof("unpack manifest: unpacking config")
