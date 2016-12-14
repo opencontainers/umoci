@@ -80,7 +80,7 @@ umociimage:
 # FIXME: We really should make the pkg/unpriv tests less magical.
 .PHONY: test-unit
 test-unit: umociimage
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-unit
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) go test -v $(PROJECT)/pkg/unpriv
 
 .PHONY: local-test-unit
