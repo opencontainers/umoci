@@ -21,6 +21,7 @@ import (
 	"encoding/json"
 	"io"
 	"os"
+	"strings"
 	"time"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -199,6 +200,19 @@ func (g *Generator) ClearConfigEnv() {
 
 // AddConfigEnv appends to the list of environment variables to be used in a container.
 func (g *Generator) AddConfigEnv(env string) {
+	// I'm not sure what it means for an environment variable to not have an
+	// '=' in it, but it's better to be safe than sorry.
+	if strings.Contains(env, "=") {
+		// If the key already exists in the environment set, we replace it.
+		// This ensures we don't run into POSIX undefined territory.
+		key := strings.SplitAfter(env, "=")[0]
+		for idx := range g.image.Config.Env {
+			if strings.HasPrefix(g.image.Config.Env[idx], key) {
+				g.image.Config.Env[idx] = env
+				return
+			}
+		}
+	}
 	g.image.Config.Env = append(g.image.Config.Env, env)
 }
 
