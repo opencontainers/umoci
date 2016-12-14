@@ -89,6 +89,17 @@ type dirEngine struct {
 	temp string
 }
 
+func (e dirEngine) ensureTempDir() error {
+	if e.temp == "" {
+		tempDir, err := ioutil.TempDir(e.path, "tmp-")
+		if err != nil {
+			return errors.Wrap(err, "create tempdir")
+		}
+		e.temp = tempDir
+	}
+	return nil
+}
+
 // verify ensures that the image is valid.
 func (e dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
@@ -139,6 +150,10 @@ func (e dirEngine) validate() error {
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
 func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64, error) {
+	if err := e.ensureTempDir(); err != nil {
+		return "", -1, errors.Wrap(err, "ensure tempdir")
+	}
+
 	hash := sha256.New()
 	algo := BlobAlgorithm
 
@@ -193,6 +208,9 @@ func (e dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, i
 // returned if there is already a descriptor stored at NAME, but does not
 // match the descriptor requested to be stored.
 func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) error {
+	if err := e.ensureTempDir(); err != nil {
+		return errors.Wrap(err, "ensure tempdir")
+	}
 
 	if oldDescriptor, err := e.GetReference(ctx, name); err == nil {
 		// We should not return an error if the two descriptors are identical.
@@ -344,22 +362,23 @@ func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 // Close releases all references held by the e. Subsequent operations may
 // fail.
 func (e dirEngine) Close() error {
-	return errors.Wrap(os.RemoveAll(e.temp), "remove tempdir")
+	if e.temp != "" {
+		if err := os.RemoveAll(e.temp); err != nil {
+			return errors.Wrap(err, "remote tempdir")
+		}
+	}
+	return nil
 }
 
 func newDirEngine(path string) (*dirEngine, error) {
 	engine := &dirEngine{
 		path: path,
+		temp: "",
 	}
 
 	if err := engine.validate(); err != nil {
 		return nil, errors.Wrap(err, "validate")
 	}
 
-	tempDir, err := ioutil.TempDir(engine.path, "tmp-")
-	if err != nil {
-		return nil, errors.Wrap(err, "create tempdir")
-	}
-	engine.temp = tempDir
 	return engine, nil
 }
