@@ -362,8 +362,13 @@ function teardown() {
 @test "umoci config --config.env" {
 	BUNDLE="$(setup_bundle)"
 
-	# Modify none of the configuration.
-	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.env "VARIABLE1=test" --config.env "VARIABLE2=what"
+	# Modify env.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.env "VARIABLE1=unused"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Modify the env again.
+	umoci config --image "${IMAGE}:${TAG}-new" --config.env "VARIABLE1=test" --config.env "VARIABLE2=what"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -372,9 +377,14 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Make sure numeric config was actually set.
+	# Make sure environment was set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
+
+	# Make sure that they are all unique.
+	numDefs="${#lines[@]}"
+	numVars="$(echo "$output" | cut -d= -f1 | sort -u | wc -l)"
+	[ "$numDefs" -eq "$numVars" ]
 
 	# Set the variables.
 	export $output
