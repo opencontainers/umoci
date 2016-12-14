@@ -1,12 +1,13 @@
 hash: bdbcec43199669270dfb25d2c570b80c17d8b39b80b26e54e7bcda687f455c7d
-updated: 2016-12-11T11:15:24.17157491+11:00
+updated: 2016-12-15T01:55:40.377177665+11:00
 imports:
 - name: github.com/cyphar/umoci
-  version: 048be4f27d2ad547fff33072535fcefc265b170d
+  version: a7d640f863c31a35b1e4ae8614a64cdffe119ee3
   subpackages:
-  - image/cas
-  - image/generator
-  - image/layer
+  - mutate
+  - oci/cas
+  - oci/generate
+  - oci/layer
   - pkg/idtools
   - pkg/system
   - pkg/unpriv
@@ -48,11 +49,11 @@ imports:
   - cvis
   - xattr
 - name: golang.org/x/crypto
-  version: b07d8c96772f426812d3fc5530710ec1f3b205e7
+  version: 9a6f0a01987842989747adff311d80750ba25530
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: b1a2d6e8c8b5fc8f601ead62536f02a8e1b6217d
+  version: cfae461cedfdcab6e261a26eb77db53695623303
   subpackages:
   - context
 - name: golang.org/x/sys

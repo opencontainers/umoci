@@ -38,3 +38,7 @@ patch github.com/vbatts/go-mtree gomtree-0002-walk-implement-unprivileged-walkin
 # v1.0.0-rc3 even though the change to the specification was, resulting in a
 # mismatch. While upstream figures out a way to fix this, just patch it.
 patch github.com/opencontainers/image-spec imagespec-0001-specs-go-add-labels-to-config.go.patch
+
+# Backport of opencontainers/runtime-tools#291. This fixes issues with
+# duplicate environment entries, and is likely to be merged soon.
+patch github.com/opencontainers/runtime-tools runtimetools-0001-generate-replace-duplicate-env-entries.patch

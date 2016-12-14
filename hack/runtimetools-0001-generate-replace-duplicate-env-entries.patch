@@ -1,0 +1,43 @@
+From ebc70aa4de52cffe3d0be7759dc65ef9ed26f33d Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <asarai@suse.de>
+Date: Thu, 15 Dec 2016 01:37:37 +1100
+Subject: [PATCH] generate: replace duplicate env entries
+
+If a given environment variable has already been set, replace the
+variable rather than appending it to the environment list. This avoids
+issues with POSIX (which doesn't define what to do with duplicate
+values).
+
+The method of determining whether a variable has been set is by checking
+that the VAR_NAME= prefix of both strings is the same.
+
+Signed-off-by: Aleksa Sarai <asarai@suse.de>
+---
+ generate/generate.go | 11 +++++++++++
+ 1 file changed, 11 insertions(+)
+
+diff --git a/generate/generate.go b/generate/generate.go
+index e8c364162ee2..a693eb6ddad5 100644
+--- a/generate/generate.go
++++ b/generate/generate.go
+@@ -334,6 +334,17 @@ func (g *Generator) ClearProcessEnv() {
+ // AddProcessEnv adds env into g.spec.Process.Env.
+ func (g *Generator) AddProcessEnv(env string) {
+ 	g.initSpec()
++	// I'm not sure what an environment variable without an = in it means, but
++	// better safe than sorry.
++	if strings.Contains(env, "=") {
++		key := strings.SplitAfter(env, "=")[0]
++		for idx := range g.spec.Process.Env {
++			if strings.HasPrefix(g.spec.Process.Env[idx], key) {
++				g.spec.Process.Env[idx] = env
++				return
++			}
++		}
++	}
+ 	g.spec.Process.Env = append(g.spec.Process.Env, env)
+ }
+ 
+-- 
+2.11.0
+
