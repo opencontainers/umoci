@@ -19,6 +19,7 @@ package generate
 
 import (
 	"path/filepath"
+	"strings"
 
 	"github.com/cyphar/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -37,6 +38,22 @@ func ToRuntimeSpec(rootfs string, image ispec.Image, manifest ispec.Manifest) (r
 		return rspec.Spec{}, err
 	}
 	return *g.Spec(), nil
+}
+
+// parseEnv splits a given environment variable (of the form name=value) into
+// (name, value). An error is returned if there is no "=" in the line or if the
+// name is empty.
+func parseEnv(env string) (string, string, error) {
+	parts := strings.SplitN(env, "=", 2)
+	if len(parts) != 2 {
+		return "", "", errors.Errorf("environment variable must contain '=': %s", env)
+	}
+
+	name, value := parts[0], parts[1]
+	if name == "" {
+		return "", "", errors.Errorf("environment variable must have non-empty name: %s", env)
+	}
+	return name, value, nil
 }
 
 // MutateRuntimeSpec mutates a given runtime specification generator with the
@@ -63,7 +80,11 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manif
 
 	g.ClearProcessEnv()
 	for _, env := range image.Config.Env {
-		g.AddProcessEnv(env)
+		name, value, err := parseEnv(env)
+		if err != nil {
+			return errors.Wrap(err, "parsing image.Config.Env")
+		}
+		g.AddProcessEnv(name, value)
 	}
 
 	// We don't append to g.Spec().Process.Args because the default is non-zero.
@@ -97,7 +118,7 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manif
 		g.AddProcessAdditionalGid(uint32(gid))
 	}
 	if execUser.Home != "" {
-		g.AddProcessEnv("HOME=" + execUser.Home)
+		g.AddProcessEnv("HOME", execUser.Home)
 	}
 
 	// TODO: Handle cases where these are unset properly.
