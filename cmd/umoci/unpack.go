@@ -208,7 +208,7 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, meta.MapOptions.Rootless)
+	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, nil)
 	if err != nil {
 		return errors.Wrap(err, "generate mtree spec")
 	}

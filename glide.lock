@@ -1,8 +1,8 @@
-hash: bdbcec43199669270dfb25d2c570b80c17d8b39b80b26e54e7bcda687f455c7d
-updated: 2016-12-15T01:55:40.377177665+11:00
+hash: 7d0fee0ebf0a4dcc52d463df3d15c08f7b47cc1528f99a1fc1fa4daa9dc6a3b5
+updated: 2016-12-15T15:24:51.067141068+11:00
 imports:
 - name: github.com/cyphar/umoci
-  version: a7d640f863c31a35b1e4ae8614a64cdffe119ee3
+  version: 1d73d649035ceb5387b9bf8fc79738ad5bbf2a07
   subpackages:
   - mutate
   - oci/cas
@@ -44,7 +44,7 @@ imports:
 - name: github.com/urfave/cli
   version: a14d7d367bc02b1f57d88de97926727f2d936387
 - name: github.com/vbatts/go-mtree
-  version: 58660bbd836709f466b70e9ef8ed6d80b1d470ec
+  version: 0dc720e861ecc198ef262fe1ec2d33b293512aaf
   subpackages:
   - cvis
   - xattr
@@ -57,7 +57,7 @@ imports:
   subpackages:
   - context
 - name: golang.org/x/sys
-  version: 478fcf54317e52ab69f40bb4c7a1520288d7f7ea
+  version: d75a52659825e75fff6158388dddc6a5b04f9ba5
   subpackages:
   - unix
 testImports: []

@@ -21,6 +21,6 @@ import:
   subpackages:
   - specs-go
 - package: github.com/vbatts/go-mtree
-  version: ~v0.3.0
+  version: 0dc720e861ecc198ef262fe1ec2d33b293512aaf
 - package: github.com/pkg/errors
   version: ~v0.8.0
