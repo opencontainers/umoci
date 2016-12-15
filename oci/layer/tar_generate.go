@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cyphar/umoci/pkg/unpriv"
+	"github.com/cyphar/umoci"
 	"github.com/pkg/errors"
 )
 
@@ -41,6 +41,9 @@ type tarGenerator struct {
 	// Hardlink mapping.
 	inodes map[uint64]string
 
+	// fsEval is an umoci.FsEval used for extraction.
+	fsEval umoci.FsEval
+
 	// XXX: Should we add a saftey check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
@@ -48,10 +51,16 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
+	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	if opt.Rootless {
+		fsEval = umoci.RootlessFsEval
+	}
+
 	return &tarGenerator{
 		tw:         tar.NewWriter(w),
 		mapOptions: opt,
 		inodes:     map[uint64]string{},
+		fsEval:     fsEval,
 	}
 }
 
@@ -82,43 +91,19 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	return path, nil
 }
 
-func (tg *tarGenerator) open(path string) (*os.File, error) {
-	open := os.Open
-	if tg.mapOptions.Rootless {
-		open = unpriv.Open
-	}
-	return open(path)
-}
-
-func (tg *tarGenerator) lstat(path string) (os.FileInfo, error) {
-	lstat := os.Lstat
-	if tg.mapOptions.Rootless {
-		lstat = unpriv.Lstat
-	}
-	return lstat(path)
-}
-
-func (tg *tarGenerator) readlink(path string) (string, error) {
-	readlink := os.Readlink
-	if tg.mapOptions.Rootless {
-		readlink = unpriv.Readlink
-	}
-	return readlink(path)
-}
-
 // AddFile adds a file from the filesystem to the tar archive. It copies all of
 // the relevant stat information about the file, and also attempts to track
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
 func (tg *tarGenerator) AddFile(name, path string) error {
-	fi, err := tg.lstat(path)
+	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
 		return errors.Wrap(err, "add file lstat")
 	}
 
 	linkname := ""
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
-		if linkname, err = tg.readlink(path); err != nil {
+		if linkname, err = tg.fsEval.Readlink(path); err != nil {
 			return errors.Wrap(err, "add file readlink")
 		}
 	}
@@ -179,7 +164,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Write the contents of regular files.
 	if hdr.Typeflag == tar.TypeReg {
-		fh, err := tg.open(path)
+		fh, err := tg.fsEval.Open(path)
 		if err != nil {
 			return errors.Wrap(err, "open file")
 		}

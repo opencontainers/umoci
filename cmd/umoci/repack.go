@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
@@ -140,7 +141,12 @@ func repack(ctx *cli.Context) error {
 		"keywords": keywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, nil)
+	fsEval := umoci.DefaultFsEval
+	if meta.MapOptions.Rootless {
+		fsEval = umoci.RootlessFsEval
+	}
+
+	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "check mtree")
 	}

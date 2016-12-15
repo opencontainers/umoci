@@ -27,8 +27,8 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/pkg/system"
-	"github.com/cyphar/umoci/pkg/unpriv"
 	"github.com/cyphar/umoci/third_party/symlink"
 	"github.com/pkg/errors"
 )
@@ -36,12 +36,21 @@ import (
 type tarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting filesystem layers.
 	mapOptions MapOptions
+
+	// fsEval is an umoci.FsEval used for extraction.
+	fsEval umoci.FsEval
 }
 
 // newTarExtractor creates a new tarExtractor.
 func newTarExtractor(opt MapOptions) *tarExtractor {
+	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	if opt.Rootless {
+		fsEval = umoci.RootlessFsEval
+	}
+
 	return &tarExtractor{
 		mapOptions: opt,
+		fsEval:     fsEval,
 	}
 }
 
@@ -54,14 +63,14 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 
 	// Get the _actual_ file info to figure out if the path is a symlink.
 	isSymlink := hdr.Typeflag == tar.TypeSymlink
-	if realFi, err := te.lstat(path); err == nil {
+	if realFi, err := te.fsEval.Lstat(path); err == nil {
 		isSymlink = realFi.Mode()&os.ModeSymlink == os.ModeSymlink
 	}
 
 	// We cannot apply hdr.Mode to symlinks, because symlinks don't have a mode
 	// of their own (they're special in that way).
 	if !isSymlink {
-		if err := te.chmod(path, fi.Mode()); err != nil {
+		if err := te.fsEval.Chmod(path, fi.Mode()); err != nil {
 			return errors.Wrapf(err, "restore chmod metadata: %s", path)
 		}
 	}
@@ -102,7 +111,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		}
 	}
 
-	if err := te.lutimes(path, atime, mtime); err != nil {
+	if err := te.fsEval.Lutimes(path, atime, mtime); err != nil {
 		return errors.Wrapf(err, "restore lutimes metadata: %s", path)
 	}
 
@@ -122,86 +131,6 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 
 	// Restore it on the filesystme.
 	return te.restoreMetadata(path, hdr)
-}
-
-func (te *tarExtractor) open(path string) (*os.File, error) {
-	open := os.Open
-	if te.mapOptions.Rootless {
-		open = unpriv.Open
-	}
-	return open(path)
-}
-
-func (te *tarExtractor) create(path string) (*os.File, error) {
-	create := os.Create
-	if te.mapOptions.Rootless {
-		create = unpriv.Create
-	}
-	return create(path)
-}
-
-func (te *tarExtractor) mkdirall(path string, mode os.FileMode) error {
-	mkdirall := os.MkdirAll
-	if te.mapOptions.Rootless {
-		mkdirall = unpriv.MkdirAll
-	}
-	return mkdirall(path, mode)
-}
-
-func (te *tarExtractor) lstat(path string) (os.FileInfo, error) {
-	lstat := os.Lstat
-	if te.mapOptions.Rootless {
-		lstat = unpriv.Lstat
-	}
-	return lstat(path)
-}
-
-func (te *tarExtractor) readlink(path string) (string, error) {
-	readlink := os.Readlink
-	if te.mapOptions.Rootless {
-		readlink = unpriv.Readlink
-	}
-	return readlink(path)
-}
-
-func (te *tarExtractor) link(oldname, newname string) error {
-	link := os.Link
-	if te.mapOptions.Rootless {
-		link = unpriv.Link
-	}
-	return link(oldname, newname)
-}
-
-func (te *tarExtractor) symlink(oldname, newname string) error {
-	symlink := os.Symlink
-	if te.mapOptions.Rootless {
-		symlink = unpriv.Symlink
-	}
-	return symlink(oldname, newname)
-}
-
-func (te *tarExtractor) chmod(path string, mode os.FileMode) error {
-	chmod := os.Chmod
-	if te.mapOptions.Rootless {
-		chmod = unpriv.Chmod
-	}
-	return chmod(path, mode)
-}
-
-func (te *tarExtractor) lutimes(path string, atime, mtime time.Time) error {
-	lutimes := system.Lutimes
-	if te.mapOptions.Rootless {
-		lutimes = unpriv.Lutimes
-	}
-	return lutimes(path, atime, mtime)
-}
-
-func (te *tarExtractor) removeall(path string) error {
-	removeall := os.RemoveAll
-	if te.mapOptions.Rootless {
-		removeall = unpriv.RemoveAll
-	}
-	return removeall(path)
 }
 
 // unpackEntry extracts the given tar.Header to the provided root, ensuring
@@ -229,10 +158,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// If we got an entry for the root, then unsafeDir is the full path.
 		unsafeDir, file = unsafePath, "."
 	}
-	dir, err := symlink.FsEval{
-		Lstat:    te.lstat,
-		Readlink: te.readlink,
-	}.FollowSymlinkInScope(unsafeDir, root)
+	dir, err := symlink.FollowSymlinkInScope(unsafeDir, root, te.fsEval)
 	if err != nil {
 		return errors.Wrap(err, "sanitise symlinks in root")
 	}
@@ -244,9 +170,9 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// (because we only apply state that we find in the archive we're iterating
 	// over). We can safely ignore an error here, because a non-existent
 	// directory will be fixed by later archive entries.
-	if dirFi, err := te.lstat(dir); err == nil && path != dir {
+	if dirFi, err := te.fsEval.Lstat(dir); err == nil && path != dir {
 		// FIXME: This is really stupid.
-		link, _ := te.readlink(dir)
+		link, _ := te.fsEval.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
 			return errors.Wrap(err, "convert hdr to fi")
@@ -286,7 +212,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		// Just remove the path. The defer will reapply the correct parent
 		// metadata. We have nothing left to do here.
-		if err := te.removeall(path); err != nil {
+		if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "whiteout remove all")
 		}
 		return nil
@@ -296,7 +222,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// with whiteouts because it turns out that lstat(2) will return EPERM if
 	// you try to stat a whiteout on AUFS.
 	hdrFi := hdr.FileInfo()
-	fi, err := te.lstat(path)
+	fi, err := te.fsEval.Lstat(path)
 	if err != nil {
 		// File doesn't exist, just switch fi to the file header.
 		fi = hdr.FileInfo()
@@ -308,7 +234,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	//      whiteout in this case, or can we just assume that a change in the
 	//      type is reason enough to purge the old type.
 	if hdrFi.Mode()&os.ModeType != fi.Mode()&os.ModeType {
-		if err := te.removeall(path); err != nil {
+		if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "replace removeall")
 		}
 	}
@@ -321,7 +247,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
-	if err := te.mkdirall(dir, 0777); err != nil {
+	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
 		return errors.Wrap(err, "mkdir parent")
 	}
 
@@ -333,7 +259,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// regular file
 	case tar.TypeReg, tar.TypeRegA:
 		// Truncate file, then just copy the data.
-		fh, err := te.create(path)
+		fh, err := te.fsEval.Create(path)
 		if err != nil {
 			return errors.Wrap(err, "create regular")
 		}
@@ -354,7 +280,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Attempt to create the directory. We do a MkdirAll here because even
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
-		if err := te.mkdirall(path, 0777); err != nil {
+		if err := te.fsEval.MkdirAll(path, 0777); err != nil {
 			return errors.Wrap(err, "mkdirall")
 		}
 
@@ -368,24 +294,24 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		var linkFn func(string, string) error
 		switch hdr.Typeflag {
 		case tar.TypeLink:
-			linkFn = te.link
+			linkFn = te.fsEval.Link
 			// Because hardlinks are inode-based we need to scope the link to
 			// the rootfs using FollowSymlinkInScope. As before, we need to be
 			// careful that we don't resolve the last part of the link path (in
 			// case the user actually wanted to hardlink to a symlink).
 			linkname = filepath.Join(root, CleanPath(linkname))
 			linkdir, file := filepath.Split(linkname)
-			dir, err := symlink.FollowSymlinkInScope(linkdir, root)
+			dir, err := symlink.FollowSymlinkInScope(linkdir, root, te.fsEval)
 			if err != nil {
 				return errors.Wrap(err, "sanitise hardlink target in root")
 			}
 			linkname = filepath.Join(dir, file)
 		case tar.TypeSymlink:
-			linkFn = te.symlink
+			linkFn = te.fsEval.Symlink
 		}
 
 		// Unlink the old path, and ignore it if the path didn't exist.
-		if err := te.removeall(path); err != nil {
+		if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "remove link old")
 		}
 
@@ -404,7 +330,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	case tar.TypeChar, tar.TypeBlock:
 		// In rootless mode we have to fake this.
 		if te.mapOptions.Rootless {
-			fh, err := te.create(path)
+			fh, err := te.fsEval.Create(path)
 			if err != nil {
 				return errors.Wrap(err, "create rootless block")
 			}
@@ -427,11 +353,12 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		dev := system.Makedev(uint64(hdr.Devmajor), uint64(hdr.Devminor))
 
 		// Unlink the old path, and ignore it if the path didn't exist.
-		if err := te.removeall(path); err != nil {
+		if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "remove block old")
 		}
 
 		// Create the node.
+		// TODO: Make a wrapper around this in unpriv.
 		if err := system.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {
 			return errors.Wrap(err, "mknod")
 		}

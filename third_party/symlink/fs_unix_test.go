@@ -38,7 +38,7 @@ func makeFs(tmpdir string, fs []dirOrLink) error {
 }
 
 func testSymlink(tmpdir, path, expected, scope string) error {
-	rewrite, err := FollowSymlinkInScope(filepath.Join(tmpdir, path), filepath.Join(tmpdir, scope))
+	rewrite, err := FollowSymlinkInScope(filepath.Join(tmpdir, path), filepath.Join(tmpdir, scope), nil)
 	if err != nil {
 		return err
 	}
@@ -98,7 +98,7 @@ func TestFollowSymlinkSkipSymlinksOutsideScope(t *testing.T) {
 }
 
 func TestFollowSymlinkInvalidScopePathPair(t *testing.T) {
-	if _, err := FollowSymlinkInScope("toto", "testdata"); err == nil {
+	if _, err := FollowSymlinkInScope("toto", "testdata", nil); err == nil {
 		t.Fatal("expected an error")
 	}
 }
@@ -297,7 +297,7 @@ func TestFollowSymlinkRootScope(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	rewrite, err := FollowSymlinkInScope(tmpdir, "/")
+	rewrite, err := FollowSymlinkInScope(tmpdir, "/", nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -307,7 +307,7 @@ func TestFollowSymlinkRootScope(t *testing.T) {
 }
 
 func TestFollowSymlinkEmpty(t *testing.T) {
-	res, err := FollowSymlinkInScope("", "")
+	res, err := FollowSymlinkInScope("", "", nil)
 	if err != nil {
 		t.Fatal(err)
 	}

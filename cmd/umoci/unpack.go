@@ -24,6 +24,7 @@ import (
 	"strings"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/cyphar/umoci/oci/layer"
 	"github.com/cyphar/umoci/pkg/idtools"
@@ -208,7 +209,12 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, nil)
+	fsEval := umoci.DefaultFsEval
+	if meta.MapOptions.Rootless {
+		fsEval = umoci.RootlessFsEval
+	}
+
+	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "generate mtree spec")
 	}
