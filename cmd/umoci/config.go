@@ -100,6 +100,22 @@ func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 	}
 }
 
+// parseEnv splits a given environment variable (of the form name=value) into
+// (name, value). An error is returned if there is no "=" in the line or if the
+// name is empty.
+func parseEnv(env string) (string, string, error) {
+	parts := strings.SplitN(env, "=", 2)
+	if len(parts) != 2 {
+		return "", "", errors.Errorf("environment variable must contain '=': %s", env)
+	}
+
+	name, value := parts[0], parts[1]
+	if name == "" {
+		return "", "", errors.Errorf("environment variable must have non-empty name: %s", env)
+	}
+	return name, value, nil
+}
+
 func config(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
@@ -208,7 +224,11 @@ func config(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("config.env") {
 		for _, env := range ctx.StringSlice("config.env") {
-			g.AddConfigEnv(env)
+			name, value, err := parseEnv(env)
+			if err != nil {
+				return err
+			}
+			g.AddConfigEnv(name, value)
 		}
 	}
 	// FIXME: This interface is weird.
