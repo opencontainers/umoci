@@ -89,7 +89,7 @@ type dirEngine struct {
 	temp string
 }
 
-func (e dirEngine) ensureTempDir() error {
+func (e *dirEngine) ensureTempDir() error {
 	if e.temp == "" {
 		tempDir, err := ioutil.TempDir(e.path, "tmp-")
 		if err != nil {
@@ -101,7 +101,7 @@ func (e dirEngine) ensureTempDir() error {
 }
 
 // verify ensures that the image is valid.
-func (e dirEngine) validate() error {
+func (e *dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
 		if os.IsNotExist(err) {
@@ -149,7 +149,7 @@ func (e dirEngine) validate() error {
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
-func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64, error) {
+func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64, error) {
 	if err := e.ensureTempDir(); err != nil {
 		return "", -1, errors.Wrap(err, "ensure tempdir")
 	}
@@ -194,7 +194,7 @@ func (e dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64
 // as the reader. Note that due to intricacies in the Go JSON
 // implementation, we cannot guarantee that two calls to PutBlobJSON() will
 // return the same digest.
-func (e dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, int64, error) {
+func (e *dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
 		return "", -1, errors.Wrap(err, "encode JSON")
@@ -207,7 +207,7 @@ func (e dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, i
 // without implying "because of this PutReference() call". ErrClobber is
 // returned if there is already a descriptor stored at NAME, but does not
 // match the descriptor requested to be stored.
-func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) error {
+func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) error {
 	if err := e.ensureTempDir(); err != nil {
 		return errors.Wrap(err, "ensure tempdir")
 	}
@@ -253,7 +253,7 @@ func (e dirEngine) PutReference(ctx context.Context, name string, descriptor *is
 
 // GetBlob returns a reader for retrieving a blob from the image, which the
 // caller must Close(). Returns os.ErrNotExist if the digest is not found.
-func (e dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, error) {
+func (e *dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
 		return nil, errors.Wrap(err, "compute blob path")
@@ -264,7 +264,7 @@ func (e dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, e
 
 // GetReference returns a reference from the image. Returns os.ErrNotExist
 // if the name was not found.
-func (e dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descriptor, error) {
+func (e *dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descriptor, error) {
 	path, err := refPath(name)
 	if err != nil {
 		return nil, errors.Wrap(err, "compute ref path")
@@ -287,7 +287,7 @@ func (e dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descri
 // DeleteBlob removes a blob from the image. This is idempotent; a nil
 // error means "the content is not in the store" without implying "because
 // of this DeleteBlob() call".
-func (e dirEngine) DeleteBlob(ctx context.Context, digest string) error {
+func (e *dirEngine) DeleteBlob(ctx context.Context, digest string) error {
 	path, err := blobPath(digest)
 	if err != nil {
 		return errors.Wrap(err, "compute blob path")
@@ -303,7 +303,7 @@ func (e dirEngine) DeleteBlob(ctx context.Context, digest string) error {
 // DeleteReference removes a reference from the image. This is idempotent;
 // a nil error means "the content is not in the store" without implying
 // "because of this DeleteReference() call".
-func (e dirEngine) DeleteReference(ctx context.Context, name string) error {
+func (e *dirEngine) DeleteReference(ctx context.Context, name string) error {
 	path, err := refPath(name)
 	if err != nil {
 		return errors.Wrap(err, "compute ref path")
@@ -317,7 +317,7 @@ func (e dirEngine) DeleteReference(ctx context.Context, name string) error {
 }
 
 // ListBlobs returns the set of blob digests stored in the image.
-func (e dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
+func (e *dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
 	digests := []string{}
 	blobDir := filepath.Join(e.path, blobDirectory, BlobAlgorithm)
 
@@ -339,7 +339,7 @@ func (e dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
 }
 
 // ListReferences returns the set of reference names stored in the image.
-func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
+func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 	refs := []string{}
 	refDir := filepath.Join(e.path, refDirectory)
 
@@ -361,7 +361,7 @@ func (e dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 
 // Close releases all references held by the e. Subsequent operations may
 // fail.
-func (e dirEngine) Close() error {
+func (e *dirEngine) Close() error {
 	if e.temp != "" {
 		if err := os.RemoveAll(e.temp); err != nil {
 			return errors.Wrap(err, "remote tempdir")
