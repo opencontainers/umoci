@@ -39,7 +39,12 @@ import (
 
 // readonly makes the given path read-only (by bind-mounting it as "ro").
 func readonly(t *testing.T, path string) {
-	if err := syscall.Mount(path, path, "bind", syscall.MS_BIND|syscall.MS_REC|syscall.MS_PRIVATE, "ro"); err != nil {
+	t.Logf("mounting %s as readonly", path)
+
+	if err := syscall.Mount(path, path, "", syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
+		t.Fatalf("mount %s as ro: %s", path, err)
+	}
+	if err := syscall.Mount("none", path, "", syscall.MS_BIND|syscall.MS_REMOUNT|syscall.MS_RDONLY, ""); err != nil {
 		t.Fatalf("mount %s as ro: %s", path, err)
 	}
 }
@@ -102,12 +107,6 @@ func TestEngineBlobReadonly(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
-	defer engine.Close()
-
 	for _, test := range []struct {
 		bytes []byte
 	}{
@@ -115,6 +114,11 @@ func TestEngineBlobReadonly(t *testing.T) {
 		{[]byte("some blob")},
 		{[]byte("another blob")},
 	} {
+		engine, err := Open(image)
+		if err != nil {
+			t.Fatalf("unexpected error opening image: %+v", err)
+		}
+
 		hash := sha256.New()
 		if _, err := io.Copy(hash, bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
@@ -131,6 +135,10 @@ func TestEngineBlobReadonly(t *testing.T) {
 		}
 		if size != int64(len(test.bytes)) {
 			t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(test.bytes), size)
+		}
+
+		if err := engine.Close(); err != nil {
+			t.Errorf("Close: unexpected error encountered: %+v", err)
 		}
 
 		// make it readonly
@@ -158,6 +166,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		// Make sure that writing again will FAIL.
 		_, _, err = newEngine.PutBlob(ctx, bytes.NewReader(test.bytes))
 		if err == nil {
+			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutBlob: expected error on ro image!")
 		}
 
@@ -184,12 +193,6 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
-	defer engine.Close()
-
 	type object struct {
 		A string `json:"A"`
 		B int64  `json:"B,omitempty"`
@@ -202,9 +205,18 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		{object{"a value", 100}},
 		{object{"another value", 200}},
 	} {
+		engine, err := Open(image)
+		if err != nil {
+			t.Fatalf("unexpected error opening image: %+v", err)
+		}
+
 		digest, _, err := engine.PutBlobJSON(ctx, test.object)
 		if err != nil {
 			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
+		}
+
+		if err := engine.Close(); err != nil {
+			t.Errorf("Close: unexpected error encountered: %+v", err)
 		}
 
 		// make it readonly
@@ -237,6 +249,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		// Make sure that writing again will FAIL.
 		_, _, err = newEngine.PutBlobJSON(ctx, test.object)
 		if err == nil {
+			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutBlob: expected error on ro image!")
 		}
 
@@ -263,12 +276,6 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
-	defer engine.Close()
-
 	for _, test := range []struct {
 		name       string
 		descriptor ispec.Descriptor
@@ -277,8 +284,18 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
 		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributable, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
 	} {
+
+		engine, err := Open(image)
+		if err != nil {
+			t.Fatalf("unexpected error opening image: %+v", err)
+		}
+
 		if err := engine.PutReference(ctx, test.name, &test.descriptor); err != nil {
 			t.Errorf("PutReference: unexpected error: %+v", err)
+		}
+
+		if err := engine.Close(); err != nil {
+			t.Errorf("Close: unexpected error encountered: %+v", err)
 		}
 
 		// make it readonly
@@ -300,6 +317,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 
 		// Make sure that writing will FAIL.
 		if err := newEngine.PutReference(ctx, test.name+"new", &test.descriptor); err == nil {
+			t.Logf("PutReference: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutReference: expected error on ro image!")
 		}
 
