@@ -1,8 +1,8 @@
 hash: 7d0fee0ebf0a4dcc52d463df3d15c08f7b47cc1528f99a1fc1fa4daa9dc6a3b5
-updated: 2016-12-15T15:24:51.067141068+11:00
+updated: 2016-12-16T17:32:43.843378456+11:00
 imports:
 - name: github.com/cyphar/umoci
-  version: 1d73d649035ceb5387b9bf8fc79738ad5bbf2a07
+  version: 739260d017b7a90fdee0b0bb118047493bc3775c
   subpackages:
   - mutate
   - oci/cas
@@ -29,7 +29,7 @@ imports:
   subpackages:
   - specs-go
 - name: github.com/opencontainers/runtime-tools
-  version: 308b6d9b1b4a452d4ea9b0c7b5321bed22ffdff8
+  version: b61b44a71dafb8472bbc1e5eb0d68ed9ce8ba6ac
   subpackages:
   - generate
   - generate/seccomp
@@ -49,11 +49,11 @@ imports:
   - cvis
   - xattr
 - name: golang.org/x/crypto
-  version: 9a6f0a01987842989747adff311d80750ba25530
+  version: 01be46f62051d02cb6a36c9b47b37b24e5758c81
   subpackages:
   - ripemd160
 - name: golang.org/x/net
-  version: cfae461cedfdcab6e261a26eb77db53695623303
+  version: 45e771701b814666a7eb299e6c7a57d0b1799e91
   subpackages:
   - context
 - name: golang.org/x/sys
