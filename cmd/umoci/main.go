@@ -73,6 +73,7 @@ func main() {
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
 			logrus.SetLevel(logrus.DebugLevel)
+			errors.Debug(true)
 		}
 		return nil
 	}
@@ -130,6 +131,6 @@ func main() {
 
 	// Actually run umoci.
 	if err := app.Run(os.Args); err != nil {
-		logrus.Fatal(err)
+		logrus.Fatalf("%v", err)
 	}
 }
