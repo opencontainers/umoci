@@ -19,6 +19,7 @@ package system
 
 import (
 	"bytes"
+	"os"
 	"syscall"
 	"unsafe"
 
@@ -52,6 +53,11 @@ func Llistxattr(path string) ([]string, error) {
 
 	var xattrs []string
 	for _, name := range bytes.Split(buffer, []byte{'\x00'}) {
+		// "" is not a valid xattr (weirdly you get ERANGE -- not EINVAL -- if
+		// you try to touch it). So just skip it.
+		if len(name) == 0 {
+			continue
+		}
 		xattrs = append(xattrs, string(name))
 	}
 	return xattrs, nil
@@ -121,11 +127,16 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 func Lclearxattrs(path string) error {
 	names, err := Llistxattr(path)
 	if err != nil {
-		return errors.Wrap(err, "lclearxattrs")
+		return errors.Wrap(err, "lclearxattrs: get list")
 	}
 	for _, name := range names {
 		if err := Lremovexattr(path, name); err != nil {
-			return errors.Wrap(err, "lclearxattrs")
+			// Ignore permission errors, because hitting a permission error
+			// means that it's a security.* xattr label or something similar.
+			if os.IsPermission(errors.Cause(err)) {
+				continue
+			}
+			return errors.Wrap(err, "lclearxattrs: remove xattr")
 		}
 	}
 	return nil
