@@ -28,6 +28,18 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ignoreXattrList is a list of xattr names that should be ignored when
+// creating a new image layer, because they are host-specific and/or would be a
+// bad idea to unpack.
+// XXX: Maybe we should make this configurable so users can manually blacklist
+//      (or even whitelist) xattrs that they actually want included? Like how
+//      GNU tar's xattr setup works.
+var ignoreXattrList = map[string]struct{}{
+	// SELinux doesn't allow you to set SELinux policies generically. They're
+	// also host-specific. So just ignore them during extraction.
+	"security.selinux": {},
+}
+
 // tarGenerator is a helper for generating layer diff tars. It should be noted
 // that when using tarGenerator.Add{Path,Whiteout} it is recommended to do it
 // in lexicographic order.
@@ -112,6 +124,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	if err != nil {
 		return errors.Wrap(err, "convert fi to hdr")
 	}
+	hdr.Xattrs = map[string]string{}
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {
@@ -128,10 +141,35 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	//        later).
 
 	// Different systems have different special things they need to set within
-	// a tar header. In principle, tar.FileInfoHeader should've done it for us
-	// but we might as well double-check it.
+	// a tar header. For example, device numbers are quite important to be set
+	// by us.
 	if err := updateHeader(hdr, fi); err != nil {
 		return errors.Wrap(err, "update hdr header")
+	}
+
+	// Set up xattrs externally to updateHeader because the function signature
+	// would look really dumb otherwise.
+	// XXX: This should probably be moved to a function in tar_unix.go.
+	names, err := tg.fsEval.Llistxattr(path)
+	if err != nil {
+		return errors.Wrap(err, "get xattr list")
+	}
+	for _, name := range names {
+		// Some xattrs need to be skipped for sanity reasons, such as
+		// security.selinux, because they are very much host-specific and
+		// carrying them to other hosts would be a really bad idea.
+		if _, ignore := ignoreXattrList[name]; ignore {
+			continue
+		}
+
+		value, err := tg.fsEval.Lgetxattr(path, name)
+		if err != nil {
+			// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
+			//      fail with EPERM. If it can, we should ignore it (like when
+			//      we try to clear xattrs).
+			return errors.Wrapf(err, "get xattr: %s", name)
+		}
+		hdr.Xattrs[name] = string(value)
 	}
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to
