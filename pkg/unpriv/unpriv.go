@@ -428,3 +428,12 @@ func MkdirAll(path string, perm os.FileMode) error {
 		return nil
 	}), "unpriv.mkdirall")
 }
+
+// Mknod is a wrapper around os.Mknod which has been wrapped with unpriv.Wrap
+// to make it possible to remove a path even if you do not currently have the
+// required access bits to modify or resolve the path.
+func Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
+		return system.Mknod(path, mode, dev)
+	}), "unpriv.mknod")
+}

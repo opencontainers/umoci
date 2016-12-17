@@ -21,6 +21,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cyphar/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -70,6 +71,9 @@ type FsEval interface {
 
 	// MkdirAll is a wrapper around unpriv.MkdirAll.
 	MkdirAll(path string, perm os.FileMode) error
+
+	// Mknod is equivalent to system.Mknod.
+	Mknod(path string, mode os.FileMode, dev system.Dev_t) error
 
 	// KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
 	KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc

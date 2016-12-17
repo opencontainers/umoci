@@ -99,6 +99,11 @@ func (fs osFsEval) Mkdir(path string, perm os.FileMode) error {
 	return os.Mkdir(path, perm)
 }
 
+// Mknod is equivalent to system.Mknod.
+func (fs osFsEval) Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
+	return system.Mknod(path, mode, dev)
+}
+
 // MkdirAll is a wrapper around unpriv.MkdirAll.
 func (fs osFsEval) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
