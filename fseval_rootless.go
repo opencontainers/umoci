@@ -22,6 +22,7 @@ import (
 	"os"
 	"time"
 
+	"github.com/cyphar/umoci/pkg/system"
 	"github.com/cyphar/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
 )
@@ -94,6 +95,11 @@ func (fs unprivFsEval) RemoveAll(path string) error {
 // Mkdir is a wrapper around unpriv.Mkdir.
 func (fs unprivFsEval) Mkdir(path string, perm os.FileMode) error {
 	return unpriv.Mkdir(path, perm)
+}
+
+// Mknod is equivalent to unpriv.Mknod.
+func (fs unprivFsEval) Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
+	return unpriv.Mknod(path, mode, dev)
 }
 
 // MkdirAll is a wrapper around unpriv.MkdirAll.

@@ -77,6 +77,8 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 
 	// Apply owner (only used in rootless case).
 	if !te.mapOptions.Rootless {
+		// XXX: While unpriv.Lchown doesn't make a whole lot of sense this
+		//      should _probably_ be put inside FsEval.
 		if err := os.Lchown(path, hdr.Uid, hdr.Gid); err != nil {
 			return errors.Wrapf(err, "restore chown metadata: %s", path)
 		}
@@ -358,8 +360,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		}
 
 		// Create the node.
-		// TODO: Make a wrapper around this in unpriv.
-		if err := system.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {
+		if err := te.fsEval.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {
 			return errors.Wrap(err, "mknod")
 		}
 

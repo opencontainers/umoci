@@ -263,7 +263,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci {un,repack} [hardlink]" {
+@test "umoci {un,re}pack [hardlink]" {
 	BUNDLE_A="$(setup_bundle)"
 	BUNDLE_B="$(setup_bundle)"
 
@@ -318,6 +318,55 @@ function teardown() {
 
 	# Make sure that hardlink->symlink != hardlink.
 	[[ "$originalA" != "$originalB" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci {un,re}pack [unpriv]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Create some directories for unpriv check.
+	mkdir -p "$BUNDLE_A/rootfs/some/directory/path"
+
+	# mkfifo and some other stuff
+	mkfifo "$BUNDLE_A/rootfs/some/directory/path/fifo"
+	echo "some contents" >> "$BUNDLE_A/rootfs/some/directory/path/file"
+	mkdir "$BUNDLE_A/rootfs/some/directory/path/dir"
+	ln -s "/../././././/../../../../etc/shadow" "$BUNDLE_A/rootfs/some/directory/path/link"
+
+	# Chmod.
+	chmod 0000 "$BUNDLE_A/rootfs/some/directory/path"
+	chmod 0000 "$BUNDLE_A/rootfs/some/directory"
+	chmod 0000 "$BUNDLE_A/rootfs/some"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Undo the chmodding.
+	chmod +rwx "$BUNDLE_B/rootfs/some"
+	chmod +rwx "$BUNDLE_B/rootfs/some/directory"
+	chmod +rwx "$BUNDLE_B/rootfs/some/directory/path"
+
+	# Make sure the types are right.
+	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/fifo")" == "fifo" ]]
+	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/file")" == "regular file" ]]
+	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/dir")" == "directory" ]]
+	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/link")" == "symbolic link" ]]
 
 	image-verify "${IMAGE}"
 }
