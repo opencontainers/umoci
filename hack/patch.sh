@@ -36,3 +36,7 @@ patch github.com/opencontainers/image-spec imagespec-0001-specs-go-add-labels-to
 # project is, so I'm just going to backport it here until I see that there's
 # upstream activity.
 patch github.com/pkg/errors errors-0001-errors-add-Debug-function.patch
+
+# Inclusion of vbatts/go-mtree#108. This fixes issues with xattrs not being
+# correctly detected when new xattrs have been added.
+patch github.com/vbatts/go-mtree gomtree-0001-compare-always-diff-xattr-keys.patch
