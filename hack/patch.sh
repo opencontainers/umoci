@@ -40,3 +40,7 @@ patch github.com/pkg/errors errors-0001-errors-add-Debug-function.patch
 # Inclusion of vbatts/go-mtree#108. This fixes issues with xattrs not being
 # correctly detected when new xattrs have been added.
 patch github.com/vbatts/go-mtree gomtree-0001-compare-always-diff-xattr-keys.patch
+
+# Inclusion of vbatts/go-mtree#110. This fixes issues with spaces inside xattrs
+# (which is somethig that we have an integration test on).
+patch github.com/vbatts/go-mtree gomtree-0001-keywords-encode-xattr.-keywords-with-Vis.patch

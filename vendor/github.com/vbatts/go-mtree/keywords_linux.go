@@ -62,7 +62,11 @@ var (
 			}
 			klist := []KeyVal{}
 			for k, v := range hdr.Xattrs {
-				klist = append(klist, KeyVal(fmt.Sprintf("xattr.%s=%s", k, base64.StdEncoding.EncodeToString([]byte(v)))))
+				encKey, err := Vis(k, DefaultVisFlags)
+				if err != nil {
+					return emptyKV, err
+				}
+				klist = append(klist, KeyVal(fmt.Sprintf("xattr.%s=%s", encKey, base64.StdEncoding.EncodeToString([]byte(v)))))
 			}
 			return KeyVal(strings.Join(KeyValToString(klist), " ")), nil
 		}
@@ -80,7 +84,11 @@ var (
 			if err != nil {
 				return emptyKV, err
 			}
-			klist[i] = KeyVal(fmt.Sprintf("xattr.%s=%s", xlist[i], base64.StdEncoding.EncodeToString(data)))
+			encKey, err := Vis(xlist[i], DefaultVisFlags)
+			if err != nil {
+				return emptyKV, err
+			}
+			klist[i] = KeyVal(fmt.Sprintf("xattr.%s=%s", encKey, base64.StdEncoding.EncodeToString(data)))
 		}
 		return KeyVal(strings.Join(KeyValToString(klist), " ")), nil
 	}

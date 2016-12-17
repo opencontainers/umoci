@@ -1,0 +1,47 @@
+From 6bc5e6130c1ff4c1d9057c671e4cd1c46a5eef0c Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <asarai@suse.de>
+Date: Sun, 18 Dec 2016 02:57:45 +1100
+Subject: [PATCH] keywords: encode xattr.* keywords with Vis
+
+This allows for xattr keywords to include spaces and other such options
+(which is perfectly valid according to the definition of Lsetxattr --
+any character except '\x00' is fair game).
+
+Signed-off-by: Aleksa Sarai <asarai@suse.de>
+---
+ keywords_linux.go | 12 ++++++++++--
+ 1 file changed, 10 insertions(+), 2 deletions(-)
+
+diff --git a/keywords_linux.go b/keywords_linux.go
+index 79cf46e8d7c1..a14108eae836 100644
+--- a/keywords_linux.go
++++ b/keywords_linux.go
+@@ -62,7 +62,11 @@ var (
+ 			}
+ 			klist := []KeyVal{}
+ 			for k, v := range hdr.Xattrs {
+-				klist = append(klist, KeyVal(fmt.Sprintf("xattr.%s=%s", k, base64.StdEncoding.EncodeToString([]byte(v)))))
++				encKey, err := Vis(k, DefaultVisFlags)
++				if err != nil {
++					return emptyKV, err
++				}
++				klist = append(klist, KeyVal(fmt.Sprintf("xattr.%s=%s", encKey, base64.StdEncoding.EncodeToString([]byte(v)))))
+ 			}
+ 			return KeyVal(strings.Join(KeyValToString(klist), " ")), nil
+ 		}
+@@ -80,7 +84,11 @@ var (
+ 			if err != nil {
+ 				return emptyKV, err
+ 			}
+-			klist[i] = KeyVal(fmt.Sprintf("xattr.%s=%s", xlist[i], base64.StdEncoding.EncodeToString(data)))
++			encKey, err := Vis(xlist[i], DefaultVisFlags)
++			if err != nil {
++				return emptyKV, err
++			}
++			klist[i] = KeyVal(fmt.Sprintf("xattr.%s=%s", encKey, base64.StdEncoding.EncodeToString(data)))
+ 		}
+ 		return KeyVal(strings.Join(KeyValToString(klist), " ")), nil
+ 	}
+-- 
+2.11.0
+
