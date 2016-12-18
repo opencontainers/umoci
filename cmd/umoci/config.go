@@ -60,9 +60,6 @@ image.`,
 
 	Flags: []cli.Flag{
 		cli.StringFlag{Name: "config.user"},
-		cli.Int64Flag{Name: "config.memory.limit"},
-		cli.Int64Flag{Name: "config.memory.swap"},
-		cli.Int64Flag{Name: "config.cpu.shares"},
 		cli.StringSliceFlag{Name: "config.exposedports"},
 		cli.StringSliceFlag{Name: "config.env"},
 		cli.StringSliceFlag{Name: "config.entrypoint"}, // FIXME: This interface is weird.
@@ -207,15 +204,6 @@ func config(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("config.workingdir") {
 		g.SetConfigWorkingDir(ctx.String("config.workingdir"))
-	}
-	if ctx.IsSet("config.memory.limit") {
-		g.SetConfigMemory(ctx.Int64("config.memory.limit"))
-	}
-	if ctx.IsSet("config.memory.swap") {
-		g.SetConfigMemorySwap(ctx.Int64("config.memory.swap"))
-	}
-	if ctx.IsSet("config.cpu.shares") {
-		g.SetConfigCPUShares(ctx.Int64("config.cpu.shares"))
 	}
 	if ctx.IsSet("config.exposedports") {
 		for _, port := range ctx.StringSlice("config.exposedports") {

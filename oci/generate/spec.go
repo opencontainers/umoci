@@ -139,36 +139,6 @@ func (g *Generator) ConfigUser() string {
 	return g.image.Config.User
 }
 
-// SetConfigMemory sets the memory limit.
-func (g *Generator) SetConfigMemory(memory int64) {
-	g.image.Config.Memory = memory
-}
-
-// ConfigMemory returns the memory limit.
-func (g *Generator) ConfigMemory() int64 {
-	return g.image.Config.Memory
-}
-
-// SetConfigMemorySwap sets the total memory usage limit (memory + swap).
-func (g *Generator) SetConfigMemorySwap(memorySwap int64) {
-	g.image.Config.MemorySwap = memorySwap
-}
-
-// ConfigMemorySwap returns the total memory usage limit (memory + swap).
-func (g *Generator) ConfigMemorySwap() int64 {
-	return g.image.Config.MemorySwap
-}
-
-// SetConfigCPUShares sets the CPU shares (relative weight vs. other containers).
-func (g *Generator) SetConfigCPUShares(shares int64) {
-	g.image.Config.CPUShares = shares
-}
-
-// ConfigCPUShares sets the CPU shares (relative weight vs. other containers).
-func (g *Generator) ConfigCPUShares() int64 {
-	return g.image.Config.CPUShares
-}
-
 // ClearConfigExposedPorts clears the set of ports to expose from a container running this image.
 func (g *Generator) ClearConfigExposedPorts() {
 	g.image.Config.ExposedPorts = map[string]struct{}{}

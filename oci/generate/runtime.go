@@ -121,12 +121,6 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manif
 		g.AddProcessEnv("HOME", execUser.Home)
 	}
 
-	// TODO: Handle cases where these are unset properly.
-	g.SetLinuxResourcesCPUShares(uint64(image.Config.CPUShares))
-	g.SetLinuxResourcesMemoryLimit(uint64(image.Config.Memory))
-	g.SetLinuxResourcesMemoryReservation(uint64(image.Config.Memory))
-	g.SetLinuxResourcesMemorySwap(uint64(image.Config.MemorySwap))
-
 	for vol := range image.Config.Volumes {
 		// XXX: This is _fine_ but might cause some issues in the future.
 		g.AddTmpfsMount(vol, []string{"rw"})
