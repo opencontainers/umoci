@@ -27,11 +27,6 @@ patch() {
 	command patch -d "$VENDOR/$project" -p1 <"$SCRIPTDIR/$patch"
 }
 
-# Backport of opencontainers/image-spec#460. This patch wasn't included in
-# v1.0.0-rc3 even though the change to the specification was, resulting in a
-# mismatch. While upstream figures out a way to fix this, just patch it.
-patch github.com/opencontainers/image-spec imagespec-0001-specs-go-add-labels-to-config.go.patch
-
 # This is a patch I wrote for pkg/errors#97. I'm not sure how active the
 # project is, so I'm just going to backport it here until I see that there's
 # upstream activity.
