@@ -32,6 +32,7 @@ import (
 	"github.com/docker/go-units"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
 )
 
@@ -40,6 +41,22 @@ import (
 //        can be useful to other people. This is _particularly_ true for the
 //        code which repacks images (the changes to the config, manifest and
 //        CAS should be made into a library).
+
+// MtreeKeywords is the set of keywords used by umoci for verification and diff
+// generation of a bundle. This is based on mtree.DefaultKeywords, but is
+// hardcoded here to ensure that vendor changes don't mess things up.
+var MtreeKeywords = []mtree.Keyword{
+	"size",
+	"type",
+	"uid",
+	"gid",
+	"mode",
+	"link",
+	"nlink",
+	"tar_time",
+	"sha256digest",
+	"xattr",
+}
 
 // UmociMetaName is the name of umoci's metadata file that is stored in all
 // bundles extracted by umoci.

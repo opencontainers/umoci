@@ -135,10 +135,8 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "parse mtree")
 	}
 
-	keywords := spec.UsedKeywords()
-
 	logrus.WithFields(logrus.Fields{
-		"keywords": keywords,
+		"keywords": MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
 	fsEval := umoci.DefaultFsEval
@@ -146,7 +144,7 @@ func repack(ctx *cli.Context) error {
 		fsEval = umoci.RootlessFsEval
 	}
 
-	diffs, err := mtree.Check(fullRootfsPath, spec, keywords, fsEval)
+	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "check mtree")
 	}

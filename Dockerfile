@@ -21,18 +21,21 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
     zypper ar -f -p 10 -g obs://devel:languages:go obs-dlg && \
     zypper ar -f -p 15 -g obs://home:cyphar obs-home-cyphar && \
+    zypper ar -f -p 15 -g obs://devel:languages:python3 obs-py3k && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
 		bats \
 		git \
 		'go>=1.6' \
-		go-mtree \
 		golang-github-cpuguy83-go-md2man \
+		go-mtree \
 		jq \
 		make \
 		oci-image-tools \
 		oci-runtime-tools \
+		python3-setuptools \
+		python3-xattr \
 		skopeo
 
 ENV GOPATH /go

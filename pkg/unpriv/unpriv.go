@@ -39,6 +39,8 @@ func fiRestore(path string, fi os.FileInfo) {
 	hdr, _ := tar.FileInfoHeader(fi, "")
 
 	// Apply the relevant information from the FileInfo.
+	// XXX: Should we return errors here to ensure that everything is
+	//      deterministic or we fail?
 	os.Chmod(path, fi.Mode())
 	os.Chtimes(path, hdr.AccessTime, hdr.ModTime)
 }
@@ -436,4 +438,74 @@ func Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
 		return system.Mknod(path, mode, dev)
 	}), "unpriv.mknod")
+}
+
+// Llistxattr is a wrapper around system.Llistxattr which has been wrapped with
+// unpriv.Wrap to make it possible to remove a path even if you do not
+// currently have the required access bits to resolve the path.
+func Llistxattr(path string) ([]string, error) {
+	var xattrs []string
+	err := Wrap(path, func(path string) error {
+		var err error
+		xattrs, err = system.Llistxattr(path)
+		return err
+	})
+	return xattrs, errors.Wrap(err, "unpriv.llistxattr")
+}
+
+// Lremovexattr is a wrapper around system.Lremovexattr which has been wrapped
+// with unpriv.Wrap to make it possible to remove a path even if you do not
+// currently have the required access bits to resolve the path.
+func Lremovexattr(path, name string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
+		return system.Lremovexattr(path, name)
+	}), "unpriv.lremovexattr")
+}
+
+// Lsetxattr is a wrapper around system.Lsetxattr which has been wrapped
+// with unpriv.Wrap to make it possible to set a path even if you do not
+// currently have the required access bits to resolve the path.
+func Lsetxattr(path, name string, value []byte, flags int) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
+		return system.Lsetxattr(path, name, value, flags)
+	}), "unpriv.lsetxattr")
+}
+
+// Lgetxattr is a wrapper around system.Lgetxattr which has been wrapped
+// with unpriv.Wrap to make it possible to get a path even if you do not
+// currently have the required access bits to resolve the path.
+func Lgetxattr(path, name string) ([]byte, error) {
+	var value []byte
+	err := Wrap(path, func(path string) error {
+		var err error
+		value, err = system.Lgetxattr(path, name)
+		return err
+	})
+	return value, errors.Wrap(err, "unpriv.lgetxattr")
+}
+
+// Lclearxattrs is similar to system.Lclearxattrs but in order to implement it
+// properly all of the internal functions were wrapped with unpriv.Wrap to make
+// it possible to create a path even if you do not currently have enough access
+// bits.
+func Lclearxattrs(path string) error {
+	return errors.Wrap(Wrap(path, func(path string) error {
+		names, err := Llistxattr(path)
+		if err != nil {
+			return err
+		}
+		for _, name := range names {
+			if err := Lremovexattr(path, name); err != nil {
+				// SELinux won't let you change security.selinux (for obvious
+				// security reasons), so we don't clear xattrs if attempting to
+				// clear them causes an EPERM. This EPERM will not be due to
+				// resolution issues (Llistxattr already has done that for us).
+				if os.IsPermission(errors.Cause(err)) {
+					continue
+				}
+				return err
+			}
+		}
+		return nil
+	}), "unpriv.lclearxattrs")
 }

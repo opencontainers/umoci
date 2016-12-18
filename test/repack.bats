@@ -370,3 +370,75 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci {un,re}pack [xattrs]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_C="$(setup_bundle)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Set user.* xattrs.
+	chmod +w "$BUNDLE_A/rootfs/root" && xattr -w user.some.value thisisacoolfile    "$BUNDLE_A/rootfs/root"
+	chmod +w "$BUNDLE_A/rootfs/etc"  && xattr -w user.another    valuegoeshere      "$BUNDLE_A/rootfs/etc"
+	chmod +w "$BUNDLE_A/rootfs/var"  && xattr -w user.3rd        halflife3confirmed "$BUNDLE_A/rootfs/var"
+	chmod +w "$BUNDLE_A/rootfs/usr"  && xattr -w user."key also" "works if you try" "$BUNDLE_A/rootfs/usr"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Make sure the xattrs have been set.
+	sane_run xattr -p user.some.value "$BUNDLE_B/rootfs/root"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "thisisacoolfile" ]]
+	sane_run xattr -p user.another "$BUNDLE_B/rootfs/etc"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "valuegoeshere" ]]
+	sane_run xattr -p user.3rd "$BUNDLE_B/rootfs/var"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "halflife3confirmed" ]]
+	sane_run xattr -p user."key also" "$BUNDLE_B/rootfs/usr"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "works if you try" ]]
+
+	# Now make some changes.
+	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
+	xattr -w user.3rd "jk, hl3 isn't here yet" "$BUNDLE_B/rootfs/var"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# Make sure the xattrs have been set.
+	sane_run xattr -p user.some.value "$BUNDLE_B/rootfs/root"
+	[[ "$output" == *"No such xattr: user.some.value"* ]]
+	sane_run xattr -p user.another "$BUNDLE_B/rootfs/etc"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "valuegoeshere" ]]
+	sane_run xattr -p user.3rd "$BUNDLE_B/rootfs/var"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "jk, hl3 isn't here yet" ]]
+	sane_run xattr -p user."key also" "$BUNDLE_B/rootfs/usr"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "works if you try" ]]
+
+	image-verify "${IMAGE}"
+}

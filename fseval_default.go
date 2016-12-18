@@ -31,20 +31,20 @@ import (
 // weird side-effects.
 var DefaultFsEval FsEval = osFsEval(0)
 
-// unprivFsEval is a hack to be able to make DefaultFsEval a const.
+// osFsEval is a hack to be able to make DefaultFsEval a const.
 type osFsEval int
 
-// Open is a wrapper around unpriv.Open.
+// Open is equivalent to os.Open.
 func (fs osFsEval) Open(path string) (*os.File, error) {
 	return os.Open(path)
 }
 
-// Create is a wrapper around unpriv.Create.
+// Create is equivalent to os.Create.
 func (fs osFsEval) Create(path string) (*os.File, error) {
 	return os.Create(path)
 }
 
-// Readdir is a wrapper around unpriv.Readdir.
+// Readdir is equivalent to os.Readdir.
 func (fs osFsEval) Readdir(path string) ([]os.FileInfo, error) {
 	fh, err := os.Open(path)
 	if err != nil {
@@ -54,47 +54,47 @@ func (fs osFsEval) Readdir(path string) ([]os.FileInfo, error) {
 	return fh.Readdir(-1)
 }
 
-// Lstat is a wrapper around unpriv.Lstat.
+// Lstat is equivalent to os.Lstat.
 func (fs osFsEval) Lstat(path string) (os.FileInfo, error) {
 	return os.Lstat(path)
 }
 
-// Readlink is a wrapper around unpriv.Readlink.
+// Readlink is equivalent to os.Readlink.
 func (fs osFsEval) Readlink(path string) (string, error) {
 	return os.Readlink(path)
 }
 
-// Symlink is a wrapper around unpriv.Symlink.
+// Symlink is equivalent to os.Symlink.
 func (fs osFsEval) Symlink(linkname, path string) error {
 	return os.Symlink(linkname, path)
 }
 
-// Link is a wrapper around unpriv.Link.
+// Link is equivalent to os.Link.
 func (fs osFsEval) Link(linkname, path string) error {
 	return os.Link(linkname, path)
 }
 
-// Chmod is a wrapper around unpriv.Chmod.
+// Chmod is equivalent to os.Chmod.
 func (fs osFsEval) Chmod(path string, mode os.FileMode) error {
 	return os.Chmod(path, mode)
 }
 
-// Lutimes is a wrapper around unpriv.Lutimes.
+// Lutimes is equivalent to os.Lutimes.
 func (fs osFsEval) Lutimes(path string, atime, mtime time.Time) error {
 	return system.Lutimes(path, atime, mtime)
 }
 
-// Remove is a wrapper around unpriv.Remove.
+// Remove is equivalent to os.Remove.
 func (fs osFsEval) Remove(path string) error {
 	return os.Remove(path)
 }
 
-// RemoveAll is a wrapper around unpriv.RemoveAll.
+// RemoveAll is equivalent to os.RemoveAll.
 func (fs osFsEval) RemoveAll(path string) error {
 	return os.RemoveAll(path)
 }
 
-// Mkdir is a wrapper around unpriv.Mkdir.
+// Mkdir is equivalent to os.Mkdir.
 func (fs osFsEval) Mkdir(path string, perm os.FileMode) error {
 	return os.Mkdir(path, perm)
 }
@@ -104,9 +104,34 @@ func (fs osFsEval) Mknod(path string, mode os.FileMode, dev system.Dev_t) error 
 	return system.Mknod(path, mode, dev)
 }
 
-// MkdirAll is a wrapper around unpriv.MkdirAll.
+// MkdirAll is equivalent to os.MkdirAll.
 func (fs osFsEval) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
+}
+
+// Llistxattr is equivalent to system.Llistxattr
+func (fs osFsEval) Llistxattr(path string) ([]string, error) {
+	return system.Llistxattr(path)
+}
+
+// Lremovexattr is equivalent to system.Lremovexattr
+func (fs osFsEval) Lremovexattr(path, name string) error {
+	return system.Lremovexattr(path, name)
+}
+
+// Lsetxattr is equivalent to system.Lsetxattr
+func (fs osFsEval) Lsetxattr(path, name string, value []byte, flags int) error {
+	return system.Lsetxattr(path, name, value, flags)
+}
+
+// Lgetxattr is equivalent to system.Lgetxattr
+func (fs osFsEval) Lgetxattr(path string, name string) ([]byte, error) {
+	return system.Lgetxattr(path, name)
+}
+
+// Lclearxattrs is equivalent to system.Lclearxattrs
+func (fs osFsEval) Lclearxattrs(path string) error {
+	return system.Lclearxattrs(path)
 }
 
 // KeywordFunc returns a wrapper around the given mtree.KeywordFunc.

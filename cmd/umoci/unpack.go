@@ -195,17 +195,8 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 
-	// Create the mtree manifest.
-	keywords := append(mtree.DefaultKeywords[:], "sha256digest")
-	for idx, kw := range keywords {
-		// We have to use tar_time because we're extracting from a tar archive.
-		if kw == "time" {
-			keywords[idx] = "tar_time"
-		}
-	}
-
 	logrus.WithFields(logrus.Fields{
-		"keywords": keywords,
+		"keywords": MtreeKeywords,
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
@@ -214,7 +205,7 @@ func unpack(ctx *cli.Context) error {
 		fsEval = umoci.RootlessFsEval
 	}
 
-	dh, err := mtree.Walk(fullRootfsPath, nil, keywords, fsEval)
+	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "generate mtree spec")
 	}

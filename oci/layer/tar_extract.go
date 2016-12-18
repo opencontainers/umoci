@@ -101,15 +101,19 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	// XXX: This will almost certainly break horribly on RedHat.
-	if !te.mapOptions.Rootless {
-		if err := system.Lclearxattrs(path); err != nil {
-			return errors.Wrapf(err, "clear xattr metadata: %s", path)
-		}
-		for name, value := range hdr.Xattrs {
-			if err := system.Lsetxattr(path, name, []byte(value), 0); err != nil {
-				return errors.Wrapf(err, "restore xattr metadata: %s", path)
+	if err := te.fsEval.Lclearxattrs(path); err != nil {
+		return errors.Wrapf(err, "clear xattr metadata: %s", path)
+	}
+	for name, value := range hdr.Xattrs {
+		if err := te.fsEval.Lsetxattr(path, name, []byte(value), 0); err != nil {
+			// In rootless mode, some xattrs will fail (security.capability).
+			// This is _fine_ as long as we're not running as root (in which
+			// case we shouldn't be ignoring xattrs that we were told to set).
+			if te.mapOptions.Rootless && os.IsPermission(errors.Cause(err)) {
+				logrus.Warnf("restoreMetadata: ignoring EPERM on setxattr: %s: %v", name, err)
+				continue
 			}
+			return errors.Wrapf(err, "restore xattr metadata: %s", path)
 		}
 	}
 
