@@ -131,6 +131,12 @@ func main() {
 
 	// Actually run umoci.
 	if err := app.Run(os.Args); err != nil {
+		// If an error is a permission based error, give a hint to the user
+		// that --rootless might help. We probably should only be doing this if
+		// we're an unprivileged user.
+		if os.IsPermission(errors.Cause(err)) {
+			logrus.Infof("umoci encountered a permission error -- maybe --rootless will help?")
+		}
 		logrus.Fatalf("%v", err)
 	}
 }
