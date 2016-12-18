@@ -14,9 +14,6 @@ umoci config - Modifies the configuration of an OCI image
 [**--history-created**=*date*]
 [**--clear**=*value*]
 [**--config.user**=[*value*]]
-[**--config.memory.limit**=[*value*]]
-[**--config.memory.swap**=[*value*]]
-[**--config.cpu.shares**=[*value*]]
 [**--config.exposedports**=[*value*]]
 [**--config.env**=[*value*]]
 [**--config.entrypoint**=[*value*]]
@@ -87,9 +84,6 @@ The following commands all set their corresponding values in the configuration
 or image manifest. For more information see [the OCI image specification][1].
 
 * **--config.user**=[*value*]
-* **--config.memory.limit**=[*value*]
-* **--config.memory.swap**=[*value*]
-* **--config.cpu.shares**=[*value*]
 * **--config.exposedports**=[*value*]
 * **--config.env**=[*value*]
 * **--config.entrypoint**=[*value*]
