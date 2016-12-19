@@ -28,6 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/cyphar/umoci/pkg/system"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -85,8 +86,9 @@ func CreateLayout(path string) error {
 }
 
 type dirEngine struct {
-	path string
-	temp string
+	path     string
+	temp     string
+	tempFile *os.File
 }
 
 func (e *dirEngine) ensureTempDir() error {
@@ -95,6 +97,19 @@ func (e *dirEngine) ensureTempDir() error {
 		if err != nil {
 			return errors.Wrap(err, "create tempdir")
 		}
+
+		// We get an advisory lock to ensure that GC() won't delete our
+		// temporary directory here. Once we get the lock we know it won't do
+		// anything until we unlock it or exit.
+
+		e.tempFile, err = os.Open(tempDir)
+		if err != nil {
+			return errors.Wrap(err, "open tempdir for lock")
+		}
+		if err := system.Flock(e.tempFile.Fd(), true); err != nil {
+			return errors.Wrap(err, "lock tempdir")
+		}
+
 		e.temp = tempDir
 	}
 	return nil
@@ -363,8 +378,14 @@ func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 // fail.
 func (e *dirEngine) Close() error {
 	if e.temp != "" {
+		if err := system.Unflock(e.tempFile.Fd()); err != nil {
+			return errors.Wrap(err, "unlock tempdir")
+		}
+		if err := e.tempFile.Close(); err != nil {
+			return errors.Wrap(err, "close tempdir")
+		}
 		if err := os.RemoveAll(e.temp); err != nil {
-			return errors.Wrap(err, "remote tempdir")
+			return errors.Wrap(err, "remove tempdir")
 		}
 	}
 	return nil
