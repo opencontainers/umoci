@@ -31,10 +31,10 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 
 GO_SRC =  $(shell find . -name \*.go)
 umoci: $(GO_SRC)
-	$(GO) build -i -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	$(GO) build -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
 
 umoci.static: $(GO_SRC)
-	$(GO) build -i -ldflags "-extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	CGO_ENABLED=0 $(GO) build -ldflags "-extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
 
 .PHONY: update-deps
 update-deps:
@@ -43,7 +43,8 @@ update-deps:
 
 .PHONY: clean
 clean:
-	rm -f umoci
+	rm -f umoci umoci.static
+	rm -f $(MANPAGES)
 
 validate: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-validate
