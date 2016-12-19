@@ -31,6 +31,7 @@ import (
 	"testing"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -327,5 +328,80 @@ func TestEngineReferenceReadonly(t *testing.T) {
 
 		// make it readwrite again.
 		readwrite(t, image)
+	}
+}
+
+// Make sure that cyphar/umoci#63 doesn't have a regression where we start
+// deleting files and directories that other people are using.
+func TestEngineGCLocking(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestCreateLayoutReadonly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+	if err := CreateLayout(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	content := []byte("here's some sample content")
+
+	// Open a reference to the CAS, and make sure that it has a .temp set up.
+	engine, err := Open(image)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+
+	hash := sha256.New()
+	if _, err := io.Copy(hash, bytes.NewReader(content)); err != nil {
+		t.Fatalf("could not hash bytes: %+v", err)
+	}
+	expectedDigest := fmt.Sprintf("%s:%x", BlobAlgorithm, hash.Sum(nil))
+
+	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
+	if err != nil {
+		t.Errorf("PutBlob: unexpected error: %+v", err)
+	}
+
+	if digest != expectedDigest {
+		t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
+	}
+	if size != int64(len(content)) {
+		t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(content), size)
+	}
+
+	if engine.(*dirEngine).temp == "" {
+		t.Errorf("engine doesn't have a tempdir after putting a blob!")
+	}
+
+	// Create tempdir to make sure things work.
+	removedDir, err := ioutil.TempDir(image, "testdir")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Open a new reference and GC it.
+	gcEngine, err := Open(image)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+
+	if err := GC(ctx, gcEngine); err != nil {
+		t.Fatalf("unexpected error while GCing image: %+v", err)
+	}
+
+	// Make sure that engine.temp is still around.
+	if _, err := os.Lstat(engine.(*dirEngine).temp); err != nil {
+		t.Errorf("expected active direngine.temp to still exist after GC: %+v", err)
+	}
+
+	// Make sure that removedDir is still around
+	if _, err := os.Lstat(removedDir); err == nil {
+		t.Errorf("expected inactive temporary dir to not exist after GC")
+	} else if !os.IsNotExist(errors.Cause(err)) {
+		t.Errorf("expected IsNotExist for temporary dir after GC: %+v", err)
 	}
 }
