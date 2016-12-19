@@ -374,6 +374,54 @@ func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 	return refs, nil
 }
 
+// GC executes a garbage collection of any non-blob garbage in the store (this
+// includes temporary files and directories not reachable from the CAS
+// interface). This MUST NOT remove any blobs or references in the store.
+func (e *dirEngine) GC(ctx context.Context) error {
+	// Effectively we are going to remove every directory except the standard
+	// directories, unless they have a lock already.
+	fh, err := os.Open(e.path)
+	if err != nil {
+		return errors.Wrap(err, "open imagedir")
+	}
+	defer fh.Close()
+
+	children, err := fh.Readdir(-1)
+	if err != nil {
+		return errors.Wrap(err, "readdir imagedir")
+	}
+
+	for _, child := range children {
+		// Skip any children that are expected to exist.
+		switch child.Name() {
+		case blobDirectory, refDirectory, layoutFile:
+			continue
+		}
+
+		// Try to get a lock on the directory.
+		path := filepath.Join(e.path, child.Name())
+		cfh, err := os.Open(path)
+		if err != nil {
+			// Ignore errors because it might've been deleted underneath us.
+			continue
+		}
+		defer cfh.Close()
+
+		if err := system.Flock(cfh.Fd(), true); err != nil {
+			// If we fail to get a flock(2) then it's probably already locked,
+			// so we shouldn't touch it.
+			continue
+		}
+		defer system.Unflock(cfh.Fd())
+
+		if err := os.RemoveAll(path); err != nil {
+			return errors.Wrap(err, "remove garbage path")
+		}
+	}
+
+	return nil
+}
+
 // Close releases all references held by the e. Subsequent operations may
 // fail.
 func (e *dirEngine) Close() error {
