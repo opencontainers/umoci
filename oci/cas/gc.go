@@ -232,6 +232,11 @@ func GC(ctx context.Context, engine Engine) error {
 		n++
 	}
 
+	// Finally, tell CAS to GC it.
+	if err := engine.GC(ctx); err != nil {
+		return errors.Wrapf(err, "GC engine")
+	}
+
 	logrus.Infof("GC: garbage collected %d blobs", n)
 	return nil
 }

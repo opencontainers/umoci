@@ -155,3 +155,31 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci gc [internal]" {
+	image-verify "${IMAGE}"
+
+	# Initial gc.
+	umoci gc --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Create unused directories.
+	touch "${IMAGE}/.internal"
+	touch "${IMAGE}/  magical file   "
+	mkdir "${IMAGE}/  __ internal __ directory"
+	touch "${IMAGE}/  __ internal __ directory/.abc"
+
+	# Do a gc, which should remove the temporary files/directories.
+	umoci gc --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure it's gone.
+	! [ -e "${IMAGE}/.internal" ]
+	! [ -e "${IMAGE}/  magical file   " ]
+	! [ -e "${IMAGE}/  __ internal __ directory" ]
+	! [ -e "${IMAGE}/  __ internal __ directory/.abc" ]
+
+	image-verify "${IMAGE}"
+}
