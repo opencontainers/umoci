@@ -40,6 +40,11 @@ import (
 
 // readonly makes the given path read-only (by bind-mounting it as "ro").
 func readonly(t *testing.T, path string) {
+	if os.Geteuid() != 0 {
+		t.Log("readonly tests only work with root privileges")
+		t.Skip()
+	}
+
 	t.Logf("mounting %s as readonly", path)
 
 	if err := syscall.Mount(path, path, "", syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
@@ -52,6 +57,11 @@ func readonly(t *testing.T, path string) {
 
 // readwrite undoes the effect of readonly.
 func readwrite(t *testing.T, path string) {
+	if os.Geteuid() != 0 {
+		t.Log("readonly tests only work with root privileges")
+		t.Skip()
+	}
+
 	if err := syscall.Unmount(path, syscall.MNT_DETACH); err != nil {
 		t.Fatalf("unmount %s: %s", path, err)
 	}
