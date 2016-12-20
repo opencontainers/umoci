@@ -463,6 +463,11 @@ func TestUnpackHardlink(t *testing.T) {
 
 // TestUnpackEntryMap checks that the mapOptions handling works.
 func TestUnpackEntryMap(t *testing.T) {
+	if os.Geteuid() != 0 {
+		t.Log("mapOptions tests only work with root privileges")
+		t.Skip()
+	}
+
 	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
 	func(t *testing.T) {
 		for _, test := range []struct {

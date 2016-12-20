@@ -31,10 +31,10 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 
 GO_SRC =  $(shell find . -name \*.go)
 umoci: $(GO_SRC)
-	$(GO) build -ldflags "-X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	$(GO) build -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
 
 umoci.static: $(GO_SRC)
-	CGO_ENABLED=0 $(GO) build -ldflags "-extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	CGO_ENABLED=0 $(GO) build -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
 
 .PHONY: update-deps
 update-deps:
@@ -82,11 +82,11 @@ umociimage:
 .PHONY: test-unit
 test-unit: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) go test -v $(PROJECT)/pkg/unpriv
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit: umoci
-	go test -v $(PROJECT)/...
+	go test -cover -v $(PROJECT)/...
 
 .PHONY: test-integration
 test-integration: umociimage
