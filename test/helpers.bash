@@ -16,7 +16,7 @@
 
 # Root directory of integration tests.
 INTEGRATION_ROOT=$(dirname "$(readlink -f "$BASH_SOURCE")")
-UMOCI="${INTEGRATION_ROOT}/../umoci"
+UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 GOMTREE="/usr/bin/gomtree" # For some reason $(whence ...) and $(where ...) are broken.
 
 # The source OCI image path, which we will make a copy of for each test.
@@ -26,6 +26,9 @@ SOURCE_TAG="${SOURCE_TAG:-latest}"
 # Where we're going to copy the images and bundle to.
 IMAGE="${BATS_TMPDIR}/image"
 TAG="${SOURCE_TAG}"
+
+# We need to store the coverage outputs somewhere.
+COVERAGE_DIR="${COVERAGE_DIR:-}"
 
 # Are we rootless?
 ROOTLESS="$(id -u)"
@@ -48,7 +51,7 @@ function requires() {
 }
 
 function image-verify() {
-	oci-image-validate --type "$imageLayout" "$@"
+	oci-image-validate --type "imageLayout" "$@"
 	return $?
 }
 
@@ -64,7 +67,13 @@ function bundle-verify() {
 }
 
 function umoci() {
-	local args=("$1")
+	local args=()
+	if [ "$COVERAGE_DIR" ]; then
+		args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)")
+	fi
+
+	# Set the first argument (the subcommand).
+	args+=("~~i-heard-you-like-tests" "$1")
 
 	# We're rootless if we're asked to unpack something.
 	if [[ "$ROOTLESS" != 0 && "$1" == "unpack" ]]; then
@@ -74,6 +83,14 @@ function umoci() {
 	shift
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
+
+	# Because this is running as a -test.cover test, we need to remove the last
+	# two lines.
+	if [ "$status" -eq 0 ]; then
+		export output="$(echo "$output" | head -n-2)"
+		unset 'lines[${#lines[@]}-1]'
+		unset 'lines[${#lines[@]}-1]'
+	fi
 }
 
 function gomtree() {
