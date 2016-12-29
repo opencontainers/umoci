@@ -28,7 +28,7 @@ ln -s "$ROOT/umoci.cover" "$UMOCI"
 
 # Run the tests and collate the results.
 bats -t $ROOT/test/*.bats
-$ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
+[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
 
 # Clean up the coverage directory.
 rm -rf "$COVERAGE_DIR"

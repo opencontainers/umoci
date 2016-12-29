@@ -16,7 +16,7 @@
 
 set -ex
 
-env >&2
+GO="${GO:-go}"
 
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
@@ -26,7 +26,7 @@ export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
 for pkg in $(go list $PROJECT/...); do
 	$GO test -v -cover -covermode=count -coverprofile="$(mktemp --tmpdir=$COVERAGE_DIR cov.XXXXX)" -coverpkg=$PROJECT/... $pkg
 done
-$ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
+[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
 
 # Clean up the coverage directory.
 rm -rf "$COVERAGE_DIR"
