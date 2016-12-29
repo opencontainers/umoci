@@ -69,11 +69,11 @@ function bundle-verify() {
 function umoci() {
 	local args=()
 	if [ "$COVERAGE_DIR" ]; then
-		args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)")
+		args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)" "~~i-heard-you-like-tests")
 	fi
 
 	# Set the first argument (the subcommand).
-	args+=("~~i-heard-you-like-tests" "$1")
+	args+=("$1")
 
 	# We're rootless if we're asked to unpack something.
 	if [[ "$ROOTLESS" != 0 && "$1" == "unpack" ]]; then
@@ -84,12 +84,14 @@ function umoci() {
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 
-	# Because this is running as a -test.cover test, we need to remove the last
-	# two lines.
-	if [ "$status" -eq 0 ]; then
-		export output="$(echo "$output" | head -n-2)"
-		unset 'lines[${#lines[@]}-1]'
-		unset 'lines[${#lines[@]}-1]'
+	if [ "$COVERAGE_DIR" ]; then
+		# Because this is running as a -test.cover test, we need to remove the last
+		# two lines.
+		if [ "$status" -eq 0 ]; then
+			export output="$(echo "$output" | head -n-2)"
+			unset 'lines[${#lines[@]}-1]'
+			unset 'lines[${#lines[@]}-1]'
+		fi
 	fi
 }
 

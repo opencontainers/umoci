@@ -80,25 +80,6 @@ creation with umoci-repack(1).`,
 	},
 }
 
-func getConfig(ctx context.Context, engine cas.Engine, manDescriptor *ispec.Descriptor) (ispec.Image, error) {
-	// FIXME: Implement support for manifest lists.
-	if manDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return ispec.Image{}, errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manDescriptor.MediaType), "invalid --image tag")
-	}
-
-	manBlob, err := cas.FromDescriptor(ctx, engine, manDescriptor)
-	if err != nil {
-		return ispec.Image{}, err
-	}
-
-	configBlob, err := cas.FromDescriptor(ctx, engine, &manBlob.Data.(*ispec.Manifest).Config)
-	if err != nil {
-		return ispec.Image{}, err
-	}
-
-	return *configBlob.Data.(*ispec.Image), nil
-}
-
 func unpack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
