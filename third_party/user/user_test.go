@@ -1,10 +1,10 @@
 package user
 
 import (
+	"fmt"
 	"io"
 	"reflect"
 	"sort"
-	"strconv"
 	"strings"
 	"testing"
 	"unsafe"
@@ -444,7 +444,7 @@ this is just some garbage data
 	if int(unsafe.Sizeof(1)) > 4 {
 		tests = append(tests, foo{
 			// groups with too large id
-			groups:   []string{strconv.Itoa(1 << 31)},
+			groups:   []string{fmt.Sprintf("%d", 1<<31)},
 			expected: nil,
 			hasError: true,
 		})

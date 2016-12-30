@@ -25,7 +25,7 @@ export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
 
 # Run the tests and collate the results.
 for pkg in $(go list $PROJECT/...); do
-	$GO test -v -cover -covermode=count -coverprofile="$(mktemp --tmpdir=$COVERAGE_DIR cov.XXXXX)" -coverpkg=$PROJECT/... $pkg
+	$GO test -v -cover -covermode=count -coverprofile="$(mktemp --tmpdir=$COVERAGE_DIR cov.XXXXX)" -coverpkg=$PROJECT/... $pkg 2>/dev/null
 done
 [ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
 
