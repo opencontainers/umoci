@@ -18,15 +18,11 @@
 package generate
 
 import (
-	"encoding/json"
 	"fmt"
-	"io"
-	"os"
 	"strings"
 	"time"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 )
 
 // FIXME: Because we are not a part of upstream, we have to add some tests that
@@ -79,38 +75,6 @@ func New() *Generator {
 	}
 	g.init()
 	return g
-}
-
-// NewFromTemplate creates a new Generator with the initial template being
-// unmarshaled from JSON read from the provided reader (which must unmarshal
-// into a valid ispec.Image).
-func NewFromTemplate(r io.Reader) (*Generator, error) {
-	var image ispec.Image
-	if err := json.NewDecoder(r).Decode(&image); err != nil {
-		return nil, errors.Wrap(err, "decode image")
-	}
-
-	// TODO: Should we validate the image here?
-
-	g := &Generator{
-		image: image,
-	}
-
-	g.init()
-	return g, nil
-}
-
-// NewFromFile creates a new Generator with the initial template being
-// unmarshaled from JSON read from the provided file (which must unmarshal
-// into a valid ispec.Image).
-func NewFromFile(path string) (*Generator, error) {
-	fh, err := os.Open(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "open image data")
-	}
-	defer fh.Close()
-
-	return NewFromTemplate(fh)
 }
 
 // NewFromImage generates a new generator with the initial template being the
@@ -194,7 +158,11 @@ func (g *Generator) ConfigEnv() []string {
 
 // SetConfigEntrypoint sets the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
-	g.image.Config.Entrypoint = entrypoint
+	copy := []string{}
+	for _, v := range entrypoint {
+		copy = append(copy, v)
+	}
+	g.image.Config.Entrypoint = copy
 }
 
 // ConfigEntrypoint returns the list of arguments to use as the command to execute when the container starts.
@@ -208,8 +176,12 @@ func (g *Generator) ConfigEntrypoint() []string {
 }
 
 // SetConfigCmd sets the list of default arguments to the entrypoint of the container.
-func (g *Generator) SetConfigCmd(entrypoint []string) {
-	g.image.Config.Cmd = entrypoint
+func (g *Generator) SetConfigCmd(cmd []string) {
+	copy := []string{}
+	for _, v := range cmd {
+		copy = append(copy, v)
+	}
+	g.image.Config.Cmd = copy
 }
 
 // ConfigCmd returns the list of default arguments to the entrypoint of the container.

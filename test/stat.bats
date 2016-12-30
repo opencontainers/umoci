@@ -47,6 +47,24 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+# We can't really test the output for non-JSON output, but we can smoke test it.
+@test "umoci stat [smoke]" {
+	image-verify "${IMAGE}"
+
+	# Make sure that stat looks about right.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	# We should have some history information.
+	echo "$output" | grep 'LAYER'
+	echo "$output" | grep 'CREATED'
+	echo "$output" | grep 'CREATED BY'
+	echo "$output" | grep 'SIZE'
+	echo "$output" | grep 'COMMENT'
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci stat [missing args]" {
 	umoci stat
 	[ "$status" -ne 0 ]

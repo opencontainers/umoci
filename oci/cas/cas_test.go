@@ -68,6 +68,11 @@ func TestCreateLayout(t *testing.T) {
 	} else if len(blobs) > 0 {
 		t.Errorf("got blobs in a newly created image: %v", blobs)
 	}
+
+	// We should get an error if we try to create a new image atop an old one.
+	if err := CreateLayout(image); err == nil {
+		t.Errorf("expected to get a cowardly no-clobber error!")
+	}
 }
 
 func TestEngineBlob(t *testing.T) {
@@ -296,5 +301,149 @@ func TestEngineReference(t *testing.T) {
 		if err := engine.DeleteReference(ctx, test.name); err != nil {
 			t.Errorf("DeleteReference: unexpected error on double-delete: %+v", err)
 		}
+	}
+}
+
+func TestEngineValidate(t *testing.T) {
+	root, err := ioutil.TempDir("", "umoci-TestEngineValidate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	var engine Engine
+	var image string
+
+	// Empty directory.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// Invalid oci-layout.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// Invalid oci-layout.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644); err != nil {
+		t.Fatal(err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// Missing blobdir.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(image); err != nil {
+		t.Fatal(err)
+	}
+	if err := CreateLayout(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
+		t.Fatalf("unexpected error deleting blobdir: %+v", err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// blobdir is not a directory.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(image); err != nil {
+		t.Fatal(err)
+	}
+	if err := CreateLayout(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
+		t.Fatalf("unexpected error deleting blobdir: %+v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755); err != nil {
+		t.Fatal(err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// Missing refdir.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(image); err != nil {
+		t.Fatal(err)
+	}
+	if err := CreateLayout(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {
+		t.Fatalf("unexpected error deleting refdir: %+v", err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// refdir is not a directory.
+	image, err = ioutil.TempDir(root, "image")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(image); err != nil {
+		t.Fatal(err)
+	}
+	if err := CreateLayout(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {
+		t.Fatalf("unexpected error deleting refdir: %+v", err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(image, refDirectory), []byte(""), 0755); err != nil {
+		t.Fatal(err)
+	}
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
+	}
+
+	// No such directory.
+	image = filepath.Join(root, "non-exist")
+	engine, err = Open(image)
+	if err == nil {
+		t.Errorf("expected to get an error")
+		engine.Close()
 	}
 }

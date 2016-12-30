@@ -53,6 +53,11 @@ function teardown() {
 	[ -d "$NEWIMAGE/blobs/sha256" ]
 	[ -d "$NEWIMAGE/refs" ]
 
+	# Make sure that attempting to create a new image will fail.
+	umoci init --layout "$NEWIMAGE"
+	[ "$status" -ne 0 ]
+	image-verify "$NEWIMAGE"
+
 	image-verify "$NEWIMAGE"
 }
 

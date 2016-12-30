@@ -32,6 +32,7 @@ RUN zypper -n in \
 		go-mtree \
 		jq \
 		make \
+		moreutils \
 		oci-image-tools \
 		oci-runtime-tools \
 		python3-setuptools \

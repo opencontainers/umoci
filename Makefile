@@ -13,6 +13,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+# Use bash, so that we can do process substitution.
+SHELL = /bin/bash
+
+# Go tools.
 GO ?= go
 GO_MD2MAN ?= go-md2man
 
@@ -35,6 +39,9 @@ umoci: $(GO_SRC)
 
 umoci.static: $(GO_SRC)
 	CGO_ENABLED=0 $(GO) build -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+
+umoci.cover: $(GO_SRC)
+	$(GO) test -c -cover -covermode=count -coverpkg=$(PROJECT)/... -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
 
 .PHONY: update-deps
 update-deps:
@@ -78,27 +85,31 @@ DOCKER_IMAGE :=opensuse/amd64:tumbleweed
 umociimage:
 	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
 
-# FIXME: We really should make the pkg/unpriv tests less magical.
+ifndef COVERAGE
+COVERAGE := $(shell mktemp umoci.cov.XXXXXX)
+endif
+
 .PHONY: test-unit
 test-unit: umociimage
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
-local-test-unit: umoci
-	go test -cover -v $(PROJECT)/...
+local-test-unit:
+	GO=$(GO) PROJECT=$(PROJECT) hack/test-unit.sh
 
 .PHONY: test-integration
 test-integration: umociimage
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-test-integration
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-integration
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
-local-test-integration: umoci
-	bats -t test/*.bats
+local-test-integration: umoci.cover
+	hack/test-integration.sh
 
 shell: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci validate doc test-unit test-integration
+ci: umoci umoci.cover validate doc test-unit test-integration
+	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE))

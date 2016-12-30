@@ -21,24 +21,10 @@ import (
 	"fmt"
 
 	"github.com/cyphar/umoci/oci/cas"
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
-
-func isValidMediaType(mediaType string) bool {
-	validTypes := map[string]struct{}{
-		ispec.MediaTypeImageManifest:              {},
-		ispec.MediaTypeImageManifestList:          {},
-		ispec.MediaTypeImageConfig:                {},
-		ispec.MediaTypeDescriptor:                 {},
-		ispec.MediaTypeImageLayer:                 {},
-		ispec.MediaTypeImageLayerNonDistributable: {},
-	}
-	_, ok := validTypes[mediaType]
-	return ok
-}
 
 var tagAddCommand = cli.Command{
 	Name:  "tag",
