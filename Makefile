@@ -96,7 +96,7 @@ test-unit: umociimage
 
 .PHONY: local-test-unit
 local-test-unit:
-	GO=$(GO) PROJECT=$(PROJECT) hack/test-unit.sh
+	GO=$(GO) COVER=1 hack/test-unit.sh
 
 .PHONY: test-integration
 test-integration: umociimage
@@ -105,7 +105,7 @@ test-integration: umociimage
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
-	hack/test-integration.sh
+	COVER=1 hack/test-integration.sh
 
 shell: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
