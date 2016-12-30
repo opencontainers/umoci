@@ -41,7 +41,7 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.0.0~rc2
+   0.0.0~rc3
 
 AUTHOR(S):
    Aleksa Sarai <asarai@suse.com>
@@ -162,17 +162,13 @@ only ~2MB in size.
 All of the above tooling is available from various [OBS repositories][obs] on
 [openSUSE][opensuse]. In particular:
 
-* `skopeo` and `umoci` are available from [`Virtualization:containers`][obs-vc].
-* `oci-runtime-tools` and `oci-image-tools` are available as packages in
-  [`devel:languages:go`][obs-dlg], but they will eventually be put into
-  `Virtualization:containers`.
+* `skopeo`, `umoci`, `oci-runtime-tools`, and `oci-image-tools` are available
+  from [`Virtualization:containers`][obs-vc].
 
 [opensuse]: https://www.opensuse.org/
 [oci-runtime-tools]: https://github.com/opencontainers/image-tools
 [obs]: https://build.opensuse.org/
 [obs-vc]: https://build.opensuse.org/project/show/Virtualization:containers
-[obs-dlg]: https://build.opensuse.org/project/show/devel:languages:go
-[obs-home]: https://build.opensuse.org/project/show/home:cyphar
 
 ### In Progress ###
 
