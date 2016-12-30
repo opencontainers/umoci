@@ -16,19 +16,27 @@
 
 set -ex
 
+export COVER="${COVER:-0}"
+
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
-export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
+if [ "$COVER" -eq 1 ]; then
+	export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
+fi
 
-# Create a temporary symlink for umoci, since the --help tests require the
-# binary have the name "umoci". This is all just to make the Makefile nicer.
-UMOCI_DIR="$(mktemp --tmpdir -d umoci.XXXXXX)"
-export UMOCI="$UMOCI_DIR/umoci"
-ln -s "$ROOT/umoci.cover" "$UMOCI"
+if [ "$COVER" -eq 1 ]; then
+	# Create a temporary symlink for umoci, since the --help tests require the
+	# binary have the name "umoci". This is all just to make the Makefile nicer.
+	UMOCI_DIR="$(mktemp --tmpdir -d umoci.XXXXXX)"
+	export UMOCI="$UMOCI_DIR/umoci"
+	ln -s "$ROOT/umoci.cover" "$UMOCI"
+fi
 
 # Run the tests and collate the results.
 bats -t $ROOT/test/*.bats
-[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
+if [ "$COVER" -eq 1 ]; then
+	[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
+fi
 
 # Clean up the coverage directory.
 rm -rf "$COVERAGE_DIR"

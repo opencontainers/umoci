@@ -68,8 +68,11 @@ function bundle-verify() {
 
 function umoci() {
 	local args=()
-	if [ "$COVERAGE_DIR" ]; then
-		args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)" "~~i-heard-you-like-tests")
+	if [ "$COVER" -eq 1 ]; then
+		if [ "$COVERAGE_DIR" ]; then
+			args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)")
+		fi
+		args+=("__DEVEL--i-heard-you-like-tests")
 	fi
 
 	# Set the first argument (the subcommand).
@@ -84,7 +87,7 @@ function umoci() {
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 
-	if [ "$COVERAGE_DIR" ]; then
+	if [ "$COVER" -eq 1 ]; then
 		# Because this is running as a -test.cover test, we need to remove the last
 		# two lines.
 		if [ "$status" -eq 0 ]; then

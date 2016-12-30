@@ -28,7 +28,7 @@ import (
 //            -cover -coverpkg=github.com/cyphar/umoci/... \
 //            github.com/cyphar/umoci/cmd/umoci
 // Run:
-//  $ ./umoci --i-heard-you-like-tests -test.coverprofile [file] [args]...
+//  $ ./umoci __DEVEL--i-heard-you-like-tests -test.coverprofile [file] [args]...
 
 // TestUmoci is a hack that allows us to figure out what the coverage is during
 // integration tests. I would not recommend that you use a binary built using
@@ -41,9 +41,10 @@ func TestUmoci(t *testing.T) {
 
 	for _, arg := range os.Args {
 		switch {
-		case arg == "~~i-heard-you-like-tests":
+		case arg == "__DEVEL--i-heard-you-like-tests":
 			run = true
 		case strings.HasPrefix(arg, "-test"):
+		case strings.HasPrefix(arg, "__DEVEL"):
 		default:
 			args = append(args, arg)
 		}
