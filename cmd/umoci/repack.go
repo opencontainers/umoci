@@ -144,10 +144,12 @@ func repack(ctx *cli.Context) error {
 		fsEval = umoci.RootlessFsEval
 	}
 
+	log.Info("computing filesystem diff ...")
 	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "check mtree")
 	}
+	log.Info("... done")
 
 	log.WithFields(log.Fields{
 		"ndiff": len(diffs),
@@ -196,21 +198,23 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	log.WithFields(log.Fields{
-		"mediatype": newDescriptor.MediaType,
-		"digest":    newDescriptor.Digest,
-		"size":      newDescriptor.Size,
-	}).Infof("created new image")
+	log.Infof("new image manifest created: %s", newDescriptor.Digest)
 
-	// We have to clobber the old reference.
-	// XXX: Should we output some warning if we actually did remove an old
-	//      reference?
-	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-		return err
+	err = engine.PutReference(context.Background(), tagName, &newDescriptor)
+	if err == cas.ErrClobber {
+		// We have to clobber a tag.
+		log.Warnf("clobbering existing tag: %s", tagName)
+
+		// Delete the old tag.
+		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
+			return errors.Wrap(err, "delete old tag")
+		}
+		err = engine.PutReference(context.Background(), tagName, &newDescriptor)
 	}
-	if err := engine.PutReference(context.Background(), tagName, &newDescriptor); err != nil {
-		return err
+	if err != nil {
+		return errors.Wrap(err, "add new tag")
 	}
 
+	log.Infof("created new tag for image manifest: %s", tagName)
 	return nil
 }

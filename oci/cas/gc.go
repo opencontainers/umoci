@@ -223,9 +223,8 @@ func GC(ctx context.Context, engine Engine) error {
 			// Digest is in the black set.
 			continue
 		}
-		log.WithFields(log.Fields{
-			"digest": digest,
-		}).Infof("GC: garbage collecting blob")
+		log.Infof("garbage collecting blob: %s", digest)
+
 		if err := engine.DeleteBlob(ctx, digest); err != nil {
 			return errors.Wrapf(err, "remove unmarked blob %s", digest)
 		}
@@ -237,6 +236,6 @@ func GC(ctx context.Context, engine Engine) error {
 		return errors.Wrapf(err, "GC engine")
 	}
 
-	log.Infof("GC: garbage collected %d blobs", n)
+	log.Debugf("garbage collected %d blobs", n)
 	return nil
 }

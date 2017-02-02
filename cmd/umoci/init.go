@@ -58,8 +58,6 @@ func initLayout(ctx *cli.Context) error {
 		return errors.Wrap(err, "image layout creation")
 	}
 
-	log.WithFields(log.Fields{
-		"path": imagePath,
-	}).Infof("created new OCI image layout")
+	log.Infof("created new OCI image: %s", imagePath)
 	return nil
 }

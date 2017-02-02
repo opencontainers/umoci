@@ -160,9 +160,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// Layer extraction.
 	for idx, layerDescriptor := range manifest.Layers {
 		layerDiffID := config.RootFS.DiffIDs[idx]
-		log.WithFields(log.Fields{
-			"diffid": layerDiffID,
-		}).Infof("unpack manifest: unpacking layer %s", layerDescriptor.Digest)
+		log.Infof("unpack layer: %s", layerDescriptor.Digest)
 
 		layerBlob, err := cas.FromDescriptor(ctx, engine, &layerDescriptor)
 		if err != nil {
@@ -196,9 +194,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	// Generate a runtime configuration file from ispec.Image.
-	log.WithFields(log.Fields{
-		"config": manifest.Config.Digest,
-	}).Infof("unpack manifest: unpacking config")
+	log.Infof("unpack configuration: %s", configBlob.Digest)
 
 	g := rgen.New()
 	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config, manifest); err != nil {

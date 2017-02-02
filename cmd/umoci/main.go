@@ -44,6 +44,7 @@ const (
 )
 
 func main() {
+	// TODO: Add some form of --verbose flag.
 	log.SetHandler(logcli.New(os.Stderr))
 
 	app := cli.NewApp()
@@ -138,7 +139,7 @@ func main() {
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
 		if os.IsPermission(errors.Cause(err)) {
-			log.Infof("umoci encountered a permission error -- maybe --rootless will help?")
+			log.Info("umoci encountered a permission error: maybe --rootless will help?")
 		}
 		log.Fatalf("%v", err)
 	}

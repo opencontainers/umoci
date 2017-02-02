@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -77,6 +78,7 @@ func tagAdd(ctx *cli.Context) error {
 		return errors.Wrap(err, "put reference")
 	}
 
+	log.Infof("created new tag: %q -> %q", tagName, fromName)
 	return nil
 }
 
@@ -112,6 +114,7 @@ func tagRemove(ctx *cli.Context) error {
 		return errors.Wrap(err, "delete reference")
 	}
 
+	log.Infof("removed tag: %s", tagName)
 	return nil
 }
 
