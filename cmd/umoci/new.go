@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
@@ -62,7 +62,7 @@ func newImage(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Create a new manifest.
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"tag": tagName,
 	}).Infof("creating new manifest")
 
@@ -87,7 +87,7 @@ func newImage(ctx *cli.Context) error {
 		return errors.Wrap(err, "put config blob")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"digest": configDigest,
 		"size":   configSize,
 	}).Debugf("umoci: added new config")
@@ -112,7 +112,7 @@ func newImage(ctx *cli.Context) error {
 		return errors.Wrap(err, "put manifest blob")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"digest": manifestDigest,
 		"size":   manifestSize,
 	}).Debugf("umoci: added new manifest")
@@ -127,7 +127,7 @@ func newImage(ctx *cli.Context) error {
 		Size:      manifestSize,
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"mediatype": descriptor.MediaType,
 		"digest":    descriptor.Digest,
 		"size":      descriptor.Size,

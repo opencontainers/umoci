@@ -125,7 +125,7 @@ clone golang.org/x/crypto  01be46f62051d02cb6a36c9b47b37b24e5758c81 https://gith
 clone golang.org/x/sys d75a52659825e75fff6158388dddc6a5b04f9ba5 https://github.com/golang/sys
 clone github.com/docker/go-units v0.3.1
 clone github.com/pkg/errors v0.8.0
-clone github.com/Sirupsen/logrus v0.11.0
+clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
 clone github.com/urfave/cli v1.18.1
 clone github.com/vbatts/go-mtree 0dc720e861ecc198ef262fe1ec2d33b293512aaf
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net

@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/cyphar/umoci/oci/layer"
@@ -94,13 +94,13 @@ func unpack(ctx *cli.Context) error {
 	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
 			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"map.uid": ctx.StringSlice("uid-map"),
 			}).Info("setting default rootless --uid-map option")
 		}
 		if !ctx.IsSet("gid-map") {
 			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"map.gid": ctx.StringSlice("gid-map"),
 			}).Info("setting default rootless --gid-map option")
 		}
@@ -120,7 +120,7 @@ func unpack(ctx *cli.Context) error {
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"map.uid": meta.MapOptions.UIDMappings,
 		"map.gid": meta.MapOptions.GIDMappings,
 	}).Infof("parsed mappings")
@@ -153,7 +153,7 @@ func unpack(ctx *cli.Context) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
 		"ref":    fromName,
@@ -176,7 +176,7 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"keywords": MtreeKeywords,
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
@@ -197,13 +197,13 @@ func unpack(ctx *cli.Context) error {
 	}
 	defer fh.Close()
 
-	logrus.Debugf("umoci: saving mtree manifest")
+	log.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"version":     meta.Version,
 		"from":        meta.From,
 		"map_options": meta.MapOptions,
@@ -213,6 +213,6 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(err, "write umoci.json metadata")
 	}
 
-	logrus.Debugf("umoci: unpacking complete")
+	log.Debugf("umoci: unpacking complete")
 	return nil
 }

@@ -20,7 +20,7 @@ package cas
 import (
 	"reflect"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -42,7 +42,7 @@ func isDescriptor(T reflect.Type) bool {
 // FIXME: Should we implement this in a way that avoids cycle issues?
 func childDescriptors(i interface{}) []ispec.Descriptor {
 	V := reflect.ValueOf(i)
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"V": V,
 	}).Debugf("childDescriptors")
 	if !V.IsValid() {
@@ -59,7 +59,7 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 	switch V.Kind() {
 	case reflect.Ptr:
 		// Just deref the pointer.
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
 		}).Debugf("recursing into ptr")
 		if V.IsNil() {
@@ -69,7 +69,7 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 
 	case reflect.Array:
 		// Convert to a slice.
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
 		}).Debugf("recursing into array")
 		return childDescriptors(V.Slice(0, V.Len()).Interface())
@@ -78,7 +78,7 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 		// Iterate over each element and append them to childDescriptors.
 		children := []ispec.Descriptor{}
 		for idx := 0; idx < V.Len(); idx++ {
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"name": V.Type().PkgPath() + "::" + V.Type().Name(),
 				"idx":  idx,
 			}).Debugf("recursing into slice")
@@ -89,7 +89,7 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 	case reflect.Struct:
 		// We are only ever going to be interested in ispec.* types.
 		if V.Type().PkgPath() != descriptorType.PkgPath() {
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"name":   V.Type().PkgPath() + "::" + V.Type().Name(),
 				"v1path": descriptorType.PkgPath(),
 			}).Debugf("detected escape to outside ispec.* namespace")
@@ -99,7 +99,7 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 		// We can now actually iterate through a struct to find all descriptors.
 		children := []ispec.Descriptor{}
 		for idx := 0; idx < V.NumField(); idx++ {
-			logrus.WithFields(logrus.Fields{
+			log.WithFields(log.Fields{
 				"name":  V.Type().PkgPath() + "::" + V.Type().Name(),
 				"field": V.Type().Field(idx).Name,
 			}).Debugf("recursing into struct")
@@ -131,7 +131,7 @@ type gcState struct {
 }
 
 func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error {
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"digest": descriptor.Digest,
 	}).Debugf("gc.mark")
 
@@ -152,7 +152,7 @@ func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error 
 
 	// Mark all children.
 	for _, child := range childDescriptors(blob.Data) {
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"digest": descriptor.Digest,
 			"child":  child.Digest,
 		}).Debugf("gc.mark recursing into child")
@@ -189,7 +189,7 @@ func GC(ctx context.Context, engine Engine) error {
 		if err != nil {
 			return errors.Wrapf(err, "get root %s", name)
 		}
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"name":   name,
 			"digest": descriptor.Digest,
 		}).Debugf("GC: got reference")
@@ -203,7 +203,7 @@ func GC(ctx context.Context, engine Engine) error {
 	}
 
 	for idx, descriptor := range root {
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"digest": descriptor.Digest,
 		}).Debugf("GC: marking from root")
 		if err := gc.mark(ctx, descriptor); err != nil {
@@ -223,7 +223,7 @@ func GC(ctx context.Context, engine Engine) error {
 			// Digest is in the black set.
 			continue
 		}
-		logrus.WithFields(logrus.Fields{
+		log.WithFields(log.Fields{
 			"digest": digest,
 		}).Infof("GC: garbage collecting blob")
 		if err := engine.DeleteBlob(ctx, digest); err != nil {
@@ -237,6 +237,6 @@ func GC(ctx context.Context, engine Engine) error {
 		return errors.Wrapf(err, "GC engine")
 	}
 
-	logrus.Infof("GC: garbage collected %d blobs", n)
+	log.Infof("GC: garbage collected %d blobs", n)
 	return nil
 }

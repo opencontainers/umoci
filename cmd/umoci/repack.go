@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
@@ -89,7 +89,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "read umoci.json metadata")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"version":     meta.Version,
 		"from":        meta.From,
 		"map_options": meta.MapOptions,
@@ -117,7 +117,7 @@ func repack(ctx *cli.Context) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
 		"rootfs": layer.RootfsName,
@@ -135,7 +135,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "parse mtree")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"keywords": MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
@@ -149,7 +149,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "check mtree")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
@@ -196,7 +196,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"mediatype": newDescriptor.MediaType,
 		"digest":    newDescriptor.Digest,
 		"size":      newDescriptor.Size,

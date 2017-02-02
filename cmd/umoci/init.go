@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -58,7 +58,7 @@ func initLayout(ctx *cli.Context) error {
 		return errors.Wrap(err, "image layout creation")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"path": imagePath,
 	}).Infof("created new OCI image layout")
 	return nil

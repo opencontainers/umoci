@@ -21,7 +21,8 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
+	logcli "github.com/apex/log/handlers/cli"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -43,6 +44,8 @@ const (
 )
 
 func main() {
+	log.SetHandler(logcli.New(os.Stderr))
+
 	app := cli.NewApp()
 	app.Name = "umoci"
 	app.Usage = usage
@@ -72,7 +75,7 @@ func main() {
 
 	app.Before = func(ctx *cli.Context) error {
 		if ctx.GlobalBool("debug") {
-			logrus.SetLevel(logrus.DebugLevel)
+			log.SetLevel(log.DebugLevel)
 			errors.Debug(true)
 		}
 		return nil
@@ -135,8 +138,8 @@ func main() {
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
 		if os.IsPermission(errors.Cause(err)) {
-			logrus.Infof("umoci encountered a permission error -- maybe --rootless will help?")
+			log.Infof("umoci encountered a permission error -- maybe --rootless will help?")
 		}
-		logrus.Fatalf("%v", err)
+		log.Fatalf("%v", err)
 	}
 }

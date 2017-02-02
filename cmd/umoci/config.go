@@ -21,7 +21,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
@@ -279,7 +279,7 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"mediatype": newDescriptor.MediaType,
 		"digest":    newDescriptor.Digest,
 		"size":      newDescriptor.Size,
