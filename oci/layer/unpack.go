@@ -28,7 +28,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	"github.com/cyphar/umoci/pkg/idtools"
@@ -160,9 +160,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// Layer extraction.
 	for idx, layerDescriptor := range manifest.Layers {
 		layerDiffID := config.RootFS.DiffIDs[idx]
-		logrus.WithFields(logrus.Fields{
-			"diffid": layerDiffID,
-		}).Infof("unpack manifest: unpacking layer %s", layerDescriptor.Digest)
+		log.Infof("unpack layer: %s", layerDescriptor.Digest)
 
 		layerBlob, err := cas.FromDescriptor(ctx, engine, &layerDescriptor)
 		if err != nil {
@@ -196,9 +194,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	// Generate a runtime configuration file from ispec.Image.
-	logrus.WithFields(logrus.Fields{
-		"config": manifest.Config.Digest,
-	}).Infof("unpack manifest: unpacking config")
+	log.Infof("unpack configuration: %s", configBlob.Digest)
 
 	g := rgen.New()
 	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config, manifest); err != nil {

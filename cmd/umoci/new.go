@@ -21,7 +21,7 @@ import (
 	"runtime"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci/oci/cas"
 	igen "github.com/cyphar/umoci/oci/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
@@ -62,9 +62,9 @@ func newImage(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Create a new manifest.
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"tag": tagName,
-	}).Infof("creating new manifest")
+	}).Debugf("creating new manifest")
 
 	// Create a new image config.
 	g := igen.New()
@@ -87,7 +87,7 @@ func newImage(ctx *cli.Context) error {
 		return errors.Wrap(err, "put config blob")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"digest": configDigest,
 		"size":   configSize,
 	}).Debugf("umoci: added new config")
@@ -112,7 +112,7 @@ func newImage(ctx *cli.Context) error {
 		return errors.Wrap(err, "put manifest blob")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"digest": manifestDigest,
 		"size":   manifestSize,
 	}).Debugf("umoci: added new manifest")
@@ -127,21 +127,24 @@ func newImage(ctx *cli.Context) error {
 		Size:      manifestSize,
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"mediatype": descriptor.MediaType,
-		"digest":    descriptor.Digest,
-		"size":      descriptor.Size,
-	}).Infof("created new image")
+	log.Infof("new image manifest created: %s", descriptor.Digest)
 
-	// We have to clobber the old reference.
-	// XXX: Should we output some warning if we actually did remove an old
-	//      reference?
-	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-		return errors.Wrap(err, "delete old tag")
+	err = engine.PutReference(context.Background(), tagName, &descriptor)
+	if err == cas.ErrClobber {
+		// We have to clobber a tag.
+		log.Warnf("clobbering existing tag: %s", tagName)
+
+		// Delete the old tag.
+		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
+			return errors.Wrap(err, "delete old tag")
+		}
+		err = engine.PutReference(context.Background(), tagName, &descriptor)
 	}
-	if err := engine.PutReference(context.Background(), tagName, &descriptor); err != nil {
+	if err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
+
+	log.Infof("created new tag for image manifest: %s", tagName)
 
 	return nil
 }

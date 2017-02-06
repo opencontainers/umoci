@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"sort"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
@@ -81,19 +81,19 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
 				if err := tg.AddFile(name, fullPath); err != nil {
-					logrus.Warnf("generate layer: could not add file '%s': %s", name, err)
+					log.Warnf("generate layer: could not add file '%s': %s", name, err)
 					return errors.Wrap(err, "generate layer file")
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
-					logrus.Warnf("generate layer: could not add whiteout '%s': %s", name, err)
+					log.Warnf("generate layer: could not add whiteout '%s': %s", name, err)
 					return errors.Wrap(err, "generate whiteout layer file")
 				}
 			}
 		}
 
 		if err := tg.tw.Close(); err != nil {
-			logrus.Warnf("generate layer: could not close tar.Writer: %s", err)
+			log.Warnf("generate layer: could not close tar.Writer: %s", err)
 			return errors.Wrap(err, "close tar writer")
 		}
 

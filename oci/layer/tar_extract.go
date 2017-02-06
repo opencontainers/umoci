@@ -26,7 +26,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/pkg/system"
 	"github.com/cyphar/umoci/third_party/symlink"
@@ -110,7 +110,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
 			if te.mapOptions.Rootless && os.IsPermission(errors.Cause(err)) {
-				logrus.Warnf("restoreMetadata: ignoring EPERM on setxattr: %s: %v", name, err)
+				log.Warnf("restoreMetadata: ignoring EPERM on setxattr: %s: %v", name, err)
 				continue
 			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)
@@ -148,7 +148,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	hdr.Name = CleanPath(hdr.Name)
 	root = filepath.Clean(root)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"root": root,
 		"path": hdr.Name,
 		"type": hdr.Typeflag,

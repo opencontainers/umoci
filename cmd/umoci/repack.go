@@ -24,7 +24,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/mutate"
 	"github.com/cyphar/umoci/oci/cas"
@@ -89,7 +89,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "read umoci.json metadata")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"version":     meta.Version,
 		"from":        meta.From,
 		"map_options": meta.MapOptions,
@@ -117,7 +117,7 @@ func repack(ctx *cli.Context) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
 		"rootfs": layer.RootfsName,
@@ -135,7 +135,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "parse mtree")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"keywords": MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
@@ -144,12 +144,14 @@ func repack(ctx *cli.Context) error {
 		fsEval = umoci.RootlessFsEval
 	}
 
+	log.Info("computing filesystem diff ...")
 	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "check mtree")
 	}
+	log.Info("... done")
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
@@ -196,21 +198,23 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	logrus.WithFields(logrus.Fields{
-		"mediatype": newDescriptor.MediaType,
-		"digest":    newDescriptor.Digest,
-		"size":      newDescriptor.Size,
-	}).Infof("created new image")
+	log.Infof("new image manifest created: %s", newDescriptor.Digest)
 
-	// We have to clobber the old reference.
-	// XXX: Should we output some warning if we actually did remove an old
-	//      reference?
-	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-		return err
+	err = engine.PutReference(context.Background(), tagName, &newDescriptor)
+	if err == cas.ErrClobber {
+		// We have to clobber a tag.
+		log.Warnf("clobbering existing tag: %s", tagName)
+
+		// Delete the old tag.
+		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
+			return errors.Wrap(err, "delete old tag")
+		}
+		err = engine.PutReference(context.Background(), tagName, &newDescriptor)
 	}
-	if err := engine.PutReference(context.Background(), tagName, &newDescriptor); err != nil {
-		return err
+	if err != nil {
+		return errors.Wrap(err, "add new tag")
 	}
 
+	log.Infof("created new tag for image manifest: %s", tagName)
 	return nil
 }

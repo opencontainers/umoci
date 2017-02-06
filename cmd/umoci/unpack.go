@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/apex/log"
 	"github.com/cyphar/umoci"
 	"github.com/cyphar/umoci/oci/cas"
 	"github.com/cyphar/umoci/oci/layer"
@@ -94,15 +94,9 @@ func unpack(ctx *cli.Context) error {
 	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
 			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
-			logrus.WithFields(logrus.Fields{
-				"map.uid": ctx.StringSlice("uid-map"),
-			}).Info("setting default rootless --uid-map option")
 		}
 		if !ctx.IsSet("gid-map") {
 			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
-			logrus.WithFields(logrus.Fields{
-				"map.gid": ctx.StringSlice("gid-map"),
-			}).Info("setting default rootless --gid-map option")
 		}
 	}
 	// Parse and set up the mapping options.
@@ -120,10 +114,11 @@ func unpack(ctx *cli.Context) error {
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
-	logrus.WithFields(logrus.Fields{
+
+	log.WithFields(log.Fields{
 		"map.uid": meta.MapOptions.UIDMappings,
 		"map.gid": meta.MapOptions.GIDMappings,
-	}).Infof("parsed mappings")
+	}).Debugf("parsed mappings")
 
 	// Get a reference to the CAS.
 	engine, err := cas.Open(imagePath)
@@ -153,7 +148,7 @@ func unpack(ctx *cli.Context) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
 		"ref":    fromName,
@@ -172,11 +167,13 @@ func unpack(ctx *cli.Context) error {
 	// FIXME: Currently we only support OCI layouts, not tar archives. This
 	//        should be fixed once the CAS engine PR is merged into
 	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
+	log.Info("unpacking bundle ...")
 	if err := layer.UnpackManifest(context.Background(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
 	}
+	log.Info("... done")
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"keywords": MtreeKeywords,
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
@@ -186,10 +183,12 @@ func unpack(ctx *cli.Context) error {
 		fsEval = umoci.RootlessFsEval
 	}
 
+	log.Info("computing filesystem manifest ...")
 	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "generate mtree spec")
 	}
+	log.Info("... done")
 
 	fh, err := os.OpenFile(mtreePath, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0644)
 	if err != nil {
@@ -197,13 +196,13 @@ func unpack(ctx *cli.Context) error {
 	}
 	defer fh.Close()
 
-	logrus.Debugf("umoci: saving mtree manifest")
+	log.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
 
-	logrus.WithFields(logrus.Fields{
+	log.WithFields(log.Fields{
 		"version":     meta.Version,
 		"from":        meta.From,
 		"map_options": meta.MapOptions,
@@ -213,6 +212,6 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(err, "write umoci.json metadata")
 	}
 
-	logrus.Debugf("umoci: unpacking complete")
+	log.Infof("unpacked image bundle: %s", bundlePath)
 	return nil
 }
