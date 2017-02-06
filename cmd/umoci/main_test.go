@@ -25,8 +25,8 @@ import (
 
 // Build:
 //  $ go test -c -covermode=count -o umoci \
-//            -cover -coverpkg=github.com/cyphar/umoci/... \
-//            github.com/cyphar/umoci/cmd/umoci
+//            -cover -coverpkg=github.com/openSUSE/umoci/... \
+//            github.com/openSUSE/umoci/cmd/umoci
 // Run:
 //  $ ./umoci __DEVEL--i-heard-you-like-tests -test.coverprofile [file] [args]...
 

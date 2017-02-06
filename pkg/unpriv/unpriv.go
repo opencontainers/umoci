@@ -26,7 +26,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cyphar/umoci/pkg/system"
+	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
 

@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/cyphar/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"

@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/cyphar/umoci"
+	"github.com/openSUSE/umoci"
 	"github.com/pkg/errors"
 )
 

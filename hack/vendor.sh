@@ -16,7 +16,7 @@
 
 set -e
 
-export PROJECT="github.com/cyphar/umoci"
+export PROJECT="github.com/openSUSE/umoci"
 
 # Clean cleans the vendor directory of any directories which are not required
 # by imports in the current project. It is adapted from hack/.vendor-helpers.sh
