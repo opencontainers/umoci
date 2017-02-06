@@ -22,9 +22,9 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/cyphar/umoci/mutate"
-	"github.com/cyphar/umoci/oci/cas"
-	igen "github.com/cyphar/umoci/oci/generate"
+	"github.com/openSUSE/umoci/mutate"
+	"github.com/openSUSE/umoci/oci/cas"
+	igen "github.com/openSUSE/umoci/oci/generate"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"

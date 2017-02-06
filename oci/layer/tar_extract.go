@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/cyphar/umoci"
-	"github.com/cyphar/umoci/pkg/system"
-	"github.com/cyphar/umoci/third_party/symlink"
+	"github.com/openSUSE/umoci"
+	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/openSUSE/umoci/third_party/symlink"
 	"github.com/pkg/errors"
 )
 

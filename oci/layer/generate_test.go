@@ -136,7 +136,7 @@ func TestGenerate(t *testing.T) {
 	}
 }
 
-// Make sure that cyphar/umoci#33 doesn't regress.
+// Make sure that openSUSE/umoci#33 doesn't regress.
 func TestGenerateMissingFileError(t *testing.T) {
 	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
 	if err != nil {
@@ -206,7 +206,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	}
 }
 
-// Make sure that cyphar/umoci#33 doesn't regress.
+// Make sure that openSUSE/umoci#33 doesn't regress.
 func TestGenerateWrongRootError(t *testing.T) {
 	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
 	if err != nil {

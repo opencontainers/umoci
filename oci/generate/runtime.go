@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/cyphar/umoci/third_party/user"
+	"github.com/openSUSE/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"

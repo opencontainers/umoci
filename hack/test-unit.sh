@@ -17,7 +17,7 @@
 set -ex
 
 GO="${GO:-go}"
-PROJECT="${PROJECT:-github.com/cyphar/umoci}"
+PROJECT="${PROJECT:-github.com/openSUSE/umoci}"
 
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"

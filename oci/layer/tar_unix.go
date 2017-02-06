@@ -23,7 +23,7 @@ import (
 	"os"
 	"syscall"
 
-	"github.com/cyphar/umoci/pkg/system"
+	"github.com/openSUSE/umoci/pkg/system"
 )
 
 // These values come from new_decode_dev() inside <linux/kdev_t.h>.

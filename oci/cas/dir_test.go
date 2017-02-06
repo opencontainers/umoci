@@ -341,7 +341,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	}
 }
 
-// Make sure that cyphar/umoci#63 doesn't have a regression where we start
+// Make sure that openSUSE/umoci#63 doesn't have a regression where we start
 // deleting files and directories that other people are using.
 func TestEngineGCLocking(t *testing.T) {
 	ctx := context.Background()

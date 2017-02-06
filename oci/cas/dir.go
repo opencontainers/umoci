@@ -28,7 +28,7 @@ import (
 	"path/filepath"
 	"reflect"
 
-	"github.com/cyphar/umoci/pkg/system"
+	"github.com/openSUSE/umoci/pkg/system"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"

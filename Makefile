@@ -21,7 +21,7 @@ GO ?= go
 GO_MD2MAN ?= go-md2man
 
 # Set up the ... lovely ... GOPATH hacks.
-PROJECT := github.com/cyphar/umoci
+PROJECT := github.com/openSUSE/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev

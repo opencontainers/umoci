@@ -17,7 +17,7 @@
 
 // Package mutate implements various functionality to allow for the
 // modification of container images in a much higher-level fashion than
-// available from github.com/cyphar/umoci/oci/cas. In particular, this library
-// should be viewed as a wrapper around github.com/cyphar/umoci/oci/cas that
+// available from github.com/openSUSE/umoci/oci/cas. In particular, this library
+// should be viewed as a wrapper around github.com/openSUSE/umoci/oci/cas that
 // provides many convenience functions.
 package mutate

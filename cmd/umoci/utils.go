@@ -27,9 +27,9 @@ import (
 	"strings"
 	"text/tabwriter"
 
-	"github.com/cyphar/umoci/oci/cas"
-	"github.com/cyphar/umoci/oci/layer"
 	"github.com/docker/go-units"
+	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/layer"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"

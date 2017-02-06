@@ -21,7 +21,7 @@ import (
 	"os"
 	"time"
 
-	"github.com/cyphar/umoci/pkg/system"
+	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 )
 

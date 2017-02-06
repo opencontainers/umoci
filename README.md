@@ -1,7 +1,7 @@
-## `umoci` [![Release](https://img.shields.io/github/release/cyphar/umoci.svg)](https://github.com/cyphar/umoci/releases/latest) ###
+## `umoci` [![Release](https://img.shields.io/github/release/openSUSE/umoci.svg)](https://github.com/openSUSE/umoci/releases/latest) ###
 
-[![Build Status](https://img.shields.io/travis/cyphar/umoci/master.svg)](https://travis-ci.org/cyphar/umoci)
-![License: Apache 2.0](https://img.shields.io/github/license/cyphar/umoci.svg)
+[![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
+![License: Apache 2.0](https://img.shields.io/github/license/openSUSE/umoci.svg)
 
 **Status: Alpha**
 
