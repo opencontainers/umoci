@@ -3,7 +3,7 @@
 [![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/openSUSE/umoci.svg)
 
-**Status: Alpha**
+**Status: Beta**
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
 what are you going to do. It also is a cool way for people to "dip their toe"
