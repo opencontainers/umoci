@@ -86,11 +86,12 @@ umociimage:
 	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
 
 ifndef COVERAGE
-COVERAGE := $(shell mktemp umoci.cov.XXXXXX)
+COVERAGE := $(shell mktemp --dry-run umoci.cov.XXXXXX)
 endif
 
 .PHONY: test-unit
 test-unit: umociimage
+	touch $(COVERAGE)
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
 
@@ -100,6 +101,7 @@ local-test-unit:
 
 .PHONY: test-integration
 test-integration: umociimage
+	touch $(COVERAGE)
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-integration
 
