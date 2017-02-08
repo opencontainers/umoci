@@ -93,6 +93,40 @@ function teardown() {
 	[ "$status" -ne 0 ]
 }
 
+@test "umoci tag [clobber]" {
+	# Get blob and mediatype that a tag references.
+	umoci list --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make a copy of the tag.
+	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-newtag"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Modify the configuration.
+	umoci config --author="Someone" --image "${IMAGE}:${TAG}-newtag"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Clobber the tag.
+	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-newtag"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Compare the stats.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	oldOutput="$output"
+	umoci stat --image "${IMAGE}:${TAG}-newtag" --json
+	[ "$status" -eq 0 ]
+	newOutput="$output"
+
+	[[ "$oldOutput" == "$newOutput" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci remove" {
 	# How many tags?
 	umoci list --layout "${IMAGE}"
