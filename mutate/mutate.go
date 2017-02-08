@@ -19,11 +19,11 @@ package mutate
 
 import (
 	"compress/gzip"
-	"crypto/sha256"
-	"fmt"
 	"io"
+	"time"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -54,7 +54,7 @@ type Mutator struct {
 type Meta struct {
 	// Created defines an ISO-8601 formatted combined date and time at which
 	// the image was created.
-	Created string `json:"created,omitempty"`
+	Created time.Time `json:"created,omitempty"`
 
 	// Author defines the name and/or email address of the person or entity
 	// which created and is responsible for maintaining the image.
@@ -199,7 +199,7 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 // add adds the given layer to the CAS, and mutates the configuration to
 // include the diffID. The returned string is the digest of the *compressed*
 // layer (which is compressed by us).
-func (m *Mutator) add(ctx context.Context, reader io.Reader) (string, int64, error) {
+func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
 	if err := m.cache(ctx); err != nil {
 		return "", -1, errors.Wrap(err, "getting cache failed")
 	}
@@ -208,8 +208,9 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (string, int64, err
 	if cas.BlobAlgorithm != "sha256" {
 		return "", -1, errors.Errorf("unknown blob algorithm: %s", cas.BlobAlgorithm)
 	}
-	diffIDHash := sha256.New()
-	hashReader := io.TeeReader(reader, diffIDHash)
+
+	diffidDigester := cas.BlobAlgorithm.Digester()
+	hashReader := io.TeeReader(reader, diffidDigester.Hash())
 
 	pipeReader, pipeWriter := io.Pipe()
 	defer pipeReader.Close()
@@ -232,8 +233,8 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (string, int64, err
 	}
 
 	// Add DiffID to configuration.
-	layerDiffID := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, diffIDHash.Sum(nil))
-	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID)
+	layerDiffID := diffidDigester.Digest()
+	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID.String())
 
 	return layerDigest, layerSize, nil
 }
@@ -255,7 +256,8 @@ func (m *Mutator) Add(ctx context.Context, r io.Reader, history ispec.History) e
 
 	// Append to layers.
 	m.manifest.Layers = append(m.manifest.Layers, ispec.Descriptor{
-		MediaType: ispec.MediaTypeImageLayer,
+		// TODO: Detect whether the layer is gzip'd or not...
+		MediaType: ispec.MediaTypeImageLayerGzip,
 		Digest:    digest,
 		Size:      size,
 	})
@@ -280,7 +282,8 @@ func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history 
 
 	// Append to layers.
 	m.manifest.Layers = append(m.manifest.Layers, ispec.Descriptor{
-		MediaType: ispec.MediaTypeImageLayerNonDistributable,
+		// TODO: Detect whether the layer is gzip'd or not...
+		MediaType: ispec.MediaTypeImageLayerNonDistributableGzip,
 		Digest:    digest,
 		Size:      size,
 	})

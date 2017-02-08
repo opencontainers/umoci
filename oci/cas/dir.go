@@ -19,9 +19,7 @@ package cas
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -29,6 +27,7 @@ import (
 	"reflect"
 
 	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -60,7 +59,7 @@ func CreateLayout(path string) error {
 	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
 		return errors.Wrap(err, "mkdir blobdir")
 	}
-	if err := os.Mkdir(filepath.Join(path, blobDirectory, BlobAlgorithm), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(path, blobDirectory, BlobAlgorithm.String()), 0755); err != nil {
 		return errors.Wrap(err, "mkdir algorithm")
 	}
 	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
@@ -164,13 +163,12 @@ func (e *dirEngine) validate() error {
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
-func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int64, error) {
+func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
 	if err := e.ensureTempDir(); err != nil {
 		return "", -1, errors.Wrap(err, "ensure tempdir")
 	}
 
-	hash := sha256.New()
-	algo := BlobAlgorithm
+	digester := BlobAlgorithm.Digester()
 
 	// We copy this into a temporary file because we need to get the blob hash,
 	// but also to avoid half-writing an invalid blob.
@@ -181,7 +179,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int6
 	tempPath := fh.Name()
 	defer fh.Close()
 
-	writer := io.MultiWriter(fh, hash)
+	writer := io.MultiWriter(fh, digester.Hash())
 	size, err := io.Copy(writer, reader)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "copy to temporary blob")
@@ -189,8 +187,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int6
 	fh.Close()
 
 	// Get the digest.
-	digest := fmt.Sprintf("%s:%x", algo, hash.Sum(nil))
-	path, err := blobPath(digest)
+	path, err := blobPath(digester.Digest())
 	if err != nil {
 		return "", -1, errors.Wrap(err, "compute blob name")
 	}
@@ -201,7 +198,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int6
 		return "", -1, errors.Wrap(err, "rename temporary blob")
 	}
 
-	return digest, int64(size), nil
+	return digester.Digest(), int64(size), nil
 }
 
 // PutBlobJSON adds a new JSON blob to the image (marshalled from the given
@@ -209,7 +206,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (string, int6
 // as the reader. Note that due to intricacies in the Go JSON
 // implementation, we cannot guarantee that two calls to PutBlobJSON() will
 // return the same digest.
-func (e *dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (string, int64, error) {
+func (e *dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (digest.Digest, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
 		return "", -1, errors.Wrap(err, "encode JSON")
@@ -268,7 +265,7 @@ func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor *i
 
 // GetBlob returns a reader for retrieving a blob from the image, which the
 // caller must Close(). Returns os.ErrNotExist if the digest is not found.
-func (e *dirEngine) GetBlob(ctx context.Context, digest string) (io.ReadCloser, error) {
+func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
 		return nil, errors.Wrap(err, "compute blob path")
@@ -302,7 +299,7 @@ func (e *dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descr
 // DeleteBlob removes a blob from the image. This is idempotent; a nil
 // error means "the content is not in the store" without implying "because
 // of this DeleteBlob() call".
-func (e *dirEngine) DeleteBlob(ctx context.Context, digest string) error {
+func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error {
 	path, err := blobPath(digest)
 	if err != nil {
 		return errors.Wrap(err, "compute blob path")
@@ -332,9 +329,9 @@ func (e *dirEngine) DeleteReference(ctx context.Context, name string) error {
 }
 
 // ListBlobs returns the set of blob digests stored in the image.
-func (e *dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
-	digests := []string{}
-	blobDir := filepath.Join(e.path, blobDirectory, BlobAlgorithm)
+func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
+	digests := []digest.Digest{}
+	blobDir := filepath.Join(e.path, blobDirectory, BlobAlgorithm.String())
 
 	if err := filepath.Walk(blobDir, func(path string, _ os.FileInfo, _ error) error {
 		// Skip the actual directory.
@@ -343,7 +340,7 @@ func (e *dirEngine) ListBlobs(ctx context.Context) ([]string, error) {
 		}
 
 		// XXX: Do we need to handle multiple-directory-deep cases?
-		digest := fmt.Sprintf("%s:%s", BlobAlgorithm, filepath.Base(path))
+		digest := digest.NewDigestFromHex(BlobAlgorithm.String(), filepath.Base(path))
 		digests = append(digests, digest)
 		return nil
 	}); err != nil {

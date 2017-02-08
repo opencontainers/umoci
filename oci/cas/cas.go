@@ -22,8 +22,13 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
 
+	// We need to include sha256 in order for go-digest to properly handle such
+	// hashes, since Go's crypto library like to lazy-load cryptographic
+	// libraries.
+	_ "crypto/sha256"
+
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -32,7 +37,7 @@ import (
 const (
 	// BlobAlgorithm is the name of the only supported digest algorithm for blobs.
 	// FIXME: We can make this a list.
-	BlobAlgorithm = "sha256"
+	BlobAlgorithm = digest.SHA256
 
 	// refDirectory is the directory inside an OCI image that contains references.
 	refDirectory = "refs"
@@ -65,14 +70,14 @@ type Engine interface {
 	// PutBlob adds a new blob to the image. This is idempotent; a nil error
 	// means that "the content is stored at DIGEST" without implying "because
 	// of this PutBlob() call".
-	PutBlob(ctx context.Context, reader io.Reader) (digest string, size int64, err error)
+	PutBlob(ctx context.Context, reader io.Reader) (digest digest.Digest, size int64, err error)
 
 	// PutBlobJSON adds a new JSON blob to the image (marshalled from the given
 	// interface). This is equivalent to calling PutBlob() with a JSON payload
 	// as the reader. Note that due to intricacies in the Go JSON
 	// implementation, we cannot guarantee that two calls to PutBlobJSON() will
 	// return the same digest.
-	PutBlobJSON(ctx context.Context, data interface{}) (digest string, size int64, err error)
+	PutBlobJSON(ctx context.Context, data interface{}) (digest digest.Digest, size int64, err error)
 
 	// PutReference adds a new reference descriptor blob to the image. This is
 	// idempotent; a nil error means that "the descriptor is stored at NAME"
@@ -83,7 +88,7 @@ type Engine interface {
 
 	// GetBlob returns a reader for retrieving a blob from the image, which the
 	// caller must Close(). Returns os.ErrNotExist if the digest is not found.
-	GetBlob(ctx context.Context, digest string) (reader io.ReadCloser, err error)
+	GetBlob(ctx context.Context, digest digest.Digest) (reader io.ReadCloser, err error)
 
 	// GetReference returns a reference from the image. Returns os.ErrNotExist
 	// if the name was not found.
@@ -92,7 +97,7 @@ type Engine interface {
 	// DeleteBlob removes a blob from the image. This is idempotent; a nil
 	// error means "the content is not in the store" without implying "because
 	// of this DeleteBlob() call".
-	DeleteBlob(ctx context.Context, digest string) (err error)
+	DeleteBlob(ctx context.Context, digest digest.Digest) (err error)
 
 	// DeleteReference removes a reference from the image. This is idempotent;
 	// a nil error means "the content is not in the store" without implying
@@ -100,7 +105,7 @@ type Engine interface {
 	DeleteReference(ctx context.Context, name string) (err error)
 
 	// ListBlobs returns the set of blob digests stored in the image.
-	ListBlobs(ctx context.Context) (digests []string, err error)
+	ListBlobs(ctx context.Context) (digests []digest.Digest, err error)
 
 	// ListReferences returns the set of reference names stored in the image.
 	ListReferences(ctx context.Context) (names []string, err error)
@@ -134,20 +139,19 @@ func Open(path string) (Engine, error) {
 
 // blobPath returns the path to a blob given its digest, relative to the root
 // of the OCI image. The digest must be of the form algorithm:hex.
-func blobPath(digest string) (string, error) {
-	fields := strings.SplitN(digest, ":", 2)
-	if len(fields) != 2 {
-		return "", errors.Errorf("invalid digest: %q", digest)
+func blobPath(digest digest.Digest) (string, error) {
+	if err := digest.Validate(); err != nil {
+		return "", errors.Wrapf(err, "invalid digest: %q", digest)
 	}
 
-	algo := fields[0]
-	hash := fields[1]
+	algo := digest.Algorithm()
+	hash := digest.Hex()
 
 	if algo != BlobAlgorithm {
 		return "", errors.Errorf("unsupported algorithm: %q", algo)
 	}
 
-	return filepath.Join(blobDirectory, algo, hash), nil
+	return filepath.Join(blobDirectory, algo.String(), hash), nil
 }
 
 // refPath returns the path to a reference given its name, relative to the r

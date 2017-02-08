@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"github.com/apex/log"
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -127,7 +128,7 @@ type gcState struct {
 	// from the root set. These are blobs which will *not* be deleted. The
 	// white set of digests is not stored in the state (we only have to compute
 	// it once anyway).
-	black map[string]struct{}
+	black map[digest.Digest]struct{}
 }
 
 func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error {
@@ -199,7 +200,7 @@ func GC(ctx context.Context, engine Engine) error {
 	// Mark from the root set.
 	gc := &gcState{
 		engine: engine,
-		black:  map[string]struct{}{},
+		black:  map[digest.Digest]struct{}{},
 	}
 
 	for idx, descriptor := range root {

@@ -251,7 +251,7 @@ func config(ctx *cli.Context) error {
 	history := ispec.History{
 		Author:     g.Author(),
 		Comment:    "",
-		Created:    time.Now().Format(igen.ISO8601),
+		Created:    time.Now(),
 		CreatedBy:  "umoci config",
 		EmptyLayer: true,
 	}
@@ -263,7 +263,11 @@ func config(ctx *cli.Context) error {
 		history.Comment = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created"]; ok {
-		history.Created = val.(string)
+		created, err := time.Parse(igen.ISO8601, val.(string))
+		if err != nil {
+			return errors.Wrap(err, "parsing --history.created")
+		}
+		history.Created = created
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
 		history.CreatedBy = val.(string)

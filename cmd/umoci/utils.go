@@ -29,6 +29,7 @@ import (
 
 	"github.com/docker/go-units"
 	"github.com/openSUSE/umoci/oci/cas"
+	igen "github.com/openSUSE/umoci/oci/generate"
 	"github.com/openSUSE/umoci/oci/layer"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -139,7 +140,7 @@ func (ms ManifestStat) Format(w io.Writer) error {
 	fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n")
 	for _, histEntry := range ms.History {
 		var (
-			created   = strings.Replace(histEntry.Created, "\t", " ", -1)
+			created   = strings.Replace(histEntry.Created.Format(igen.ISO8601), "\t", " ", -1)
 			createdBy = strings.Replace(histEntry.CreatedBy, "\t", " ", -1)
 			comment   = strings.Replace(histEntry.Comment, "\t", " ", -1)
 			layerID   = "<none>"
@@ -147,7 +148,7 @@ func (ms ManifestStat) Format(w io.Writer) error {
 		)
 
 		if !histEntry.EmptyLayer {
-			layerID = histEntry.Layer.Digest
+			layerID = histEntry.Layer.Digest.String()
 			size = units.HumanSize(float64(histEntry.Layer.Size))
 		}
 

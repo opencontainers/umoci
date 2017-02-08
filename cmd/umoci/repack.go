@@ -113,7 +113,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
-	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Digest.String(), "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -169,7 +169,7 @@ func repack(ctx *cli.Context) error {
 	history := ispec.History{
 		Author:     imageMeta.Author,
 		Comment:    "",
-		Created:    time.Now().Format(igen.ISO8601),
+		Created:    time.Now(),
 		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
 		EmptyLayer: false,
 	}
@@ -181,7 +181,11 @@ func repack(ctx *cli.Context) error {
 		history.Comment = val.(string)
 	}
 	if val, ok := ctx.App.Metadata["--history.created"]; ok {
-		history.Created = val.(string)
+		created, err := time.Parse(igen.ISO8601, val.(string))
+		if err != nil {
+			return errors.Wrap(err, "parsing --history.created")
+		}
+		history.Created = created
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
 		history.CreatedBy = val.(string)

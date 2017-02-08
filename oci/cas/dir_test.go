@@ -19,9 +19,7 @@ package cas
 
 import (
 	"bytes"
-	"crypto/sha256"
 	"encoding/json"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -130,11 +128,11 @@ func TestEngineBlobReadonly(t *testing.T) {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
 
-		hash := sha256.New()
-		if _, err := io.Copy(hash, bytes.NewReader(test.bytes)); err != nil {
+		digester := BlobAlgorithm.Digester()
+		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
 		}
-		expectedDigest := fmt.Sprintf("%s:%x", BlobAlgorithm, hash.Sum(nil))
+		expectedDigest := digester.Digest()
 
 		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
 		if err != nil {
@@ -293,7 +291,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	}{
 		{"ref1", ispec.Descriptor{}},
 		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
-		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributable, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
+		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributableGzip, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
 	} {
 
 		engine, err := Open(image)
@@ -365,11 +363,11 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
 
-	hash := sha256.New()
-	if _, err := io.Copy(hash, bytes.NewReader(content)); err != nil {
+	digester := BlobAlgorithm.Digester()
+	if _, err := io.Copy(digester.Hash(), bytes.NewReader(content)); err != nil {
 		t.Fatalf("could not hash bytes: %+v", err)
 	}
-	expectedDigest := fmt.Sprintf("%s:%x", BlobAlgorithm, hash.Sum(nil))
+	expectedDigest := digester.Digest()
 
 	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
 	if err != nil {
