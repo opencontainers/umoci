@@ -8,6 +8,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `CHANGELOG.md` has now been added. openSUSE/umoci#76
 
+### Fixed
+- `umoci tag` would fail to clobber existing tags, which was in contrast to how
+  the rest of the tag clobbering commands operated. This has been fixed and is
+  now consistent with the other commands. openSUSE/umoci#78
+
 ## [0.0.0] - 2017-02-07
 ### Added
 - Unit tests are massively expanded, as well as the integration tests.

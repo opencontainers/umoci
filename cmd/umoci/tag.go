@@ -74,7 +74,18 @@ func tagAdd(ctx *cli.Context) error {
 	}
 
 	// Add it.
-	if err := engine.PutReference(context.Background(), tagName, descriptor); err != nil {
+	err = engine.PutReference(context.Background(), tagName, descriptor)
+	if err == cas.ErrClobber {
+		// We have to clobber a tag.
+		log.Warnf("clobbering existing tag: %s", tagName)
+
+		// Delete the old tag.
+		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
+			return errors.Wrap(err, "delete old tag")
+		}
+		err = engine.PutReference(context.Background(), tagName, descriptor)
+	}
+	if err != nil {
 		return errors.Wrap(err, "put reference")
 	}
 
