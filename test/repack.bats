@@ -442,3 +442,59 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci {un,re}pack [unicode]" {
+	BUNDLE_A="$(setup_bundle)"
+	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_C="$(setup_bundle)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Unicode is very fun.
+	mkdir "$BUNDLE_A/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3"
+	touch "$BUNDLE_A/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem"
+	touch "$BUNDLE_A/rootfs/AC_Raíz_Certicámara_S.A..pem"
+	touch "$BUNDLE_A/rootfs/ <-- some more weird characters --> 你好，世界"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Make sure the directories and files exist.
+	[ -d "$BUNDLE_B/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
+	[ -f "$BUNDLE_B/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
+	[ -f "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem" ]
+	[ -f "$BUNDLE_B/rootfs/ <-- some more weird characters --> 你好，世界" ]
+
+	# Now make some changes.
+	rm "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# Make sure the directories and files exist.
+	[ -d "$BUNDLE_C/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
+	[ -f "$BUNDLE_C/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
+	! [ -f "$BUNDLE_C/rootfs/AC_Raíz_Certicámara_S.A..pem" ]
+	[ -f "$BUNDLE_C/rootfs/ <-- some more weird characters --> 你好，世界" ]
+
+	image-verify "${IMAGE}"
+}
