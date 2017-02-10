@@ -31,6 +31,10 @@ clean() {
 	local platforms=( "linux/amd64" )
 	local buildtagcombos=( "" )
 
+	# Remove non-top-level vendors.
+	echo -n "remove library vendors,"
+	find vendor/* -type d '(' -name 'vendor' -or -name 'Godeps' ')' -print0 | xargs -r0 -- rm -rfv
+
 	# Generate the import graph so we can delete things outside of it.
 	echo -n "collecting import graph, "
 	local IFS=$'\n'
@@ -76,10 +80,6 @@ clean() {
 		rmdir "$dir" 2>/dev/null || true
 	done
 
-	# Remove non-top-level vendors.
-	echo -n "remove library vendors,"
-	find vendor/* -type d '(' -name 'vendor' -or -name 'Godeps' ')' -print0 | xargs -r0 -- rm -rfv
-
 	# Remove any extra files that we know we don't care about.
 	echo -n "pruning unused files, "
 	find vendor -type f -name '*_test.go' -exec rm -v '{}' ';'
@@ -121,13 +121,13 @@ clone github.com/opencontainers/runtime-spec v1.0.0-rc2
 clone github.com/opencontainers/image-tools 421458f7e467ac86175408693a07da6d29817bf7
 clone github.com/opencontainers/runtime-tools b61b44a71dafb8472bbc1e5eb0d68ed9ce8ba6ac
 clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
-clone golang.org/x/crypto  01be46f62051d02cb6a36c9b47b37b24e5758c81 https://github.com/golang/crypto
+clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
 clone golang.org/x/sys d75a52659825e75fff6158388dddc6a5b04f9ba5 https://github.com/golang/sys
 clone github.com/docker/go-units v0.3.1
 clone github.com/pkg/errors v0.8.0
 clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
 clone github.com/urfave/cli v1.18.1
-clone github.com/vbatts/go-mtree 0dc720e861ecc198ef262fe1ec2d33b293512aaf
+clone github.com/vbatts/go-mtree 5685419c3e2d20ce9e4c556d7fa6ff2cb985b3b4
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
 
 # Clean up the vendor directory.
