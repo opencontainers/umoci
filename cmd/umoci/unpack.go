@@ -144,7 +144,7 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
 	}
 
-	mtreeName := strings.Replace(meta.From.Digest, "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Digest.String(), "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 

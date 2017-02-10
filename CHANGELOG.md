@@ -8,6 +8,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `CHANGELOG.md` has now been added. openSUSE/umoci#76
 
+### Changed
+- `umoci` now supports `v1.0.0-rc4` images, which has made fairly minimal
+  changes to the schema (mainly related to `mediaType`s). While this change
+  **is** backwards compatible (several fields were removed from the schema, but
+  the specification allows for "additional fields"), tools using older versions
+  of the specification may fail to operate on newer OCI images. There was no UX
+  change associated with this update.
+
 ### Fixed
 - `umoci tag` would fail to clobber existing tags, which was in contrast to how
   the rest of the tag clobbering commands operated. This has been fixed and is

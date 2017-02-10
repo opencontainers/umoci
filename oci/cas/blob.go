@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -35,7 +36,7 @@ type Blob struct {
 
 	// Digest is the digest of the parsed image. Note that this does not update
 	// if Data is changed (it is the digest that this blob was parsed *from*).
-	Digest string
+	Digest digest.Digest
 
 	// Data is the "parsed" blob taken from the OCI image's blob store, and is
 	// typed according to the media type. The mapping from MIME => type is as
@@ -45,7 +46,9 @@ type Blob struct {
 	// ispec.MediaTypeImageManifest => *ispec.Manifest
 	// ispec.MediaTypeImageManifestList => *ispec.ManifestList
 	// ispec.MediaTypeImageLayer => io.ReadCloser
+	// ispec.MediaTypeImageLayerGzip => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
+	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
 	// ispec.MediaTypeImageConfig => *ispec.Image
 	Data interface{}
 }
@@ -60,8 +63,11 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 	// close the blob reference).
 	switch b.MediaType {
 	// ispec.MediaTypeImageLayer => io.ReadCloser
+	// ispec.MediaTypeImageLayerGzip => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
-	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable:
+	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
+	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable,
+		ispec.MediaTypeImageLayerGzip, ispec.MediaTypeImageLayerNonDistributableGzip:
 		// There isn't anything else we can practically do here.
 		b.Data = reader
 		return nil
@@ -100,7 +106,8 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 // Close cleans up all of the resources for the opened blob.
 func (b *Blob) Close() {
 	switch b.MediaType {
-	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable:
+	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable,
+		ispec.MediaTypeImageLayerGzip, ispec.MediaTypeImageLayerNonDistributableGzip:
 		if b.Data != nil {
 			b.Data.(io.Closer).Close()
 		}

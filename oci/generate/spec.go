@@ -308,17 +308,12 @@ const ISO8601 = time.RFC3339Nano
 
 // SetCreated sets the combined date and time at which the image was created.
 func (g *Generator) SetCreated(created time.Time) {
-	g.image.Created = created.Format(ISO8601)
+	g.image.Created = created
 }
 
 // Created gets the combined date and time at which the image was created.
 func (g *Generator) Created() time.Time {
-	created, err := time.Parse(ISO8601, g.image.Created)
-	if err != nil {
-		// FIXME
-		panic(err)
-	}
-	return created
+	return g.image.Created
 }
 
 // SetAuthor sets the name and/or email address of the person or entity which created and is responsible for maintaining the image.

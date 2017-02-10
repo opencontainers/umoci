@@ -20,8 +20,6 @@ package mutate
 import (
 	"archive/tar"
 	"bytes"
-	"crypto/sha256"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -37,8 +35,8 @@ import (
 // These come from just running the code.
 const (
 	expectedLayerDigest    = "sha256:9a98de6b2015d531559791e60518fd376ddc62d3062ee4f691b223c06175dbef"
-	expectedConfigDigest   = "sha256:1d043a5807e0ca5bcde233f14a79928f9aa5ccecdd4a8e4bf4cdd0b557090f91"
-	expectedManifestDigest = "sha256:3f783613d8e9fd3c1564012c6851ca4faf01578a080dd7df1460c04e7b1e27ec"
+	expectedConfigDigest   = "sha256:908705c0f681cd2a69225ce302aa7bfe52fca02ac1ff29318e285be03ceb9123"
+	expectedManifestDigest = "sha256:a42c4536afbed929a7539d1c89a079ec4e24f7f157b309322ce3dabdc2bbcf32"
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
@@ -66,8 +64,8 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	tw.Close()
 
 	// Push the base layer.
-	diffIDHash := sha256.New()
-	hashReader := io.TeeReader(&buffer, diffIDHash)
+	diffidDigester := cas.BlobAlgorithm.Digester()
+	hashReader := io.TeeReader(&buffer, diffidDigester.Hash())
 	layerDigest, layerSize, err := engine.PutBlob(context.Background(), hashReader)
 	if err != nil {
 		t.Fatal(err)
@@ -83,7 +81,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
-			DiffIDs: []string{fmt.Sprintf("%s:%x", cas.BlobAlgorithm, diffIDHash.Sum(nil))},
+			DiffIDs: []string{diffidDigester.Digest().String()},
 		},
 		History: []ispec.History{
 			{EmptyLayer: false},
@@ -102,7 +100,6 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	manifest := ispec.Manifest{
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
-			MediaType:     ispec.MediaTypeImageManifest,
 		},
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,
@@ -111,7 +108,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 		Layers: []ispec.Descriptor{
 			{
-				MediaType: ispec.MediaTypeImageLayer,
+				MediaType: ispec.MediaTypeImageLayerGzip,
 				Digest:    layerDigest,
 				Size:      layerSize,
 			},
@@ -157,9 +154,6 @@ func TestMutateCache(t *testing.T) {
 	if mutator.manifest.SchemaVersion != 2 {
 		t.Errorf("manifest.SchemaVersion is not cached")
 	}
-	if mutator.manifest.MediaType != ispec.MediaTypeImageManifest {
-		t.Errorf("manifest.MediaType is not cached")
-	}
 	if mutator.manifest.Config.MediaType != ispec.MediaTypeImageConfig {
 		t.Errorf("manifest.Config.MediaType is not cached")
 	}
@@ -169,7 +163,7 @@ func TestMutateCache(t *testing.T) {
 	if len(mutator.manifest.Layers) != 1 {
 		t.Errorf("manifest.Layers is not cached")
 	}
-	if mutator.manifest.Layers[0].MediaType != ispec.MediaTypeImageLayer {
+	if mutator.manifest.Layers[0].MediaType != ispec.MediaTypeImageLayerGzip {
 		t.Errorf("manifest.Layers is not cached")
 	}
 	if mutator.manifest.Layers[0].Digest != expectedLayerDigest {
@@ -254,7 +248,7 @@ func TestMutateAdd(t *testing.T) {
 	if len(mutator.manifest.Layers) != 2 {
 		t.Errorf("manifest.Layers was not updated")
 	}
-	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayer {
+	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerGzip {
 		t.Errorf("manifest.Layers[1].MediaType is the wrong value: %s", mutator.manifest.Layers[1].MediaType)
 	}
 
@@ -334,7 +328,7 @@ func TestMutateAddNonDistributable(t *testing.T) {
 	if len(mutator.manifest.Layers) != 2 {
 		t.Errorf("manifest.Layers was not updated")
 	}
-	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerNonDistributable {
+	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerNonDistributableGzip {
 		t.Errorf("manifest.Layers[1].MediaType is the wrong value: %s", mutator.manifest.Layers[1].MediaType)
 	}
 

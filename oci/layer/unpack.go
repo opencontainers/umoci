@@ -73,7 +73,8 @@ const RootfsName = "rootfs"
 // isLayerType returns if the given MediaType is the media type of an image
 // layer blob. This includes both distributable and non-distributable images.
 func isLayerType(mediaType string) bool {
-	return mediaType == ispec.MediaTypeImageLayer || mediaType == ispec.MediaTypeImageLayerNonDistributable
+	return mediaType == ispec.MediaTypeImageLayer || mediaType == ispec.MediaTypeImageLayerNonDistributable ||
+		mediaType == ispec.MediaTypeImageLayerGzip || mediaType == ispec.MediaTypeImageLayerNonDistributableGzip
 }
 
 // UnpackManifest extracts all of the layers in the given manifest, as well as

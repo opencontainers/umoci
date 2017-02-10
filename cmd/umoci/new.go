@@ -97,7 +97,6 @@ func newImage(ctx *cli.Context) error {
 	manifest := ispec.Manifest{
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
-			MediaType:     ispec.MediaTypeImageManifest,
 		},
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,

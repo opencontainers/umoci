@@ -227,7 +227,7 @@ function teardown() {
 
 	# Make some small change.
 	touch "$BUNDLE/a_small_change"
-	now="$(date --iso-8601=seconds)"
+	now="$(date --iso-8601=seconds --utc)"
 
 	# Repack the image, setting history values.
 	umoci repack --image "${IMAGE}:${TAG}-new" \
@@ -258,7 +258,7 @@ function teardown() {
 	# The created_by should be set.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created_by')" == "touch '$BUNDLE/a_small_change'" ]]
 	# The created should be set.
-	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "$now" ]]
+	[[ "$(date --iso-8601=seconds --utc --date="$(echo "$output" | jq -SMr '.history[-1].created')")" == "$now" ]]
 
 	image-verify "${IMAGE}"
 }
