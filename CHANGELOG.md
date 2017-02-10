@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.1.0] - 2017-02-11
 ### Added
 - `CHANGELOG.md` has now been added. openSUSE/umoci#76
 
@@ -104,7 +106,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.0.0...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.1.0...HEAD
+[0.1.0]: https://github.com/openSUSE/umoci/compare/v0.0.0...v0.1.0
 [0.0.0]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc3...v0.0.0
 [0.0.0-rc3]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc2...v0.0.0-rc3
 [0.0.0-rc2]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc1...v0.0.0-rc2
