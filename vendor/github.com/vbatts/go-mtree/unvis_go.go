@@ -5,11 +5,11 @@ package mtree
 import "unicode"
 
 func unvis(src string) (string, error) {
-	dst := &[]byte{}
+	dst := []rune{}
 	var s state
 	for i, r := range src {
 	again:
-		err := unvisRune(dst, r, &s, 0)
+		err := unvisRune(&dst, r, &s, 0)
 		switch err {
 		case unvisValid:
 			break
@@ -23,13 +23,18 @@ func unvis(src string) (string, error) {
 			return "", err
 		}
 		if i == len(src)-1 {
-			unvisRune(dst, r, &s, unvisEnd)
+			unvisRune(&dst, r, &s, unvisEnd)
 		}
 	}
-	return string(*dst), nil
+
+	str := ""
+	for _, ch := range dst {
+		str += string(ch)
+	}
+	return str, nil
 }
 
-func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
+func unvisRune(dst *[]rune, r rune, s *state, flags VisFlag) error {
 	if (flags & unvisEnd) != 0 {
 		if *s == stateOctal2 || *s == stateOctal3 {
 			*s = stateGround
@@ -51,14 +56,14 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 			*s = stateStart | stateHTTP
 			return unvisNone
 		}
-		*dst = append(*dst, byte(r))
+		*dst = append(*dst, r)
 		return unvisValid
 	case stateStart:
 		if *s&stateHTTP != 0 && ishex(unicode.ToLower(r)) {
 			if unicode.IsNumber(r) {
-				*dst = append(*dst, byte(r-'0'))
+				*dst = append(*dst, r-'0')
 			} else {
-				*dst = append(*dst, byte(unicode.ToLower(r)-'a'))
+				*dst = append(*dst, unicode.ToLower(r)-'a')
 			}
 			*s = stateHex2
 			return unvisNone
@@ -66,7 +71,7 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 		switch r {
 		case '\\':
 			*s = stateGround
-			*dst = append(*dst, byte(r))
+			*dst = append(*dst, r)
 			return unvisValid
 		case '0':
 			fallthrough
@@ -84,11 +89,11 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 			fallthrough
 		case '7':
 			*s = stateOctal2
-			*dst = append(*dst, byte(r-'0'))
+			*dst = append(*dst, r-'0')
 			return unvisNone
 		case 'M':
 			*s = stateMeta
-			*dst = append(*dst, 0200)
+			*dst = append(*dst, rune(0200))
 			return unvisNone
 		case '^':
 			*s = stateCtrl
@@ -153,14 +158,14 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 	case stateMeta1:
 		*s = stateGround
 		dp := *dst
-		dp[len(dp)-1] |= byte(r)
+		dp[len(dp)-1] |= r
 		return unvisValid
 	case stateCtrl:
 		dp := *dst
 		if r == '?' {
-			dp[len(dp)-1] |= 0177
+			dp[len(dp)-1] |= rune(0177)
 		} else {
-			dp[len(dp)-1] |= byte(r & 037)
+			dp[len(dp)-1] |= r & 037
 		}
 		*s = stateGround
 		return unvisValid
@@ -169,9 +174,9 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 			dp := *dst
 			if len(dp) > 0 {
 				last := dp[len(dp)-1]
-				dp[len(dp)-1] = (last << 3) + byte(r-'0')
+				dp[len(dp)-1] = (last << 3) + (r - '0')
 			} else {
-				dp = append(dp, byte((0<<3)+(r-'0')))
+				dp = append(dp, (0<<3)+(r-'0'))
 			}
 			*s = stateOctal3
 			return unvisNone
@@ -184,24 +189,24 @@ func unvisRune(dst *[]byte, r rune, s *state, flags VisFlag) error {
 			dp := *dst
 			if len(dp) > 0 {
 				last := dp[len(dp)-1]
-				dp[len(dp)-1] = (last << 3) + byte(r-'0')
+				dp[len(dp)-1] = (last << 3) + (r - '0')
 			} else {
-				dp = append(dp, (0<<3)+byte(r-'0'))
+				dp = append(dp, (0<<3)+(r-'0'))
 			}
 			return unvisValid
 		}
 		return unvisValidPush
 	case stateHex2:
 		if ishex(unicode.ToLower(r)) {
-			last := byte(0)
+			last := rune(0)
 			dp := *dst
 			if len(dp) > 0 {
 				last = dp[len(dp)-1]
 			}
 			if unicode.IsNumber(r) {
-				dp = append(dp, (last<<4)+byte(r-'0'))
+				dp = append(dp, (last<<4)+(r-'0'))
 			} else {
-				dp = append(dp, (last<<4)+byte(unicode.ToLower(r)-'a'+10))
+				dp = append(dp, (last<<4)+(unicode.ToLower(r)-'a'+10))
 			}
 		}
 		*s = stateGround

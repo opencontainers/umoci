@@ -12,6 +12,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci tag` would fail to clobber existing tags, which was in contrast to how
   the rest of the tag clobbering commands operated. This has been fixed and is
   now consistent with the other commands. openSUSE/umoci#78
+- `umoci repack` now can correctly handle unicode-encoded filenames, allowing
+  the creation of containers that have oddly named files. This required fixes
+  to go-mtree (where the issue was). openSUSE/umoci#80
 
 ## [0.0.0] - 2017-02-07
 ### Added
