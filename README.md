@@ -73,16 +73,16 @@ GLOBAL OPTIONS:
 
 The following is an example shell session, where a user does the following operations:
 
-1. Pulls an image from a Docker registry using [`skopeo`][skopeo];
+1. Pulls an image from a Docker registry using [`skopeo`](https://github.com/projectatomic/skopeo);
 2. Extracts the image to an OCI runtime bundle (and then makes some
    modifications to the configuration [`oci-runtime-tools`][oci-runtime-tools]);
-2. Makes some modifications to the rootfs inside a container with [runC][runc];
+2. Makes some modifications to the rootfs inside a container with [runC](https://github.com/opencontainers/runc);
 3. Makes further modifications outside of the container to the rootfs;
 4. Creates a new image the contains the set of rootfs changes;
 5. Changes some of the configuration information for the image; and
 6. Finally, pushes the finalised image back to the Docker registry.
 
-```
+```sh
 % skopeo copy docker://opensuse/amd64:42.2 oci:opensuse:latest
 Getting image source signatures
 Copying blob sha256:32f7bb9291d9339af352ed8012f0e9edd05d7397d283b6c09ce604d2ecfc5d07
@@ -91,11 +91,13 @@ Copying config sha256:a6f6d93caed6e40729f2303fd950cec3973dfbcf09bdaa4aab247618f7
  0 B / 1.73 KB [---------------------------------------------------------------]
 Writing manifest to image destination
 Storing signatures
+
 % umoci unpack --image opensuse bundle
 INFO[0000] parsed mappings                    map.gid=[] map.uid=[]
 INFO[0000] unpack manifest: unpacking layer sha256:32f7bb9291d9339af352ed8012f0e9edd05d7397d283b6c09ce604d2ecfc5d07  diffid="sha256:bb6447f230852c3e1e07fb5c5d50ec3960bbf15786660f4519ade03dc6237ca1"
 INFO[0001] unpack manifest: unpacking config  config="sha256:a6f6d93caed6e40729f2303fd950cec3973dfbcf09bdaa4aab247618f716c9cb"
 % oci-runtime-tool generate --bind /etc/resolv.conf:/etc/resolv.conf:ro --linux-namespace-remove network --template bundle/config.json > bundle/config.json.tmp && mv bundle/config.json{.tmp,}
+
 % runc run -b bundle ctr
 sh-4.2# zypper ref
 Retrieving repository 'NON-OSS' metadata ................................[done]
@@ -133,15 +135,20 @@ Repository 'Update Non-Oss' has been removed.
 sh-4.2# zypper cc -a
 All repositories have been cleaned up.
 sh-4.2# exit
+
 % sed -i 's/42.2/42.3/g' bundle/rootfs/etc/os-release
+
 % umoci repack --image opensuse:42.3 --history.author="Aleksa Sarai <asarai@suse.com>" bundle
 INFO[0000] created new layout  digest="sha256:f9362f2348cbdac6ff039b3fd470900912ed06169d4c9ff420db40f015a00224" mediatype="application/vnd.oci.image.manifest.v1+json" size=566
+
 % umoci config --image opensuse:42.3 --author="Aleksa Sarai <asarai@suse.com>" \
 		--created="$(date --iso-8601=seconds)" \
 		--config.entrypoint="strace" --config.entrypoint="-f" \
 		--config.cmd="bash"
 INFO[0000] created new image  digest="sha256:6d02fed0aeaf26f5bd774d7351d1cb06a887aabfeb9aeaa949d5c2efdc0b8cbd" mediatype="application/vnd.oci.image.manifest.v1+json" size=566
+
 % umoci gc --layout opensuse >/dev/null
+
 % skopeo copy opensuse:42.3 docker://opensuse/amd64:42.3
 Getting image source signatures
 Copying blob sha256:32f7bb9291d9339af352ed8012f0e9edd05d7397d283b6c09ce604d2ecfc5d07
