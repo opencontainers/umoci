@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"github.com/vbatts/go-mtree/pkg/govis"
 )
 
 type byPos []Entry
@@ -47,7 +49,7 @@ func (e Entry) Descend(filename string) *Entry {
 func (e Entry) Find(filepath string) *Entry {
 	resultnode := &e
 	for _, path := range strings.Split(filepath, "/") {
-		encoded, err := Vis(path, DefaultVisFlags)
+		encoded, err := govis.Vis(path, DefaultVisFlags)
 		if err != nil {
 			return nil
 		}
@@ -68,7 +70,7 @@ func (e Entry) Ascend() *Entry {
 // Path provides the full path of the file, despite RelativeType or FullType. It
 // will be in Unvis'd form.
 func (e Entry) Path() (string, error) {
-	decodedName, err := Unvis(e.Name)
+	decodedName, err := govis.Unvis(e.Name, DefaultVisFlags)
 	if err != nil {
 		return "", err
 	}

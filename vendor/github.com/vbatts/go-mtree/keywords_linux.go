@@ -12,6 +12,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/vbatts/go-mtree/pkg/govis"
 	"github.com/vbatts/go-mtree/xattr"
 )
 
@@ -62,7 +63,7 @@ var (
 			}
 			klist := []KeyVal{}
 			for k, v := range hdr.Xattrs {
-				encKey, err := Vis(k, DefaultVisFlags)
+				encKey, err := govis.Vis(k, DefaultVisFlags)
 				if err != nil {
 					return emptyKV, err
 				}
@@ -84,7 +85,7 @@ var (
 			if err != nil {
 				return emptyKV, err
 			}
-			encKey, err := Vis(xlist[i], DefaultVisFlags)
+			encKey, err := govis.Vis(xlist[i], DefaultVisFlags)
 			if err != nil {
 				return emptyKV, err
 			}

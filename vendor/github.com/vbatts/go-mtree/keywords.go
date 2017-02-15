@@ -3,7 +3,13 @@ package mtree
 import (
 	"fmt"
 	"strings"
+
+	"github.com/vbatts/go-mtree/pkg/govis"
 )
+
+// DefaultVisFlags is the set of Vis flags used when encoding filenames and
+// other similar entries.
+const DefaultVisFlags govis.VisFlag = govis.VisWhite | govis.VisOctal | govis.VisGlob
 
 // Keyword is the string name of a keyword, with some convenience functions for
 // determining whether it is a default or bsd standard keyword.

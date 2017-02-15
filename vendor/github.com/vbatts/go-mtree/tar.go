@@ -9,6 +9,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/vbatts/go-mtree/pkg/govis"
 )
 
 // Streamer creates a file hierarchy out of a tar stream
@@ -128,7 +130,7 @@ hdrloop:
 			return
 		}
 		// Alright, it's either file or directory
-		encodedName, err := Vis(filepath.Base(hdr.Name), DefaultVisFlags)
+		encodedName, err := govis.Vis(filepath.Base(hdr.Name), DefaultVisFlags)
 		if err != nil {
 			tmpFile.Close()
 			os.Remove(tmpFile.Name())
@@ -148,7 +150,7 @@ hdrloop:
 				log.Println(err)
 				break
 			}
-			linkname, err := Unvis(KeyVal(kv).Value())
+			linkname, err := govis.Unvis(KeyVal(kv).Value(), DefaultVisFlags)
 			if err != nil {
 				log.Println(err)
 				break
@@ -248,7 +250,7 @@ func populateTree(root, e *Entry, hdr *tar.Header) error {
 	dirNames := strings.Split(wd, "/")
 	parent := root
 	for _, name := range dirNames[:] {
-		encoded, err := Vis(name, DefaultVisFlags)
+		encoded, err := govis.Vis(name, DefaultVisFlags)
 		if err != nil {
 			return err
 		}
