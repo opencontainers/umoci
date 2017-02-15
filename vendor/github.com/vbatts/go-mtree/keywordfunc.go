@@ -11,6 +11,7 @@ import (
 	"io"
 	"os"
 
+	"github.com/vbatts/go-mtree/pkg/govis"
 	"golang.org/x/crypto/ripemd160"
 )
 
@@ -119,7 +120,7 @@ var (
 	linkKeywordFunc = func(path string, info os.FileInfo, r io.Reader) (KeyVal, error) {
 		if sys, ok := info.Sys().(*tar.Header); ok {
 			if sys.Linkname != "" {
-				linkname, err := Vis(sys.Linkname, DefaultVisFlags)
+				linkname, err := govis.Vis(sys.Linkname, DefaultVisFlags)
 				if err != nil {
 					return emptyKV, err
 				}
@@ -133,7 +134,7 @@ var (
 			if err != nil {
 				return emptyKV, err
 			}
-			linkname, err := Vis(str, DefaultVisFlags)
+			linkname, err := govis.Vis(str, DefaultVisFlags)
 			if err != nil {
 				return emptyKV, err
 			}

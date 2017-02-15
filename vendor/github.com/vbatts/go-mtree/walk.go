@@ -9,6 +9,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"github.com/vbatts/go-mtree/pkg/govis"
 )
 
 // ExcludeFunc is the type of function called on each path walked to determine
@@ -165,7 +167,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 				}
 			}
 		}
-		encodedEntryName, err := Vis(entryPathName, DefaultVisFlags)
+		encodedEntryName, err := govis.Vis(entryPathName, DefaultVisFlags)
 		if err != nil {
 			return err
 		}
