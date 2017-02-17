@@ -95,7 +95,7 @@ Storing signatures
 INFO[0000] parsed mappings                    map.gid=[] map.uid=[]
 INFO[0000] unpack manifest: unpacking layer sha256:32f7bb9291d9339af352ed8012f0e9edd05d7397d283b6c09ce604d2ecfc5d07  diffid="sha256:bb6447f230852c3e1e07fb5c5d50ec3960bbf15786660f4519ade03dc6237ca1"
 INFO[0001] unpack manifest: unpacking config  config="sha256:a6f6d93caed6e40729f2303fd950cec3973dfbcf09bdaa4aab247618f716c9cb"
-% oci-runtime-tool generate --bind /etc/resolv.conf:/etc/resolv.conf:ro --linux-namespace-remove network --template bundle/config.json > bundle/config.json.tmp && mv bundle/config.json{.tmp,}
+% oci-runtime-tool generate --bind /etc/resolv.conf:/etc/resolv.conf:ro --network=host --template bundle/config.json > bundle/config.json.tmp && mv bundle/config.json{.tmp,}
 % runc run -b bundle ctr
 sh-4.2# zypper ref
 Retrieving repository 'NON-OSS' metadata ................................[done]
