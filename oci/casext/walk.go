@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package casext
 
 import (
 	"reflect"
@@ -154,7 +154,7 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 	}
 
 	// Get blob to recurse into.
-	blob, err := FromDescriptor(ctx, ws.engine, descriptor)
+	blob, err := ws.engine.FromDescriptor(ctx, descriptor)
 	if err != nil {
 		return err
 	}
@@ -177,9 +177,9 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 // provided CAS engine to fetch all other necessary descriptors. If an error is
 // returned by the provided WalkFunc, walking is terminated and the error is
 // returned to the caller.
-func Walk(ctx context.Context, engine Engine, root ispec.Descriptor, walkFunc WalkFunc) error {
+func (e Engine) Walk(ctx context.Context, root ispec.Descriptor, walkFunc WalkFunc) error {
 	ws := &walkState{
-		engine:   engine,
+		engine:   e,
 		walkFunc: walkFunc,
 	}
 	return ws.recurse(ctx, root)
@@ -189,10 +189,10 @@ func Walk(ctx context.Context, engine Engine, root ispec.Descriptor, walkFunc Wa
 // root descriptor. It is effectively shorthand for Walk(). Note that there may
 // be repeated descriptors in the returned slice, due to different blobs
 // containing the same (or a similar) descriptor.
-func Paths(ctx context.Context, engine Engine, root ispec.Descriptor) ([]ispec.Descriptor, error) {
+func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]ispec.Descriptor, error) {
 	var reachable []ispec.Descriptor
 
-	err := Walk(ctx, engine, root, func(descriptor ispec.Descriptor) error {
+	err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
 		reachable = append(reachable, descriptor)
 		return nil
 	})
@@ -204,10 +204,10 @@ func Paths(ctx context.Context, engine Engine, root ispec.Descriptor) ([]ispec.D
 // Walk(). The returned slice will *not* contain any duplicate digest.Digest
 // entries. Note that without descriptors, a digest is not particularly
 // meaninful (OCI blobs are not self-descriptive).
-func Reachable(ctx context.Context, engine Engine, root ispec.Descriptor) ([]digest.Digest, error) {
+func (e Engine) Reachable(ctx context.Context, root ispec.Descriptor) ([]digest.Digest, error) {
 	seen := map[digest.Digest]struct{}{}
 
-	if err := Walk(ctx, engine, root, func(descriptor ispec.Descriptor) error {
+	if err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
 		seen[descriptor.Digest] = struct{}{}
 		return nil
 	}); err != nil {

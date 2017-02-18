@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package casext
 
 import (
 	"github.com/apex/log"
@@ -35,17 +35,17 @@ import (
 // functions. In other words, it assumes it is the only user of the image that
 // is making modifications. Things will not go well if this assumption is
 // challenged.
-func GC(ctx context.Context, engine Engine) error {
+func (e Engine) GC(ctx context.Context) error {
 	// Generate the root set of descriptors.
 	var root []ispec.Descriptor
 
-	names, err := engine.ListReferences(ctx)
+	names, err := e.ListReferences(ctx)
 	if err != nil {
 		return errors.Wrap(err, "get roots")
 	}
 
 	for _, name := range names {
-		descriptor, err := engine.GetReference(ctx, name)
+		descriptor, err := e.GetReference(ctx, name)
 		if err != nil {
 			return errors.Wrapf(err, "get root %s", name)
 		}
@@ -63,7 +63,7 @@ func GC(ctx context.Context, engine Engine) error {
 			"digest": descriptor.Digest,
 		}).Debugf("GC: marking from root")
 
-		reachables, err := Reachable(ctx, engine, descriptor)
+		reachables, err := e.Reachable(ctx, descriptor)
 		if err != nil {
 			return errors.Wrapf(err, "getting reachables from root %d", idx)
 		}
@@ -73,7 +73,7 @@ func GC(ctx context.Context, engine Engine) error {
 	}
 
 	// Sweep all blobs in the white set.
-	blobs, err := engine.ListBlobs(ctx)
+	blobs, err := e.ListBlobs(ctx)
 	if err != nil {
 		return errors.Wrap(err, "get blob list")
 	}
@@ -86,15 +86,15 @@ func GC(ctx context.Context, engine Engine) error {
 		}
 		log.Infof("garbage collecting blob: %s", digest)
 
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
+		if err := e.DeleteBlob(ctx, digest); err != nil {
 			return errors.Wrapf(err, "remove unmarked blob %s", digest)
 		}
 		n++
 	}
 
 	// Finally, tell CAS to GC it.
-	if err := engine.GC(ctx); err != nil {
-		return errors.Wrapf(err, "GC engine")
+	if err := e.Clean(ctx); err != nil {
+		return errors.Wrapf(err, "clean engine")
 	}
 
 	log.Debugf("garbage collected %d blobs", n)

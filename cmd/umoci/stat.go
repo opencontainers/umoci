@@ -23,6 +23,7 @@ import (
 	"os"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -63,6 +64,7 @@ func stat(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	manifestDescriptor, err := engine.GetReference(context.Background(), tagName)
@@ -76,7 +78,7 @@ func stat(ctx *cli.Context) error {
 	}
 
 	// Get stat information.
-	ms, err := Stat(context.Background(), engine, manifestDescriptor)
+	ms, err := Stat(context.Background(), engineExt, manifestDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "stat")
 	}

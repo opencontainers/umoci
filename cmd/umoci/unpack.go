@@ -26,6 +26,7 @@ import (
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -125,15 +126,16 @@ func unpack(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	fromDescriptor, err := engine.GetReference(context.Background(), fromName)
+	fromDescriptor, err := engineExt.GetReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
 	meta.From = fromDescriptor
 
-	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, meta.From)
+	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From)
 	if err != nil {
 		return errors.Wrap(err, "get manifest")
 	}
@@ -172,7 +174,7 @@ func unpack(ctx *cli.Context) error {
 	//        should be fixed once the CAS engine PR is merged into
 	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
 	log.Info("unpacking bundle ...")
-	if err := layer.UnpackManifest(context.Background(), engine, bundlePath, manifest, &meta.MapOptions); err != nil {
+	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 	log.Info("... done")

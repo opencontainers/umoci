@@ -115,11 +115,11 @@ type Engine interface {
 	// ListReferences returns the set of reference names stored in the image.
 	ListReferences(ctx context.Context) (names []string, err error)
 
-	// GC executes a garbage collection of any non-blob garbage in the store
+	// Clean executes a garbage collection of any non-blob garbage in the store
 	// (this includes temporary files and directories not reachable from the
 	// CAS interface). This MUST NOT remove any blobs or references in the
 	// store.
-	GC(ctx context.Context) (err error)
+	Clean(ctx context.Context) (err error)
 
 	// Close releases all references held by the engine. Subsequent operations
 	// may fail.

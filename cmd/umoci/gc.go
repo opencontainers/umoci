@@ -19,6 +19,7 @@ package main
 
 import (
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -56,8 +57,9 @@ func gc(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	// Run the GC.
-	return errors.Wrap(cas.GC(context.Background(), engine), "gc")
+	return errors.Wrap(engineExt.GC(context.Background()), "gc")
 }

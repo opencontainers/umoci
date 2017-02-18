@@ -371,10 +371,10 @@ func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 	return refs, nil
 }
 
-// GC executes a garbage collection of any non-blob garbage in the store (this
-// includes temporary files and directories not reachable from the CAS
+// Clean executes a garbage collection of any non-blob garbage in the store
+// (this includes temporary files and directories not reachable from the CAS
 // interface). This MUST NOT remove any blobs or references in the store.
-func (e *dirEngine) GC(ctx context.Context) error {
+func (e *dirEngine) Clean(ctx context.Context) error {
 	// Effectively we are going to remove every directory except the standard
 	// directories, unless they have a lock already.
 	fh, err := os.Open(e.path)

@@ -397,7 +397,8 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
 
-	if err := GC(ctx, gcEngine); err != nil {
+	// TODO: This should be done with casext.GC...
+	if err := gcEngine.Clean(ctx); err != nil {
 		t.Fatalf("unexpected error while GCing image: %+v", err)
 	}
 
