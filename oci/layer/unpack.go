@@ -30,7 +30,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
-	igen "github.com/openSUSE/umoci/oci/config/generate"
+	iconv "github.com/openSUSE/umoci/oci/config/convert"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	"github.com/openSUSE/umoci/pkg/system"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -206,7 +206,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	log.Infof("unpack configuration: %s", configBlob.Digest)
 
 	g := rgen.New()
-	if err := igen.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
+	if err := iconv.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 

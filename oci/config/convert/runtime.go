@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package generate
+package convert
 
 import (
 	"path/filepath"
