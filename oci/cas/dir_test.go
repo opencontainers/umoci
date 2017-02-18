@@ -299,7 +299,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
 
-		if err := engine.PutReference(ctx, test.name, &test.descriptor); err != nil {
+		if err := engine.PutReference(ctx, test.name, test.descriptor); err != nil {
 			t.Errorf("PutReference: unexpected error: %+v", err)
 		}
 
@@ -320,12 +320,12 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			t.Errorf("GetReference: unexpected error: %+v", err)
 		}
 
-		if !reflect.DeepEqual(test.descriptor, *gotDescriptor) {
+		if !reflect.DeepEqual(test.descriptor, gotDescriptor) {
 			t.Errorf("GetReference: got different descriptor to original: expected=%v got=%v", test.descriptor, gotDescriptor)
 		}
 
 		// Make sure that writing will FAIL.
-		if err := newEngine.PutReference(ctx, test.name+"new", &test.descriptor); err == nil {
+		if err := newEngine.PutReference(ctx, test.name+"new", test.descriptor); err == nil {
 			t.Logf("PutReference: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutReference: expected error on ro image!")
 		}

@@ -131,9 +131,9 @@ func unpack(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
-	meta.From = *fromDescriptor
+	meta.From = fromDescriptor
 
-	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, &meta.From)
+	manifestBlob, err := cas.FromDescriptor(context.Background(), engine, meta.From)
 	if err != nil {
 		return errors.Wrap(err, "get manifest")
 	}
@@ -156,7 +156,11 @@ func unpack(ctx *cli.Context) error {
 	}).Debugf("umoci: unpacking OCI image")
 
 	// Get the manifest.
-	manifest := manifestBlob.Data.(*ispec.Manifest)
+	manifest, ok := manifestBlob.Data.(ispec.Manifest)
+	if !ok {
+		// Should _never_ be reached.
+		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+	}
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
@@ -168,7 +172,7 @@ func unpack(ctx *cli.Context) error {
 	//        should be fixed once the CAS engine PR is merged into
 	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
 	log.Info("unpacking bundle ...")
-	if err := layer.UnpackManifest(context.Background(), engine, bundlePath, *manifest, &meta.MapOptions); err != nil {
+	if err := layer.UnpackManifest(context.Background(), engine, bundlePath, manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 	log.Info("... done")

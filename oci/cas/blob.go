@@ -42,14 +42,14 @@ type Blob struct {
 	// typed according to the media type. The mapping from MIME => type is as
 	// follows.
 	//
-	// ispec.MediaTypeDescriptor => *ispec.Descriptor
-	// ispec.MediaTypeImageManifest => *ispec.Manifest
-	// ispec.MediaTypeImageManifestList => *ispec.ManifestList
+	// ispec.MediaTypeDescriptor => ispec.Descriptor
+	// ispec.MediaTypeImageManifest => ispec.Manifest
+	// ispec.MediaTypeImageManifestList => ispec.ManifestList
 	// ispec.MediaTypeImageLayer => io.ReadCloser
 	// ispec.MediaTypeImageLayerGzip => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
-	// ispec.MediaTypeImageConfig => *ispec.Image
+	// ispec.MediaTypeImageConfig => ispec.Image
 	Data interface{}
 }
 
@@ -75,31 +75,50 @@ func (b *Blob) load(ctx context.Context, engine Engine) error {
 
 	defer reader.Close()
 
-	var parsed interface{}
+	// It would be great if this code didn't require tying the JSON decoding to
+	// the type decisions -- but because of Go's lack of generics we can't
+	// return regular structs as an interface without some ugly code.
 	switch b.MediaType {
-	// ispec.MediaTypeDescriptor => *ispec.Descriptor
+	// ispec.MediaTypeDescriptor => ispec.Descriptor
 	case ispec.MediaTypeDescriptor:
-		parsed = &ispec.Descriptor{}
-	// ispec.MediaTypeImageManifest => *ispec.Manifest
+		parsed := ispec.Descriptor{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeDescriptor")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageManifest => ispec.Manifest
 	case ispec.MediaTypeImageManifest:
-		parsed = &ispec.Manifest{}
-	// ispec.MediaTypeImageManifestList => *ispec.ManifestList
+		parsed := ispec.Manifest{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageManifest")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageManifestList => ispec.ManifestList
 	case ispec.MediaTypeImageManifestList:
-		parsed = &ispec.ManifestList{}
-	// ispec.MediaTypeImageConfig => *ispec.ImageConfig
+		parsed := ispec.ManifestList{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageManifestList")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageConfig => ispec.Image
 	case ispec.MediaTypeImageConfig:
-		parsed = &ispec.Image{}
+		parsed := ispec.Image{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageConfig")
+		}
+		b.Data = parsed
+
 	default:
 		return fmt.Errorf("cas blob: unsupported mediatype: %s", b.MediaType)
 	}
 
-	if err := json.NewDecoder(reader).Decode(parsed); err != nil {
-		return errors.Wrap(err, "parse blob")
+	if b.Data == nil {
+		return fmt.Errorf("[internal error] b.Data was nil after parsing")
 	}
 
-	// TODO: We should really check that parsed.MediaType == b.MediaType.
-
-	b.Data = parsed
 	return nil
 }
 
@@ -115,7 +134,7 @@ func (b *Blob) Close() {
 }
 
 // FromDescriptor parses the blob referenced by the given descriptor.
-func FromDescriptor(ctx context.Context, engine Engine, descriptor *ispec.Descriptor) (*Blob, error) {
+func FromDescriptor(ctx context.Context, engine Engine, descriptor ispec.Descriptor) (*Blob, error) {
 	blob := &Blob{
 		MediaType: descriptor.MediaType,
 		Digest:    descriptor.Digest,

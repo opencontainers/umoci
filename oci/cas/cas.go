@@ -84,7 +84,7 @@ type Engine interface {
 	// without implying "because of this PutReference() call". ErrClobber is
 	// returned if there is already a descriptor stored at NAME, but does not
 	// match the descriptor requested to be stored.
-	PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) (err error)
+	PutReference(ctx context.Context, name string, descriptor ispec.Descriptor) (err error)
 
 	// GetBlob returns a reader for retrieving a blob from the image, which the
 	// caller must Close(). Returns os.ErrNotExist if the digest is not found.
@@ -92,7 +92,7 @@ type Engine interface {
 
 	// GetReference returns a reference from the image. Returns os.ErrNotExist
 	// if the name was not found.
-	GetReference(ctx context.Context, name string) (descriptor *ispec.Descriptor, err error)
+	GetReference(ctx context.Context, name string) (descriptor ispec.Descriptor, err error)
 
 	// DeleteBlob removes a blob from the image. This is idempotent; a nil
 	// error means "the content is not in the store" without implying "because

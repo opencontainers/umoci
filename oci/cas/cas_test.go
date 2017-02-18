@@ -270,7 +270,7 @@ func TestEngineReference(t *testing.T) {
 		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
 		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributableGzip, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
 	} {
-		if err := engine.PutReference(ctx, test.name, &test.descriptor); err != nil {
+		if err := engine.PutReference(ctx, test.name, test.descriptor); err != nil {
 			t.Errorf("PutReference: unexpected error: %+v", err)
 		}
 
@@ -279,7 +279,7 @@ func TestEngineReference(t *testing.T) {
 			t.Errorf("GetReference: unexpected error: %+v", err)
 		}
 
-		if !reflect.DeepEqual(test.descriptor, *gotDescriptor) {
+		if !reflect.DeepEqual(test.descriptor, gotDescriptor) {
 			t.Errorf("GetReference: got different descriptor to original: expected=%v got=%v", test.descriptor, gotDescriptor)
 		}
 

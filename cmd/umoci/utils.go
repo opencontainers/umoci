@@ -188,23 +188,25 @@ func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descr
 	}
 
 	// We have to get the actual manifest.
-	manifestBlob, err := cas.FromDescriptor(ctx, engine, &manifestDescriptor)
+	manifestBlob, err := cas.FromDescriptor(ctx, engine, manifestDescriptor)
 	if err != nil {
 		return stat, err
 	}
-	manifest, ok := manifestBlob.Data.(*ispec.Manifest)
+	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
-		return stat, errors.Errorf("stat: cannot convert manifestBlob to manifest")
+		// Should _never_ be reached.
+		return stat, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
 	}
 
 	// Now get the config.
-	configBlob, err := cas.FromDescriptor(ctx, engine, &manifest.Config)
+	configBlob, err := cas.FromDescriptor(ctx, engine, manifest.Config)
 	if err != nil {
 		return stat, errors.Wrap(err, "stat")
 	}
-	config, ok := configBlob.Data.(*ispec.Image)
+	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
-		return stat, errors.Errorf("stat: cannot convert configBlob to config")
+		// Should _never_ be reached.
+		return stat, errors.Errorf("[internal error] unknown config blob type: %s", configBlob.MediaType)
 	}
 
 	// TODO: This should probably be moved into separate functions.

@@ -76,7 +76,7 @@ func stat(ctx *cli.Context) error {
 	}
 
 	// Get stat information.
-	ms, err := Stat(context.Background(), engine, *manifestDescriptor)
+	ms, err := Stat(context.Background(), engine, manifestDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "stat")
 	}
