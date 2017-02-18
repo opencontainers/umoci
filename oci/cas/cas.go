@@ -77,6 +77,11 @@ type Engine interface {
 	// as the reader. Note that due to intricacies in the Go JSON
 	// implementation, we cannot guarantee that two calls to PutBlobJSON() will
 	// return the same digest.
+	//
+	// TODO: Use a proper JSON serialisation library, which actually guarantees
+	//       consistent output. Go's JSON library doesn't even attempt to sort
+	//       map[...]... objects (which have their iteration order randomised
+	//       in Go).
 	PutBlobJSON(ctx context.Context, data interface{}) (digest digest.Digest, size int64, err error)
 
 	// PutReference adds a new reference descriptor blob to the image. This is
