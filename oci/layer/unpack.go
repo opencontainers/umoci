@@ -30,7 +30,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
-	igen "github.com/openSUSE/umoci/oci/generate"
+	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	"github.com/openSUSE/umoci/pkg/system"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
