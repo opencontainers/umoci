@@ -219,7 +219,7 @@ func (e *dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (digest.D
 // without implying "because of this PutReference() call". ErrClobber is
 // returned if there is already a descriptor stored at NAME, but does not
 // match the descriptor requested to be stored.
-func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor *ispec.Descriptor) error {
+func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor ispec.Descriptor) error {
 	if err := e.ensureTempDir(); err != nil {
 		return errors.Wrap(err, "ensure tempdir")
 	}
@@ -276,24 +276,24 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 
 // GetReference returns a reference from the image. Returns os.ErrNotExist
 // if the name was not found.
-func (e *dirEngine) GetReference(ctx context.Context, name string) (*ispec.Descriptor, error) {
+func (e *dirEngine) GetReference(ctx context.Context, name string) (ispec.Descriptor, error) {
 	path, err := refPath(name)
 	if err != nil {
-		return nil, errors.Wrap(err, "compute ref path")
+		return ispec.Descriptor{}, errors.Wrap(err, "compute ref path")
 	}
 
 	content, err := ioutil.ReadFile(filepath.Join(e.path, path))
 	if err != nil {
-		return nil, errors.Wrap(err, "read ref")
+		return ispec.Descriptor{}, errors.Wrap(err, "read ref")
 	}
 
 	var descriptor ispec.Descriptor
 	if err := json.Unmarshal(content, &descriptor); err != nil {
-		return nil, errors.Wrap(err, "parse ref")
+		return ispec.Descriptor{}, errors.Wrap(err, "parse ref")
 	}
 
 	// XXX: Do we need to validate the descriptor?
-	return &descriptor, nil
+	return descriptor, nil
 }
 
 // DeleteBlob removes a blob from the image. This is idempotent; a nil

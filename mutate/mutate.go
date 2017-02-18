@@ -75,37 +75,37 @@ type Meta struct {
 func (m *Mutator) cache(ctx context.Context) error {
 	// We need the manifest
 	if m.manifest == nil {
-		blob, err := cas.FromDescriptor(ctx, m.engine, &m.source)
+		blob, err := cas.FromDescriptor(ctx, m.engine, m.source)
 		if err != nil {
 			return errors.Wrap(err, "cache source manifest")
 		}
 		defer blob.Close()
 
-		manifest, ok := blob.Data.(*ispec.Manifest)
+		manifest, ok := blob.Data.(ispec.Manifest)
 		if !ok {
-			// Should never be reached.
-			return errors.Errorf("unknown manifest blob type: %s", blob.MediaType)
+			// Should _never_ be reached.
+			return errors.Errorf("[internal error] unknown manifest blob type: %s", blob.MediaType)
 		}
 
 		// Make a copy of the manifest.
-		m.manifest = manifestPtr(*manifest)
+		m.manifest = manifestPtr(manifest)
 	}
 
 	if m.config == nil {
-		blob, err := cas.FromDescriptor(ctx, m.engine, &m.manifest.Config)
+		blob, err := cas.FromDescriptor(ctx, m.engine, m.manifest.Config)
 		if err != nil {
 			return errors.Wrap(err, "cache source config")
 		}
 		defer blob.Close()
 
-		config, ok := blob.Data.(*ispec.Image)
+		config, ok := blob.Data.(ispec.Image)
 		if !ok {
-			// Should never be reached.
-			return errors.Errorf("unknown config blob type: %s", blob.MediaType)
+			// Should _never_ be reached.
+			return errors.Errorf("[internal error] unknown config blob type: %s", blob.MediaType)
 		}
 
 		// Make a copy of the config and configDescriptor.
-		m.config = configPtr(*config)
+		m.config = configPtr(config)
 	}
 
 	return nil

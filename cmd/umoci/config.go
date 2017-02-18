@@ -135,7 +135,7 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "get from reference")
 	}
 
-	mutator, err := mutate.New(engine, *fromDescriptor)
+	mutator, err := mutate.New(engine, fromDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "create mutator for manifest")
 	}
@@ -285,7 +285,7 @@ func config(ctx *cli.Context) error {
 
 	log.Infof("new image manifest created: %s", newDescriptor.Digest)
 
-	err = engine.PutReference(context.Background(), tagName, &newDescriptor)
+	err = engine.PutReference(context.Background(), tagName, newDescriptor)
 	if err == cas.ErrClobber {
 		// We have to clobber a tag.
 		log.Warnf("clobbering existing tag: %s", tagName)
@@ -294,7 +294,7 @@ func config(ctx *cli.Context) error {
 		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
 			return errors.Wrap(err, "delete old tag")
 		}
-		err = engine.PutReference(context.Background(), tagName, &newDescriptor)
+		err = engine.PutReference(context.Background(), tagName, newDescriptor)
 	}
 	if err != nil {
 		return errors.Wrap(err, "add new tag")

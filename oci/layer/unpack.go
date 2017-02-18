@@ -143,7 +143,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// In order to verify the DiffIDs as we extract layers, we have to get the
 	// .Config blob first. But we can't extract it (generate the runtime
 	// config) until after we have the full rootfs generated.
-	configBlob, err := cas.FromDescriptor(ctx, engine, &manifest.Config)
+	configBlob, err := cas.FromDescriptor(ctx, engine, manifest.Config)
 	if err != nil {
 		return errors.Wrap(err, "get config blob")
 	}
@@ -151,7 +151,11 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	if configBlob.MediaType != ispec.MediaTypeImageConfig {
 		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
 	}
-	config := configBlob.Data.(*ispec.Image)
+	config, ok := configBlob.Data.(ispec.Image)
+	if !ok {
+		// Should _never_ be reached.
+		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.MediaType)
+	}
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
@@ -163,7 +167,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		layerDiffID := config.RootFS.DiffIDs[idx]
 		log.Infof("unpack layer: %s", layerDescriptor.Digest)
 
-		layerBlob, err := cas.FromDescriptor(ctx, engine, &layerDescriptor)
+		layerBlob, err := cas.FromDescriptor(ctx, engine, layerDescriptor)
 		if err != nil {
 			return errors.Wrap(err, "get layer blob")
 		}
@@ -171,7 +175,11 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if !isLayerType(layerBlob.MediaType) {
 			return errors.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
 		}
-		layerGzip := layerBlob.Data.(io.ReadCloser)
+		layerGzip, ok := layerBlob.Data.(io.ReadCloser)
+		if !ok {
+			// Should _never_ be reached.
+			return errors.Errorf("[internal error] layerBlob was not an io.ReadCloser")
+		}
 
 		// We have to extract a gzip'd version of the above layer. Also note
 		// that we have to check the DiffID we're extracting (which is the
@@ -198,7 +206,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	log.Infof("unpack configuration: %s", configBlob.Digest)
 
 	g := rgen.New()
-	if err := igen.MutateRuntimeSpec(g, rootfsPath, *config, manifest); err != nil {
+	if err := igen.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 

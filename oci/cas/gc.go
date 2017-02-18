@@ -146,7 +146,7 @@ func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error 
 	gc.black[descriptor.Digest] = struct{}{}
 
 	// Get the blob to recurse into.
-	blob, err := FromDescriptor(ctx, gc.engine, &descriptor)
+	blob, err := FromDescriptor(ctx, gc.engine, descriptor)
 	if err != nil {
 		return err
 	}
@@ -194,7 +194,7 @@ func GC(ctx context.Context, engine Engine) error {
 			"name":   name,
 			"digest": descriptor.Digest,
 		}).Debugf("GC: got reference")
-		root = append(root, *descriptor)
+		root = append(root, descriptor)
 	}
 
 	// Mark from the root set.
