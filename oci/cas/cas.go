@@ -20,8 +20,6 @@ package cas
 import (
 	"fmt"
 	"io"
-	"os"
-	"path/filepath"
 
 	// We need to include sha256 in order for go-digest to properly handle such
 	// hashes, since Go's crypto library like to lazy-load cryptographic
@@ -30,7 +28,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
@@ -38,16 +35,6 @@ const (
 	// BlobAlgorithm is the name of the only supported digest algorithm for blobs.
 	// FIXME: We can make this a list.
 	BlobAlgorithm = digest.SHA256
-
-	// refDirectory is the directory inside an OCI image that contains references.
-	refDirectory = "refs"
-
-	// blobDirectory is the directory inside an OCI image that contains blobs.
-	blobDirectory = "blobs"
-
-	// layoutFile is the file in side an OCI image the indicates what version
-	// of the OCI spec the image is.
-	layoutFile = "oci-layout"
 )
 
 // Exposed errors.
@@ -124,43 +111,4 @@ type Engine interface {
 	// Close releases all references held by the engine. Subsequent operations
 	// may fail.
 	Close() (err error)
-}
-
-// Open will create an Engine reference to the OCI image at the provided
-// path. If the image format is not supported, ErrNotImplemented will be
-// returned. If the path does not exist, os.ErrNotExist will be returned.
-func Open(path string) (Engine, error) {
-	fi, err := os.Stat(path)
-	if err != nil {
-		return nil, err
-	}
-
-	if fi.IsDir() {
-		return newDirEngine(path)
-	}
-
-	return nil, ErrNotImplemented
-}
-
-// blobPath returns the path to a blob given its digest, relative to the root
-// of the OCI image. The digest must be of the form algorithm:hex.
-func blobPath(digest digest.Digest) (string, error) {
-	if err := digest.Validate(); err != nil {
-		return "", errors.Wrapf(err, "invalid digest: %q", digest)
-	}
-
-	algo := digest.Algorithm()
-	hash := digest.Hex()
-
-	if algo != BlobAlgorithm {
-		return "", errors.Errorf("unsupported algorithm: %q", algo)
-	}
-
-	return filepath.Join(blobDirectory, algo.String(), hash), nil
-}
-
-// refPath returns the path to a reference given its name, relative to the r
-// oot of the OCI image.
-func refPath(name string) (string, error) {
-	return filepath.Join(refDirectory, name), nil
 }

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package dir
 
 import (
 	"bytes"
@@ -27,6 +27,7 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/openSUSE/umoci/oci/cas"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -45,7 +46,7 @@ func TestCreateLayout(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -68,7 +69,7 @@ func TestCreateLayout(t *testing.T) {
 	}
 
 	// We should get an error if we try to create a new image atop an old one.
-	if err := CreateLayout(image); err == nil {
+	if err := Create(image); err == nil {
 		t.Errorf("expected to get a cowardly no-clobber error!")
 	}
 }
@@ -83,7 +84,7 @@ func TestEngineBlob(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -100,7 +101,7 @@ func TestEngineBlob(t *testing.T) {
 		{[]byte("some blob")},
 		{[]byte("another blob")},
 	} {
-		digester := BlobAlgorithm.Digester()
+		digester := cas.BlobAlgorithm.Digester()
 		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
 		}
@@ -169,7 +170,7 @@ func TestEngineBlobJSON(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -252,7 +253,7 @@ func TestEngineReference(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -309,7 +310,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 	defer os.RemoveAll(root)
 
-	var engine Engine
+	var engine cas.Engine
 	var image string
 
 	// Empty directory.
@@ -359,7 +360,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
@@ -379,7 +380,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
@@ -402,7 +403,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {
@@ -422,7 +423,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {

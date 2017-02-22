@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package dir
 
 import (
 	"bytes"
@@ -28,6 +28,7 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/openSUSE/umoci/oci/cas"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -75,7 +76,7 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -112,7 +113,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -128,7 +129,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
 
-		digester := BlobAlgorithm.Digester()
+		digester := cas.BlobAlgorithm.Digester()
 		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
 		}
@@ -198,7 +199,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -281,7 +282,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -351,7 +352,7 @@ func TestEngineGCLocking(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := CreateLayout(image); err != nil {
+	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -363,7 +364,7 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
 
-	digester := BlobAlgorithm.Digester()
+	digester := cas.BlobAlgorithm.Digester()
 	if _, err := io.Copy(digester.Hash(), bytes.NewReader(content)); err != nil {
 		t.Fatalf("could not hash bytes: %+v", err)
 	}
