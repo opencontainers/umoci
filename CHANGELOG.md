@@ -9,6 +9,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci`'s `oci/cas` and `oci/config` libraries have been massively refactored
   and rewritten, to allow for third-parties to use the OCI libraries. The plan
   is for these to eventually become part of an OCI project. openSUSE/umoci#90
+- The `oci/cas` interface has been modifed to switch from `*ispec.Descriptor`
+  to `ispec.Descriptor`. This is a breaking, but fairly insignificant, change.
+  openSUSE/umoci#89
+
+### Fixed
+- `umoci` now uses an updated version of `go-mtree`, which has a complete
+  rewrite of `Vis` and `Unvis`. The rewrite ensures that unicode handling is
+  handled in a far more consistent and sane way. openSUSE/umoci#88
 
 ## [0.1.0] - 2017-02-11
 ### Added
