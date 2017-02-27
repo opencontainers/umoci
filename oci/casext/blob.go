@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-package cas
+package casext
 
 import (
 	"encoding/json"
 	"fmt"
 	"io"
 
+	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -53,7 +54,7 @@ type Blob struct {
 	Data interface{}
 }
 
-func (b *Blob) load(ctx context.Context, engine Engine) error {
+func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 	reader, err := engine.GetBlob(ctx, b.Digest)
 	if err != nil {
 		return errors.Wrap(err, "get blob")
@@ -134,14 +135,14 @@ func (b *Blob) Close() {
 }
 
 // FromDescriptor parses the blob referenced by the given descriptor.
-func FromDescriptor(ctx context.Context, engine Engine, descriptor ispec.Descriptor) (*Blob, error) {
+func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (*Blob, error) {
 	blob := &Blob{
 		MediaType: descriptor.MediaType,
 		Digest:    descriptor.Digest,
 		Data:      nil,
 	}
 
-	if err := blob.load(ctx, engine); err != nil {
+	if err := blob.load(ctx, e); err != nil {
 		return nil, errors.Wrap(err, "load")
 	}
 

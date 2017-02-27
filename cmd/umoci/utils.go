@@ -28,8 +28,8 @@ import (
 	"text/tabwriter"
 
 	"github.com/docker/go-units"
-	"github.com/openSUSE/umoci/oci/cas"
-	igen "github.com/openSUSE/umoci/oci/generate"
+	"github.com/openSUSE/umoci/oci/casext"
+	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/oci/layer"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -180,7 +180,7 @@ type historyStat struct {
 
 // Stat computes the ManifestStat for a given manifest blob. The provided
 // descriptor must refer to an OCI Manifest.
-func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descriptor) (ManifestStat, error) {
+func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.Descriptor) (ManifestStat, error) {
 	var stat ManifestStat
 
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
@@ -188,7 +188,7 @@ func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descr
 	}
 
 	// We have to get the actual manifest.
-	manifestBlob, err := cas.FromDescriptor(ctx, engine, manifestDescriptor)
+	manifestBlob, err := engine.FromDescriptor(ctx, manifestDescriptor)
 	if err != nil {
 		return stat, err
 	}
@@ -199,7 +199,7 @@ func Stat(ctx context.Context, engine cas.Engine, manifestDescriptor ispec.Descr
 	}
 
 	// Now get the config.
-	configBlob, err := cas.FromDescriptor(ctx, engine, manifest.Config)
+	configBlob, err := engine.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
 		return stat, errors.Wrap(err, "stat")
 	}

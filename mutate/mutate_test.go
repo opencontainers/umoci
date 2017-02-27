@@ -30,6 +30,9 @@ import (
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
+
+	// Include all known drivers.
+	_ "github.com/openSUSE/umoci/oci/cas/drivers"
 )
 
 // These come from just running the code.
@@ -41,7 +44,7 @@ const (
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	dir = filepath.Join(dir, "image")
-	if err := cas.CreateLayout(dir); err != nil {
+	if err := cas.Create(dir); err != nil {
 		t.Fatal(err)
 	}
 

@@ -54,7 +54,7 @@ func initLayout(ctx *cli.Context) error {
 		return errors.Wrap(err, "image layout creation")
 	}
 
-	if err := cas.CreateLayout(imagePath); err != nil {
+	if err := cas.Create(imagePath); err != nil {
 		return errors.Wrap(err, "image layout creation")
 	}
 

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package dir
 
 import (
 	"bytes"
@@ -26,6 +26,7 @@ import (
 	"path/filepath"
 	"reflect"
 
+	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -33,55 +34,45 @@ import (
 	"golang.org/x/net/context"
 )
 
-// ImageLayoutVersion is the version of the image layout we support. This value
-// is *not* the same as imagespec.Version, and the meaning of this field is
-// still under discussion in the spec. For now we'll just hardcode the value
-// and hope for the best.
-const ImageLayoutVersion = "1.0.0"
+const (
+	// ImageLayoutVersion is the version of the image layout we support. This
+	// value is *not* the same as imagespec.Version, and the meaning of this
+	// field is still under discussion in the spec. For now we'll just hardcode
+	// the value and hope for the best.
+	ImageLayoutVersion = "1.0.0"
 
-// CreateLayout creates a new OCI image layout at the given path. If the path
-// already exists, os.ErrExist is returned. However, all of the parent
-// components of the path will be created if necessary.
-func CreateLayout(path string) error {
-	// We need to fail if path already exists, but we first create all of the
-	// parent paths.
-	dir := filepath.Dir(path)
-	if dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
-			return errors.Wrap(err, "mkdir parent")
-		}
-	}
-	if err := os.Mkdir(path, 0755); err != nil {
-		return errors.Wrap(err, "mkdir")
-	}
+	// refDirectory is the directory inside an OCI image that contains references.
+	refDirectory = "refs"
 
-	// Create the necessary directories and "oci-layout" file.
-	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
-		return errors.Wrap(err, "mkdir blobdir")
-	}
-	if err := os.Mkdir(filepath.Join(path, blobDirectory, BlobAlgorithm.String()), 0755); err != nil {
-		return errors.Wrap(err, "mkdir algorithm")
-	}
-	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
-		return errors.Wrap(err, "mkdir refdir")
+	// blobDirectory is the directory inside an OCI image that contains blobs.
+	blobDirectory = "blobs"
+
+	// layoutFile is the file in side an OCI image the indicates what version
+	// of the OCI spec the image is.
+	layoutFile = "oci-layout"
+)
+
+// blobPath returns the path to a blob given its digest, relative to the root
+// of the OCI image. The digest must be of the form algorithm:hex.
+func blobPath(digest digest.Digest) (string, error) {
+	if err := digest.Validate(); err != nil {
+		return "", errors.Wrapf(err, "invalid digest: %q", digest)
 	}
 
-	fh, err := os.Create(filepath.Join(path, layoutFile))
-	if err != nil {
-		return errors.Wrap(err, "create oci-layout")
-	}
-	defer fh.Close()
+	algo := digest.Algorithm()
+	hash := digest.Hex()
 
-	ociLayout := &ispec.ImageLayout{
-		Version: ImageLayoutVersion,
+	if algo != cas.BlobAlgorithm {
+		return "", errors.Errorf("unsupported algorithm: %q", algo)
 	}
 
-	if err := json.NewEncoder(fh).Encode(ociLayout); err != nil {
-		return errors.Wrap(err, "encode oci-layout")
-	}
+	return filepath.Join(blobDirectory, algo.String(), hash), nil
+}
 
-	// Everything is now set up.
-	return nil
+// refPath returns the path to a reference given its name, relative to the r
+// oot of the OCI image.
+func refPath(name string) (string, error) {
+	return filepath.Join(refDirectory, name), nil
 }
 
 type dirEngine struct {
@@ -119,7 +110,7 @@ func (e *dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
 		if os.IsNotExist(err) {
-			err = ErrInvalid
+			err = cas.ErrInvalid
 		}
 		return errors.Wrap(err, "read oci-layout")
 	}
@@ -132,29 +123,29 @@ func (e *dirEngine) validate() error {
 	// XXX: Currently the meaning of this field is not adequately defined by
 	//      the spec, nor is the "official" value determined by the spec.
 	if ociLayout.Version != ImageLayoutVersion {
-		return errors.Wrap(ErrInvalid, "layout version is supported")
+		return errors.Wrap(cas.ErrInvalid, "layout version is supported")
 	}
 
 	// Check that "blobs" and "refs" exist in the image.
-	// FIXME: We also should check that blobs *only* contains a BlobAlgorithm
+	// FIXME: We also should check that blobs *only* contains a cas.BlobAlgorithm
 	//        directory (with no subdirectories) and that refs *only* contains
 	//        files (optionally also making sure they're all JSON descriptors).
 	if fi, err := os.Stat(filepath.Join(e.path, blobDirectory)); err != nil {
 		if os.IsNotExist(err) {
-			err = ErrInvalid
+			err = cas.ErrInvalid
 		}
 		return errors.Wrap(err, "check blobdir")
 	} else if !fi.IsDir() {
-		return errors.Wrap(ErrInvalid, "blobdir is directory")
+		return errors.Wrap(cas.ErrInvalid, "blobdir is directory")
 	}
 
 	if fi, err := os.Stat(filepath.Join(e.path, refDirectory)); err != nil {
 		if os.IsNotExist(err) {
-			err = ErrInvalid
+			err = cas.ErrInvalid
 		}
 		return errors.Wrap(err, "check refdir")
 	} else if !fi.IsDir() {
-		return errors.Wrap(ErrInvalid, "refdir is directory")
+		return errors.Wrap(cas.ErrInvalid, "refdir is directory")
 	}
 
 	return nil
@@ -168,7 +159,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 		return "", -1, errors.Wrap(err, "ensure tempdir")
 	}
 
-	digester := BlobAlgorithm.Digester()
+	digester := cas.BlobAlgorithm.Digester()
 
 	// We copy this into a temporary file because we need to get the blob hash,
 	// but also to avoid half-writing an invalid blob.
@@ -227,7 +218,7 @@ func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor is
 	if oldDescriptor, err := e.GetReference(ctx, name); err == nil {
 		// We should not return an error if the two descriptors are identical.
 		if !reflect.DeepEqual(oldDescriptor, descriptor) {
-			return ErrClobber
+			return cas.ErrClobber
 		}
 		return nil
 	} else if !os.IsNotExist(errors.Cause(err)) {
@@ -331,7 +322,7 @@ func (e *dirEngine) DeleteReference(ctx context.Context, name string) error {
 // ListBlobs returns the set of blob digests stored in the image.
 func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 	digests := []digest.Digest{}
-	blobDir := filepath.Join(e.path, blobDirectory, BlobAlgorithm.String())
+	blobDir := filepath.Join(e.path, blobDirectory, cas.BlobAlgorithm.String())
 
 	if err := filepath.Walk(blobDir, func(path string, _ os.FileInfo, _ error) error {
 		// Skip the actual directory.
@@ -340,7 +331,7 @@ func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 		}
 
 		// XXX: Do we need to handle multiple-directory-deep cases?
-		digest := digest.NewDigestFromHex(BlobAlgorithm.String(), filepath.Base(path))
+		digest := digest.NewDigestFromHex(cas.BlobAlgorithm.String(), filepath.Base(path))
 		digests = append(digests, digest)
 		return nil
 	}); err != nil {
@@ -371,10 +362,10 @@ func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
 	return refs, nil
 }
 
-// GC executes a garbage collection of any non-blob garbage in the store (this
-// includes temporary files and directories not reachable from the CAS
+// Clean executes a garbage collection of any non-blob garbage in the store
+// (this includes temporary files and directories not reachable from the CAS
 // interface). This MUST NOT remove any blobs or references in the store.
-func (e *dirEngine) GC(ctx context.Context) error {
+func (e *dirEngine) Clean(ctx context.Context) error {
 	// Effectively we are going to remove every directory except the standard
 	// directories, unless they have a lock already.
 	fh, err := os.Open(e.path)
@@ -436,7 +427,9 @@ func (e *dirEngine) Close() error {
 	return nil
 }
 
-func newDirEngine(path string) (*dirEngine, error) {
+// Open opens a new reference to the directory-backed OCI image referenced by
+// the provided path.
+func Open(path string) (cas.Engine, error) {
 	engine := &dirEngine{
 		path: path,
 		temp: "",
@@ -447,4 +440,49 @@ func newDirEngine(path string) (*dirEngine, error) {
 	}
 
 	return engine, nil
+}
+
+// Create creates a new OCI image layout at the given path. If the path already
+// exists, os.ErrExist is returned. However, all of the parent components of
+// the path will be created if necessary.
+func Create(path string) error {
+	// We need to fail if path already exists, but we first create all of the
+	// parent paths.
+	dir := filepath.Dir(path)
+	if dir != "." {
+		if err := os.MkdirAll(dir, 0755); err != nil {
+			return errors.Wrap(err, "mkdir parent")
+		}
+	}
+	if err := os.Mkdir(path, 0755); err != nil {
+		return errors.Wrap(err, "mkdir")
+	}
+
+	// Create the necessary directories and "oci-layout" file.
+	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
+		return errors.Wrap(err, "mkdir blobdir")
+	}
+	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0755); err != nil {
+		return errors.Wrap(err, "mkdir algorithm")
+	}
+	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
+		return errors.Wrap(err, "mkdir refdir")
+	}
+
+	fh, err := os.Create(filepath.Join(path, layoutFile))
+	if err != nil {
+		return errors.Wrap(err, "create oci-layout")
+	}
+	defer fh.Close()
+
+	ociLayout := &ispec.ImageLayout{
+		Version: ImageLayoutVersion,
+	}
+
+	if err := json.NewEncoder(fh).Encode(ociLayout); err != nil {
+		return errors.Wrap(err, "encode oci-layout")
+	}
+
+	// Everything is now set up.
+	return nil
 }

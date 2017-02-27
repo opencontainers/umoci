@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -40,7 +41,7 @@ func manifestPtr(m ispec.Manifest) *ispec.Manifest { return &m }
 // TODO: Implement manifest list support.
 type Mutator struct {
 	// These are the arguments we got in New().
-	engine cas.Engine
+	engine casext.Engine
 	source ispec.Descriptor
 
 	// Cached values of the configuration and manifest.
@@ -75,7 +76,7 @@ type Meta struct {
 func (m *Mutator) cache(ctx context.Context) error {
 	// We need the manifest
 	if m.manifest == nil {
-		blob, err := cas.FromDescriptor(ctx, m.engine, m.source)
+		blob, err := m.engine.FromDescriptor(ctx, m.source)
 		if err != nil {
 			return errors.Wrap(err, "cache source manifest")
 		}
@@ -92,7 +93,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 	}
 
 	if m.config == nil {
-		blob, err := cas.FromDescriptor(ctx, m.engine, m.manifest.Config)
+		blob, err := m.engine.FromDescriptor(ctx, m.manifest.Config)
 		if err != nil {
 			return errors.Wrap(err, "cache source config")
 		}
@@ -120,7 +121,7 @@ func New(engine cas.Engine, src ispec.Descriptor) (*Mutator, error) {
 	}
 
 	return &Mutator{
-		engine: engine,
+		engine: casext.Engine{engine},
 		source: src,
 	}, nil
 }

@@ -30,7 +30,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
-	igen "github.com/openSUSE/umoci/oci/generate"
+	"github.com/openSUSE/umoci/oci/casext"
+	iconv "github.com/openSUSE/umoci/oci/config/convert"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	"github.com/openSUSE/umoci/pkg/system"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -84,6 +85,8 @@ func isLayerType(mediaType string) bool {
 //
 // FIXME: This interface is ugly.
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) error {
+	engineExt := casext.Engine{engine}
+
 	var mapOptions MapOptions
 	if opt != nil {
 		mapOptions = *opt
@@ -143,7 +146,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// In order to verify the DiffIDs as we extract layers, we have to get the
 	// .Config blob first. But we can't extract it (generate the runtime
 	// config) until after we have the full rootfs generated.
-	configBlob, err := cas.FromDescriptor(ctx, engine, manifest.Config)
+	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
 		return errors.Wrap(err, "get config blob")
 	}
@@ -167,7 +170,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		layerDiffID := config.RootFS.DiffIDs[idx]
 		log.Infof("unpack layer: %s", layerDescriptor.Digest)
 
-		layerBlob, err := cas.FromDescriptor(ctx, engine, layerDescriptor)
+		layerBlob, err := engineExt.FromDescriptor(ctx, layerDescriptor)
 		if err != nil {
 			return errors.Wrap(err, "get layer blob")
 		}
@@ -206,7 +209,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	log.Infof("unpack configuration: %s", configBlob.Digest)
 
 	g := rgen.New()
-	if err := igen.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
+	if err := iconv.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 

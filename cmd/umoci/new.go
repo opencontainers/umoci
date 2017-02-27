@@ -23,7 +23,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
-	igen "github.com/openSUSE/umoci/oci/generate"
+	igen "github.com/openSUSE/umoci/oci/config/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package cas
+package casext
 
 import (
 	"reflect"
@@ -23,11 +23,10 @@ import (
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
 
-// Used by gcState.mark() to determine which struct members are descriptors to
+// Used by walkState.mark() to determine which struct members are descriptors to
 // recurse into them. We aren't interested in struct members which are not
 // either a slice of ispec.Descriptor or ispec.Descriptor themselves.
 var descriptorType = reflect.TypeOf(ispec.Descriptor{})
@@ -119,124 +118,105 @@ func childDescriptors(i interface{}) []ispec.Descriptor {
 	// Unreachable.
 }
 
-// gcState represents the state of the garbage collector at one point in time.
-type gcState struct {
+// walkState stores state information about the recursion into a given
+// descriptor tree.
+type walkState struct {
 	// engine is the CAS engine we are operating on.
 	engine Engine
 
-	// black is the set of digests which are reachable by a descriptor path
-	// from the root set. These are blobs which will *not* be deleted. The
-	// white set of digests is not stored in the state (we only have to compute
-	// it once anyway).
-	black map[digest.Digest]struct{}
+	// walkFunc is the WalkFunc provided by the user.
+	walkFunc WalkFunc
 }
 
-func (gc *gcState) mark(ctx context.Context, descriptor ispec.Descriptor) error {
+// TODO: Also provide Blob to WalkFunc so that callers don't need to load blobs
+//       more than once. This is quite important for remote CAS implementations.
+
+// TODO: Move this and blob.go to a separate package.
+
+// TODO: Implement an equivalent to filepath.SkipDir.
+
+// WalkFunc is the type of function passed to Walk. It will be a called on each
+// descriptor encountered, recursively -- which may involve the function being
+// called on the same descriptor multiple times (though because an OCI image is
+// a Merkle tree there will never be any loops). If an error is returned by
+// WalkFunc, the recursion will halt and the error will bubble up to the
+// caller.
+type WalkFunc func(descriptor ispec.Descriptor) error
+
+func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) error {
 	log.WithFields(log.Fields{
 		"digest": descriptor.Digest,
-	}).Debugf("gc.mark")
+	}).Debugf("-> ws.recurse")
 
-	// Technically we should never hit this because you can't have cycles in a
-	// Merkle tree. But you can't be too careful.
-	if _, ok := gc.black[descriptor.Digest]; ok {
-		return nil
-	}
-
-	// Add the descriptor itself to the black list.
-	gc.black[descriptor.Digest] = struct{}{}
-
-	// Get the blob to recurse into.
-	blob, err := FromDescriptor(ctx, gc.engine, descriptor)
-	if err != nil {
+	// Run walkFunc.
+	if err := ws.walkFunc(descriptor); err != nil {
 		return err
 	}
 
-	// Mark all children.
-	for _, child := range childDescriptors(blob.Data) {
-		log.WithFields(log.Fields{
-			"digest": descriptor.Digest,
-			"child":  child.Digest,
-		}).Debugf("gc.mark recursing into child")
+	// Get blob to recurse into.
+	blob, err := ws.engine.FromDescriptor(ctx, descriptor)
+	if err != nil {
+		return err
+	}
+	defer blob.Close()
 
-		if err := gc.mark(ctx, child); err != nil {
+	// Recurse into children.
+	for _, child := range childDescriptors(blob.Data) {
+		if err := ws.recurse(ctx, child); err != nil {
 			return err
 		}
 	}
 
+	log.WithFields(log.Fields{
+		"digest": descriptor.Digest,
+	}).Debugf("<- ws.recurse")
 	return nil
 }
 
-// GC will perform a mark-and-sweep garbage collection of the OCI image
-// referenced by the given CAS engine. The root set is taken to be the set of
-// references stored in the image, and all blobs not reachable by following a
-// descriptor path from the root set will be removed.
-//
-// GC will only call ListBlobs and ListReferences once, and assumes that there
-// is no change in the set of references or blobs after calling those
-// functions. In other words, it assumes it is the only user of the image that
-// is making modifications. Things will not go well if this assumption is
-// challenged.
-func GC(ctx context.Context, engine Engine) error {
-	// Generate the root set of descriptors.
-	var root []ispec.Descriptor
+// Walk preforms a depth-first walk from a given root descriptor, using the
+// provided CAS engine to fetch all other necessary descriptors. If an error is
+// returned by the provided WalkFunc, walking is terminated and the error is
+// returned to the caller.
+func (e Engine) Walk(ctx context.Context, root ispec.Descriptor, walkFunc WalkFunc) error {
+	ws := &walkState{
+		engine:   e,
+		walkFunc: walkFunc,
+	}
+	return ws.recurse(ctx, root)
+}
 
-	names, err := engine.ListReferences(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get roots")
+// Paths returns the set of descriptors that can be traversed from the provided
+// root descriptor. It is effectively shorthand for Walk(). Note that there may
+// be repeated descriptors in the returned slice, due to different blobs
+// containing the same (or a similar) descriptor.
+func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]ispec.Descriptor, error) {
+	var reachable []ispec.Descriptor
+
+	err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
+		reachable = append(reachable, descriptor)
+		return nil
+	})
+	return reachable, err
+}
+
+// Reachable returns the set of digests which can be reached using a descriptor
+// path from the provided root descriptor. It is effectively a shorthand for
+// Walk(). The returned slice will *not* contain any duplicate digest.Digest
+// entries. Note that without descriptors, a digest is not particularly
+// meaninful (OCI blobs are not self-descriptive).
+func (e Engine) Reachable(ctx context.Context, root ispec.Descriptor) ([]digest.Digest, error) {
+	seen := map[digest.Digest]struct{}{}
+
+	if err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
+		seen[descriptor.Digest] = struct{}{}
+		return nil
+	}); err != nil {
+		return nil, err
 	}
 
-	for _, name := range names {
-		descriptor, err := engine.GetReference(ctx, name)
-		if err != nil {
-			return errors.Wrapf(err, "get root %s", name)
-		}
-		log.WithFields(log.Fields{
-			"name":   name,
-			"digest": descriptor.Digest,
-		}).Debugf("GC: got reference")
-		root = append(root, descriptor)
+	var reachable []digest.Digest
+	for node := range seen {
+		reachable = append(reachable, node)
 	}
-
-	// Mark from the root set.
-	gc := &gcState{
-		engine: engine,
-		black:  map[digest.Digest]struct{}{},
-	}
-
-	for idx, descriptor := range root {
-		log.WithFields(log.Fields{
-			"digest": descriptor.Digest,
-		}).Debugf("GC: marking from root")
-		if err := gc.mark(ctx, descriptor); err != nil {
-			return errors.Wrapf(err, "marking root %d", idx)
-		}
-	}
-
-	// Sweep all blobs in the white set.
-	blobs, err := engine.ListBlobs(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get blob list")
-	}
-
-	n := 0
-	for _, digest := range blobs {
-		if _, ok := gc.black[digest]; ok {
-			// Digest is in the black set.
-			continue
-		}
-		log.Infof("garbage collecting blob: %s", digest)
-
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			return errors.Wrapf(err, "remove unmarked blob %s", digest)
-		}
-		n++
-	}
-
-	// Finally, tell CAS to GC it.
-	if err := engine.GC(ctx); err != nil {
-		return errors.Wrapf(err, "GC engine")
-	}
-
-	log.Debugf("garbage collected %d blobs", n)
-	return nil
+	return reachable, nil
 }
