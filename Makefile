@@ -30,18 +30,30 @@ UMOCI_IMAGE := umoci_dev
 VERSION := $(shell cat ./VERSION)
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
+CMD := ./cmd/umoci
+
+DYN_BUILD_FLAGS := -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
+STATIC_BUILD_FLAGS := -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
 
 .DEFAULT: umoci
 
-GO_SRC =  $(shell find . -name \*.go)
+GO_SRC = $(shell find . -name \*.go)
+.PHONY: umoci umoci.static umoci.cover install install.static
+
 umoci: $(GO_SRC)
-	$(GO) build -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	$(GO) build ${DYN_BUILD_FLAGS} -o $@ ${CMD}
 
 umoci.static: $(GO_SRC)
-	CGO_ENABLED=0 $(GO) build -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $@ ${CMD}
 
 umoci.cover: $(GO_SRC)
-	$(GO) test -c -cover -covermode=count -coverpkg=$(PROJECT)/... -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)" -o $@ $(PROJECT)/cmd/umoci
+	$(GO) test -c -cover -covermode=count -coverpkg=./... ${DYN_BUILD_FLAGS} -o $@ ${CMD}
+
+install: $(GO_SRC)
+	$(GO) install -v ${DYN_BUILD_FLAGS} ${CMD}
+
+install.static: $(GO_SRC)
+	$(GO) install -v ${STATIC_BUILD_FLAGS} ${CMD}
 
 .PHONY: update-deps
 update-deps:
