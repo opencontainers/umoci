@@ -27,6 +27,19 @@ what **I** would like to see in an `oci-image` tool.
 [disc-2]: https://github.com/opencontainers/image-tools/pull/5
 [disc-3]: https://github.com/opencontainers/image-tools/pull/8
 
+### Installation ###
+
+Follow these steps to build in with [golang](https://golang.org):
+
+```bash
+GOPATH=$HOME
+go get -d github.com/openSUSE/umoci
+cd ~/src/github.com/openSUSE/umoci
+make install
+```
+
+Your `umoci` binary will be in `$HOME/bin`.
+
 ### Usage ###
 
 `umoci` has a subcommand-based commandline. For more detailed information, see
