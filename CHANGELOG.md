@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- `umoci` now has some automated scripts for generated RPMs that are used in
+  openSUSE to automatically submit packages to OBS. openSUSE/umoci#101
+
 ### Changed
 - `umoci`'s `oci/cas` and `oci/config` libraries have been massively refactored
   and rewritten, to allow for third-parties to use the OCI libraries. The plan
