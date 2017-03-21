@@ -11,7 +11,7 @@ fi
 cd $(dirname $0)
 
 YEAR=$(date +%Y)
-VERSION=$(cat ../../VERSION)
+VERSION=$(cat ../../../VERSION)
 COMMIT_UNIX_TIME=$(git show -s --format=%ct)
 VERSION="${VERSION%+*}+$(date -d @$COMMIT_UNIX_TIME +%Y%m%d).$(git rev-parse --short HEAD)"
 NAME=$1

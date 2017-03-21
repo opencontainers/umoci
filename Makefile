@@ -30,7 +30,7 @@ UMOCI_IMAGE := umoci_dev
 VERSION := $(shell cat ./VERSION)
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
-CMD := ./cmd/umoci
+CMD := ${PROJECT}/cmd/umoci
 
 DYN_BUILD_FLAGS := -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
 STATIC_BUILD_FLAGS := -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
