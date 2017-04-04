@@ -21,12 +21,13 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
 @test "umoci repack" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -101,7 +102,7 @@ function teardown() {
 }
 
 @test "umoci repack [missing args]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
@@ -114,8 +115,8 @@ function teardown() {
 }
 
 @test "umoci repack [whiteout]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -162,8 +163,8 @@ function teardown() {
 }
 
 @test "umoci repack [replace]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -216,7 +217,7 @@ function teardown() {
 }
 
 @test "umoci repack --history.*" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -264,8 +265,8 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [hardlink]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -323,8 +324,8 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [unpriv]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -372,9 +373,9 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [xattrs]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
-	BUNDLE_C="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -444,9 +445,9 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [unicode]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
-	BUNDLE_C="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 

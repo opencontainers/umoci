@@ -21,6 +21,7 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
@@ -31,7 +32,7 @@ function teardown() {
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
 
-	statFile="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-stat.XXXXXX)"
+	statFile="$(setup_tmpdir)/stat"
 	echo "$output" > "$statFile"
 
 	# .history should have at least one entry.

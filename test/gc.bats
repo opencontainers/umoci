@@ -21,6 +21,7 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
@@ -56,7 +57,7 @@ function teardown() {
 }
 
 @test "umoci gc" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 

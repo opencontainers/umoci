@@ -21,6 +21,7 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
@@ -31,7 +32,7 @@ function teardown() {
 
 @test "umoci init --layout [empty]" {
 	# Setup up $NEWIMAGE.
-	NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
+	NEWIMAGE="$(setup_tmpdir)"
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with no tags.
@@ -67,10 +68,10 @@ function teardown() {
 }
 
 @test "umoci new --image" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Setup up $NEWIMAGE.
-	export NEWIMAGE=$(mktemp -d --tmpdir="$BATS_TMPDIR" image-XXXXX)
+	NEWIMAGE="$(setup_tmpdir)"
 	rm -rf "$NEWIMAGE"
 
 	# Create a new image with no tags.

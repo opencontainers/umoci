@@ -126,15 +126,38 @@ function sane_run() {
 
 function setup_image() {
 	cp -r "${SOURCE_IMAGE}" "${IMAGE}"
+	df >/dev/stderr
+	du -h -d 2 "$BATS_TMPDIR" >/dev/stderr
 }
 
 function teardown_image() {
 	rm -rf "${IMAGE}"
 }
 
-# setup_bundle creates a new temporary bundle directory and returns its name.
-# Note that if "$ROOTLESS" is true, then removing this bundle might be harder
-# than expected -- so tests should not really attempt to clean up bundles.
-function setup_bundle() {
-	echo "$(mktemp -d --tmpdir="$BATS_TMPDIR" umoci-integration-bundle.XXXXXXXX)"
+# Stores the set of tmpdirs that still have to be cleaned up. Calling
+# teardown_tmpdirs will set this to an empty array (and all the tmpdirs
+# contained within are removed).
+export TESTDIR_LIST="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
+
+# setup_tmpdir creates a new temporary directory and returns its name.  Note
+# that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
+# expected -- so tests should not really attempt to clean up tmpdirs.
+function setup_tmpdir() {
+	mktemp -d --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
+}
+
+# teardown_tmpdirs removes all tmpdirs created with setup_tmpdir.
+function teardown_tmpdirs() {
+	# Do nothing if TESTDIR_LIST doesn't exist.
+	[ -e "$TESTDIR_LIST" ] || return
+
+	# Remove all of the tmpdirs.
+	while read tmpdir; do
+		[ -e "$tmpdir" ] || continue
+		chmod -R 0777 "$tmpdir"
+		rm -rf "$tmpdir"
+	done < "$TESTDIR_LIST"
+
+	# Clear tmpdir list.
+	rm "$TESTDIR_LIST"
 }

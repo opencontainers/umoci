@@ -21,6 +21,7 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
@@ -30,8 +31,8 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	# Unpack the image.
 	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "8888:0:65535" "$BUNDLE_A"
@@ -78,9 +79,9 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
-	BUNDLE_C="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	# Unpack the image.
 	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "7331:0:65535" "$BUNDLE_A"
