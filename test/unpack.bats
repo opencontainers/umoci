@@ -21,11 +21,12 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
 @test "umoci unpack" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -64,7 +65,7 @@ function teardown() {
 }
 
 @test "umoci unpack [missing args]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	umoci unpack --image="${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
@@ -74,7 +75,7 @@ function teardown() {
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -92,8 +93,8 @@ function teardown() {
 }
 
 @test "umoci unpack [consistent results]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 

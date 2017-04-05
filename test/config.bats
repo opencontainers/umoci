@@ -21,12 +21,13 @@ function setup() {
 }
 
 function teardown() {
+	teardown_tmpdirs
 	teardown_image
 }
 
 @test "umoci config" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -79,8 +80,8 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user'" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -138,8 +139,8 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group'" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -194,9 +195,9 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group' [parsed from rootfs]" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
-	BUNDLE_C="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -276,7 +277,7 @@ function teardown() {
 }
 
 @test "umoci config --config.user 'user:group' [non-existent user]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify the user.
 	umoci config --image "${IMAGE}:${TAG}" --config.user="testuser:emptygroup"
@@ -291,7 +292,7 @@ function teardown() {
 }
 
 @test "umoci config --config.user [numeric]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.user="1337:8888"
@@ -317,7 +318,7 @@ function teardown() {
 }
 
 @test "umoci config --config.workingdir" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.workingdir "/a/fake/directory"
@@ -338,7 +339,7 @@ function teardown() {
 }
 
 @test "umoci config --clear=config.env" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --clear=config.env
@@ -360,7 +361,7 @@ function teardown() {
 }
 
 @test "umoci config --config.env" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify env.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.env "VARIABLE1=unused"
@@ -395,7 +396,7 @@ function teardown() {
 }
 
 @test "umoci config --config.cmd" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
@@ -416,7 +417,7 @@ function teardown() {
 }
 
 @test "umoci config --config.[entrypoint+cmd]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
@@ -438,9 +439,9 @@ function teardown() {
 
 # XXX: This test is somewhat dodgy (since we don't actually set anything other than the destination for a volume).
 @test "umoci config --config.volume" {
-	BUNDLE_A="$(setup_bundle)"
-	BUNDLE_B="$(setup_bundle)"
-	BUNDLE_C="$(setup_bundle)"
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
@@ -503,7 +504,7 @@ function teardown() {
 }
 
 @test "umoci config --[os+architecture]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
@@ -602,7 +603,7 @@ function teardown() {
 }
 
 @test "umoci config --config.label" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
@@ -628,7 +629,7 @@ function teardown() {
 }
 
 @test "umoci config --manifest.annotation" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
@@ -654,7 +655,7 @@ function teardown() {
 }
 
 @test "umoci config --config.label --manifest.annotation" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
@@ -691,7 +692,7 @@ function teardown() {
 # XXX: This is currently not in any spec. So we'll just test our own behaviour
 #      here and we can fix it after opencontainers/image-spec#479 is fixed.
 @test "umoci config --config.label --manifest.annotation [clobber]" {
-	BUNDLE="$(setup_bundle)"
+	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
