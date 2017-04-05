@@ -8,6 +8,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Added
 - `umoci` now has some automated scripts for generated RPMs that are used in
   openSUSE to automatically submit packages to OBS. openSUSE/umoci#101
+- `--clear=config.{cmd,entrypoint}` is now supported. While this interface is a
+  bit weird (`cmd` and `entrypoint` aren't treated atomically) this makes the
+  UX more consistent while we come up with a better `cmd` and `entrypoint` UX.
+  openSUSE/umoci#107
 
 ### Changed
 - `umoci`'s `oci/cas` and `oci/config` libraries have been massively refactored
