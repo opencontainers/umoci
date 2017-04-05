@@ -78,6 +78,8 @@ The global options are defined in **umoci**(1).
     * manifest.annotations
     * config.exposedports
     * config.env
+    * config.entrypoint
+    * config.cmd
     * config.volume
 
 The following commands all set their corresponding values in the configuration
