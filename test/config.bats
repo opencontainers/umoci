@@ -395,6 +395,48 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --clear=config.{entrypoint or cmd}" {
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+
+	# Modify the entrypoint+cmd.
+	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.entrypoint "/here is some values/" --config.cmd "-c" --config.cmd "ls -la" --config.cmd="kek"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Clear the entrypoint.
+	umoci config --image "${IMAGE}:${TAG}" --tag="${TAG}-noentry" --clear=config.entrypoint
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}-noentry" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Ensure that the final args is only cmd.
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "-c;ls -la;kek;" ]]
+
+	# Clear the cmd.
+	umoci config --image "${IMAGE}:${TAG}" --tag="${TAG}-nocmd" --clear=config.cmd
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}-nocmd" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Ensure that the final args is only cmd.
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_B/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "sh;/here is some values/;" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --config.cmd" {
 	BUNDLE="$(setup_tmpdir)"
 
@@ -416,10 +458,38 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --clear=config.[entrypoint+cmd]" {
+	BUNDLE="$(setup_tmpdir)"
+
+	# Modify the entrypoint+cmd.
+	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.entrypoint "/here is some values/" --config.cmd "-c" --config.cmd "ls -la" --config.cmd="kek"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Clear the entrypoint and entrypoint.
+	umoci config --image "${IMAGE}:${TAG}" --tag="${TAG}-nocmdentry" --clear=config.entrypoint --clear=config.cmd
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}-nocmdentry" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Ensure that the final args is empty.
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	# TODO: This is almost certainly not going to be valid when config.json
+	#       conversion is part of the spec.
+	[[ "$output" == "sh;" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --config.[entrypoint+cmd]" {
 	BUNDLE="$(setup_tmpdir)"
 
-	# Modify none of the configuration.
+	# Modify the entrypoint+cmd.
 	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
