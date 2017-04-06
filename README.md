@@ -34,7 +34,7 @@ Follow these steps to build in with [golang](https://golang.org):
 ```bash
 GOPATH=$HOME
 go get -d github.com/openSUSE/umoci
-cd ~/src/github.com/openSUSE/umoci
+cd $GOPATH/github.com/openSUSE/umoci
 make install
 ```
 
