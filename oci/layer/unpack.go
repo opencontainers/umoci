@@ -87,11 +87,6 @@ func isLayerType(mediaType string) bool {
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) error {
 	engineExt := casext.Engine{engine}
 
-	var mapOptions MapOptions
-	if opt != nil {
-		mapOptions = *opt
-	}
-
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -207,9 +202,54 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	// Generate a runtime configuration file from ispec.Image.
 	log.Infof("unpack configuration: %s", configBlob.Digest)
+	configFile, err := os.Create(configPath)
+	if err != nil {
+		return errors.Wrap(err, "open config.json")
+	}
+	defer configFile.Close()
+
+	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, opt); err != nil {
+		return errors.Wrap(err, "unpack config.json")
+	}
+	return nil
+}
+
+// UnpackRuntimeJSON converts a given manifest's configuration to a runtime
+// configuration and writes it to the given writer. If rootfs is specified, it
+// is sourced during the configuration generation (for conversion of
+// Config.User and other similar jobs -- which will error out if the user could
+// not be parsed). If rootfs is not specified (is an empty string) then all
+// conversions that require sourcing the rootfs will be set to their default
+// values.
+//
+// XXX: I don't like this API. It has way too many arguments.
+func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Writer, rootfs string, manifest ispec.Manifest, opt *MapOptions) error {
+	engineExt := casext.Engine{engine}
+
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+
+	// In order to verify the DiffIDs as we extract layers, we have to get the
+	// .Config blob first. But we can't extract it (generate the runtime
+	// config) until after we have the full rootfs generated.
+	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
+	if err != nil {
+		return errors.Wrap(err, "get config blob")
+	}
+	defer configBlob.Close()
+	if configBlob.MediaType != ispec.MediaTypeImageConfig {
+		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
+	}
+	config, ok := configBlob.Data.(ispec.Image)
+	if !ok {
+		// Should _never_ be reached.
+		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.MediaType)
+	}
 
 	g := rgen.New()
-	if err := iconv.MutateRuntimeSpec(g, rootfsPath, config, manifest); err != nil {
+	if err := iconv.MutateRuntimeSpec(g, rootfs, config, manifest); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 
@@ -231,7 +271,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	// Save the config.json.
-	if err := g.SaveToFile(configPath, rgen.ExportOptions{}); err != nil {
+	if err := g.Save(configFile, rgen.ExportOptions{}); err != nil {
 		return errors.Wrap(err, "write config.json")
 	}
 	return nil
