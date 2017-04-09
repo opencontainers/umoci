@@ -113,6 +113,7 @@ func main() {
 		tagRemoveCommand,
 		tagListCommand,
 		statCommand,
+		rawSubcommand,
 	}
 
 	app.Metadata = map[string]interface{}{}
@@ -120,7 +121,7 @@ func main() {
 	// In order to make the uxXyz wrappers not too cumbersome we automatically
 	// add them to images with categories set to categoryImage or
 	// categoryLayout. Monkey patching was never this neat.
-	for idx, cmd := range app.Commands {
+	for _, cmd := range flattenCommands(app.Commands) {
 		switch cmd.Category {
 		case categoryImage:
 			oldBefore := cmd.Before
@@ -136,7 +137,7 @@ func main() {
 				}
 				return nil
 			}
-			cmd = uxImage(cmd)
+			*cmd = uxImage(*cmd)
 		case categoryLayout:
 			oldBefore := cmd.Before
 			cmd.Before = func(ctx *cli.Context) error {
@@ -148,9 +149,8 @@ func main() {
 				}
 				return nil
 			}
-			cmd = uxLayout(cmd)
+			*cmd = uxLayout(*cmd)
 		}
-		app.Commands[idx] = cmd
 	}
 
 	// Actually run umoci.

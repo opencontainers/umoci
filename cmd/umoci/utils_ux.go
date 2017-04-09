@@ -29,6 +29,15 @@ import (
 // refRegexp defines the regexp that a given OCI tag must obey.
 var refRegexp = regexp.MustCompile(`^([A-Za-z0-9._-]+)+$`)
 
+func flattenCommands(cmds []cli.Command) []*cli.Command {
+	var flatten []*cli.Command
+	for idx, cmd := range cmds {
+		flatten = append(flatten, &cmds[idx])
+		flatten = append(flatten, flattenCommands(cmd.Subcommands)...)
+	}
+	return flatten
+}
+
 // uxHistory adds the full set of --history.* flags to the given cli.Command as
 // well as adding relevant validation logic to the .Before of the command. The
 // values will be stored in ctx.Metadata with the keys "--history.author",
