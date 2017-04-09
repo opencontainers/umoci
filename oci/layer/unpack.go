@@ -243,6 +243,9 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 func ToRootless(spec *rspec.Spec) {
 	var namespaces []rspec.Namespace
 
+	// Remove additional groups.
+	spec.Process.User.AdditionalGids = nil
+
 	// Remove networkns from the spec.
 	for _, ns := range spec.Linux.Namespaces {
 		switch ns.Type {

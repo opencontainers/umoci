@@ -121,13 +121,20 @@ function teardown() {
 	[ "$output" -eq 8888 ]
 
 	# Make sure additionalGids were set.
-	sane_run jq -SMr '.process.user.additionalGids[]' "$BUNDLE_B/config.json"
+	sane_run jq -SMr '.process.user.additionalGids | length' "$BUNDLE_B/config.json"
 	[ "$status" -eq 0 ]
-	[ "${#lines[@]}" -eq 2 ]
+	if [ "$ROOTLESS" -eq 0 ]; then
+		[[ "$output" == 2 ]]
 
-	# Check mounts.
-	printf -- '%s\n' "${lines[*]}" | grep '^9001$'
-	printf -- '%s\n' "${lines[*]}" | grep '^2581$'
+		# Check the actual values.
+		sane_run jq -SMr '.process.user.additionalGids[]' "$BUNDLE_B/config.json"
+		[ "$status" -eq 0 ]
+		printf -- '%s\n' "${lines[*]}" | grep '^9001$'
+		printf -- '%s\n' "${lines[*]}" | grep '^2581$'
+	else
+		# In rootless containers additionalGids should be empty.
+		[[ "$output" == 0 ]]
+	fi
 
 	# Check that HOME is set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE_B/config.json"

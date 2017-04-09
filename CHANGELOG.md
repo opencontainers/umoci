@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci` now uses an updated version of `go-mtree`, which has a complete
   rewrite of `Vis` and `Unvis`. The rewrite ensures that unicode handling is
   handled in a far more consistent and sane way. openSUSE/umoci#88
+- `umoci` used to set `process.user.additionalGids` to the "normal value" when
+  unpacking an image in rootless mode, causing issues when trying to actually
+  run said bundle with runC. openSUSE/umoci#109
 
 ## [0.1.0] - 2017-02-11
 ### Added
