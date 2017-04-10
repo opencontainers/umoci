@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.2.0] - 2017-04-11
 ### Added
 - `umoci` now has some automated scripts for generated RPMs that are used in
   openSUSE to automatically submit packages to OBS. openSUSE/umoci#101
@@ -137,7 +139,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.1.0...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.2.0...HEAD
+[0.2.0]: https://github.com/openSUSE/umoci/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/openSUSE/umoci/compare/v0.0.0...v0.1.0
 [0.0.0]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc3...v0.0.0
 [0.0.0-rc3]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc2...v0.0.0-rc3
