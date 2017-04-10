@@ -90,6 +90,30 @@ load helpers
 	[ "$status" -eq 0 ]
 	[[ "${lines[1]}" =~ "umoci tag"+ ]]
 
+	umoci raw --help
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw"+ ]]
+
+	umoci raw -h
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw"+ ]]
+
+	umoci raw runtime-config --help
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw runtime-config"+ ]]
+
+	umoci raw runtime-config -h
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw runtime-config"+ ]]
+
+	umoci raw config --help
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw runtime-config"+ ]]
+
+	umoci raw config -h
+	[ "$status" -eq 0 ]
+	[[ "${lines[1]}" =~ "umoci raw runtime-config"+ ]]
+
 	umoci remove --help
 	[ "$status" -eq 0 ]
 	[[ "${lines[1]}" =~ "umoci remove"+ ]]
