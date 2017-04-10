@@ -12,6 +12,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   bit weird (`cmd` and `entrypoint` aren't treated atomically) this makes the
   UX more consistent while we come up with a better `cmd` and `entrypoint` UX.
   openSUSE/umoci#107
+- New subcommand: `umoci raw runtime-config`. It generates the runtime-spec
+  config.json for a particular image without also unpacking the root
+  filesystem, allowing for users of `umoci` that are regularly parsing
+  `config.json` without caring about the root filesystem to be more efficient.
+  However, a downside of this approach is that some image-spec fields
+  (`Config.User`) require a root filesystem in order to make sense, which is
+  why this command is hidden under the `umoci-raw(1)` subcommand (to make sure
+  only users that understand what they're doing use it). openSUSE/umoci#110
 
 ### Changed
 - `umoci`'s `oci/cas` and `oci/config` libraries have been massively refactored

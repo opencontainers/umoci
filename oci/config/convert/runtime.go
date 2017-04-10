@@ -21,6 +21,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/openSUSE/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
@@ -59,6 +60,9 @@ func parseEnv(env string) (string, string, error) {
 // MutateRuntimeSpec mutates a given runtime specification generator with the
 // image configuration provided. It returns the original generator, and does
 // not modify any fields directly (to allow for chaining).
+//
+// XXX: This conversion is not actually defined by the image-spec. There is a
+//      proposal in-the-works though. https://github.com/opencontainers/image-spec/pull/492
 func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manifest ispec.Manifest) error {
 	if image.OS != "linux" {
 		return errors.Errorf("unsupported OS: %s", image.OS)
@@ -108,7 +112,13 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manif
 	}
 	execUser, err := user.GetExecUserPath(image.Config.User, nil, passwdPath, groupPath)
 	if err != nil {
-		return errors.Wrapf(err, "cannot parse user spec: '%s'", image.Config.User)
+		// We only log an error if were not given a rootfs, and we set execUser
+		// to the "default" (root:root).
+		if rootfs != "" {
+			return errors.Wrapf(err, "cannot parse user spec: '%s'", image.Config.User)
+		}
+		log.Warnf("could not parse user spec '%s' without a rootfs -- defaulting to root:root", image.Config.User)
+		execUser = new(user.ExecUser)
 	}
 
 	g.SetProcessUID(uint32(execUser.Uid))
