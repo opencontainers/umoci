@@ -13,19 +13,19 @@ umoci config - Modifies the configuration of an OCI image
 [**--history.author**=*author*]
 [**--history-created**=*date*]
 [**--clear**=*value*]
-[**--config.user**=[*value*]]
-[**--config.exposedports**=[*value*]]
-[**--config.env**=[*value*]]
-[**--config.entrypoint**=[*value*]]
-[**--config.cmd**=[*value*]]
-[**--config.volume**=[*value*]]
-[**--config.label**=[*value*]]
-[**--config.workingdir**=[*value*]]
-[**--created**=[*value*]]
-[**--author**=[*value*]]
-[**--architecture**=[*value*]]
-[**--os**=[*value*]]
-[**--manifest.annotation**=[*value*]]
+[**--config.user**=*value*]
+[**--config.exposedports**=*value*]
+[**--config.env**=*value*]
+[**--config.entrypoint**=*value*]
+[**--config.cmd**=*value*]
+[**--config.volume**=*value*]
+[**--config.label**=*value*]
+[**--config.workingdir**=*value*]
+[**--created**=*value*]
+[**--author**=*value*]
+[**--architecture**=*value*]
+[**--os**=*value*]
+[**--manifest.annotation**=*value*]
 
 # DESCRIPTION
 Modify the configuration and manifest data for a particular tagged OCI image.
@@ -85,19 +85,19 @@ The global options are defined in **umoci**(1).
 The following commands all set their corresponding values in the configuration
 or image manifest. For more information see [the OCI image specification][1].
 
-* **--config.user**=[*value*]
-* **--config.exposedports**=[*value*]
-* **--config.env**=[*value*]
-* **--config.entrypoint**=[*value*]
-* **--config.cmd**=[*value*]
-* **--config.volume**=[*value*]
-* **--config.label**=[*value*]
-* **--config.workingdir**=[*value*]
-* **--created**=[*value*]
-* **--author**=[*value*]
-* **--architecture**=[*value*]
-* **--os**=[*value*]
-* **--manifest.annotation**=[*value*]
+* **--config.user**=*value*
+* **--config.exposedports**=*value*
+* **--config.env**=*value*
+* **--config.entrypoint**=*value*
+* **--config.cmd**=*value*
+* **--config.volume**=*value*
+* **--config.label**=*value*
+* **--config.workingdir**=*value*
+* **--created**=*value*
+* **--author**=*value*
+* **--architecture**=*value*
+* **--os**=*value*
+* **--manifest.annotation**=*value*
 
 # EXAMPLE
 

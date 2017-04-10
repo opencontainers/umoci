@@ -36,34 +36,44 @@ doing a high-level operation such as **umoci-repack**(1)).
 # COMMANDS
 
 **init**
-  Create a new OCI layout. See **umoci-init**(1) for more detailed usage information.
+  Create a new OCI layout. See **umoci-init**(1) for more detailed usage
+  information.
 
 **new**
-  Creates a blank tagged OCI image. See **umoci-new**(1) for more detailed usage information.
+  Creates a blank tagged OCI image. See **umoci-new**(1) for more detailed
+  usage information.
 
 **unpack**
-  Unpacks a tagged image into an OCI runtime bundle. See **umoci-unpack**(1) for more detailed usage information.
+  Unpacks a tagged image into an OCI runtime bundle. See **umoci-unpack**(1)
+  for more detailed usage information.
 
 **repack**
-  Repacks an OCI runtime bundle into a tagged image. See **umoci-repack**(1) for more detailed usage information.
+  Repacks an OCI runtime bundle into a tagged image. See **umoci-repack**(1)
+  for more detailed usage information.
 
 **config**
-  Modifies the image configuration of an OCI image. See **umoci-config**(1) for more detailed usage information.
+  Modifies the image configuration of an OCI image. See **umoci-config**(1) for
+  more detailed usage information.
 
 **stat**
-  Displays status information of an image manifest. See **umoci-stat**(1) for more detailed usage information.
+  Displays status information of an image manifest. See **umoci-stat**(1) for
+  more detailed usage information.
 
 **tag**
-  Creates a new tag in an OCI image. See **umoci-tag**(1) for more detailed usage information.
+  Creates a new tag in an OCI image. See **umoci-tag**(1) for more detailed
+  usage information.
 
 **remove, rm**
-  Removes a tag from an OCI image. See **umoci-remove**(1) for more detailed usage information.
+  Removes a tag from an OCI image. See **umoci-remove**(1) for more detailed
+  usage information.
 
 **list, ls**
-  Lists the set of tags in an OCI image. See **umoci-list**(1) for more detailed usage information.
+  Lists the set of tags in an OCI image. See **umoci-list**(1) for more
+  detailed usage information.
 
 **gc**
-  Garbage collects all unreferenced OCI image blobs. See **umoci-gc**(1) for more detailed usage information.
+  Garbage collects all unreferenced OCI image blobs. See **umoci-gc**(1) for
+  more detailed usage information.
 
 # SEE ALSO
 **umoci-init**(1),
