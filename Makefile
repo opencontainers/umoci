@@ -22,15 +22,21 @@ GO_MD2MAN ?= go-md2man
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/openSUSE/umoci
+CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev
+
+# Output directory.
+BUILD_DIR ?= .
+
+# Release information.
+GPG_KEYID ?=
 
 # Version information.
 VERSION := $(shell cat ./VERSION)
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
-CMD := ${PROJECT}/cmd/umoci
 
 DYN_BUILD_FLAGS := -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
 STATIC_BUILD_FLAGS := -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
@@ -41,13 +47,17 @@ GO_SRC = $(shell find . -name \*.go)
 .PHONY: umoci umoci.static umoci.cover install install.static
 
 umoci: $(GO_SRC)
-	$(GO) build ${DYN_BUILD_FLAGS} -o $@ ${CMD}
+	$(GO) build ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.static: $(GO_SRC)
-	CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $@ ${CMD}
+	CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.cover: $(GO_SRC)
-	$(GO) test -c -cover -covermode=count -coverpkg=./... ${DYN_BUILD_FLAGS} -o $@ ${CMD}
+	$(GO) test -c -cover -covermode=count -coverpkg=./... ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+
+.PHONY: release
+release:
+	hack/release.sh -S "$(GPG_KEYID)" -r release/$(VERSION) -v $(VERSION)
 
 install: $(GO_SRC)
 	$(GO) install -v ${DYN_BUILD_FLAGS} ${CMD}
