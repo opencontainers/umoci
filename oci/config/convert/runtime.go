@@ -148,5 +148,8 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image, manif
 		g.AddAnnotation(key, value)
 	}
 
+	// Remove all seccomp rules.
+	g.Spec().Linux.Seccomp = nil
+
 	return nil
 }
