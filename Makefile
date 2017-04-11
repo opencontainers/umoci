@@ -58,7 +58,6 @@ install.static: $(GO_SRC)
 .PHONY: update-deps
 update-deps:
 	hack/vendor.sh
-	hack/patch.sh
 
 .PHONY: clean
 clean:

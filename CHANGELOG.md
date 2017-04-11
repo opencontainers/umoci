@@ -5,6 +5,15 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- `umoci` now outputs configurations that are compliant with [`v1.0.0-rc5` of
+  the OCI runtime-spec][rspec-v1.0.0-rc5]. This means that now you can use runc
+  v1.0.0-rc3 with `umoci` (and rootless containers should work out of the box
+  if you use a development build of runc). openSUSE/umoci#114
+- `umoci unpack` no longer adds a dummy linux.seccomp entry, and instead just
+  sets it to null. openSUSE/umoci#114
+
+[rspec-v1.0.0-rc5]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0-rc5
 
 ## [0.2.0] - 2017-04-11
 ### Added

@@ -107,10 +107,10 @@ clone() {
 	set -e
 	(
 		rm -rf "$vendorPath" && mkdir -p "$vendorPath"
-		git clone "$cloneURL" "$vendorPath" &>/dev/null
+		git clone "$cloneURL" "$vendorPath"
 		cd "$vendorPath"
-		git checkout --detach "$commit" &>/dev/null
-	)
+		git checkout --detach "$commit"
+	) &>/dev/null
 }
 
 # Update everything.
@@ -118,9 +118,9 @@ clone() {
 #       with LK4D4/vndr). This setup is a bit unwieldy.
 clone github.com/opencontainers/go-digest v1.0.0-rc0
 clone github.com/opencontainers/image-spec v1.0.0-rc4
-clone github.com/opencontainers/runtime-spec v1.0.0-rc2
+clone github.com/opencontainers/runtime-spec v1.0.0-rc5
 clone github.com/opencontainers/image-tools 421458f7e467ac86175408693a07da6d29817bf7
-clone github.com/opencontainers/runtime-tools b61b44a71dafb8472bbc1e5eb0d68ed9ce8ba6ac
+clone github.com/opencontainers/runtime-tools 2f0b832c731dcacc6ad44b03200a3a6a3e14393e
 clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
 clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
 clone golang.org/x/sys d75a52659825e75fff6158388dddc6a5b04f9ba5 https://github.com/golang/sys
@@ -130,6 +130,10 @@ clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
 clone github.com/urfave/cli v1.18.1
 clone github.com/vbatts/go-mtree 711a89aa4c4a8f148d87eb915456eba8ee7c6a0b
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
+
+# Apply patches.
+self="$(readlink -f "$(dirname "${BASH_SOURCE}")")"
+$self/patch.sh
 
 # Clean up the vendor directory.
 clean

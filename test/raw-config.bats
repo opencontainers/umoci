@@ -34,7 +34,6 @@ function teardown() {
 	# Unpack the image.
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_A/config.json"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
 
 	# We need to make sure the config exists.
 	[ -f "$BUNDLE_A/config.json" ]
@@ -47,7 +46,6 @@ function teardown() {
 	# Unpack the image again.
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE_B/config.json"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
 
 	# Make sure that the config was unchanged.
 	# First clean the config.
@@ -466,7 +464,6 @@ function teardown() {
 	# Unpack the image again.
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_A/config.json"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
 
 	# Get set of mounts
 	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_A/config.json"

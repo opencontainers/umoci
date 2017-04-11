@@ -24,7 +24,7 @@ import (
 )
 
 func TestToHost(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      1337,
 			ContainerID: 0,
@@ -74,7 +74,7 @@ func TestToHostNil(t *testing.T) {
 }
 
 func TestToHostLarger(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      8000,
 			ContainerID: 0,
@@ -109,7 +109,7 @@ func TestToHostLarger(t *testing.T) {
 }
 
 func TestToHostMultiple(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      2222,
 			ContainerID: 0,
@@ -157,7 +157,7 @@ func TestToHostMultiple(t *testing.T) {
 }
 
 func TestToContainer(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      1337,
 			ContainerID: 0,
@@ -207,7 +207,7 @@ func TestToContainerNil(t *testing.T) {
 }
 
 func TestToContainerLarger(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      8000,
 			ContainerID: 0,
@@ -242,7 +242,7 @@ func TestToContainerLarger(t *testing.T) {
 }
 
 func TestToContainerMultiple(t *testing.T) {
-	idMap := []rspec.IDMapping{
+	idMap := []rspec.LinuxIDMapping{
 		{
 			HostID:      2222,
 			ContainerID: 0,
