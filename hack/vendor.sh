@@ -107,10 +107,10 @@ clone() {
 	set -e
 	(
 		rm -rf "$vendorPath" && mkdir -p "$vendorPath"
-		git clone "$cloneURL" "$vendorPath" &>/dev/null
+		git clone "$cloneURL" "$vendorPath"
 		cd "$vendorPath"
-		git checkout --detach "$commit" &>/dev/null
-	)
+		git checkout --detach "$commit"
+	) &>/dev/null
 }
 
 # Update everything.
@@ -130,6 +130,10 @@ clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
 clone github.com/urfave/cli v1.18.1
 clone github.com/vbatts/go-mtree 711a89aa4c4a8f148d87eb915456eba8ee7c6a0b
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
+
+# Apply patches.
+self="$(readlink -f "$(dirname "${BASH_SOURCE}")")"
+$self/patch.sh
 
 # Clean up the vendor directory.
 clean
