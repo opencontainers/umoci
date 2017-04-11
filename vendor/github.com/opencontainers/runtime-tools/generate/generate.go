@@ -53,23 +53,89 @@ func New() Generator {
 				"TERM=xterm",
 			},
 			Cwd: "/",
-			Capabilities: []string{
-				"CAP_CHOWN",
-				"CAP_DAC_OVERRIDE",
-				"CAP_FSETID",
-				"CAP_FOWNER",
-				"CAP_MKNOD",
-				"CAP_NET_RAW",
-				"CAP_SETGID",
-				"CAP_SETUID",
-				"CAP_SETFCAP",
-				"CAP_SETPCAP",
-				"CAP_NET_BIND_SERVICE",
-				"CAP_SYS_CHROOT",
-				"CAP_KILL",
-				"CAP_AUDIT_WRITE",
+			Capabilities: &rspec.LinuxCapabilities{
+				Bounding: []string{
+					"CAP_CHOWN",
+					"CAP_DAC_OVERRIDE",
+					"CAP_FSETID",
+					"CAP_FOWNER",
+					"CAP_MKNOD",
+					"CAP_NET_RAW",
+					"CAP_SETGID",
+					"CAP_SETUID",
+					"CAP_SETFCAP",
+					"CAP_SETPCAP",
+					"CAP_NET_BIND_SERVICE",
+					"CAP_SYS_CHROOT",
+					"CAP_KILL",
+					"CAP_AUDIT_WRITE",
+				},
+				Permitted: []string{
+					"CAP_CHOWN",
+					"CAP_DAC_OVERRIDE",
+					"CAP_FSETID",
+					"CAP_FOWNER",
+					"CAP_MKNOD",
+					"CAP_NET_RAW",
+					"CAP_SETGID",
+					"CAP_SETUID",
+					"CAP_SETFCAP",
+					"CAP_SETPCAP",
+					"CAP_NET_BIND_SERVICE",
+					"CAP_SYS_CHROOT",
+					"CAP_KILL",
+					"CAP_AUDIT_WRITE",
+				},
+				Inheritable: []string{
+					"CAP_CHOWN",
+					"CAP_DAC_OVERRIDE",
+					"CAP_FSETID",
+					"CAP_FOWNER",
+					"CAP_MKNOD",
+					"CAP_NET_RAW",
+					"CAP_SETGID",
+					"CAP_SETUID",
+					"CAP_SETFCAP",
+					"CAP_SETPCAP",
+					"CAP_NET_BIND_SERVICE",
+					"CAP_SYS_CHROOT",
+					"CAP_KILL",
+					"CAP_AUDIT_WRITE",
+				},
+				Effective: []string{
+					"CAP_CHOWN",
+					"CAP_DAC_OVERRIDE",
+					"CAP_FSETID",
+					"CAP_FOWNER",
+					"CAP_MKNOD",
+					"CAP_NET_RAW",
+					"CAP_SETGID",
+					"CAP_SETUID",
+					"CAP_SETFCAP",
+					"CAP_SETPCAP",
+					"CAP_NET_BIND_SERVICE",
+					"CAP_SYS_CHROOT",
+					"CAP_KILL",
+					"CAP_AUDIT_WRITE",
+				},
+				Ambient: []string{
+					"CAP_CHOWN",
+					"CAP_DAC_OVERRIDE",
+					"CAP_FSETID",
+					"CAP_FOWNER",
+					"CAP_MKNOD",
+					"CAP_NET_RAW",
+					"CAP_SETGID",
+					"CAP_SETUID",
+					"CAP_SETFCAP",
+					"CAP_SETPCAP",
+					"CAP_NET_BIND_SERVICE",
+					"CAP_SYS_CHROOT",
+					"CAP_KILL",
+					"CAP_AUDIT_WRITE",
+				},
 			},
-			Rlimits: []rspec.Rlimit{
+			Rlimits: []rspec.LinuxRlimit{
 				{
 					Type: "RLIMIT_NOFILE",
 					Hard: uint64(1024),
@@ -117,15 +183,15 @@ func New() Generator {
 			},
 		},
 		Linux: &rspec.Linux{
-			Resources: &rspec.Resources{
-				Devices: []rspec.DeviceCgroup{
+			Resources: &rspec.LinuxResources{
+				Devices: []rspec.LinuxDeviceCgroup{
 					{
 						Allow:  false,
-						Access: strPtr("rwm"),
+						Access: "rwm",
 					},
 				},
 			},
-			Namespaces: []rspec.Namespace{
+			Namespaces: []rspec.LinuxNamespace{
 				{
 					Type: "pid",
 				},
@@ -142,7 +208,7 @@ func New() Generator {
 					Type: "mount",
 				},
 			},
-			Devices: []rspec.Device{},
+			Devices: []rspec.LinuxDevice{},
 		},
 	}
 	spec.Linux.Seccomp = seccomp.DefaultProfile(&spec)
@@ -195,6 +261,16 @@ func (g *Generator) Spec() *rspec.Spec {
 // Save writes the spec into w.
 func (g *Generator) Save(w io.Writer, exportOpts ExportOptions) (err error) {
 	var data []byte
+
+	if g.spec.Linux != nil {
+		buf, err := json.Marshal(g.spec.Linux)
+		if err != nil {
+			return err
+		}
+		if string(buf) == "{}" {
+			g.spec.Linux = nil
+		}
+	}
 
 	if exportOpts.Seccomp {
 		data, err = json.MarshalIndent(g.spec.Linux.Seccomp, "", "\t")
@@ -357,7 +433,7 @@ func (g *Generator) AddProcessRlimits(rType string, rHard uint64, rSoft uint64) 
 		}
 	}
 
-	newRlimit := rspec.Rlimit{
+	newRlimit := rspec.LinuxRlimit{
 		Type: rType,
 		Hard: rHard,
 		Soft: rSoft,
@@ -384,7 +460,7 @@ func (g *Generator) ClearProcessRlimits() {
 	if g.spec == nil {
 		return
 	}
-	g.spec.Process.Rlimits = []rspec.Rlimit{}
+	g.spec.Process.Rlimits = []rspec.LinuxRlimit{}
 }
 
 // ClearProcessAdditionalGids clear g.spec.Process.AdditionalGids.
@@ -415,7 +491,7 @@ func (g *Generator) SetProcessSelinuxLabel(label string) {
 // SetLinuxCgroupsPath sets g.spec.Linux.CgroupsPath.
 func (g *Generator) SetLinuxCgroupsPath(path string) {
 	g.initSpecLinux()
-	g.spec.Linux.CgroupsPath = strPtr(path)
+	g.spec.Linux.CgroupsPath = path
 }
 
 // SetLinuxMountLabel sets g.spec.Linux.MountLabel.
@@ -443,7 +519,7 @@ func (g *Generator) SetLinuxResourcesCPUShares(shares uint64) {
 }
 
 // SetLinuxResourcesCPUQuota sets g.spec.Linux.Resources.CPU.Quota.
-func (g *Generator) SetLinuxResourcesCPUQuota(quota uint64) {
+func (g *Generator) SetLinuxResourcesCPUQuota(quota int64) {
 	g.initSpecLinuxResourcesCPU()
 	g.spec.Linux.Resources.CPU.Quota = &quota
 }
@@ -455,7 +531,7 @@ func (g *Generator) SetLinuxResourcesCPUPeriod(period uint64) {
 }
 
 // SetLinuxResourcesCPURealtimeRuntime sets g.spec.Linux.Resources.CPU.RealtimeRuntime.
-func (g *Generator) SetLinuxResourcesCPURealtimeRuntime(time uint64) {
+func (g *Generator) SetLinuxResourcesCPURealtimeRuntime(time int64) {
 	g.initSpecLinuxResourcesCPU()
 	g.spec.Linux.Resources.CPU.RealtimeRuntime = &time
 }
@@ -469,13 +545,13 @@ func (g *Generator) SetLinuxResourcesCPURealtimePeriod(period uint64) {
 // SetLinuxResourcesCPUCpus sets g.spec.Linux.Resources.CPU.Cpus.
 func (g *Generator) SetLinuxResourcesCPUCpus(cpus string) {
 	g.initSpecLinuxResourcesCPU()
-	g.spec.Linux.Resources.CPU.Cpus = &cpus
+	g.spec.Linux.Resources.CPU.Cpus = cpus
 }
 
 // SetLinuxResourcesCPUMems sets g.spec.Linux.Resources.CPU.Mems.
 func (g *Generator) SetLinuxResourcesCPUMems(mems string) {
 	g.initSpecLinuxResourcesCPU()
-	g.spec.Linux.Resources.CPU.Mems = &mems
+	g.spec.Linux.Resources.CPU.Mems = mems
 }
 
 // SetLinuxResourcesMemoryLimit sets g.spec.Linux.Resources.Memory.Limit.
@@ -529,7 +605,7 @@ func (g *Generator) AddLinuxResourcesNetworkPriorities(name string, prio uint32)
 			return
 		}
 	}
-	interfacePrio := new(rspec.InterfacePriority)
+	interfacePrio := new(rspec.LinuxInterfacePriority)
 	interfacePrio.Name = name
 	interfacePrio.Priority = prio
 	g.spec.Linux.Resources.Network.Priorities = append(g.spec.Linux.Resources.Network.Priorities, *interfacePrio)
@@ -549,7 +625,7 @@ func (g *Generator) DropLinuxResourcesNetworkPriorities(name string) {
 // SetLinuxResourcesPidsLimit sets g.spec.Linux.Resources.Pids.Limit.
 func (g *Generator) SetLinuxResourcesPidsLimit(limit int64) {
 	g.initSpecLinuxResourcesPids()
-	g.spec.Linux.Resources.Pids.Limit = &limit
+	g.spec.Linux.Resources.Pids.Limit = limit
 }
 
 // ClearLinuxSysctl clears g.spec.Linux.Sysctl.
@@ -579,12 +655,12 @@ func (g *Generator) ClearLinuxUIDMappings() {
 	if g.spec == nil || g.spec.Linux == nil {
 		return
 	}
-	g.spec.Linux.UIDMappings = []rspec.IDMapping{}
+	g.spec.Linux.UIDMappings = []rspec.LinuxIDMapping{}
 }
 
 // AddLinuxUIDMapping adds uidMap into g.spec.Linux.UIDMappings.
 func (g *Generator) AddLinuxUIDMapping(hid, cid, size uint32) {
-	idMapping := rspec.IDMapping{
+	idMapping := rspec.LinuxIDMapping{
 		HostID:      hid,
 		ContainerID: cid,
 		Size:        size,
@@ -599,12 +675,12 @@ func (g *Generator) ClearLinuxGIDMappings() {
 	if g.spec == nil || g.spec.Linux == nil {
 		return
 	}
-	g.spec.Linux.GIDMappings = []rspec.IDMapping{}
+	g.spec.Linux.GIDMappings = []rspec.LinuxIDMapping{}
 }
 
 // AddLinuxGIDMapping adds gidMap into g.spec.Linux.GIDMappings.
 func (g *Generator) AddLinuxGIDMapping(hid, cid, size uint32) {
-	idMapping := rspec.IDMapping{
+	idMapping := rspec.LinuxIDMapping{
 		HostID:      hid,
 		ContainerID: cid,
 		Size:        size,
@@ -695,7 +771,6 @@ func (g *Generator) AddCgroupsMount(mountCgroupOption string) error {
 	switch mountCgroupOption {
 	case "ro":
 	case "rw":
-		break
 	case "no":
 		return nil
 	default:
@@ -743,25 +818,8 @@ func (g *Generator) AddBindMount(source, dest string, options []string) {
 	g.spec.Mounts = append(g.spec.Mounts, mnt)
 }
 
-// SetupPrivileged sets up the privilege-related fields inside g.spec.
-func (g *Generator) SetupPrivileged(privileged bool) {
-	if privileged {
-		// Add all capabilities in privileged mode.
-		var finalCapList []string
-		for _, cap := range capability.List() {
-			if g.HostSpecific && cap > lastCap() {
-				continue
-			}
-			finalCapList = append(finalCapList, fmt.Sprintf("CAP_%s", strings.ToUpper(cap.String())))
-		}
-		g.initSpecLinux()
-		g.spec.Process.Capabilities = finalCapList
-		g.spec.Process.SelinuxLabel = ""
-		g.spec.Process.ApparmorProfile = ""
-		g.spec.Linux.Seccomp = nil
-	}
-}
-
+// lastCap return last cap of system, and is required to hack around RHEL6.
+// This is an exact copy of "validate/validate.go".lastCap.
 func lastCap() capability.Cap {
 	last := capability.CAP_LAST_CAP
 	// hack for RHEL6 which has no /proc/sys/kernel/cap_last_cap
@@ -772,24 +830,26 @@ func lastCap() capability.Cap {
 	return last
 }
 
-func checkCap(c string, hostSpecific bool) error {
-	isValid := false
-	cp := strings.ToUpper(c)
-
-	for _, cap := range capability.List() {
-		if cp == strings.ToUpper(cap.String()) {
-			if hostSpecific && cap > lastCap() {
-				return fmt.Errorf("CAP_%s is not supported on the current host", cp)
+// SetupPrivileged sets up the privilege-related fields inside g.spec.
+func (g *Generator) SetupPrivileged(privileged bool) {
+	if privileged { // Add all capabilities in privileged mode.
+		var finalCapList []string
+		for _, cap := range capability.List() {
+			if g.HostSpecific && cap > lastCap() {
+				continue
 			}
-			isValid = true
-			break
+			finalCapList = append(finalCapList, fmt.Sprintf("CAP_%s", strings.ToUpper(cap.String())))
 		}
+		g.initSpecLinux()
+		g.spec.Process.Capabilities.Bounding = finalCapList
+		g.spec.Process.Capabilities.Effective = finalCapList
+		g.spec.Process.Capabilities.Inheritable = finalCapList
+		g.spec.Process.Capabilities.Permitted = finalCapList
+		g.spec.Process.Capabilities.Ambient = finalCapList
+		g.spec.Process.SelinuxLabel = ""
+		g.spec.Process.ApparmorProfile = ""
+		g.spec.Linux.Seccomp = nil
 	}
-
-	if !isValid {
-		return fmt.Errorf("Invalid value passed for adding capability")
-	}
-	return nil
 }
 
 // ClearProcessCapabilities clear g.spec.Process.Capabilities.
@@ -797,40 +857,92 @@ func (g *Generator) ClearProcessCapabilities() {
 	if g.spec == nil {
 		return
 	}
-	g.spec.Process.Capabilities = []string{}
+	g.spec.Process.Capabilities.Bounding = []string{}
+	g.spec.Process.Capabilities.Effective = []string{}
+	g.spec.Process.Capabilities.Inheritable = []string{}
+	g.spec.Process.Capabilities.Permitted = []string{}
+	g.spec.Process.Capabilities.Ambient = []string{}
 }
 
 // AddProcessCapability adds a process capability into g.spec.Process.Capabilities.
 func (g *Generator) AddProcessCapability(c string) error {
-	if err := checkCap(c, g.HostSpecific); err != nil {
-		return err
-	}
-
-	cp := fmt.Sprintf("CAP_%s", strings.ToUpper(c))
-
 	g.initSpec()
-	for _, cap := range g.spec.Process.Capabilities {
+	cp := strings.ToUpper(c)
+
+	for _, cap := range g.spec.Process.Capabilities.Bounding {
 		if strings.ToUpper(cap) == cp {
 			return nil
 		}
 	}
+	g.spec.Process.Capabilities.Bounding = append(g.spec.Process.Capabilities.Bounding, cp)
 
-	g.spec.Process.Capabilities = append(g.spec.Process.Capabilities, cp)
+	for _, cap := range g.spec.Process.Capabilities.Effective {
+		if strings.ToUpper(cap) == cp {
+			return nil
+		}
+	}
+	g.spec.Process.Capabilities.Effective = append(g.spec.Process.Capabilities.Effective, cp)
+
+	for _, cap := range g.spec.Process.Capabilities.Inheritable {
+		if strings.ToUpper(cap) == cp {
+			return nil
+		}
+	}
+	g.spec.Process.Capabilities.Inheritable = append(g.spec.Process.Capabilities.Inheritable, cp)
+
+	for _, cap := range g.spec.Process.Capabilities.Permitted {
+		if strings.ToUpper(cap) == cp {
+			return nil
+		}
+	}
+	g.spec.Process.Capabilities.Permitted = append(g.spec.Process.Capabilities.Permitted, cp)
+
+	for _, cap := range g.spec.Process.Capabilities.Ambient {
+		if strings.ToUpper(cap) == cp {
+			return nil
+		}
+	}
+	g.spec.Process.Capabilities.Ambient = append(g.spec.Process.Capabilities.Ambient, cp)
+
 	return nil
 }
 
 // DropProcessCapability drops a process capability from g.spec.Process.Capabilities.
 func (g *Generator) DropProcessCapability(c string) error {
-	if err := checkCap(c, g.HostSpecific); err != nil {
-		return err
+	g.initSpec()
+	cp := strings.ToUpper(c)
+
+	for i, cap := range g.spec.Process.Capabilities.Bounding {
+		if strings.ToUpper(cap) == cp {
+			g.spec.Process.Capabilities.Bounding = append(g.spec.Process.Capabilities.Bounding[:i], g.spec.Process.Capabilities.Bounding[i+1:]...)
+			return nil
+		}
 	}
 
-	cp := fmt.Sprintf("CAP_%s", strings.ToUpper(c))
-
-	g.initSpec()
-	for i, cap := range g.spec.Process.Capabilities {
+	for i, cap := range g.spec.Process.Capabilities.Effective {
 		if strings.ToUpper(cap) == cp {
-			g.spec.Process.Capabilities = append(g.spec.Process.Capabilities[:i], g.spec.Process.Capabilities[i+1:]...)
+			g.spec.Process.Capabilities.Effective = append(g.spec.Process.Capabilities.Effective[:i], g.spec.Process.Capabilities.Effective[i+1:]...)
+			return nil
+		}
+	}
+
+	for i, cap := range g.spec.Process.Capabilities.Inheritable {
+		if strings.ToUpper(cap) == cp {
+			g.spec.Process.Capabilities.Inheritable = append(g.spec.Process.Capabilities.Inheritable[:i], g.spec.Process.Capabilities.Inheritable[i+1:]...)
+			return nil
+		}
+	}
+
+	for i, cap := range g.spec.Process.Capabilities.Permitted {
+		if strings.ToUpper(cap) == cp {
+			g.spec.Process.Capabilities.Permitted = append(g.spec.Process.Capabilities.Permitted[:i], g.spec.Process.Capabilities.Permitted[i+1:]...)
+			return nil
+		}
+	}
+
+	for i, cap := range g.spec.Process.Capabilities.Ambient {
+		if strings.ToUpper(cap) == cp {
+			g.spec.Process.Capabilities.Ambient = append(g.spec.Process.Capabilities.Ambient[:i], g.spec.Process.Capabilities.Ambient[i+1:]...)
 			return nil
 		}
 	}
@@ -838,24 +950,24 @@ func (g *Generator) DropProcessCapability(c string) error {
 	return nil
 }
 
-func mapStrToNamespace(ns string, path string) (rspec.Namespace, error) {
+func mapStrToNamespace(ns string, path string) (rspec.LinuxNamespace, error) {
 	switch ns {
 	case "network":
-		return rspec.Namespace{Type: rspec.NetworkNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.NetworkNamespace, Path: path}, nil
 	case "pid":
-		return rspec.Namespace{Type: rspec.PIDNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.PIDNamespace, Path: path}, nil
 	case "mount":
-		return rspec.Namespace{Type: rspec.MountNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.MountNamespace, Path: path}, nil
 	case "ipc":
-		return rspec.Namespace{Type: rspec.IPCNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.IPCNamespace, Path: path}, nil
 	case "uts":
-		return rspec.Namespace{Type: rspec.UTSNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.UTSNamespace, Path: path}, nil
 	case "user":
-		return rspec.Namespace{Type: rspec.UserNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.UserNamespace, Path: path}, nil
 	case "cgroup":
-		return rspec.Namespace{Type: rspec.CgroupNamespace, Path: path}, nil
+		return rspec.LinuxNamespace{Type: rspec.CgroupNamespace, Path: path}, nil
 	default:
-		return rspec.Namespace{}, fmt.Errorf("Should not reach here!")
+		return rspec.LinuxNamespace{}, fmt.Errorf("Should not reach here!")
 	}
 }
 
@@ -864,7 +976,7 @@ func (g *Generator) ClearLinuxNamespaces() {
 	if g.spec == nil || g.spec.Linux == nil {
 		return
 	}
-	g.spec.Linux.Namespaces = []rspec.Namespace{}
+	g.spec.Linux.Namespaces = []rspec.LinuxNamespace{}
 }
 
 // AddOrReplaceLinuxNamespace adds or replaces a namespace inside
@@ -903,6 +1015,22 @@ func (g *Generator) RemoveLinuxNamespace(ns string) error {
 		}
 	}
 	return nil
+}
+
+// AddDevice - add a device into g.spec.Linux.Devices
+func (g *Generator) AddDevice(path, devType string, major, minor int64, fileMode *os.FileMode, uid, gid *uint32) {
+	g.initSpecLinux()
+
+	device := rspec.LinuxDevice{
+		Path:     path,
+		Type:     devType,
+		Major:    major,
+		Minor:    minor,
+		FileMode: fileMode,
+		UID:      uid,
+		GID:      gid,
+	}
+	g.spec.Linux.Devices = append(g.spec.Linux.Devices, device)
 }
 
 // strPtr returns the pointer pointing to the string s.

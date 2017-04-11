@@ -32,8 +32,8 @@ import (
 type MapOptions struct {
 	// UIDMappings and GIDMappings are the UID and GID mappings to apply when
 	// packing and unpacking image rootfs layers.
-	UIDMappings []rspec.IDMapping `json:"uid_mappings"`
-	GIDMappings []rspec.IDMapping `json:"gid_mappings"`
+	UIDMappings []rspec.LinuxIDMapping `json:"uid_mappings"`
+	GIDMappings []rspec.LinuxIDMapping `json:"gid_mappings"`
 
 	// Rootless specifies whether any to error out if chown fails.
 	Rootless bool `json:"rootless"`

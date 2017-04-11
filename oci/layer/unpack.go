@@ -281,7 +281,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 // containers. This is done by removing options and other settings that clash
 // with unprivileged user namespaces.
 func ToRootless(spec *rspec.Spec) {
-	var namespaces []rspec.Namespace
+	var namespaces []rspec.LinuxNamespace
 
 	// Remove additional groups.
 	spec.Process.User.AdditionalGids = nil
@@ -296,7 +296,7 @@ func ToRootless(spec *rspec.Spec) {
 		}
 	}
 	// Add userns to the spec.
-	namespaces = append(namespaces, rspec.Namespace{
+	namespaces = append(namespaces, rspec.LinuxNamespace{
 		Type: rspec.UserNamespace,
 	})
 	spec.Linux.Namespaces = namespaces

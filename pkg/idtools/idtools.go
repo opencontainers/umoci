@@ -28,7 +28,7 @@ import (
 // ToHost translates a remapped container ID to an unmapped host ID using the
 // provided ID mapping. If no mapping is provided, then the mapping is a no-op.
 // If there is no mapping for the given ID an error is returned.
-func ToHost(contID int, idMap []rspec.IDMapping) (int, error) {
+func ToHost(contID int, idMap []rspec.LinuxIDMapping) (int, error) {
 	if idMap == nil {
 		return contID, nil
 	}
@@ -46,7 +46,7 @@ func ToHost(contID int, idMap []rspec.IDMapping) (int, error) {
 // container ID using the provided ID mapping. If no mapping is provided, then
 // the mapping is a no-op. If there is no mapping for the given ID an error is
 // returned.
-func ToContainer(hostID int, idMap []rspec.IDMapping) (int, error) {
+func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 	if idMap == nil {
 		return hostID, nil
 	}
@@ -61,9 +61,9 @@ func ToContainer(hostID int, idMap []rspec.IDMapping) (int, error) {
 }
 
 // ParseMapping takes a mapping string of the form "host:container[:size]" and
-// returns the corresponding rspec.IDMapping. An error is returned if not
+// returns the corresponding rspec.LinuxIDMapping. An error is returned if not
 // enough fields are provided or are otherwise invalid. The default size is 1.
-func ParseMapping(spec string) (rspec.IDMapping, error) {
+func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	parts := strings.Split(spec, ":")
 
 	var err error
@@ -72,25 +72,25 @@ func ParseMapping(spec string) (rspec.IDMapping, error) {
 	case 3:
 		size, err = strconv.Atoi(parts[2])
 		if err != nil {
-			return rspec.IDMapping{}, errors.Wrap(err, "invalid size in mapping")
+			return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid size in mapping")
 		}
 	case 2:
 		size = 1
 	default:
-		return rspec.IDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
+		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
 	}
 
 	hostID, err = strconv.Atoi(parts[0])
 	if err != nil {
-		return rspec.IDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
+		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
 	}
 
 	contID, err = strconv.Atoi(parts[1])
 	if err != nil {
-		return rspec.IDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
+		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
 	}
 
-	return rspec.IDMapping{
+	return rspec.LinuxIDMapping{
 		HostID:      uint32(hostID),
 		ContainerID: uint32(contID),
 		Size:        uint32(size),

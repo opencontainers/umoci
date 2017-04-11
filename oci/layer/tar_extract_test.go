@@ -471,12 +471,12 @@ func TestUnpackEntryMap(t *testing.T) {
 	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
 	func(t *testing.T) {
 		for _, test := range []struct {
-			uidMap rspec.IDMapping
-			gidMap rspec.IDMapping
+			uidMap rspec.LinuxIDMapping
+			gidMap rspec.LinuxIDMapping
 		}{
-			{rspec.IDMapping{HostID: 0, ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: 0, ContainerID: 0, Size: 100}},
-			{rspec.IDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
-			{rspec.IDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100}, rspec.IDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
+			{rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}},
+			{rspec.LinuxIDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
+			{rspec.LinuxIDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
 		} {
 			// Create the files we're going to play with.
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryMap")
@@ -499,8 +499,8 @@ func TestUnpackEntryMap(t *testing.T) {
 			)
 
 			te := newTarExtractor(MapOptions{
-				UIDMappings: []rspec.IDMapping{test.uidMap},
-				GIDMappings: []rspec.IDMapping{test.gidMap},
+				UIDMappings: []rspec.LinuxIDMapping{test.uidMap},
+				GIDMappings: []rspec.LinuxIDMapping{test.gidMap},
 			})
 
 			// Regular file.
