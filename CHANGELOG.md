@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- `hack/release.sh` automates the process of generating all of the published
+  artefacts for releases. The new script also generates signed source code
+  archives. openSUSE/umoci#116
+
 ### Changed
 - `umoci` now outputs configurations that are compliant with [`v1.0.0-rc5` of
   the OCI runtime-spec][rspec-v1.0.0-rc5]. This means that now you can use runc
