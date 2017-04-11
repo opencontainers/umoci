@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.2.1] - 2017-04-12
 ### Added
 - `hack/release.sh` automates the process of generating all of the published
   artefacts for releases. The new script also generates signed source code
@@ -153,7 +155,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.2.0...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.2.1...HEAD
+[0.2.0]: https://github.com/openSUSE/umoci/compare/v0.2.0...v0.2.1
 [0.2.0]: https://github.com/openSUSE/umoci/compare/v0.1.0...v0.2.0
 [0.1.0]: https://github.com/openSUSE/umoci/compare/v0.0.0...v0.1.0
 [0.0.0]: https://github.com/openSUSE/umoci/compare/v0.0.0-rc3...v0.0.0
