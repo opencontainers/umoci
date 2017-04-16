@@ -18,6 +18,7 @@
 package casext
 
 import (
+	"errors"
 	"reflect"
 
 	"github.com/apex/log"
@@ -133,7 +134,10 @@ type walkState struct {
 
 // TODO: Move this and blob.go to a separate package.
 
-// TODO: Implement an equivalent to filepath.SkipDir.
+// ErrSkipDescriptor is a special error returned by WalkFunc which will cause
+// Walk to not recurse into the descriptor currently being evaluated by
+// WalkFunc.  This interface is roughly equivalent to filepath.SkipDir.
+var ErrSkipDescriptor = errors.New("[internal] do not recurse into descriptor")
 
 // WalkFunc is the type of function passed to Walk. It will be a called on each
 // descriptor encountered, recursively -- which may involve the function being
@@ -147,9 +151,15 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 	log.WithFields(log.Fields{
 		"digest": descriptor.Digest,
 	}).Debugf("-> ws.recurse")
+	defer log.WithFields(log.Fields{
+		"digest": descriptor.Digest,
+	}).Debugf("<- ws.recurse")
 
 	// Run walkFunc.
 	if err := ws.walkFunc(descriptor); err != nil {
+		if err == ErrSkipDescriptor {
+			return nil
+		}
 		return err
 	}
 
@@ -167,9 +177,6 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 		}
 	}
 
-	log.WithFields(log.Fields{
-		"digest": descriptor.Digest,
-	}).Debugf("<- ws.recurse")
 	return nil
 }
 
