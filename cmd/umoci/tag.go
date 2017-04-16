@@ -22,6 +22,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
@@ -65,27 +66,22 @@ func tagAdd(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	// Get original descriptor.
-	descriptor, err := engine.GetReference(context.Background(), fromName)
+	descriptors, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get reference")
+		return errors.Wrap(err, "get descriptor")
 	}
+	if len(descriptors) != 1 {
+		// TODO: Handle this more nicely.
+		return errors.Errorf("tag is ambiguous: %s", fromName)
+	}
+	descriptor := descriptors[0]
 
 	// Add it.
-	err = engine.PutReference(context.Background(), tagName, descriptor)
-	if err == cas.ErrClobber {
-		// We have to clobber a tag.
-		log.Warnf("clobbering existing tag: %s", tagName)
-
-		// Delete the old tag.
-		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-			return errors.Wrap(err, "delete old tag")
-		}
-		err = engine.PutReference(context.Background(), tagName, descriptor)
-	}
-	if err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
 		return errors.Wrap(err, "put reference")
 	}
 
@@ -118,10 +114,11 @@ func tagRemove(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	// Add it.
-	if err := engine.DeleteReference(context.Background(), tagName); err != nil {
+	// Remove it.
+	if err := engineExt.DeleteReference(context.Background(), tagName); err != nil {
 		return errors.Wrap(err, "delete reference")
 	}
 
@@ -154,9 +151,10 @@ func tagList(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	names, err := engine.ListReferences(context.Background())
+	names, err := engineExt.ListReferences(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "list references")
 	}

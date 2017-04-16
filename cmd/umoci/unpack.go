@@ -129,10 +129,15 @@ func unpack(ctx *cli.Context) error {
 	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	fromDescriptor, err := engineExt.GetReference(context.Background(), fromName)
+	fromDescriptors, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
+	if len(fromDescriptors) != 1 {
+		// TODO: Handle this more nicely.
+		return errors.Errorf("tag is ambiguous: %s", fromName)
+	}
+	fromDescriptor := fromDescriptors[0]
 	meta.From = fromDescriptor
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From)

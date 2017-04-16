@@ -28,6 +28,7 @@ import (
 	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/mutate"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/oci/layer"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -105,6 +106,7 @@ func repack(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	// Create the mutator.
@@ -204,18 +206,7 @@ func repack(ctx *cli.Context) error {
 
 	log.Infof("new image manifest created: %s", newDescriptor.Digest)
 
-	err = engine.PutReference(context.Background(), tagName, newDescriptor)
-	if err == cas.ErrClobber {
-		// We have to clobber a tag.
-		log.Warnf("clobbering existing tag: %s", tagName)
-
-		// Delete the old tag.
-		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-			return errors.Wrap(err, "delete old tag")
-		}
-		err = engine.PutReference(context.Background(), tagName, newDescriptor)
-	}
-	if err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

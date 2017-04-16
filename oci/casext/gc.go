@@ -45,10 +45,16 @@ func (e Engine) GC(ctx context.Context) error {
 	}
 
 	for _, name := range names {
-		descriptor, err := e.GetReference(ctx, name)
+		// TODO: This code is no longer necessary once we have index.json.
+		descriptors, err := e.ResolveReference(ctx, name)
 		if err != nil {
 			return errors.Wrapf(err, "get root %s", name)
 		}
+		if len(descriptors) != 1 {
+			// TODO: Handle this more nicely.
+			return errors.Errorf("tag is ambiguous: %s", name)
+		}
+		descriptor := descriptors[0]
 		log.WithFields(log.Fields{
 			"name":   name,
 			"digest": descriptor.Digest,

@@ -23,12 +23,10 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"syscall"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -181,74 +179,6 @@ func TestEngineBlobReadonly(t *testing.T) {
 		if err == nil {
 			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutBlob: expected error on ro image!")
-		}
-
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
-
-		// make it readwrite again.
-		readwrite(t, image)
-	}
-}
-
-func TestEngineReferenceReadonly(t *testing.T) {
-	ctx := context.Background()
-
-	root, err := ioutil.TempDir("", "umoci-TestEngineReferenceReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	for _, test := range []struct {
-		name       string
-		descriptor ispec.Descriptor
-	}{
-		{"ref1", ispec.Descriptor{}},
-		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
-		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributableGzip, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
-	} {
-
-		engine, err := Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
-
-		if err := engine.PutReference(ctx, test.name, test.descriptor); err != nil {
-			t.Errorf("PutReference: unexpected error: %+v", err)
-		}
-
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
-
-		// make it readonly
-		readonly(t, image)
-
-		newEngine, err := Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
-
-		gotDescriptor, err := newEngine.GetReference(ctx, test.name)
-		if err != nil {
-			t.Errorf("GetReference: unexpected error: %+v", err)
-		}
-
-		if !reflect.DeepEqual(test.descriptor, gotDescriptor) {
-			t.Errorf("GetReference: got different descriptor to original: expected=%v got=%v", test.descriptor, gotDescriptor)
-		}
-
-		// Make sure that writing will FAIL.
-		if err := newEngine.PutReference(ctx, test.name+"new", test.descriptor); err == nil {
-			t.Logf("PutReference: e.temp = %s", newEngine.(*dirEngine).temp)
-			t.Errorf("PutReference: expected error on ro image!")
 		}
 
 		if err := newEngine.Close(); err != nil {

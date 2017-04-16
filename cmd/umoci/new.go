@@ -130,18 +130,7 @@ func newImage(ctx *cli.Context) error {
 
 	log.Infof("new image manifest created: %s", descriptor.Digest)
 
-	err = engine.PutReference(context.Background(), tagName, descriptor)
-	if err == cas.ErrClobber {
-		// We have to clobber a tag.
-		log.Warnf("clobbering existing tag: %s", tagName)
-
-		// Delete the old tag.
-		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-			return errors.Wrap(err, "delete old tag")
-		}
-		err = engine.PutReference(context.Background(), tagName, descriptor)
-	}
-	if err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 
