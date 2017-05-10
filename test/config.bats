@@ -358,11 +358,22 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Make sure that only $HOME was set.
-	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
+	# Make sure that HOME, PATH and TERM are set
+	sane_run jq -SMr '.process.env | length' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	[[ "${lines[0]}" == *"HOME="* ]]
-	[ "${#lines[@]}" -eq 1 ]
+	[[ "$output" == 3 ]]
+
+	sane_run jq -SMr '.process.env[] | startswith("HOME=")' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "${lines[*]}" == *"true"* ]]
+
+	sane_run jq -SMr '.process.env[] | startswith("PATH=")' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "${lines[*]}" == *"true"* ]]
+
+	sane_run jq -SMr '.process.env[] | startswith("TERM=")' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "${lines[*]}" == *"true"* ]]
 
 	image-verify "${IMAGE}"
 }
@@ -705,13 +716,14 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci config --manifest.annotation" {
+@test "umoci config --config.exposedports" {
 	BUNDLE="$(setup_tmpdir)"
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
-		--clear=config.labels --clear=manifest.annotations \
-		--manifest.annotation="com.cyphar.test=1" --manifest.annotation="com.cyphar.empty="
+		--config.exposedports="2000" \
+		--config.exposedports="8080/tcp" \
+		--config.exposedports="1234/tcp"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -720,82 +732,11 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	sane_run jq -SMr '.annotations["com.cyphar.test"]' "$BUNDLE/config.json"
+	sane_run jq -SMr '.annotations["org.opencontainers.image.exposedPorts"] | split(",")[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	[[ "$output" == "1" ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.empty"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "" ]]
-
-	image-verify "${IMAGE}"
-}
-
-@test "umoci config --config.label --manifest.annotation" {
-	BUNDLE="$(setup_tmpdir)"
-
-	# Modify none of the configuration.
-	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
-		--clear=config.labels --clear=manifest.annotations \
-		--config.label="com.cyphar.label_test={another value}" --config.label="com.cyphar.label_empty=" \
-		--manifest.annotation="com.cyphar.manifest_test= another valu=e  " --manifest.annotation="com.cyphar.manifest_empty="
-	[ "$status" -eq 0 ]
-	image-verify "${IMAGE}"
-
-	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
-	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE"
-
-	sane_run jq -SMr '.annotations["com.cyphar.label_test"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "{another value}" ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.label_empty"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "" ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.manifest_test"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == " another valu=e  " ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.manifest_empty"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "" ]]
-
-	image-verify "${IMAGE}"
-}
-
-# XXX: This is currently not in any spec. So we'll just test our own behaviour
-#      here and we can fix it after opencontainers/image-spec#479 is fixed.
-@test "umoci config --config.label --manifest.annotation [clobber]" {
-	BUNDLE="$(setup_tmpdir)"
-
-	# Modify none of the configuration.
-	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
-		--clear=config.labels --clear=manifest.annotations \
-		--config.label="com.cyphar.test= this_is SOEM VALUE" --config.label="com.cyphar.label_empty=" \
-		--manifest.annotation="com.cyphar.test== __ --a completely different VALuE    " --manifest.annotation="com.cyphar.manifest_empty="
-	[ "$status" -eq 0 ]
-	image-verify "${IMAGE}"
-
-	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
-	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE"
-
-	# Manifest beats config.
-	sane_run jq -SMr '.annotations["com.cyphar.test"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "= __ --a completely different VALuE    " ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.label_empty"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "" ]]
-
-	sane_run jq -SMr '.annotations["com.cyphar.manifest_empty"]' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "" ]]
+	[[ "${lines[0]}" == "1234/tcp" ]]
+	[[ "${lines[1]}" == "2000" ]]
+	[[ "${lines[2]}" == "8080/tcp" ]]
 
 	image-verify "${IMAGE}"
 }

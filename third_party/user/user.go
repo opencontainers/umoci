@@ -378,7 +378,7 @@ func GetExecUser(userSpec string, defaults *ExecUser, passwd, group io.Reader) (
 
 				// Okay, so it's numeric. We can just roll with this.
 			}
-		} else if len(groups) > 0 {
+		} else if len(groups) > 0 && uidErr != nil {
 			// Supplementary group ids only make sense if in the implicit form.
 			user.Sgids = make([]int, len(groups))
 			for i, group := range groups {
