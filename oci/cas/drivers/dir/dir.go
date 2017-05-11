@@ -123,7 +123,7 @@ func (e *dirEngine) validate() error {
 	// XXX: Currently the meaning of this field is not adequately defined by
 	//      the spec, nor is the "official" value determined by the spec.
 	if ociLayout.Version != ImageLayoutVersion {
-		return errors.Wrap(cas.ErrInvalid, "layout version is supported")
+		return errors.Wrap(cas.ErrInvalid, "layout version is not supported")
 	}
 
 	// Check that "blobs" and "refs" exist in the image.
@@ -136,7 +136,7 @@ func (e *dirEngine) validate() error {
 		}
 		return errors.Wrap(err, "check blobdir")
 	} else if !fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "blobdir is directory")
+		return errors.Wrap(cas.ErrInvalid, "blobdir is not a directory")
 	}
 
 	if fi, err := os.Stat(filepath.Join(e.path, refDirectory)); err != nil {
@@ -145,7 +145,7 @@ func (e *dirEngine) validate() error {
 		}
 		return errors.Wrap(err, "check refdir")
 	} else if !fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "refdir is directory")
+		return errors.Wrap(cas.ErrInvalid, "refdir is not a directory")
 	}
 
 	return nil
