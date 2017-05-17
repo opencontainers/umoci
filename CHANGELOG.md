@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Changed
+- Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually
+  make sense now. openSUSE/umoci#121
+- `umoci unpack` now generates `config.json` blobs according to the [still
+  proposed][ispec-pr492] OCI image specification conversion document.
+  openSUSE/umoci#120
+
+[ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
 
 ## [0.2.1] - 2017-04-12
 ### Added
