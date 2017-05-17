@@ -19,6 +19,7 @@ package generate
 
 import (
 	"fmt"
+	"sort"
 	"strings"
 	"time"
 
@@ -126,6 +127,16 @@ func (g *Generator) ConfigExposedPorts() map[string]struct{} {
 		copy[k] = v
 	}
 	return copy
+}
+
+// ConfigExposedPortsArray returns a sorted array of ports to expose from a container running this image.
+func (g *Generator) ConfigExposedPortsArray() []string {
+	var ports []string
+	for port := range g.image.Config.ExposedPorts {
+		ports = append(ports, port)
+	}
+	sort.Strings(ports)
+	return ports
 }
 
 // ClearConfigEnv clears the list of environment variables to be used in a container.

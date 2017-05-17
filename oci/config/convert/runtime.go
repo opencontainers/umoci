@@ -19,11 +19,10 @@ package convert
 
 import (
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/apex/log"
-	gspec "github.com/openSUSE/umoci/oci/config/generate"
+	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
@@ -73,7 +72,12 @@ func parseEnv(env string) (string, string, error) {
 // image configuration provided. It returns the original generator, and does
 // not modify any fields directly (to allow for chaining).
 func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error {
-	if image.OS != "linux" {
+	ig, err := igen.NewFromImage(image)
+	if err != nil {
+		return errors.Wrap(err, "creating image generator")
+	}
+
+	if ig.OS() != "linux" {
 		return errors.Errorf("unsupported OS: %s", image.OS)
 	}
 
@@ -81,18 +85,18 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 	//g.SetVersion(rspec.Version)
 
 	// Set verbatim fields
-	g.SetPlatformArch(image.Architecture)
-	g.SetPlatformOS(image.OS)
+	g.SetPlatformArch(ig.Architecture())
+	g.SetPlatformOS(ig.OS())
 	g.SetProcessTerminal(true)
 	g.SetRootPath(filepath.Base(rootfs))
 	g.SetRootReadonly(false)
 
 	g.SetProcessCwd("/")
-	if image.Config.WorkingDir != "" {
-		g.SetProcessCwd(image.Config.WorkingDir)
+	if ig.ConfigWorkingDir() != "" {
+		g.SetProcessCwd(ig.ConfigWorkingDir())
 	}
 
-	for _, env := range image.Config.Env {
+	for _, env := range ig.ConfigEnv() {
 		name, value, err := parseEnv(env)
 		if err != nil {
 			return errors.Wrap(err, "parsing image.Config.Env")
@@ -101,19 +105,20 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 	}
 
 	args := []string{}
-	args = append(args, image.Config.Entrypoint...)
-	args = append(args, image.Config.Cmd...)
+	args = append(args, ig.ConfigEntrypoint()...)
+	args = append(args, ig.ConfigCmd()...)
 	if len(args) > 0 {
 		g.SetProcessArgs(args)
 	}
 
 	// Set annotations fields
-	for key, value := range image.Config.Labels {
+	for key, value := range ig.ConfigLabels() {
 		g.AddAnnotation(key, value)
 	}
-	g.AddAnnotation(authorAnnotation, image.Author)
-	g.AddAnnotation(createdAnnotation, image.Created.Format(gspec.ISO8601))
-	// FIXME: currently not supported! Uncomment when moving to image-spec rc5.
+	g.AddAnnotation(authorAnnotation, ig.Author())
+	g.AddAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
+	// FIXME: currently not supported! Uncomment when moving to image-spec
+	// rc5. Don't forget to add a proper API.
 	// g.AddAnnotation(stopSignalAnnotation, image.Config.StopSignal)
 
 	// Set parsed fields
@@ -125,14 +130,14 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 		passwdPath = filepath.Join(rootfs, "/etc/passwd")
 		groupPath = filepath.Join(rootfs, "/etc/group")
 	}
-	execUser, err := user.GetExecUserPath(image.Config.User, nil, passwdPath, groupPath)
+	execUser, err := user.GetExecUserPath(ig.ConfigUser(), nil, passwdPath, groupPath)
 	if err != nil {
 		// We only log an error if were not given a rootfs, and we set execUser
 		// to the "default" (root:root).
 		if rootfs != "" {
-			return errors.Wrapf(err, "cannot parse user spec: '%s'", image.Config.User)
+			return errors.Wrapf(err, "cannot parse user spec: '%s'", ig.ConfigUser())
 		}
-		log.Warnf("could not parse user spec '%s' without a rootfs -- defaulting to root:root", image.Config.User)
+		log.Warnf("could not parse user spec '%s' without a rootfs -- defaulting to root:root", ig.ConfigUser())
 		execUser = new(user.ExecUser)
 	}
 
@@ -148,14 +153,10 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 	}
 
 	// Set optional fields
-	var ports []string
-	for port := range image.Config.ExposedPorts {
-		ports = append(ports, port)
-	}
-	sort.Strings(ports)
+	ports := ig.ConfigExposedPortsArray()
 	g.AddAnnotation(exposedPortsAnnotation, strings.Join(ports, ","))
 
-	for vol := range image.Config.Volumes {
+	for vol := range ig.ConfigVolumes() {
 		// XXX: This is _fine_ but might cause some issues in the future.
 		g.AddTmpfsMount(vol, []string{"rw"})
 	}
