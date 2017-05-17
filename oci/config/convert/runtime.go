@@ -31,10 +31,14 @@ import (
 	"github.com/pkg/errors"
 )
 
+// Annotations described by the OCI image-spec document (these represent fields
+// in an image configuration that do not have a native representation in the
+// runtime-spec).
 const (
-	authorAnnotation     = "org.opencontainers.image.author"
-	createdAnnotation    = "org.opencontainers.image.created"
-	stopSignalAnnotation = "org.opencontainers.image.StopSignal"
+	authorAnnotation       = "org.opencontainers.image.author"
+	createdAnnotation      = "org.opencontainers.image.created"
+	stopSignalAnnotation   = "org.opencontainers.image.StopSignal"
+	exposedPortsAnnotation = "org.opencontainers.image.exposedPorts"
 )
 
 // ToRuntimeSpec converts the given OCI image configuration to a runtime
@@ -149,7 +153,7 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 		ports = append(ports, port)
 	}
 	sort.Strings(ports)
-	g.AddAnnotation("org.opencontainers.image.exposedPorts", strings.Join(ports, ","))
+	g.AddAnnotation(exposedPortsAnnotation, strings.Join(ports, ","))
 
 	for vol := range image.Config.Volumes {
 		// XXX: This is _fine_ but might cause some issues in the future.
