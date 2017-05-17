@@ -249,7 +249,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	}
 
 	g := rgen.New()
-	if err := iconv.MutateRuntimeSpec(g, rootfs, config, manifest); err != nil {
+	if err := iconv.MutateRuntimeSpec(g, rootfs, config); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 
