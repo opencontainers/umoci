@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/apex/log"
 	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/pkg/errors"
 )
@@ -168,6 +169,14 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			//      fail with EPERM. If it can, we should ignore it (like when
 			//      we try to clear xattrs).
 			return errors.Wrapf(err, "get xattr: %s", name)
+		}
+		// https://golang.org/issues/20698 -- We don't just error out here
+		// because it's not _really_ a fatal error. Currently it's unclear
+		// whether the stdlib will correctly handle reading or disable writing
+		// of these PAX headers so we have to track this ourselves.
+		if len(value) <= 0 {
+			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
+			continue
 		}
 		hdr.Xattrs[name] = string(value)
 	}
