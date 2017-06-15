@@ -24,7 +24,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openSUSE/umoci"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/pkg/errors"
 )
 
@@ -53,8 +53,8 @@ type tarGenerator struct {
 	// Hardlink mapping.
 	inodes map[uint64]string
 
-	// fsEval is an umoci.FsEval used for extraction.
-	fsEval umoci.FsEval
+	// fsEval is an fseval.FsEval used for extraction.
+	fsEval fseval.FsEval
 
 	// XXX: Should we add a saftey check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
@@ -63,9 +63,9 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
-	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	var fsEval fseval.FsEval = fseval.DefaultFsEval
 	if opt.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	return &tarGenerator{
