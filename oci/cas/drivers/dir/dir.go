@@ -27,11 +27,11 @@ import (
 	"reflect"
 
 	"github.com/openSUSE/umoci/oci/cas"
-	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -96,7 +96,7 @@ func (e *dirEngine) ensureTempDir() error {
 		if err != nil {
 			return errors.Wrap(err, "open tempdir for lock")
 		}
-		if err := system.Flock(e.tempFile.Fd(), true); err != nil {
+		if err := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
 			return errors.Wrap(err, "lock tempdir")
 		}
 
@@ -395,12 +395,12 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 		}
 		defer cfh.Close()
 
-		if err := system.Flock(cfh.Fd(), true); err != nil {
+		if err := unix.Flock(int(cfh.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
 			// If we fail to get a flock(2) then it's probably already locked,
 			// so we shouldn't touch it.
 			continue
 		}
-		defer system.Unflock(cfh.Fd())
+		defer unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
 
 		if err := os.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "remove garbage path")
@@ -414,7 +414,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 // fail.
 func (e *dirEngine) Close() error {
 	if e.temp != "" {
-		if err := system.Unflock(e.tempFile.Fd()); err != nil {
+		if err := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_UN); err != nil {
 			return errors.Wrap(err, "unlock tempdir")
 		}
 		if err := e.tempFile.Close(); err != nil {
