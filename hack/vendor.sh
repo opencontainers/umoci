@@ -83,7 +83,7 @@ clean() {
 	# Remove any extra files that we know we don't care about.
 	echo -n "pruning unused files, "
 	find vendor -type f -name '*_test.go' -exec rm -v '{}' ';'
-	find vendor -regextype posix-extended -type f -not '(' -regex '.*\.(c|h|go)' -or '(' "${importantfiles[@]}" ')' ')' -exec rm -v '{}' ';'
+	find vendor -regextype posix-extended -type f -not '(' -regex '.*\.(s|c|h|go)' -or '(' "${importantfiles[@]}" ')' ')' -exec rm -v '{}' ';'
 
 	# Remove self from vendor.
 	echo -n "pruning self from vendor, "
@@ -123,7 +123,7 @@ clone github.com/opencontainers/image-tools 421458f7e467ac86175408693a07da6d2981
 clone github.com/opencontainers/runtime-tools 2f0b832c731dcacc6ad44b03200a3a6a3e14393e
 clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
 clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
-clone golang.org/x/sys d75a52659825e75fff6158388dddc6a5b04f9ba5 https://github.com/golang/sys
+clone golang.org/x/sys fb4cac33e3196ff7f507ab9b2d2a44b0142f5b5a https://github.com/golang/sys
 clone github.com/docker/go-units v0.3.1
 clone github.com/pkg/errors v0.8.0
 clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
