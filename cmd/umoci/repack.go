@@ -25,11 +25,11 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/mutate"
 	"github.com/openSUSE/umoci/oci/cas"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/oci/layer"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -139,9 +139,9 @@ func repack(ctx *cli.Context) error {
 		"keywords": MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	fsEval := umoci.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if meta.MapOptions.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	log.Info("computing filesystem diff ...")
