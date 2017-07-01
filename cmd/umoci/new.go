@@ -23,6 +23,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -59,6 +60,7 @@ func newImage(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	// Create a new manifest.
@@ -82,7 +84,7 @@ func newImage(ctx *cli.Context) error {
 
 	// Update config and create a new blob for it.
 	config := g.Image()
-	configDigest, configSize, err := engine.PutBlobJSON(context.Background(), config)
+	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -106,7 +108,7 @@ func newImage(ctx *cli.Context) error {
 		Layers: []ispec.Descriptor{},
 	}
 
-	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
+	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		return errors.Wrap(err, "put manifest blob")
 	}

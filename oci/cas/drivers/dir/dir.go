@@ -18,7 +18,6 @@
 package dir
 
 import (
-	"bytes"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -190,19 +189,6 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	}
 
 	return digester.Digest(), int64(size), nil
-}
-
-// PutBlobJSON adds a new JSON blob to the image (marshalled from the given
-// interface). This is equivalent to calling PutBlob() with a JSON payload
-// as the reader. Note that due to intricacies in the Go JSON
-// implementation, we cannot guarantee that two calls to PutBlobJSON() will
-// return the same digest.
-func (e *dirEngine) PutBlobJSON(ctx context.Context, data interface{}) (digest.Digest, int64, error) {
-	var buffer bytes.Buffer
-	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
-		return "", -1, errors.Wrap(err, "encode JSON")
-	}
-	return e.PutBlob(ctx, &buffer)
 }
 
 // PutReference adds a new reference descriptor blob to the image. This is

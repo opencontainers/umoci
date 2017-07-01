@@ -59,18 +59,6 @@ type Engine interface {
 	// of this PutBlob() call".
 	PutBlob(ctx context.Context, reader io.Reader) (digest digest.Digest, size int64, err error)
 
-	// PutBlobJSON adds a new JSON blob to the image (marshalled from the given
-	// interface). This is equivalent to calling PutBlob() with a JSON payload
-	// as the reader. Note that due to intricacies in the Go JSON
-	// implementation, we cannot guarantee that two calls to PutBlobJSON() will
-	// return the same digest.
-	//
-	// TODO: Use a proper JSON serialisation library, which actually guarantees
-	//       consistent output. Go's JSON library doesn't even attempt to sort
-	//       map[...]... objects (which have their iteration order randomised
-	//       in Go).
-	PutBlobJSON(ctx context.Context, data interface{}) (digest digest.Digest, size int64, err error)
-
 	// PutReference adds a new reference descriptor blob to the image. This is
 	// idempotent; a nil error means that "the descriptor is stored at NAME"
 	// without implying "because of this PutReference() call". ErrClobber is

@@ -27,6 +27,7 @@ import (
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
@@ -52,6 +53,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	engineExt := casext.Engine{engine}
 
 	// Write a tar layer.
 	var buffer bytes.Buffer
@@ -91,7 +93,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 	}
 
-	configDigest, configSize, err := engine.PutBlobJSON(context.Background(), config)
+	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +120,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 	}
 
-	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
+	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		t.Fatal(err)
 	}

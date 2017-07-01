@@ -19,7 +19,6 @@ package dir
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -38,6 +37,10 @@ import (
 //       example structures to make sure that the CAS acts properly.
 
 // readonly makes the given path read-only (by bind-mounting it as "ro").
+// TODO: This should be done through an interface restriction in the test
+//       (which is then backed up by the readonly mount if necessary). The fact
+//       this test is necessary is a sign that we need a better split up of the
+//       CAS interface.
 func readonly(t *testing.T, path string) {
 	if os.Geteuid() != 0 {
 		t.Log("readonly tests only work with root privileges")
@@ -175,89 +178,6 @@ func TestEngineBlobReadonly(t *testing.T) {
 
 		// Make sure that writing again will FAIL.
 		_, _, err = newEngine.PutBlob(ctx, bytes.NewReader(test.bytes))
-		if err == nil {
-			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
-			t.Errorf("PutBlob: expected error on ro image!")
-		}
-
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
-
-		// make it readwrite again.
-		readwrite(t, image)
-	}
-}
-
-func TestEngineBlobJSONReadonly(t *testing.T) {
-	ctx := context.Background()
-
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSONReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	type object struct {
-		A string `json:"A"`
-		B int64  `json:"B,omitempty"`
-	}
-
-	for _, test := range []struct {
-		object object
-	}{
-		{object{}},
-		{object{"a value", 100}},
-		{object{"another value", 200}},
-	} {
-		engine, err := Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
-
-		digest, _, err := engine.PutBlobJSON(ctx, test.object)
-		if err != nil {
-			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
-		}
-
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
-
-		// make it readonly
-		readonly(t, image)
-
-		newEngine, err := Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
-
-		blobReader, err := newEngine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
-		defer blobReader.Close()
-
-		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
-
-		var gotObject object
-		if err := json.Unmarshal(gotBytes, &gotObject); err != nil {
-			t.Errorf("GetBlob: got an invalid JSON blob: %+v", err)
-		}
-		if !reflect.DeepEqual(test.object, gotObject) {
-			t.Errorf("GetBlob: got different object to original JSON. expected=%v got=%v gotBytes=%v", test.object, gotObject, gotBytes)
-		}
-
-		// Make sure that writing again will FAIL.
-		_, _, err = newEngine.PutBlobJSON(ctx, test.object)
 		if err == nil {
 			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutBlob: expected error on ro image!")

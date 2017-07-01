@@ -19,7 +19,6 @@ package dir
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
@@ -131,89 +130,6 @@ func TestEngineBlob(t *testing.T) {
 		}
 		if !bytes.Equal(test.bytes, gotBytes) {
 			t.Errorf("GetBlob: bytes did not match: expected=%s got=%s", string(test.bytes), string(gotBytes))
-		}
-
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error: %+v", err)
-		}
-
-		if br, err := engine.GetBlob(ctx, digest); !os.IsNotExist(errors.Cause(err)) {
-			if err == nil {
-				br.Close()
-				t.Errorf("GetBlob: still got blob contents after DeleteBlob!")
-			} else {
-				t.Errorf("GetBlob: unexpected error: %+v", err)
-			}
-		}
-
-		// DeleteBlob is idempotent. It shouldn't cause an error.
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error on double-delete: %+v", err)
-		}
-	}
-
-	// Should be no blobs left.
-	if blobs, err := engine.ListBlobs(ctx); err != nil {
-		t.Errorf("unexpected error getting list of blobs: %+v", err)
-	} else if len(blobs) > 0 {
-		t.Errorf("got blobs in a clean image: %v", blobs)
-	}
-}
-
-func TestEngineBlobJSON(t *testing.T) {
-	ctx := context.Background()
-
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSON")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
-	defer engine.Close()
-
-	type object struct {
-		A string `json:"A"`
-		B int64  `json:"B,omitempty"`
-	}
-
-	for _, test := range []struct {
-		object object
-	}{
-		{object{}},
-		{object{"a value", 100}},
-		{object{"another value", 200}},
-	} {
-		digest, _, err := engine.PutBlobJSON(ctx, test.object)
-		if err != nil {
-			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
-		}
-
-		blobReader, err := engine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
-		defer blobReader.Close()
-
-		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
-
-		var gotObject object
-		if err := json.Unmarshal(gotBytes, &gotObject); err != nil {
-			t.Errorf("GetBlob: got an invalid JSON blob: %+v", err)
-		}
-		if !reflect.DeepEqual(test.object, gotObject) {
-			t.Errorf("GetBlob: got different object to original JSON. expected=%v got=%v gotBytes=%v", test.object, gotObject, gotBytes)
 		}
 
 		if err := engine.DeleteBlob(ctx, digest); err != nil {
