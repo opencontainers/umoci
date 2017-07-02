@@ -15,21 +15,41 @@ In particular, it should be seen as a more end-user-focused version of the
 of this tooling will eventually be merged with the upstream repository, so that
 it is always kept up-to-date by the Open Container Initiative community.
 
-However, currently there is a [lot][disc-1] [of][disc-2] [dicussion][disc-3]
+However, currently there is a [lot][disc-1] [of][disc-2] [discussion][disc-3]
 about the new tooling going into the OCI image tools, and right now I need
 tooling that can abstract all of the internals of the OCI specification into a
 single CLI interface. The main purpose of this tool is to serve as example of
 what **I** would like to see in an `oci-image` tool.
+
+If you wish to provide feedback or contribute, read the
+[`CONTRIBUTING.md`][contributing] for this project to refresh your knowledge
+about how to submit good bug reports and patches. Information about how to
+submit responsible security disclosures is also provided.
 
 [oci-image-spec]: https://github.com/opencontainers/image-spec
 [oci-image-tools]: https://github.com/opencontainers/image-tools
 [disc-1]: https://github.com/opencontainers/image-spec/pull/411
 [disc-2]: https://github.com/opencontainers/image-tools/pull/5
 [disc-3]: https://github.com/opencontainers/image-tools/pull/8
+[contributing]: /CONTRIBUTING.md
+
+### Releases ###
+
+We regularly publish [new releases][releases], with each release being given a
+unique identifying version number (as governed by [Semantic Versioning
+(SemVer)][semver]). Information about previous releases including the list of
+new features, bug fixes and resolved security issues is available in the
+[change log][changelog]. You can get pre-built binaries and corresponding
+source code for each release from the [releases page][releases].
+
+[semver]: http://semver.org/
+[changelog]: /CHANGELOG.md
+[releases]: https://github.com/openSUSE/umoci/releases
 
 ### Installation ###
 
-Follow these steps to build in with [golang](https://golang.org):
+If you wish to build `umoci` from source, follow these steps to build in with
+[golang](https://golang.org).
 
 ```bash
 GOPATH=$HOME
@@ -42,7 +62,7 @@ Your `umoci` binary will be in `$HOME/bin`.
 
 ### Usage ###
 
-`umoci` has a subcommand-based commandline. For more detailed information, see
+`umoci` has a subcommand-based command-line. For more detailed information, see
 the generated man pages (which you can build with `make doc`).
 
 ```
