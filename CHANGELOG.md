@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- `umoci` now passes all of the requirements for the [CII best practices bading
+  program][cii]. openSUSE/umoci#134
+- `umoci` also now has more extensive architecture, quick-start and roadmap
+  documentation. openSUSE/umoci#134
 ### Changed
 - Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually
   make sense now. openSUSE/umoci#121
@@ -12,6 +17,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   proposed][ispec-pr492] OCI image specification conversion document.
   openSUSE/umoci#120
 
+[cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
 
 ## [0.2.1] - 2017-04-12
