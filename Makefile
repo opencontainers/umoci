@@ -90,10 +90,10 @@ local-validate:
 	#@echo "git-validation"
 	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
 
-MANPAGES_MD := $(wildcard man/*.md)
+MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
 
-man/%.1: man/%.1.md
+doc/man/%.1: doc/man/%.1.md
 	$(GO_MD2MAN) -in $< -out $@
 
 .PHONY: doc
