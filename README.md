@@ -2,6 +2,8 @@
 
 [![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/openSUSE/umoci.svg)
+
+[![Go Report Card](https://goreportcard.com/badge/github.com/openSUSE/umoci)](https://goreportcard.com/report/github.com/openSUSE/umoci)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1084/badge)](https://bestpractices.coreinfrastructure.org/projects/1084)
 
 **Status: Beta**
