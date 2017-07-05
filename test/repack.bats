@@ -499,3 +499,109 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci repack [--config.volumes]" {
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
+	BUNDLE_D="$(setup_tmpdir)"
+
+	# Set some paths to be volumes.
+	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Create files in those volumes.
+	mkdir -p "$BUNDLE_A/rootfs/some nutty/path name/"
+	echo "this is a test" > "$BUNDLE_A/rootfs/some nutty/path name/ here"
+	mkdir -p "$BUNDLE_A/rootfs/volume"
+	echo "another test" > "$BUNDLE_A/rootfs/volume/test"
+	# ... and some outside.
+	echo "more tests" > "$BUNDLE_A/rootfs/some nutty/path "
+	mkdir -p "$BUNDLE_A/rootfs/some/volume"
+	echo "in a mirror directory" > "$BUNDLE_A/rootfs/some/volume/test"
+	echo "checking mirror" > "$BUNDLE_A/rootfs/volumetest"
+
+	# Repack the image under a new tag.
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Re-extract to verify the volume changes weren't included.
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Check the files.
+	[ -f "$BUNDLE_B/rootfs/some nutty/path " ]
+	[[ "$(cat "$BUNDLE_B/rootfs/some nutty/path ")" == "more tests" ]]
+	[ -d "$BUNDLE_B/rootfs/some/volume" ]
+	[ -f "$BUNDLE_B/rootfs/some/volume/test" ]
+	[[ "$(cat "$BUNDLE_B/rootfs/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$BUNDLE_B/rootfs/volumetest" ]
+	[[ "$(cat "$BUNDLE_B/rootfs/volumetest")" == "checking mirror" ]]
+
+	# Volume paths must not be included.
+	! [ -e "$BUNDLE_B/rootfs/volume" ]
+	! [ -e "$BUNDLE_B/rootfs/volume/test" ]
+	! [ -e "$BUNDLE_B/rootfs/some nutty/path name" ]
+	! [ -e "$BUNDLE_B/rootfs/some nutty/path name/ here" ]
+
+	# Repack a copy with volumes not masked.
+	umoci repack --image "${IMAGE}:${TAG}-nomask" --no-mask-volumes "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Extract the no-mask variant to make sure that masked changes *were* included.
+	umoci unpack --image "${IMAGE}:${TAG}-nomask" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# Check the files.
+	[ -f "$BUNDLE_C/rootfs/some nutty/path " ]
+	[[ "$(cat "$BUNDLE_C/rootfs/some nutty/path ")" == "more tests" ]]
+	[ -d "$BUNDLE_C/rootfs/some/volume" ]
+	[ -f "$BUNDLE_C/rootfs/some/volume/test" ]
+	[[ "$(cat "$BUNDLE_C/rootfs/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$BUNDLE_C/rootfs/volumetest" ]
+	[[ "$(cat "$BUNDLE_C/rootfs/volumetest")" == "checking mirror" ]]
+
+	# Volume paths must be included, as well as their contents.
+	[ -e "$BUNDLE_C/rootfs/volume" ]
+	[ -f "$BUNDLE_C/rootfs/volume/test" ]
+	[[ "$(cat "$BUNDLE_C/rootfs/volume/test")" == "another test" ]]
+	[ -d "$BUNDLE_C/rootfs/some nutty/path name" ]
+	[ -f "$BUNDLE_C/rootfs/some nutty/path name/ here" ]
+	[[ "$(cat "$BUNDLE_C/rootfs/some nutty/path name/ here")" == "this is a test" ]]
+
+	# Re-do everything but this time with --mask-path.
+	umoci repack --image "${IMAGE}:${TAG}-new" --mask-path /volume "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Re-extract to verify the masked path changes weren't included.
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_D"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_D"
+
+	# Check the files.
+	[ -f "$BUNDLE_D/rootfs/some nutty/path " ]
+	[[ "$(cat "$BUNDLE_D/rootfs/some nutty/path ")" == "more tests" ]]
+	[ -d "$BUNDLE_D/rootfs/some/volume" ]
+	[ -f "$BUNDLE_D/rootfs/some/volume/test" ]
+	[[ "$(cat "$BUNDLE_D/rootfs/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$BUNDLE_D/rootfs/volumetest" ]
+	[[ "$(cat "$BUNDLE_D/rootfs/volumetest")" == "checking mirror" ]]
+
+	# Masked paths must not be included.
+	! [ -e "$BUNDLE_D/rootfs/volume" ]
+	! [ -e "$BUNDLE_D/rootfs/volume/test" ]
+	# And volumes will also not be included.
+	! [ -e "$BUNDLE_D/rootfs/some nutty/path name" ]
+	! [ -e "$BUNDLE_D/rootfs/some nutty/path name/ here" ]
+}
