@@ -177,15 +177,9 @@ func config(ctx *cli.Context) error {
 				//g.ClearRootfsDiffIDs()
 				return errors.Errorf("--clear=rootfs.diffids is not safe")
 			case "config.cmd":
-				// XXX: This interface is kinda ugly. CMD/ENTRYPOINT are not
-				//      arrays in the same way that any of the other arrays are
-				//      (they're an "atomic" concept).
-				g.SetConfigCmd([]string{})
+				g.ClearConfigCmd()
 			case "config.entrypoint":
-				// XXX: This interface is kinda ugly. CMD/ENTRYPOINT are not
-				//      arrays in the same way that any of the other arrays are
-				//      (they're an "atomic" concept).
-				g.SetConfigEntrypoint([]string{})
+				g.ClearConfigEntrypoint()
 			default:
 				return errors.Errorf("unknown key to --clear: %s", key)
 			}

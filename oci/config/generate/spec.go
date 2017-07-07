@@ -47,10 +47,10 @@ func (g *Generator) init() {
 		g.ClearConfigEnv()
 	}
 	if g.image.Config.Entrypoint == nil {
-		g.SetConfigEntrypoint([]string{})
+		g.ClearConfigEntrypoint()
 	}
 	if g.image.Config.Cmd == nil {
-		g.SetConfigCmd([]string{})
+		g.ClearConfigCmd()
 	}
 	if g.image.Config.Volumes == nil {
 		g.ClearConfigVolumes()
@@ -167,6 +167,11 @@ func (g *Generator) ConfigEnv() []string {
 	return copy
 }
 
+// ClearConfigEntrypoint clears the list of arguments to use as the command to execute when the container starts.
+func (g *Generator) ClearConfigEntrypoint() {
+	g.image.Config.Entrypoint = []string{}
+}
+
 // SetConfigEntrypoint sets the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
 	copy := []string{}
@@ -184,6 +189,11 @@ func (g *Generator) ConfigEntrypoint() []string {
 		copy = append(copy, v)
 	}
 	return copy
+}
+
+// ClearConfigCmd clears the list of default arguments to the entrypoint of the container.
+func (g *Generator) ClearConfigCmd() {
+	g.image.Config.Cmd = []string{}
 }
 
 // SetConfigCmd sets the list of default arguments to the entrypoint of the container.
