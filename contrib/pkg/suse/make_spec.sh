@@ -3,7 +3,7 @@
 if [ -z "$1" ]; then
   cat <<EOF
 usage:
-  ./make_spec.sh PACKAGE
+  ./make_spec.sh PACKAGE [BRANCH]
 EOF
   exit 1
 fi
@@ -15,6 +15,8 @@ VERSION=$(cat ../../../VERSION)
 COMMIT_UNIX_TIME=$(git show -s --format=%ct)
 VERSION="${VERSION%+*}+$(date -d @$COMMIT_UNIX_TIME +%Y%m%d).$(git rev-parse --short HEAD)"
 NAME=$1
+BRANCH=${2:-master}
+SAFE_BRANCH=${BRANCH//\//-}
 
 cat <<EOF > ${NAME}.spec
 #
@@ -51,7 +53,7 @@ Summary:        Open Container Image manipulation tool
 License:        Apache-2.0
 Group:          System/Management
 Url:            https://github.com/openSUSE/umoci
-Source:         master.tar.gz
+Source:         ${SAFE_BRANCH}.tar.gz
 %ifarch %{go_arches}
 BuildRequires:  go >= 1.6
 BuildRequires:  go-go-md2man
@@ -71,7 +73,7 @@ umoci is a manipulation tool for OCI images. In particular, it is an
 alternative to oci-image-tools provided by the OCI.
 
 %prep
-%setup -q -n $NAME-master
+%setup -q -n $NAME-${SAFE_BRANCH}
 
 %build
 
