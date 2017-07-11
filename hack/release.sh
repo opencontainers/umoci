@@ -32,7 +32,8 @@ keyid=""
 commit="HEAD"
 version=""
 releasedir=""
-while getopts "S:c:r:v:" opt; do
+hashcmd=""
+while getopts "S:c:r:v:h:" opt; do
 	case "$opt" in
 		S)
 			keyid="$OPTARG"
@@ -46,6 +47,9 @@ while getopts "S:c:r:v:" opt; do
 		v)
 			version="$OPTARG"
 			;;
+		h)
+			hashcmd="$OPTARG"
+			;;
 		\:)
 			echo "Missing argument: -$OPTARG" >&2
 			usage
@@ -57,13 +61,15 @@ while getopts "S:c:r:v:" opt; do
 	esac
 done
 
-[[ "$version" ]] || set version="$(git describe HEAD)"
-[[ "$releasedir" ]] || set releasedir="release-$version"
+version="${version:-$(git describe HEAD)}"
+releasedir="${releasedir:-release-$version}"
+hashcmd="${hashcmd:-sha256sum}"
 
 log "creating umoci release in '$releasedir'"
 log "  version: $version"
 log "   commit: $commit"
 log "      key: ${keyid:-DEFAULT}"
+log "     hash: $hashcmd"
 
 # Make explicit what we're doing.
 set -x
@@ -78,7 +84,12 @@ mv "$releasedir"/umoci.{static,amd64}
 # Generate new archive.
 git archive --format=tar --prefix="umoci-$version/" "$commit" | xz > "$releasedir/umoci.tar.xz"
 
+# Generate sha256 checksums for both.
+( cd "$releasedir" ; "$hashcmd" umoci.{amd64,tar.xz} > umoci.sha256sum ; )
+
 # Sign everything.
 [[ "$keyid" ]] && set gpgflags="--default-key '$keyid'"
 gpg $gpgflags --detach-sign --armor "$releasedir/umoci.amd64"
 gpg $gpgflags --detach-sign --armor "$releasedir/umoci.tar.xz"
+gpg $gpgflags --clear-sign --armor --yes \
+	--output "$releasedir/umoci.sha256sum" "$releasedir/umoci.sha256sum"
