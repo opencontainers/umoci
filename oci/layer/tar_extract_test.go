@@ -23,11 +23,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 )
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.
@@ -393,40 +393,34 @@ func TestUnpackHardlink(t *testing.T) {
 	}
 
 	// Now we have to check the inode numbers.
-	regFi, err := os.Lstat(filepath.Join(dir, regFile))
-	if err != nil {
+	var regFi, symFi, hardAFi, hardBFi unix.Stat_t
+
+	if err := unix.Lstat(filepath.Join(dir, regFile), &regFi); err != nil {
 		t.Fatalf("could not stat regular file: %s", err)
 	}
-	symFi, err := os.Lstat(filepath.Join(dir, symFile))
-	if err != nil {
+	if err := unix.Lstat(filepath.Join(dir, symFile), &symFi); err != nil {
 		t.Fatalf("could not stat symlink: %s", err)
 	}
-	hardAFi, err := os.Lstat(filepath.Join(dir, hardFileA))
-	if err != nil {
+	if err := unix.Lstat(filepath.Join(dir, hardFileA), &hardAFi); err != nil {
 		t.Fatalf("could not stat hardlinkA: %s", err)
 	}
-	hardBFi, err := os.Lstat(filepath.Join(dir, hardFileB))
-	if err != nil {
+	if err := unix.Lstat(filepath.Join(dir, hardFileB), &hardBFi); err != nil {
 		t.Fatalf("could not stat hardlinkB: %s", err)
 	}
 
 	// This test only runs on Linux anyway.
-	regIno := regFi.Sys().(*syscall.Stat_t).Ino
-	symIno := symFi.Sys().(*syscall.Stat_t).Ino
-	hardAIno := hardAFi.Sys().(*syscall.Stat_t).Ino
-	hardBIno := hardBFi.Sys().(*syscall.Stat_t).Ino
 
-	if regIno == symIno {
-		t.Errorf("regular and symlink have the same inode! ino=%d", regIno)
+	if regFi.Ino == symFi.Ino {
+		t.Errorf("regular and symlink have the same inode! ino=%d", regFi.Ino)
 	}
-	if hardAIno == hardBIno {
-		t.Errorf("both hardlinks have the same inode! ino=%d", hardAIno)
+	if hardAFi.Ino == hardBFi.Ino {
+		t.Errorf("both hardlinks have the same inode! ino=%d", hardAFi.Ino)
 	}
-	if hardAIno != regIno {
-		t.Errorf("hardlink to regular has a different inode: reg=%d hard=%d", regIno, hardAIno)
+	if hardAFi.Ino != regFi.Ino {
+		t.Errorf("hardlink to regular has a different inode: reg=%d hard=%d", regFi.Ino, hardAFi.Ino)
 	}
-	if hardBIno != symIno {
-		t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symIno, hardBIno)
+	if hardBFi.Ino != symFi.Ino {
+		t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symFi.Ino, hardBFi.Ino)
 	}
 
 	// Double-check readlink.
@@ -443,21 +437,17 @@ func TestUnpackHardlink(t *testing.T) {
 	}
 
 	// Make sure that uid and gid don't apply to hardlinks.
-	regUID := int(regFi.Sys().(*syscall.Stat_t).Uid)
-	if regUID != os.Getuid() {
-		t.Errorf("regular file: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), regUID)
+	if int(regFi.Uid) != os.Getuid() {
+		t.Errorf("regular file: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), regFi.Uid)
 	}
-	regGID := int(regFi.Sys().(*syscall.Stat_t).Gid)
-	if regGID != os.Getgid() {
-		t.Errorf("regular file: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), regGID)
+	if int(regFi.Gid) != os.Getgid() {
+		t.Errorf("regular file: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), regFi.Gid)
 	}
-	symUID := int(symFi.Sys().(*syscall.Stat_t).Uid)
-	if symUID != os.Getuid() {
-		t.Errorf("symlink: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), symUID)
+	if int(symFi.Uid) != os.Getuid() {
+		t.Errorf("symlink: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), symFi.Uid)
 	}
-	symGID := int(symFi.Sys().(*syscall.Stat_t).Gid)
-	if symGID != os.Getgid() {
-		t.Errorf("symlink: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), symGID)
+	if int(symFi.Gid) != os.Getgid() {
+		t.Errorf("symlink: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), symFi.Gid)
 	}
 }
 
@@ -488,8 +478,9 @@ func TestUnpackEntryMap(t *testing.T) {
 			t.Logf("running with uid=%#v gid=%#v", test.uidMap, test.gidMap)
 
 			var (
-				hdr            *tar.Header
-				hdrUID, hdrGID int
+				hdrUID, hdrGID, uUID, uGID int
+				hdr                        *tar.Header
+				fi                         unix.Stat_t
 
 				ctrValue = []byte("some content we won't check")
 				regFile  = "regular"
@@ -519,16 +510,17 @@ func TestUnpackEntryMap(t *testing.T) {
 			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 				t.Fatalf("regfile: unexpected unpackEntry error: %s", err)
 			}
-			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+
+			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
 				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
 			} else {
-				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
-				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
-				if theUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				uUID = int(fi.Uid)
+				uGID = int(fi.Gid)
+				if uUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
 				}
-				if theGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				if uGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
 				}
 			}
 
@@ -547,16 +539,17 @@ func TestUnpackEntryMap(t *testing.T) {
 			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
 			}
-			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+
+			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
 				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
 			} else {
-				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
-				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
-				if theUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				uUID = int(fi.Uid)
+				uGID = int(fi.Gid)
+				if uUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
 				}
-				if theGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				if uGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
 				}
 			}
 
@@ -575,16 +568,17 @@ func TestUnpackEntryMap(t *testing.T) {
 			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
 			}
-			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+
+			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
 				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
 			} else {
-				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
-				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
-				if theUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				uUID = int(fi.Uid)
+				uGID = int(fi.Gid)
+				if uUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
 				}
-				if theGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				if uGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
 				}
 			}
 
@@ -603,16 +597,17 @@ func TestUnpackEntryMap(t *testing.T) {
 			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
 			}
-			if fi, err := os.Lstat(filepath.Join(dir, hdr.Name)); err != nil {
+
+			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
 				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
 			} else {
-				theUID := int(fi.Sys().(*syscall.Stat_t).Uid)
-				theGID := int(fi.Sys().(*syscall.Stat_t).Gid)
-				if theUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, theUID, int(test.uidMap.HostID)+hdrUID)
+				uUID = int(fi.Uid)
+				uGID = int(fi.Gid)
+				if uUID != int(test.uidMap.HostID)+hdrUID {
+					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
 				}
-				if theGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, theGID, int(test.gidMap.HostID)+hdrGID)
+				if uGID != int(test.gidMap.HostID)+hdrGID {
+					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
 				}
 			}
 		}

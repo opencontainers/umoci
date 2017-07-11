@@ -20,20 +20,20 @@ package system
 import (
 	"os"
 	"path/filepath"
-	"syscall"
 	"time"
 	"unsafe"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 // Lutimes is a wrapper around utimensat(2), with the AT_SYMLINK_NOFOLLOW flag
 // set, to allow changing the time of a symlink rather than the file it points
 // to.
 func Lutimes(path string, atime, mtime time.Time) error {
-	var times [2]syscall.Timespec
-	times[0] = syscall.NsecToTimespec(atime.UnixNano())
-	times[1] = syscall.NsecToTimespec(mtime.UnixNano())
+	var times [2]unix.Timespec
+	times[0] = unix.NsecToTimespec(atime.UnixNano())
+	times[1] = unix.NsecToTimespec(mtime.UnixNano())
 
 	// Split up the path.
 	dir, file := filepath.Split(path)
@@ -41,14 +41,14 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	file = filepath.Clean(file)
 
 	// Open the parent directory.
-	dirFile, err := os.OpenFile(filepath.Clean(dir), syscall.O_RDONLY|syscall.O_NOFOLLOW|syscall.O_DIRECTORY, 0)
+	dirFile, err := os.OpenFile(filepath.Clean(dir), unix.O_RDONLY|unix.O_NOFOLLOW|unix.O_DIRECTORY, 0)
 	if err != nil {
 		return errors.Wrap(err, "lutimes: open parent directory")
 	}
 	defer dirFile.Close()
 
 	// The interface for this is really, really silly.
-	_, _, errno := syscall.RawSyscall6(syscall.SYS_UTIMENSAT, // int utimensat(
+	_, _, errno := unix.RawSyscall6(unix.SYS_UTIMENSAT, // int utimensat(
 		uintptr(dirFile.Fd()),              // int dirfd,
 		uintptr(assertPtrFromString(file)), // char *pathname,
 		uintptr(unsafe.Pointer(&times[0])), // struct timespec times[2],

@@ -64,7 +64,7 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
-	var fsEval fseval.FsEval = fseval.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
 		fsEval = fseval.RootlessFsEval
 	}
@@ -109,6 +109,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
 func (tg *tarGenerator) AddFile(name, path string) error {
+
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
 		return errors.Wrap(err, "add file lstat")
@@ -144,9 +145,11 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// Different systems have different special things they need to set within
 	// a tar header. For example, device numbers are quite important to be set
 	// by us.
-	if err := updateHeader(hdr, fi); err != nil {
-		return errors.Wrap(err, "update hdr header")
+	statx, err := tg.fsEval.Lstatx(path)
+	if err != nil {
+		return errors.Wrapf(err, "lstatx %q", path)
 	}
+	updateHeader(hdr, statx)
 
 	// Set up xattrs externally to updateHeader because the function signature
 	// would look really dumb otherwise.
@@ -183,23 +186,15 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to
 	// handle this in a way that makes anything other than GNU/Linux happy
-	// right now.
-	ino, err := getInode(fi)
-	if err != nil {
-		return errors.Wrap(err, "get inode")
-	}
-
-	// Handle hardlinks.
-	if oldpath, ok := tg.inodes[ino]; ok {
+	// right now. Handle hardlinks.
+	if oldpath, ok := tg.inodes[statx.Ino]; ok {
 		// We just hit a hardlink, so we just have to change the header.
 		hdr.Typeflag = tar.TypeLink
 		hdr.Linkname = oldpath
 		hdr.Size = 0
 	} else {
-		tg.inodes[ino] = name
+		tg.inodes[statx.Ino] = name
 	}
-
-	// XXX: What about xattrs.
 
 	// Apply any header mappings.
 	if err := mapHeader(hdr, tg.mapOptions); err != nil {

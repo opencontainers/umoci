@@ -60,6 +60,13 @@ func (fs osFsEval) Lstat(path string) (os.FileInfo, error) {
 	return os.Lstat(path)
 }
 
+// Lstatx is equivalent to unix.Lstat.
+func (fs osFsEval) Lstatx(path string) (unix.Stat_t, error) {
+	var s unix.Stat_t
+	err := unix.Lstat(path, &s)
+	return s, err
+}
+
 // Readlink is equivalent to os.Readlink.
 func (fs osFsEval) Readlink(path string) (string, error) {
 	return os.Readlink(path)

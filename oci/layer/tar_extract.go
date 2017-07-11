@@ -43,7 +43,7 @@ type tarExtractor struct {
 
 // newTarExtractor creates a new tarExtractor.
 func newTarExtractor(opt MapOptions) *tarExtractor {
-	var fsEval fseval.FsEval = fseval.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
 		fsEval = fseval.RootlessFsEval
 	}

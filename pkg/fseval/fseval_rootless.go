@@ -25,6 +25,7 @@ import (
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/openSUSE/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
+	"golang.org/x/sys/unix"
 )
 
 // RootlessFsEval is an FsEval implementation that uses "umoci/pkg/unpriv".*
@@ -55,6 +56,10 @@ func (fs unprivFsEval) Readdir(path string) ([]os.FileInfo, error) {
 // Lstat is equivalent to unpriv.Lstat.
 func (fs unprivFsEval) Lstat(path string) (os.FileInfo, error) {
 	return unpriv.Lstat(path)
+}
+
+func (fs unprivFsEval) Lstatx(path string) (unix.Stat_t, error) {
+	return unpriv.Lstatx(path)
 }
 
 // Readlink is equivalent to unpriv.Readlink.

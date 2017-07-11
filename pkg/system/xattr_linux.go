@@ -20,7 +20,6 @@ package system
 import (
 	"bytes"
 	"os"
-	"syscall"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
@@ -45,7 +44,7 @@ func Llistxattr(path string) ([]string, error) {
 			// If we got an ERANGE then we have to resize the buffer because
 			// someone raced with us getting the list. Don't you just love C
 			// interfaces.
-			if serr, ok := err.(syscall.Errno); ok && serr == syscall.ERANGE {
+			if err == unix.ERANGE {
 				continue
 			}
 			return nil, err
@@ -86,7 +85,7 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 			// If we got an ERANGE then we have to resize the buffer because
 			// someone raced with us getting the list. Don't you just love C
 			// interfaces.
-			if serr, ok := err.(syscall.Errno); ok && serr == syscall.ERANGE {
+			if err == unix.ERANGE {
 				continue
 			}
 			return nil, err

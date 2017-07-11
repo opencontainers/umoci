@@ -23,12 +23,12 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
+	"golang.org/x/sys/unix"
 )
 
 // NOTE: These tests aren't really testing OCI-style manifests. It's all just
@@ -47,10 +47,10 @@ func readonly(t *testing.T, path string) {
 
 	t.Logf("mounting %s as readonly", path)
 
-	if err := syscall.Mount(path, path, "", syscall.MS_BIND|syscall.MS_RDONLY, ""); err != nil {
+	if err := unix.Mount(path, path, "", unix.MS_BIND|unix.MS_RDONLY, ""); err != nil {
 		t.Fatalf("mount %s as ro: %s", path, err)
 	}
-	if err := syscall.Mount("none", path, "", syscall.MS_BIND|syscall.MS_REMOUNT|syscall.MS_RDONLY, ""); err != nil {
+	if err := unix.Mount("none", path, "", unix.MS_BIND|unix.MS_REMOUNT|unix.MS_RDONLY, ""); err != nil {
 		t.Fatalf("mount %s as ro: %s", path, err)
 	}
 }
@@ -62,7 +62,7 @@ func readwrite(t *testing.T, path string) {
 		t.Skip()
 	}
 
-	if err := syscall.Unmount(path, syscall.MNT_DETACH); err != nil {
+	if err := unix.Unmount(path, unix.MNT_DETACH); err != nil {
 		t.Fatalf("unmount %s: %s", path, err)
 	}
 }

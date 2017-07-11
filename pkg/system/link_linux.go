@@ -17,9 +17,9 @@
 
 package system
 
-import "syscall"
+import "golang.org/x/sys/unix"
 
 // Unlink is a wrapper around unlink(2).
 func Unlink(path string) error {
-	return syscall.Unlink(path)
+	return unix.Unlink(path)
 }
