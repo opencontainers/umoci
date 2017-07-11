@@ -28,4 +28,5 @@ script:
   - chmod a+rwx . # Necessary to make Travis co-operate with Docker.
   - make umoci
   - make umoci.static
+  - make local-validate-reproducible
   - make DOCKER_IMAGE=$DOCKER_IMAGE ci

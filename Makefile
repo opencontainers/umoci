@@ -79,7 +79,7 @@ validate: umociimage
 
 EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
 .PHONY: local-validate
-local-validate:
+local-validate: local-validate-reproducible
 	test -z "$$(gofmt -s -l . | grep -v '^vendor/' | grep -v '^third_party/' | tee /dev/stderr)"
 	out="$$(golint $(PROJECT)/... | grep -v '/vendor/' | grep -v '/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores')"; \
 	if [ -n "$$out" ]; then \
@@ -89,6 +89,22 @@ local-validate:
 	go vet $(shell go list $(PROJECT)/... | grep -v /vendor/ | grep -v /third_party/)
 	#@echo "git-validation"
 	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
+
+# Make sure that our builds are reproducible even if you wait between them and
+# the modified time of the files is different.
+.PHONY: local-validate-reproducible
+local-validate-reproducible:
+	@mkdir -p .tmp-validate
+	@echo " [MAKE-A] umoci"
+	@make -B umoci && cp umoci .tmp-validate/umoci.a
+	@echo " [WAIT]"
+	@sleep 10s && touch $(GO_SRC)
+	@echo " [MAKE-B] umoci"
+	@make -B umoci && cp umoci .tmp-validate/umoci.b
+	@echo "  [CMP] umoci"
+	@diff -s .tmp-validate/umoci.{a,b}
+	@sha256sum .tmp-validate/umoci.{a,b}
+	@rm -r .tmp-validate/umoci.{a,b}
 
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
