@@ -23,11 +23,11 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/opencontainers/go-digest"
+	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -40,11 +40,12 @@ const (
 	// the value and hope for the best.
 	ImageLayoutVersion = "1.0.0"
 
-	// refDirectory is the directory inside an OCI image that contains references.
-	refDirectory = "refs"
-
 	// blobDirectory is the directory inside an OCI image that contains blobs.
 	blobDirectory = "blobs"
+
+	// indexFile is the file inside an OCI image that contains the top-level
+	// index.
+	indexFile = "index.json"
 
 	// layoutFile is the file in side an OCI image the indicates what version
 	// of the OCI spec the image is.
@@ -66,12 +67,6 @@ func blobPath(digest digest.Digest) (string, error) {
 	}
 
 	return filepath.Join(blobDirectory, algo.String(), hash), nil
-}
-
-// refPath returns the path to a reference given its name, relative to the r
-// oot of the OCI image.
-func refPath(name string) (string, error) {
-	return filepath.Join(refDirectory, name), nil
 }
 
 type dirEngine struct {
@@ -125,7 +120,7 @@ func (e *dirEngine) validate() error {
 		return errors.Wrap(cas.ErrInvalid, "layout version is not supported")
 	}
 
-	// Check that "blobs" and "refs" exist in the image.
+	// Check that "blobs" and "index.json" exist in the image.
 	// FIXME: We also should check that blobs *only* contains a cas.BlobAlgorithm
 	//        directory (with no subdirectories) and that refs *only* contains
 	//        files (optionally also making sure they're all JSON descriptors).
@@ -138,13 +133,13 @@ func (e *dirEngine) validate() error {
 		return errors.Wrap(cas.ErrInvalid, "blobdir is not a directory")
 	}
 
-	if fi, err := os.Stat(filepath.Join(e.path, refDirectory)); err != nil {
+	if fi, err := os.Stat(filepath.Join(e.path, indexFile)); err != nil {
 		if os.IsNotExist(err) {
 			err = cas.ErrInvalid
 		}
-		return errors.Wrap(err, "check refdir")
-	} else if !fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "refdir is not a directory")
+		return errors.Wrap(err, "check index")
+	} else if fi.IsDir() {
+		return errors.Wrap(cas.ErrInvalid, "index is a directory")
 	}
 
 	return nil
@@ -191,55 +186,6 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	return digester.Digest(), int64(size), nil
 }
 
-// PutReference adds a new reference descriptor blob to the image. This is
-// idempotent; a nil error means that "the descriptor is stored at NAME"
-// without implying "because of this PutReference() call". ErrClobber is
-// returned if there is already a descriptor stored at NAME, but does not
-// match the descriptor requested to be stored.
-func (e *dirEngine) PutReference(ctx context.Context, name string, descriptor ispec.Descriptor) error {
-	if err := e.ensureTempDir(); err != nil {
-		return errors.Wrap(err, "ensure tempdir")
-	}
-
-	if oldDescriptor, err := e.GetReference(ctx, name); err == nil {
-		// We should not return an error if the two descriptors are identical.
-		if !reflect.DeepEqual(oldDescriptor, descriptor) {
-			return cas.ErrClobber
-		}
-		return nil
-	} else if !os.IsNotExist(errors.Cause(err)) {
-		return errors.Wrap(err, "get old reference")
-	}
-
-	// We copy this into a temporary file to avoid half-writing an invalid
-	// reference.
-	fh, err := ioutil.TempFile(e.temp, "ref."+name+"-")
-	if err != nil {
-		return errors.Wrap(err, "create temporary ref")
-	}
-	tempPath := fh.Name()
-	defer fh.Close()
-
-	// Write out descriptor.
-	if err := json.NewEncoder(fh).Encode(descriptor); err != nil {
-		return errors.Wrap(err, "encode temporary ref")
-	}
-	fh.Close()
-
-	path, err := refPath(name)
-	if err != nil {
-		return errors.Wrap(err, "compute ref path")
-	}
-
-	// Move the ref to its correct path.
-	path = filepath.Join(e.path, path)
-	if err := os.Rename(tempPath, path); err != nil {
-		return errors.Wrap(err, "rename temporary ref")
-	}
-
-	return nil
-}
-
 // GetBlob returns a reader for retrieving a blob from the image, which the
 // caller must Close(). Returns os.ErrNotExist if the digest is not found.
 func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
@@ -251,26 +197,62 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 	return fh, errors.Wrap(err, "open blob")
 }
 
-// GetReference returns a reference from the image. Returns os.ErrNotExist
-// if the name was not found.
-func (e *dirEngine) GetReference(ctx context.Context, name string) (ispec.Descriptor, error) {
-	path, err := refPath(name)
+// PutIndex sets the index of the OCI image to the given index, replacing the
+// previously existing index. This operation is atomic; any readers attempting
+// to access the OCI image while it is being modified will only ever see the
+// new or old index.
+func (e *dirEngine) PutIndex(ctx context.Context, index ispec.ImageIndex) error {
+	if err := e.ensureTempDir(); err != nil {
+		return errors.Wrap(err, "ensure tempdir")
+	}
+
+	// We copy this into a temporary index to ensure the atomicity of this
+	// operation.
+	fh, err := ioutil.TempFile(e.temp, "index-")
 	if err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "compute ref path")
+		return errors.Wrap(err, "create temporary index")
 	}
+	tempPath := fh.Name()
+	defer fh.Close()
 
-	content, err := ioutil.ReadFile(filepath.Join(e.path, path))
+	// Encode the index.
+	if err := json.NewEncoder(fh).Encode(index); err != nil {
+		return errors.Wrap(err, "write temporary index")
+	}
+	fh.Close()
+
+	// Move the blob to its correct path.
+	path := filepath.Join(e.path, indexFile)
+	if err := os.Rename(tempPath, path); err != nil {
+		return errors.Wrap(err, "rename temporary index")
+	}
+	return nil
+}
+
+// GetIndex returns the index of the OCI image. Return ErrNotExist if the
+// digest is not found. If the image doesn't have an index, ErrInvalid is
+// returned (a valid OCI image MUST have an image index).
+//
+// It is not recommended that users of cas.Engine use this interface directly,
+// due to the complication of properly handling references as well as correctly
+// handling nested indexes. casext.Engine provides a wrapper for cas.Engine
+// that implements various reference resolution functions that should work for
+// most users.
+func (e *dirEngine) GetIndex(ctx context.Context) (ispec.ImageIndex, error) {
+	content, err := ioutil.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "read ref")
+		if os.IsNotExist(err) {
+			err = cas.ErrInvalid
+		}
+		return ispec.ImageIndex{}, errors.Wrap(err, "read index")
 	}
 
-	var descriptor ispec.Descriptor
-	if err := json.Unmarshal(content, &descriptor); err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "parse ref")
+	var index ispec.ImageIndex
+	if err := json.Unmarshal(content, &index); err != nil {
+		return ispec.ImageIndex{}, errors.Wrap(err, "parse index")
 	}
 
-	// XXX: Do we need to validate the descriptor?
-	return descriptor, nil
+	return index, nil
 }
 
 // DeleteBlob removes a blob from the image. This is idempotent; a nil
@@ -285,22 +267,6 @@ func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error 
 	err = os.Remove(filepath.Join(e.path, path))
 	if err != nil && !os.IsNotExist(err) {
 		return errors.Wrap(err, "remove blob")
-	}
-	return nil
-}
-
-// DeleteReference removes a reference from the image. This is idempotent;
-// a nil error means "the content is not in the store" without implying
-// "because of this DeleteReference() call".
-func (e *dirEngine) DeleteReference(ctx context.Context, name string) error {
-	path, err := refPath(name)
-	if err != nil {
-		return errors.Wrap(err, "compute ref path")
-	}
-
-	err = os.Remove(filepath.Join(e.path, path))
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "remove ref")
 	}
 	return nil
 }
@@ -327,27 +293,6 @@ func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 	return digests, nil
 }
 
-// ListReferences returns the set of reference names stored in the image.
-func (e *dirEngine) ListReferences(ctx context.Context) ([]string, error) {
-	refs := []string{}
-	refDir := filepath.Join(e.path, refDirectory)
-
-	if err := filepath.Walk(refDir, func(path string, _ os.FileInfo, _ error) error {
-		// Skip the actual directory.
-		if path == refDir {
-			return nil
-		}
-
-		// XXX: Do we need to handle multiple-directory-deep cases?
-		refs = append(refs, filepath.Base(path))
-		return nil
-	}); err != nil {
-		return nil, errors.Wrap(err, "walk refdir")
-	}
-
-	return refs, nil
-}
-
 // Clean executes a garbage collection of any non-blob garbage in the store
 // (this includes temporary files and directories not reachable from the CAS
 // interface). This MUST NOT remove any blobs or references in the store.
@@ -368,7 +313,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	for _, child := range children {
 		// Skip any children that are expected to exist.
 		switch child.Name() {
-		case blobDirectory, refDirectory, layoutFile:
+		case blobDirectory, indexFile, layoutFile:
 			continue
 		}
 
@@ -451,21 +396,32 @@ func Create(path string) error {
 	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0755); err != nil {
 		return errors.Wrap(err, "mkdir algorithm")
 	}
-	if err := os.Mkdir(filepath.Join(path, refDirectory), 0755); err != nil {
-		return errors.Wrap(err, "mkdir refdir")
+
+	indexFh, err := os.Create(filepath.Join(path, indexFile))
+	if err != nil {
+		return errors.Wrap(err, "create index.json")
+	}
+	defer indexFh.Close()
+
+	defaultIndex := ispec.ImageIndex{
+		Versioned: imeta.Versioned{
+			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
+		},
+	}
+	if err := json.NewEncoder(indexFh).Encode(defaultIndex); err != nil {
+		return errors.Wrap(err, "encode index.json")
 	}
 
-	fh, err := os.Create(filepath.Join(path, layoutFile))
+	layoutFh, err := os.Create(filepath.Join(path, layoutFile))
 	if err != nil {
 		return errors.Wrap(err, "create oci-layout")
 	}
-	defer fh.Close()
+	defer layoutFh.Close()
 
-	ociLayout := &ispec.ImageLayout{
+	ociLayout := ispec.ImageLayout{
 		Version: ImageLayoutVersion,
 	}
-
-	if err := json.NewEncoder(fh).Encode(ociLayout); err != nil {
+	if err := json.NewEncoder(layoutFh).Encode(ociLayout); err != nil {
 		return errors.Wrap(err, "encode oci-layout")
 	}
 

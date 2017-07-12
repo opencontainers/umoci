@@ -91,11 +91,11 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	}
 	defer engine.Close()
 
-	// We should have no references or blobs.
-	if refs, err := engine.ListReferences(ctx); err != nil {
-		t.Errorf("unexpected error getting list of references: %+v", err)
-	} else if len(refs) > 0 {
-		t.Errorf("got references in a newly created image: %v", refs)
+	// We should have an empty index and no blobs.
+	if index, err := engine.GetIndex(ctx); err != nil {
+		t.Errorf("unexpected error getting top-level index: %+v", err)
+	} else if len(index.Manifests) > 0 {
+		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
 	}
 	if blobs, err := engine.ListBlobs(ctx); err != nil {
 		t.Errorf("unexpected error getting list of blobs: %+v", err)

@@ -53,11 +53,11 @@ func TestCreateLayout(t *testing.T) {
 	}
 	defer engine.Close()
 
-	// We should have no references or blobs.
-	if refs, err := engine.ListReferences(ctx); err != nil {
-		t.Errorf("unexpected error getting list of references: %+v", err)
-	} else if len(refs) > 0 {
-		t.Errorf("got references in a newly created image: %v", refs)
+	// We should have an empty index and no blobs.
+	if index, err := engine.GetIndex(ctx); err != nil {
+		t.Errorf("unexpected error getting top-level index: %+v", err)
+	} else if len(index.Manifests) > 0 {
+		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
 	}
 	if blobs, err := engine.ListBlobs(ctx); err != nil {
 		t.Errorf("unexpected error getting list of blobs: %+v", err)
@@ -249,7 +249,7 @@ func TestEngineValidate(t *testing.T) {
 		engine.Close()
 	}
 
-	// Missing refdir.
+	// Missing index.json.
 	image, err = ioutil.TempDir(root, "image")
 	if err != nil {
 		t.Fatal(err)
@@ -260,8 +260,8 @@ func TestEngineValidate(t *testing.T) {
 	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
-	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {
-		t.Fatalf("unexpected error deleting refdir: %+v", err)
+	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
+		t.Fatalf("unexpected error deleting index: %+v", err)
 	}
 	engine, err = Open(image)
 	if err == nil {
@@ -269,7 +269,7 @@ func TestEngineValidate(t *testing.T) {
 		engine.Close()
 	}
 
-	// refdir is not a directory.
+	// index is not a valid file.
 	image, err = ioutil.TempDir(root, "image")
 	if err != nil {
 		t.Fatal(err)
@@ -280,10 +280,10 @@ func TestEngineValidate(t *testing.T) {
 	if err := Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
-	if err := os.RemoveAll(filepath.Join(image, refDirectory)); err != nil {
-		t.Fatalf("unexpected error deleting refdir: %+v", err)
+	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
+		t.Fatalf("unexpected error deleting index: %+v", err)
 	}
-	if err := ioutil.WriteFile(filepath.Join(image, refDirectory), []byte(""), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(image, indexFile), 0755); err != nil {
 		t.Fatal(err)
 	}
 	engine, err = Open(image)
