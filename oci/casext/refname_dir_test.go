@@ -278,15 +278,15 @@ func TestEngineReference(t *testing.T) {
 			t.Errorf("UpdateReference: unexpected error: %+v", err)
 		}
 
-		gotDescriptors, err := engineExt.ResolveReference(ctx, name)
+		gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
 		if err != nil {
 			t.Errorf("ResolveReference: unexpected error: %+v", err)
 		}
-		if len(gotDescriptors) != 1 {
-			t.Errorf("ResolveReference: expected %q to get %d descriptors, got %d: %+v", name, 1, len(gotDescriptors), gotDescriptors)
+		if len(gotDescriptorPaths) != 1 {
+			t.Errorf("ResolveReference: expected %q to get %d descriptors, got %d: %+v", name, 1, len(gotDescriptorPaths), gotDescriptorPaths)
 			continue
 		}
-		gotDescriptor := gotDescriptors[0]
+		gotDescriptor := gotDescriptorPaths[0].Descriptor()
 
 		if !reflect.DeepEqual(test.result, gotDescriptor) {
 			t.Errorf("ResolveReference: got different descriptor to original: expected=%v got=%v", test.result, gotDescriptor)
@@ -296,9 +296,9 @@ func TestEngineReference(t *testing.T) {
 			t.Errorf("DeleteReference: unexpected error: %+v", err)
 		}
 
-		if gotDescriptors, err := engineExt.ResolveReference(ctx, name); err != nil {
+		if gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name); err != nil {
 			t.Errorf("ResolveReference: unexpected error: %+v", err)
-		} else if len(gotDescriptors) > 0 {
+		} else if len(gotDescriptorPaths) > 0 {
 			t.Errorf("ResolveReference: still got reference descriptors after DeleteReference!")
 		}
 
@@ -364,14 +364,14 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		}
 		newEngineExt := Engine{newEngine}
 
-		gotDescriptors, err := newEngineExt.ResolveReference(ctx, name)
+		gotDescriptorPaths, err := newEngineExt.ResolveReference(ctx, name)
 		if err != nil {
 			t.Errorf("ResolveReference: unexpected error: %+v", err)
 		}
-		if len(gotDescriptors) != 1 {
-			t.Errorf("ResolveReference: expected to get %d descriptors, got %d: %+v", 1, len(gotDescriptors), gotDescriptors)
+		if len(gotDescriptorPaths) != 1 {
+			t.Errorf("ResolveReference: expected to get %d descriptors, got %d: %+v", 1, len(gotDescriptorPaths), gotDescriptorPaths)
 		}
-		gotDescriptor := gotDescriptors[0]
+		gotDescriptor := gotDescriptorPaths[0].Descriptor()
 
 		if !reflect.DeepEqual(test.result, gotDescriptor) {
 			t.Errorf("ResolveReference: got different descriptor to original: expected=%v got=%v", test.result, gotDescriptor)

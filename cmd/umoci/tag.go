@@ -70,15 +70,15 @@ func tagAdd(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Get original descriptor.
-	descriptors, err := engineExt.ResolveReference(context.Background(), fromName)
+	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
-	if len(descriptors) != 1 {
+	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
-	descriptor := descriptors[0]
+	descriptor := descriptorPaths[0].Descriptor()
 
 	// Add it.
 	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
