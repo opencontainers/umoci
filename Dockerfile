@@ -44,6 +44,16 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/golang/lint/golint
 
+# Reinstall skopeo from source, since there's a bootstrapping issue because
+# packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
+# uses both). This should no longer be necessary once we hit OCI v1.0.
+ENV SKOPEO_VERSION=0.1.20 SKOPEO_PROJECT=github.com/projectatomic/skopeo
+RUN zypper -n in libbtrfs-devel libgpgme-devel device-mapper-devel && \
+	mkdir -p /go/src/$SKOPEO_PROJECT && \
+	git clone --depth 1 -b v$SKOPEO_VERSION https://$SKOPEO_PROJECT /go/src/$SKOPEO_PROJECT && \
+	make -C /go/src/$SKOPEO_PROJECT binary-local install-binary && \
+	rm -rf /go/src/$SKOPEO_PROJECT
+
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed
 RUN skopeo copy docker://$DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG

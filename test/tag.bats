@@ -42,7 +42,10 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Check how many refs there actually are.
-	sane_run find "$IMAGE/refs" -type f
+	# Note that this is _very_ dodgy at the moment because of how complicated
+	# the reference handling is now.
+	# XXX: Make sure to update this for 1.0.0-rc6 where the refname changed.
+	sane_run jq -SMr '.manifests[] | .annotations["org.opencontainers.ref.name"] | strings' "$IMAGE/index.json"
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq "$nrefs" ]
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -59,6 +60,7 @@ func newImage(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
+	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
 	// Create a new manifest.
@@ -82,7 +84,7 @@ func newImage(ctx *cli.Context) error {
 
 	// Update config and create a new blob for it.
 	config := g.Image()
-	configDigest, configSize, err := engine.PutBlobJSON(context.Background(), config)
+	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -106,7 +108,7 @@ func newImage(ctx *cli.Context) error {
 		Layers: []ispec.Descriptor{},
 	}
 
-	manifestDigest, manifestSize, err := engine.PutBlobJSON(context.Background(), manifest)
+	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
 		return errors.Wrap(err, "put manifest blob")
 	}
@@ -128,18 +130,7 @@ func newImage(ctx *cli.Context) error {
 
 	log.Infof("new image manifest created: %s", descriptor.Digest)
 
-	err = engine.PutReference(context.Background(), tagName, descriptor)
-	if err == cas.ErrClobber {
-		// We have to clobber a tag.
-		log.Warnf("clobbering existing tag: %s", tagName)
-
-		// Delete the old tag.
-		if err := engine.DeleteReference(context.Background(), tagName); err != nil {
-			return errors.Wrap(err, "delete old tag")
-		}
-		err = engine.PutReference(context.Background(), tagName, descriptor)
-	}
-	if err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

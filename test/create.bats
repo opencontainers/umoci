@@ -44,7 +44,10 @@ function teardown() {
 	sane_run find "$NEWIMAGE/blobs" -type f
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 0 ]
-	sane_run find "$NEWIMAGE/refs" -type f
+	# Note that this is _very_ dodgy at the moment because of how complicated
+	# the reference handling is now.
+	# XXX: Make sure to update this for 1.0.0-rc6 where the refname changed.
+	sane_run jq -SMr '.manifests[]? | .annotations["org.opencontainers.ref.name"] | strings' "$NEWIMAGE/index.json"
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 0 ]
 
@@ -52,7 +55,7 @@ function teardown() {
 	[ -f "$NEWIMAGE/oci-layout" ]
 	[ -d "$NEWIMAGE/blobs" ]
 	[ -d "$NEWIMAGE/blobs/sha256" ]
-	[ -d "$NEWIMAGE/refs" ]
+	[ -f "$NEWIMAGE/index.json" ]
 
 	# Make sure that attempting to create a new image will fail.
 	umoci init --layout "$NEWIMAGE"

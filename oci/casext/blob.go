@@ -96,11 +96,11 @@ func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 		}
 		b.Data = parsed
 
-	// ispec.MediaTypeImageManifestList => ispec.ManifestList
-	case ispec.MediaTypeImageManifestList:
-		parsed := ispec.ManifestList{}
+	// ispec.MediaTypeImageIndex => ispec.ImageIndex
+	case ispec.MediaTypeImageIndex:
+		parsed := ispec.ImageIndex{}
 		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
-			return errors.Wrap(err, "parse MediaTypeImageManifestList")
+			return errors.Wrap(err, "parse MediaTypeImageImageIndex")
 		}
 		b.Data = parsed
 

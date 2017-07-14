@@ -19,17 +19,14 @@ package dir
 
 import (
 	"bytes"
-	"encoding/json"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"syscall"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -38,6 +35,10 @@ import (
 //       example structures to make sure that the CAS acts properly.
 
 // readonly makes the given path read-only (by bind-mounting it as "ro").
+// TODO: This should be done through an interface restriction in the test
+//       (which is then backed up by the readonly mount if necessary). The fact
+//       this test is necessary is a sign that we need a better split up of the
+//       CAS interface.
 func readonly(t *testing.T, path string) {
 	if os.Geteuid() != 0 {
 		t.Log("readonly tests only work with root privileges")
@@ -90,11 +91,11 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	}
 	defer engine.Close()
 
-	// We should have no references or blobs.
-	if refs, err := engine.ListReferences(ctx); err != nil {
-		t.Errorf("unexpected error getting list of references: %+v", err)
-	} else if len(refs) > 0 {
-		t.Errorf("got references in a newly created image: %v", refs)
+	// We should have an empty index and no blobs.
+	if index, err := engine.GetIndex(ctx); err != nil {
+		t.Errorf("unexpected error getting top-level index: %+v", err)
+	} else if len(index.Manifests) > 0 {
+		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
 	}
 	if blobs, err := engine.ListBlobs(ctx); err != nil {
 		t.Errorf("unexpected error getting list of blobs: %+v", err)
@@ -178,157 +179,6 @@ func TestEngineBlobReadonly(t *testing.T) {
 		if err == nil {
 			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
 			t.Errorf("PutBlob: expected error on ro image!")
-		}
-
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
-
-		// make it readwrite again.
-		readwrite(t, image)
-	}
-}
-
-func TestEngineBlobJSONReadonly(t *testing.T) {
-	ctx := context.Background()
-
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSONReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	type object struct {
-		A string `json:"A"`
-		B int64  `json:"B,omitempty"`
-	}
-
-	for _, test := range []struct {
-		object object
-	}{
-		{object{}},
-		{object{"a value", 100}},
-		{object{"another value", 200}},
-	} {
-		engine, err := Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
-
-		digest, _, err := engine.PutBlobJSON(ctx, test.object)
-		if err != nil {
-			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
-		}
-
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
-
-		// make it readonly
-		readonly(t, image)
-
-		newEngine, err := Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
-
-		blobReader, err := newEngine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
-		defer blobReader.Close()
-
-		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
-
-		var gotObject object
-		if err := json.Unmarshal(gotBytes, &gotObject); err != nil {
-			t.Errorf("GetBlob: got an invalid JSON blob: %+v", err)
-		}
-		if !reflect.DeepEqual(test.object, gotObject) {
-			t.Errorf("GetBlob: got different object to original JSON. expected=%v got=%v gotBytes=%v", test.object, gotObject, gotBytes)
-		}
-
-		// Make sure that writing again will FAIL.
-		_, _, err = newEngine.PutBlobJSON(ctx, test.object)
-		if err == nil {
-			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
-			t.Errorf("PutBlob: expected error on ro image!")
-		}
-
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
-
-		// make it readwrite again.
-		readwrite(t, image)
-	}
-}
-
-func TestEngineReferenceReadonly(t *testing.T) {
-	ctx := context.Background()
-
-	root, err := ioutil.TempDir("", "umoci-TestEngineReferenceReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	for _, test := range []struct {
-		name       string
-		descriptor ispec.Descriptor
-	}{
-		{"ref1", ispec.Descriptor{}},
-		{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
-		{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributableGzip, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
-	} {
-
-		engine, err := Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
-
-		if err := engine.PutReference(ctx, test.name, test.descriptor); err != nil {
-			t.Errorf("PutReference: unexpected error: %+v", err)
-		}
-
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
-
-		// make it readonly
-		readonly(t, image)
-
-		newEngine, err := Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
-
-		gotDescriptor, err := newEngine.GetReference(ctx, test.name)
-		if err != nil {
-			t.Errorf("GetReference: unexpected error: %+v", err)
-		}
-
-		if !reflect.DeepEqual(test.descriptor, gotDescriptor) {
-			t.Errorf("GetReference: got different descriptor to original: expected=%v got=%v", test.descriptor, gotDescriptor)
-		}
-
-		// Make sure that writing will FAIL.
-		if err := newEngine.PutReference(ctx, test.name+"new", test.descriptor); err == nil {
-			t.Logf("PutReference: e.temp = %s", newEngine.(*dirEngine).temp)
-			t.Errorf("PutReference: expected error on ro image!")
 		}
 
 		if err := newEngine.Close(); err != nil {

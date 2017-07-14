@@ -39,6 +39,10 @@ const (
 
 // Exposed errors.
 var (
+	// ErrNotExist is effectively an implementation-neutral version of
+	// os.ErrNotExist.
+	ErrNotExist = fmt.Errorf("no such blob or index")
+
 	// ErrInvalid is returned when an image was detected as being invalid.
 	ErrInvalid = fmt.Errorf("invalid image detected")
 
@@ -59,48 +63,34 @@ type Engine interface {
 	// of this PutBlob() call".
 	PutBlob(ctx context.Context, reader io.Reader) (digest digest.Digest, size int64, err error)
 
-	// PutBlobJSON adds a new JSON blob to the image (marshalled from the given
-	// interface). This is equivalent to calling PutBlob() with a JSON payload
-	// as the reader. Note that due to intricacies in the Go JSON
-	// implementation, we cannot guarantee that two calls to PutBlobJSON() will
-	// return the same digest.
-	//
-	// TODO: Use a proper JSON serialisation library, which actually guarantees
-	//       consistent output. Go's JSON library doesn't even attempt to sort
-	//       map[...]... objects (which have their iteration order randomised
-	//       in Go).
-	PutBlobJSON(ctx context.Context, data interface{}) (digest digest.Digest, size int64, err error)
-
-	// PutReference adds a new reference descriptor blob to the image. This is
-	// idempotent; a nil error means that "the descriptor is stored at NAME"
-	// without implying "because of this PutReference() call". ErrClobber is
-	// returned if there is already a descriptor stored at NAME, but does not
-	// match the descriptor requested to be stored.
-	PutReference(ctx context.Context, name string, descriptor ispec.Descriptor) (err error)
-
 	// GetBlob returns a reader for retrieving a blob from the image, which the
-	// caller must Close(). Returns os.ErrNotExist if the digest is not found.
+	// caller must Close(). Returns ErrNotExist if the digest is not found.
 	GetBlob(ctx context.Context, digest digest.Digest) (reader io.ReadCloser, err error)
 
-	// GetReference returns a reference from the image. Returns os.ErrNotExist
-	// if the name was not found.
-	GetReference(ctx context.Context, name string) (descriptor ispec.Descriptor, err error)
+	// PutIndex sets the index of the OCI image to the given index, replacing
+	// the previously existing index. This operation is atomic; any readers
+	// attempting to access the OCI image while it is being modified will only
+	// ever see the new or old index.
+	PutIndex(ctx context.Context, index ispec.ImageIndex) (err error)
+
+	// GetIndex returns the index of the OCI image. Return ErrNotExist if the
+	// digest is not found. If the image doesn't have an index, ErrInvalid is
+	// returned (a valid OCI image MUST have an image index).
+	//
+	// It is not recommended that users of cas.Engine use this interface
+	// directly, due to the complication of properly handling references as
+	// well as correctly handling nested indexes. casext.Engine provides a
+	// wrapper for cas.Engine that implements various reference resolution
+	// functions that should work for most users.
+	GetIndex(ctx context.Context) (index ispec.ImageIndex, ierr error)
 
 	// DeleteBlob removes a blob from the image. This is idempotent; a nil
 	// error means "the content is not in the store" without implying "because
 	// of this DeleteBlob() call".
 	DeleteBlob(ctx context.Context, digest digest.Digest) (err error)
 
-	// DeleteReference removes a reference from the image. This is idempotent;
-	// a nil error means "the content is not in the store" without implying
-	// "because of this DeleteReference() call".
-	DeleteReference(ctx context.Context, name string) (err error)
-
 	// ListBlobs returns the set of blob digests stored in the image.
 	ListBlobs(ctx context.Context) (digests []digest.Digest, err error)
-
-	// ListReferences returns the set of reference names stored in the image.
-	ListReferences(ctx context.Context) (names []string, err error)
 
 	// Clean executes a garbage collection of any non-blob garbage in the store
 	// (this includes temporary files and directories not reachable from the
