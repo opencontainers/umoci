@@ -73,7 +73,11 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.D
 	for _, root := range roots {
 		// Find all manifests or other blobs that are reachable from the given
 		// descriptor.
-		if err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
+		if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
+			// TODO: Use the path information to construct a reference
+			//       resolution path, so that the API mirrors Walk.
+			descriptor := descriptorPath.Descriptor()
+
 			// It is very important that we do not ignore unknown media types
 			// here. We only recurse into mediaTypes that are *known* and are
 			// also not ispec.MediaTypeImageManifest.

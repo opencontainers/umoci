@@ -129,10 +129,29 @@ type walkState struct {
 	walkFunc WalkFunc
 }
 
-// TODO: Also provide Blob to WalkFunc so that callers don't need to load blobs
-//       more than once. This is quite important for remote CAS implementations.
+// DescriptorPath is used to describe the path of descriptors (from a top-level
+// index) that were traversed when resolving a particular reference name. The
+// purpose of this is to allow libraries like github.com/openSUSE/umoci/mutate
+// to handle generic manifest updates given an arbitrary descriptor walk. Users
+// of ResolveReference that don't care about the descriptor path can just use
+// .Descriptor.
+type DescriptorPath struct {
+	// Walk is the set of descriptors walked to reach Descriptor (inclusive).
+	// The order is the same as the order of the walk, with the target being
+	// the last entry and the entrypoint from index.json being the first.
+	Walk []ispec.Descriptor
+}
 
-// TODO: Move this and blob.go to a separate package.
+// Descriptor returns the final step in the DescriptorPath, which is the target
+// descriptor being referenced by DescriptorPath. This is just shorthand for
+// accessing the last entry of DescriptorPath.Walk. Descriptor will *panic* if
+// DescriptorPath is invalid.
+func (d DescriptorPath) Descriptor() ispec.Descriptor {
+	if len(d.Walk) < 1 {
+		panic("empty DescriptorPath")
+	}
+	return d.Walk[len(d.Walk)-1]
+}
 
 // ErrSkipDescriptor is a special error returned by WalkFunc which will cause
 // Walk to not recurse into the descriptor currently being evaluated by
@@ -145,18 +164,21 @@ var ErrSkipDescriptor = errors.New("[internal] do not recurse into descriptor")
 // a Merkle tree there will never be any loops). If an error is returned by
 // WalkFunc, the recursion will halt and the error will bubble up to the
 // caller.
-type WalkFunc func(descriptor ispec.Descriptor) error
+//
+// TODO: Also provide Blob to WalkFunc so that callers don't need to load blobs
+//       more than once. This is quite important for remote CAS implementations.
+type WalkFunc func(descriptorPath DescriptorPath) error
 
-func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) error {
+func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath) error {
 	log.WithFields(log.Fields{
-		"digest": descriptor.Digest,
+		"digest": descriptorPath.Descriptor().Digest,
 	}).Debugf("-> ws.recurse")
 	defer log.WithFields(log.Fields{
-		"digest": descriptor.Digest,
+		"digest": descriptorPath.Descriptor().Digest,
 	}).Debugf("<- ws.recurse")
 
 	// Run walkFunc.
-	if err := ws.walkFunc(descriptor); err != nil {
+	if err := ws.walkFunc(descriptorPath); err != nil {
 		if err == ErrSkipDescriptor {
 			return nil
 		}
@@ -164,7 +186,7 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 	}
 
 	// Get blob to recurse into.
-	blob, err := ws.engine.FromDescriptor(ctx, descriptor)
+	blob, err := ws.engine.FromDescriptor(ctx, descriptorPath.Descriptor())
 	if err != nil {
 		return err
 	}
@@ -172,7 +194,9 @@ func (ws *walkState) recurse(ctx context.Context, descriptor ispec.Descriptor) e
 
 	// Recurse into children.
 	for _, child := range childDescriptors(blob.Data) {
-		if err := ws.recurse(ctx, child); err != nil {
+		if err := ws.recurse(ctx, DescriptorPath{
+			Walk: append(descriptorPath.Walk, child),
+		}); err != nil {
 			return err
 		}
 	}
@@ -189,18 +213,20 @@ func (e Engine) Walk(ctx context.Context, root ispec.Descriptor, walkFunc WalkFu
 		engine:   e,
 		walkFunc: walkFunc,
 	}
-	return ws.recurse(ctx, root)
+	return ws.recurse(ctx, DescriptorPath{
+		Walk: []ispec.Descriptor{root},
+	})
 }
 
-// Paths returns the set of descriptors that can be traversed from the provided
-// root descriptor. It is effectively shorthand for Walk(). Note that there may
-// be repeated descriptors in the returned slice, due to different blobs
-// containing the same (or a similar) descriptor.
-func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]ispec.Descriptor, error) {
-	var reachable []ispec.Descriptor
-
-	err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
-		reachable = append(reachable, descriptor)
+// Paths returns the set of descriptor paths that can be traversed from the
+// provided root descriptor. It is effectively shorthand for Walk(). Note that
+// there may be repeated descriptors in the returned slice, due to different
+// blobs containing the same (or a similar) descriptor. However, the
+// DescriptorPaths should be unique.
+func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]DescriptorPath, error) {
+	var reachable []DescriptorPath
+	err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
+		reachable = append(reachable, descriptorPath)
 		return nil
 	})
 	return reachable, err
@@ -214,8 +240,8 @@ func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]ispec.Descr
 func (e Engine) Reachable(ctx context.Context, root ispec.Descriptor) ([]digest.Digest, error) {
 	seen := map[digest.Digest]struct{}{}
 
-	if err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
-		seen[descriptor.Digest] = struct{}{}
+	if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
+		seen[descriptorPath.Descriptor().Digest] = struct{}{}
 		return nil
 	}); err != nil {
 		return nil, err
