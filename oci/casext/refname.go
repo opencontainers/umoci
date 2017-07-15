@@ -24,11 +24,6 @@ import (
 	"golang.org/x/net/context"
 )
 
-// refAnnotation is defined by the OCI spec to be the reserved annotation for
-// reference names. There is no strong top-level concept of references, so this
-// is the closest we can get.
-const refAnnotation = "org.opencontainers.image.ref.name"
-
 // isKnownMediaType returns whether a media type is known by the spec. This
 // probably should be moved somewhere else to avoid going out of date.
 func isKnownMediaType(mediaType string) bool {
@@ -62,13 +57,13 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.D
 	// Set of root links that match the given refname.
 	var roots []ispec.Descriptor
 
-	// We only consider the case where refAnnotation is defined on the
+	// We only consider the case where AnnotationRefName is defined on the
 	// top-level of the index tree. While this isn't codified in the spec (at
 	// the time of writing -- 1.0.0-rc5) there are some discussions to add this
 	// restriction in 1.0.0-rc6.
 	for _, descriptor := range index.Manifests {
 		// XXX: What should we do if refname == "".
-		if descriptor.Annotations[refAnnotation] == refname {
+		if descriptor.Annotations[ispec.AnnotationRefName] == refname {
 			roots = append(roots, descriptor)
 		}
 	}
@@ -113,7 +108,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	// TODO: Handle refname = "".
 	var newIndex []ispec.Descriptor
 	for _, descriptor := range index.Manifests {
-		if descriptor.Annotations[refAnnotation] != refname {
+		if descriptor.Annotations[ispec.AnnotationRefName] != refname {
 			newIndex = append(newIndex, descriptor)
 		}
 	}
@@ -126,7 +121,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	if descriptor.Annotations == nil {
 		descriptor.Annotations = map[string]string{}
 	}
-	descriptor.Annotations[refAnnotation] = refname
+	descriptor.Annotations[ispec.AnnotationRefName] = refname
 	newIndex = append(newIndex, descriptor)
 
 	// Commit to image.
@@ -163,7 +158,7 @@ func (e Engine) AddReferences(ctx context.Context, refname string, descriptors .
 		if descriptor.Annotations == nil {
 			descriptor.Annotations = map[string]string{}
 		}
-		descriptor.Annotations[refAnnotation] = refname
+		descriptor.Annotations[ispec.AnnotationRefName] = refname
 		convertedDescriptors = append(convertedDescriptors, descriptor)
 	}
 
@@ -187,7 +182,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	// TODO: Handle refname = "".
 	var newIndex []ispec.Descriptor
 	for _, descriptor := range index.Manifests {
-		if descriptor.Annotations[refAnnotation] != refname {
+		if descriptor.Annotations[ispec.AnnotationRefName] != refname {
 			newIndex = append(newIndex, descriptor)
 		}
 	}
@@ -216,7 +211,7 @@ func (e Engine) ListReferences(ctx context.Context) ([]string, error) {
 
 	var refs []string
 	for _, descriptor := range index.Manifests {
-		ref, ok := descriptor.Annotations[refAnnotation]
+		ref, ok := descriptor.Annotations[ispec.AnnotationRefName]
 		if ok {
 			refs = append(refs, ref)
 		}
