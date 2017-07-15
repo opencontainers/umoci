@@ -32,6 +32,7 @@ import (
 
 func configPtr(c ispec.Image) *ispec.Image         { return &c }
 func manifestPtr(m ispec.Manifest) *ispec.Manifest { return &m }
+func timePtr(t time.Time) *time.Time               { return &t }
 
 // Mutator is a wrapper around a cas.Engine instance, and is used to mutate a
 // given image (described by a manifest) in a high-level fashion. It handles
@@ -144,8 +145,12 @@ func (m *Mutator) Meta(ctx context.Context) (Meta, error) {
 		return Meta{}, errors.Wrap(err, "getting cache failed")
 	}
 
+	var created time.Time
+	if m.config.Created != nil {
+		created = *m.config.Created
+	}
 	return Meta{
-		Created:      m.config.Created,
+		Created:      created,
 		Author:       m.config.Author,
 		Architecture: m.config.Architecture,
 		OS:           m.config.OS,
@@ -183,7 +188,7 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 	m.config.Config = config
 
 	// Set metadata.
-	m.config.Created = meta.Created
+	m.config.Created = timePtr(meta.Created)
 	m.config.Author = meta.Author
 	m.config.Architecture = meta.Architecture
 	m.config.OS = meta.OS
@@ -235,7 +240,7 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int
 
 	// Add DiffID to configuration.
 	layerDiffID := diffidDigester.Digest()
-	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID.String())
+	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID)
 
 	return layerDigest, layerSize, nil
 }

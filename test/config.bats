@@ -744,3 +744,24 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci config --config.stopsignal" {
+	BUNDLE="$(setup_tmpdir)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--config.stopsignal="SIGUSR1"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -SMr '.annotations["org.opencontainers.image.stopSignal"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "${output}" == "SIGUSR1" ]]
+
+	image-verify "${IMAGE}"
+}

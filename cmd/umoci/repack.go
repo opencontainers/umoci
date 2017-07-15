@@ -168,10 +168,11 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "get image metadata")
 	}
 
+	created := time.Now()
 	history := ispec.History{
 		Author:     imageMeta.Author,
 		Comment:    "",
-		Created:    time.Now(),
+		Created:    &created,
 		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
 		EmptyLayer: false,
 	}
@@ -187,7 +188,7 @@ func repack(ctx *cli.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "parsing --history.created")
 		}
-		history.Created = created
+		history.Created = &created
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
 		history.CreatedBy = val.(string)

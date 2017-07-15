@@ -81,18 +81,6 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 // types. The returned
 func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 	ctx := context.Background()
-	/*
-		for _, test := range []struct {
-			name       string
-			descriptor ispec.Descriptor
-		}{
-			{"ref1", ispec.Descriptor{}},
-			{"ref2", ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig, Digest: "sha256:032581de4629652b8653e4dbb2762d0733028003f1fc8f9edd61ae8181393a15", Size: 100}},
-			{"ref3", ispec.Descriptor{MediaType: ispec.MediaTypeImageLayerNonDistributableGzip, Digest: "sha256:3c968ad60d3a2a72a12b864fa1346e882c32690cbf3bf3bc50ee0d0e4e39f342", Size: 8888}},
-		} {
-		}
-	*/
-
 	mapping := []descriptorMap{}
 
 	// Add some "normal" images that contain some layers and also have some
@@ -129,8 +117,9 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		}
 
 		// Create our config and insert it.
+		created := time.Now()
 		configDigest, configSize, err := engineExt.PutBlobJSON(ctx, ispec.Image{
-			Created:      time.Now(),
+			Created:      &created,
 			Author:       "Jane Author <janesmith@example.com>",
 			Architecture: runtime.GOARCH,
 			OS:           runtime.GOOS,
@@ -174,17 +163,11 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		// Add extra index layers.
 		indexDescriptor := manifestDescriptor
 		for i := 0; i < k; i++ {
-			newIndex := ispec.ImageIndex{
+			newIndex := ispec.Index{
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
 				},
-				Manifests: []ispec.ManifestDescriptor{{
-					Descriptor: indexDescriptor,
-					Platform: ispec.Platform{
-						Architecture: runtime.GOARCH,
-						OS:           runtime.GOOS,
-					},
-				}},
+				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
 			if err != nil {
@@ -236,17 +219,11 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		// Add extra index layers.
 		indexDescriptor := manifestDescriptor
 		for i := 0; i < k; i++ {
-			newIndex := ispec.ImageIndex{
+			newIndex := ispec.Index{
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
 				},
-				Manifests: []ispec.ManifestDescriptor{{
-					Descriptor: indexDescriptor,
-					Platform: ispec.Platform{
-						Architecture: runtime.GOARCH,
-						OS:           runtime.GOOS,
-					},
-				}},
+				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
 			if err != nil {

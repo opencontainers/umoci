@@ -51,16 +51,22 @@ RUN go get -u github.com/golang/lint/golint
 # Reinstall skopeo from source, since there's a bootstrapping issue because
 # packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
 # uses both). This should no longer be necessary once we hit OCI v1.0.
-ENV SKOPEO_VERSION=0.1.20 SKOPEO_PROJECT=github.com/projectatomic/skopeo
-RUN zypper -n in libbtrfs-devel libgpgme-devel device-mapper-devel && \
+# NOTE: We can't use 0.1.22 because of libostree.
+ENV SKOPEO_VERSION=91e801b45115580c0709905719ae14c42f201027 SKOPEO_PROJECT=github.com/projectatomic/skopeo
+RUN zypper -n in \
+		device-mapper-devel \
+		glib2-devel \
+		libbtrfs-devel \
+		libgpgme-devel && \
 	mkdir -p /go/src/$SKOPEO_PROJECT && \
-	git clone --depth 1 -b v$SKOPEO_VERSION https://$SKOPEO_PROJECT /go/src/$SKOPEO_PROJECT && \
-	make -C /go/src/$SKOPEO_PROJECT binary-local install-binary && \
+	git clone https://$SKOPEO_PROJECT /go/src/$SKOPEO_PROJECT && \
+	( cd /go/src/$SKOPEO_PROJECT ; git checkout $SKOPEO_VERSION ; ) && \
+	make BUILDTAGS="containers_image_ostree_stub" -C /go/src/$SKOPEO_PROJECT binary-local install-binary && \
 	rm -rf /go/src/$SKOPEO_PROJECT
 
 # Reinstall oci-image-tools from source to avoid having to package new versions
 # in openSUSE while testing PRs.
-ENV IMAGETOOLS_VERSION=v0.2.0 IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
+ENV IMAGETOOLS_VERSION=91950f9a3a4413f893673a8d5786975cabb7a88d IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
 RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
 	( cd /go/src/$IMAGETOOLS_PROJECT ; git checkout $IMAGETOOLS_VERSION ; ) && \

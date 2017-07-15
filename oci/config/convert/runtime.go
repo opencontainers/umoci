@@ -36,7 +36,7 @@ import (
 const (
 	authorAnnotation       = "org.opencontainers.image.author"
 	createdAnnotation      = "org.opencontainers.image.created"
-	stopSignalAnnotation   = "org.opencontainers.image.StopSignal"
+	stopSignalAnnotation   = "org.opencontainers.image.stopSignal"
 	exposedPortsAnnotation = "org.opencontainers.image.exposedPorts"
 )
 
@@ -118,9 +118,7 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 	}
 	g.AddAnnotation(authorAnnotation, ig.Author())
 	g.AddAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
-	// FIXME: currently not supported! Uncomment when moving to image-spec
-	// rc5. Don't forget to add a proper API.
-	// g.AddAnnotation(stopSignalAnnotation, image.Config.StopSignal)
+	g.AddAnnotation(stopSignalAnnotation, image.Config.StopSignal)
 
 	// Set parsed fields
 	// Get the *actual* uid and gid of the user. If the image doesn't contain

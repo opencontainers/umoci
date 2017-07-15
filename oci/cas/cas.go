@@ -71,7 +71,7 @@ type Engine interface {
 	// the previously existing index. This operation is atomic; any readers
 	// attempting to access the OCI image while it is being modified will only
 	// ever see the new or old index.
-	PutIndex(ctx context.Context, index ispec.ImageIndex) (err error)
+	PutIndex(ctx context.Context, index ispec.Index) (err error)
 
 	// GetIndex returns the index of the OCI image. Return ErrNotExist if the
 	// digest is not found. If the image doesn't have an index, ErrInvalid is
@@ -82,7 +82,7 @@ type Engine interface {
 	// well as correctly handling nested indexes. casext.Engine provides a
 	// wrapper for cas.Engine that implements various reference resolution
 	// functions that should work for most users.
-	GetIndex(ctx context.Context) (index ispec.ImageIndex, ierr error)
+	GetIndex(ctx context.Context) (index ispec.Index, ierr error)
 
 	// DeleteBlob removes a blob from the image. This is idempotent; a nil
 	// error means "the content is not in the store" without implying "because

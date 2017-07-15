@@ -18,11 +18,16 @@
 package generate
 
 import (
+	"io"
 	"io/ioutil"
 	"os"
 	"reflect"
 	"testing"
 	"time"
+	// Import is necessary for go-digest.
+	_ "crypto/sha256"
+
+	"github.com/opencontainers/go-digest"
 )
 
 func TestWriteTo(t *testing.T) {
@@ -124,7 +129,14 @@ func TestRootfsType(t *testing.T) {
 
 func TestRootfsDiffIDs(t *testing.T) {
 	g := New()
-	diffids := []string{"a", "b", "c"}
+
+	values := []string{"a", "b", "c"}
+	diffids := []digest.Digest{}
+	for _, value := range values {
+		digester := digest.SHA256.Digester()
+		_, _ = io.WriteString(digester.Hash(), value)
+		diffids = append(diffids, digester.Digest())
+	}
 
 	g.ClearRootfsDiffIDs()
 	for _, diffid := range diffids {
@@ -278,6 +290,26 @@ func TestConfigLabels(t *testing.T) {
 	got = g.ConfigLabels()
 	if !reflect.DeepEqual(labels, got) {
 		t.Errorf("ConfigLabels doesn't match: expected %v, got %v", labels, got)
+	}
+}
+
+func TestConfigStopSignal(t *testing.T) {
+	g := New()
+	signals := []string{
+		"SIGSTOP",
+		"SIGKILL",
+		"SIGUSR1",
+		"SIGINFO",
+		"SIGPWR",
+		"SIGRT13",
+	}
+
+	for _, signal := range signals {
+		g.SetConfigStopSignal(signal)
+		got := g.ConfigStopSignal()
+		if signal != got {
+			t.Errorf("ConfigStopSignal doesn't match: expected %q, got %q", signal, got)
+		}
 	}
 }
 
