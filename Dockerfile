@@ -70,7 +70,7 @@ RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 
 # Reinstall oci-runtime-tools from source to avoid having to package new versions
 # in openSUSE while testing PRs.
-ENV RUNTIMETOOLS_VERSION=b8df7e9a8ca18b2b246f5663ca26774b152d5a5b RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
+ENV RUNTIMETOOLS_VERSION=2ed047ae6bddbd90bbfe24b2cb4c648175229bd4 RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
 RUN mkdir -p /go/src/$RUNTIMETOOLS_PROJECT && \
 	git clone https://$RUNTIMETOOLS_PROJECT /go/src/$RUNTIMETOOLS_PROJECT && \
 	( cd /go/src/$RUNTIMETOOLS_PROJECT ; git checkout $RUNTIMETOOLS_VERSION ; ) && \

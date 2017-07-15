@@ -606,14 +606,18 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Check that OS was set properly.
-	sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "linux" ]]
+	# XXX: This has been removed, we need to add annotations for this.
+	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
+	#[ "$status" -eq 0 ]
+	#[[ "$output" == "linux" ]]
 
 	# Check that arch was set properly.
-	sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "mips64" ]]
+	# XXX: This has been removed, we need to add annotations for this.
+	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
+	#[ "$status" -eq 0 ]
+	#[[ "$output" == "mips64" ]]
 
 	image-verify "${IMAGE}"
 }

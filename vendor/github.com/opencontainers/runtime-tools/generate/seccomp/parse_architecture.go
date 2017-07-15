@@ -39,6 +39,8 @@ func parseArch(arch string) (rspec.Arch, error) {
 		"mipsel":      rspec.ArchMIPSEL,
 		"mipsel64":    rspec.ArchMIPSEL64,
 		"mipsel64n32": rspec.ArchMIPSEL64N32,
+		"parisc":      rspec.ArchPARISC,
+		"parisc64":    rspec.ArchPARISC64,
 		"ppc":         rspec.ArchPPC,
 		"ppc64":       rspec.ArchPPC64,
 		"ppc64le":     rspec.ArchPPC64LE,

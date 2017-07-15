@@ -83,10 +83,11 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 
 	// FIXME: We need to figure out if we're modifying an incompatible runtime spec.
 	//g.SetVersion(rspec.Version)
+	// TODO: We stopped including the OS and Architecture information in the runtime-spec.
+	//       Make sure we fix that once https://github.com/opencontainers/image-spec/pull/711
+	//       is resolved.
 
 	// Set verbatim fields
-	g.SetPlatformArch(ig.Architecture())
-	g.SetPlatformOS(ig.OS())
 	g.SetProcessTerminal(true)
 	g.SetRootPath(filepath.Base(rootfs))
 	g.SetRootReadonly(false)
