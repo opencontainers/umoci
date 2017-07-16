@@ -10,13 +10,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   program][cii]. openSUSE/umoci#134
 - `umoci` also now has more extensive architecture, quick-start and roadmap
   documentation. openSUSE/umoci#134
-- `umoci` now supports [`1.0.0-rc5` of the OCI image
-  specification][ispec-v1.0.0-rc5]. Note that there are still some remaining UX
-  issues with `--image` and other parts of `umoci` which may be subject to
-  change in future versions. In particular, this update of the specification
-  now means that images may have ambiguous tags. `umoci` will warn you if an
-  operation may have an ambiguous result, but we plan to improve this
-  functionality far more in the future. openSUSE/umoci#133
+- `umoci` now supports [`1.0.0-rc7` of the OCI image
+  specification][ispec-v1.0.0-rc7] and [`1.0.0-rc6` of the OCI runtime
+  specification][rspec-v1.0.0-rc6], which are the last `1.0.0` release
+  candidates and will be functionaly identical to `1.0.0` when released. Note
+  that there are still some remaining UX issues with `--image` and other parts
+  of `umoci` which may be subject to change in future versions. In particular,
+  this update of the specification now means that images may have ambiguous
+  tags. `umoci` will warn you if an operation may have an ambiguous result, but
+  we plan to improve this functionality far more in the future.
+  openSUSE/umoci#133 openSUSE/umoci#142
 
 ### Changed
 - Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually
@@ -26,7 +29,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   openSUSE/umoci#120
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
-[ispec-v1.0.0-rc5]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0-rc5
+[rspec-v1.0.0-rc6]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0-rc6
+[ispec-v1.0.0-rc7]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0-rc7
 [ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
 
 ## [0.2.1] - 2017-04-12
