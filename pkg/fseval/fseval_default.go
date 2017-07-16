@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package umoci
+package fseval
 
 import (
 	"os"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
+	"golang.org/x/sys/unix"
 )
 
 // DefaultFsEval is the "identity" form of FsEval. In particular, it does not
@@ -116,12 +117,12 @@ func (fs osFsEval) Llistxattr(path string) ([]string, error) {
 
 // Lremovexattr is equivalent to system.Lremovexattr
 func (fs osFsEval) Lremovexattr(path, name string) error {
-	return system.Lremovexattr(path, name)
+	return unix.Lremovexattr(path, name)
 }
 
 // Lsetxattr is equivalent to system.Lsetxattr
 func (fs osFsEval) Lsetxattr(path, name string, value []byte, flags int) error {
-	return system.Lsetxattr(path, name, value, flags)
+	return unix.Lsetxattr(path, name, value, flags)
 }
 
 // Lgetxattr is equivalent to system.Lgetxattr

@@ -28,6 +28,7 @@ import (
 
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given
@@ -458,7 +459,7 @@ func Llistxattr(path string) ([]string, error) {
 // currently have the required access bits to resolve the path.
 func Lremovexattr(path, name string) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Lremovexattr(path, name)
+		return unix.Lremovexattr(path, name)
 	}), "unpriv.lremovexattr")
 }
 
@@ -467,7 +468,7 @@ func Lremovexattr(path, name string) error {
 // currently have the required access bits to resolve the path.
 func Lsetxattr(path, name string, value []byte, flags int) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Lsetxattr(path, name, value, flags)
+		return unix.Lsetxattr(path, name, value, flags)
 	}), "unpriv.lsetxattr")
 }
 

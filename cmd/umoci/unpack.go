@@ -24,10 +24,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -189,9 +189,9 @@ func unpack(ctx *cli.Context) error {
 		"mtree":    mtreePath,
 	}).Debugf("umoci: generating mtree manifest")
 
-	fsEval := umoci.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if meta.MapOptions.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	log.Info("computing filesystem manifest ...")

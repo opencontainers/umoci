@@ -24,7 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openSUSE/umoci"
+	"github.com/apex/log"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/pkg/errors"
 )
 
@@ -53,8 +54,8 @@ type tarGenerator struct {
 	// Hardlink mapping.
 	inodes map[uint64]string
 
-	// fsEval is an umoci.FsEval used for extraction.
-	fsEval umoci.FsEval
+	// fsEval is an fseval.FsEval used for extraction.
+	fsEval fseval.FsEval
 
 	// XXX: Should we add a saftey check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
@@ -63,9 +64,9 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
-	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	var fsEval fseval.FsEval = fseval.DefaultFsEval
 	if opt.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	return &tarGenerator{
@@ -168,6 +169,14 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			//      fail with EPERM. If it can, we should ignore it (like when
 			//      we try to clear xattrs).
 			return errors.Wrapf(err, "get xattr: %s", name)
+		}
+		// https://golang.org/issues/20698 -- We don't just error out here
+		// because it's not _really_ a fatal error. Currently it's unclear
+		// whether the stdlib will correctly handle reading or disable writing
+		// of these PAX headers so we have to track this ourselves.
+		if len(value) <= 0 {
+			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
+			continue
 		}
 		hdr.Xattrs[name] = string(value)
 	}

@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package umoci
+package fseval
 
 import (
 	"io"
