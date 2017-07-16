@@ -20,7 +20,8 @@ package layer
 import (
 	"archive/tar"
 	"compress/gzip"
-	"crypto/sha256"
+	// Import is necessary for go-digest.
+	_ "crypto/sha256"
 	"fmt"
 	"io"
 	"os"
@@ -34,6 +35,7 @@ import (
 	iconv "github.com/openSUSE/umoci/oci/config/convert"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rgen "github.com/opencontainers/runtime-tools/generate"
@@ -186,15 +188,16 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if err != nil {
 			return errors.Wrap(err, "create gzip reader")
 		}
-		layerHash := sha256.New()
-		layer := io.TeeReader(layerRaw, layerHash)
+		layerDigester := digest.SHA256.Digester()
+		layer := io.TeeReader(layerRaw, layerDigester.Hash())
 
 		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
 			return errors.Wrap(err, "unpack layer")
 		}
+		// XXX: Is it possible this breaks in the error path?
 		layerGzip.Close()
 
-		layerDigest := fmt.Sprintf("%s:%x", cas.BlobAlgorithm, layerHash.Sum(nil))
+		layerDigest := layerDigester.Digest()
 		if layerDigest != layerDiffID {
 			return errors.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}

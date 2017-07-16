@@ -226,7 +226,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 		// Only fill the other information and increment layerIdx if it's a
 		// non-empty layer.
 		if !histEntry.EmptyLayer {
-			info.DiffID = config.RootFS.DiffIDs[layerIdx]
+			info.DiffID = config.RootFS.DiffIDs[layerIdx].String()
 			info.Layer = &manifest.Layers[layerIdx]
 			layerIdx++
 		}

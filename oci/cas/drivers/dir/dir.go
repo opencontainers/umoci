@@ -201,7 +201,7 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 // previously existing index. This operation is atomic; any readers attempting
 // to access the OCI image while it is being modified will only ever see the
 // new or old index.
-func (e *dirEngine) PutIndex(ctx context.Context, index ispec.ImageIndex) error {
+func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 	if err := e.ensureTempDir(); err != nil {
 		return errors.Wrap(err, "ensure tempdir")
 	}
@@ -238,18 +238,18 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.ImageIndex) error 
 // handling nested indexes. casext.Engine provides a wrapper for cas.Engine
 // that implements various reference resolution functions that should work for
 // most users.
-func (e *dirEngine) GetIndex(ctx context.Context) (ispec.ImageIndex, error) {
+func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
 		if os.IsNotExist(err) {
 			err = cas.ErrInvalid
 		}
-		return ispec.ImageIndex{}, errors.Wrap(err, "read index")
+		return ispec.Index{}, errors.Wrap(err, "read index")
 	}
 
-	var index ispec.ImageIndex
+	var index ispec.Index
 	if err := json.Unmarshal(content, &index); err != nil {
-		return ispec.ImageIndex{}, errors.Wrap(err, "parse index")
+		return ispec.Index{}, errors.Wrap(err, "parse index")
 	}
 
 	return index, nil
@@ -403,7 +403,7 @@ func Create(path string) error {
 	}
 	defer indexFh.Close()
 
-	defaultIndex := ispec.ImageIndex{
+	defaultIndex := ispec.Index{
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
 		},

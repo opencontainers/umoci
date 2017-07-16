@@ -12,21 +12,18 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package specs
+package v1
 
-import "fmt"
+import "github.com/opencontainers/image-spec/specs-go"
 
-const (
-	// VersionMajor is for an API incompatible changes
-	VersionMajor = 1
-	// VersionMinor is for functionality in a backwards-compatible manner
-	VersionMinor = 0
-	// VersionPatch is for backwards-compatible bug fixes
-	VersionPatch = 0
+// Index references manifests for various platforms.
+// This structure provides `application/vnd.oci.image.index.v1+json` mediatype when marshalled to JSON.
+type Index struct {
+	specs.Versioned
 
-	// VersionDev indicates development branch. Releases will be empty string.
-	VersionDev = "-rc7"
-)
+	// Manifests references platform specific manifests.
+	Manifests []Descriptor `json:"manifests"`
 
-// Version is the specification version that the package types support.
-var Version = fmt.Sprintf("%d.%d.%d%s", VersionMajor, VersionMinor, VersionPatch, VersionDev)
+	// Annotations contains arbitrary metadata for the image index.
+	Annotations map[string]string `json:"annotations,omitempty"`
+}

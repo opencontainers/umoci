@@ -23,6 +23,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
@@ -275,6 +276,16 @@ func (g *Generator) ConfigWorkingDir() string {
 	return g.image.Config.WorkingDir
 }
 
+// SetConfigStopSignal sets the system call signal that will be sent to the container to exit.
+func (g *Generator) SetConfigStopSignal(stopSignal string) {
+	g.image.Config.StopSignal = stopSignal
+}
+
+// ConfigStopSignal returns the system call signal that will be sent to the container to exit.
+func (g *Generator) ConfigStopSignal() string {
+	return g.image.Config.StopSignal
+}
+
 // SetRootfsType sets the type of the rootfs.
 func (g *Generator) SetRootfsType(rootfsType string) {
 	g.image.RootFS.Type = rootfsType
@@ -287,17 +298,17 @@ func (g *Generator) RootfsType() string {
 
 // ClearRootfsDiffIDs clears the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
 func (g *Generator) ClearRootfsDiffIDs() {
-	g.image.RootFS.DiffIDs = []string{}
+	g.image.RootFS.DiffIDs = []digest.Digest{}
 }
 
 // AddRootfsDiffID appends to the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
-func (g *Generator) AddRootfsDiffID(diffid string) {
+func (g *Generator) AddRootfsDiffID(diffid digest.Digest) {
 	g.image.RootFS.DiffIDs = append(g.image.RootFS.DiffIDs, diffid)
 }
 
 // RootfsDiffIDs returns the the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
-func (g *Generator) RootfsDiffIDs() []string {
-	copy := []string{}
+func (g *Generator) RootfsDiffIDs() []digest.Digest {
+	copy := []digest.Digest{}
 	for _, v := range g.image.RootFS.DiffIDs {
 		copy = append(copy, v)
 	}
@@ -329,12 +340,16 @@ const ISO8601 = time.RFC3339Nano
 
 // SetCreated sets the combined date and time at which the image was created.
 func (g *Generator) SetCreated(created time.Time) {
-	g.image.Created = created
+	g.image.Created = &created
 }
 
 // Created gets the combined date and time at which the image was created.
 func (g *Generator) Created() time.Time {
-	return g.image.Created
+	if g.image.Created == nil {
+		// TODO: Maybe we should be returning pointers?
+		return time.Time{}
+	}
+	return *g.image.Created
 }
 
 // SetAuthor sets the name and/or email address of the person or entity which created and is responsible for maintaining the image.

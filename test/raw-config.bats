@@ -535,14 +535,18 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Check that OS was set properly.
-	sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "linux" ]]
+	# XXX: This has been removed, we need to add annotations for this.
+	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
+	#[ "$status" -eq 0 ]
+	#[[ "$output" == "linux" ]]
 
 	# Check that arch was set properly.
-	sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
-	[ "$status" -eq 0 ]
-	[[ "$output" == "mips64" ]]
+	# XXX: This has been removed, we need to add annotations for this.
+	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
+	#[ "$status" -eq 0 ]
+	#[[ "$output" == "mips64" ]]
 
 	image-verify "${IMAGE}"
 }
@@ -568,6 +572,26 @@ function teardown() {
 	sane_run jq -SMr '.annotations["com.cyphar.empty"]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci raw runtime-config --config.stopsignal" {
+	BUNDLE="$(setup_tmpdir)"
+
+	# Modify none of the configuration.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
+		--config.stopsignal="SIGUSR1"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+
+	sane_run jq -SMr '.annotations["org.opencontainers.image.stopSignal"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "${output}" == "SIGUSR1" ]]
 
 	image-verify "${IMAGE}"
 }

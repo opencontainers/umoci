@@ -28,6 +28,7 @@ import (
 
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
+	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
@@ -37,10 +38,11 @@ import (
 )
 
 // These come from just running the code.
+// TODO: Auto-generate these in a much more sane way.
 const (
 	expectedLayerDigest    = "sha256:9a98de6b2015d531559791e60518fd376ddc62d3062ee4f691b223c06175dbef"
-	expectedConfigDigest   = "sha256:908705c0f681cd2a69225ce302aa7bfe52fca02ac1ff29318e285be03ceb9123"
-	expectedManifestDigest = "sha256:a42c4536afbed929a7539d1c89a079ec4e24f7f157b309322ce3dabdc2bbcf32"
+	expectedConfigDigest   = "sha256:1d043a5807e0ca5bcde233f14a79928f9aa5ccecdd4a8e4bf4cdd0b557090f91"
+	expectedManifestDigest = "sha256:8b8f01aa9da2942d5dde5032b501004957f060b027c27162346972cff9220200"
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
@@ -86,7 +88,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
-			DiffIDs: []string{diffidDigester.Digest().String()},
+			DiffIDs: []digest.Digest{diffidDigester.Digest()},
 		},
 		History: []ispec.History{
 			{EmptyLayer: false},

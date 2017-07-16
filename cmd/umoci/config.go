@@ -68,6 +68,7 @@ image.`,
 		cli.StringSliceFlag{Name: "config.volume"},
 		cli.StringSliceFlag{Name: "config.label"},
 		cli.StringFlag{Name: "config.workingdir"},
+		cli.StringFlag{Name: "config.stopsignal"},
 		cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 		cli.StringFlag{Name: "author"},
 		cli.StringFlag{Name: "architecture"},
@@ -80,9 +81,10 @@ image.`,
 }))
 
 func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
+	created := meta.Created
 	return ispec.Image{
 		Config:       config,
-		Created:      meta.Created,
+		Created:      &created,
 		Author:       meta.Author,
 		Architecture: meta.Architecture,
 		OS:           meta.OS,
@@ -90,8 +92,12 @@ func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
 }
 
 func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
+	var created time.Time
+	if image.Created != nil {
+		created = *image.Created
+	}
 	return image.Config, mutate.Meta{
-		Created:      image.Created,
+		Created:      created,
 		Author:       image.Author,
 		Architecture: image.Architecture,
 		OS:           image.OS,
@@ -213,6 +219,9 @@ func config(ctx *cli.Context) error {
 	if ctx.IsSet("config.user") {
 		g.SetConfigUser(ctx.String("config.user"))
 	}
+	if ctx.IsSet("config.stopsignal") {
+		g.SetConfigStopSignal(ctx.String("config.stopsignal"))
+	}
 	if ctx.IsSet("config.workingdir") {
 		g.SetConfigWorkingDir(ctx.String("config.workingdir"))
 	}
@@ -259,10 +268,11 @@ func config(ctx *cli.Context) error {
 		}
 	}
 
+	created := time.Now()
 	history := ispec.History{
 		Author:     g.Author(),
 		Comment:    "",
-		Created:    time.Now(),
+		Created:    &created,
 		CreatedBy:  "umoci config",
 		EmptyLayer: true,
 	}
@@ -278,7 +288,7 @@ func config(ctx *cli.Context) error {
 		if err != nil {
 			return errors.Wrap(err, "parsing --history.created")
 		}
-		history.Created = created
+		history.Created = &created
 	}
 	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
 		history.CreatedBy = val.(string)
