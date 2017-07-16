@@ -44,6 +44,10 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/golang/lint/golint
 
+# XXX(cyphar): Improve all of the following re-install code in the future. It's
+# quite gross IMO, as it means that our packages aren't being tested and we're
+# encoding information about external projects in our project.
+
 # Reinstall skopeo from source, since there's a bootstrapping issue because
 # packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
 # uses both). This should no longer be necessary once we hit OCI v1.0.
@@ -53,6 +57,26 @@ RUN zypper -n in libbtrfs-devel libgpgme-devel device-mapper-devel && \
 	git clone --depth 1 -b v$SKOPEO_VERSION https://$SKOPEO_PROJECT /go/src/$SKOPEO_PROJECT && \
 	make -C /go/src/$SKOPEO_PROJECT binary-local install-binary && \
 	rm -rf /go/src/$SKOPEO_PROJECT
+
+# Reinstall oci-image-tools from source to avoid having to package new versions
+# in openSUSE while testing PRs.
+ENV IMAGETOOLS_VERSION=v0.2.0 IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
+RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
+	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
+	( cd /go/src/$IMAGETOOLS_PROJECT ; git checkout $IMAGETOOLS_VERSION ; ) && \
+	make -C /go/src/$IMAGETOOLS_PROJECT tool && \
+	install -m0755 /go/src/$IMAGETOOLS_PROJECT/oci-image-tool /usr/bin/oci-image-tool && \
+	rm -rf /go/src/$IMAGETOOLS_PROJECT
+
+# Reinstall oci-runtime-tools from source to avoid having to package new versions
+# in openSUSE while testing PRs.
+ENV RUNTIMETOOLS_VERSION=b8df7e9a8ca18b2b246f5663ca26774b152d5a5b RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
+RUN mkdir -p /go/src/$RUNTIMETOOLS_PROJECT && \
+	git clone https://$RUNTIMETOOLS_PROJECT /go/src/$RUNTIMETOOLS_PROJECT && \
+	( cd /go/src/$RUNTIMETOOLS_PROJECT ; git checkout $RUNTIMETOOLS_VERSION ; ) && \
+	make -C /go/src/$RUNTIMETOOLS_PROJECT tool && \
+	install -m0755 /go/src/$RUNTIMETOOLS_PROJECT/oci-runtime-tool /usr/bin/oci-runtime-tool && \
+	rm -rf /go/src/$RUNTIMETOOLS_PROJECT
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed
