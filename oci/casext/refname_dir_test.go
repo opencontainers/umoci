@@ -44,15 +44,6 @@ type descriptorMap struct {
 	result ispec.Descriptor
 }
 
-func randomString(n int) string {
-	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = alpha[rand.Intn(len(alpha))]
-	}
-	return string(b)
-}
-
 func randomTarData(t *testing.T, tw *tar.Writer) error {
 	// Add some files with random contents and random names.
 	for n := 0; n < 32; n++ {

@@ -38,22 +38,12 @@ type DescriptorMapFunc func(ispec.Descriptor) ispec.Descriptor
 
 // isDescriptor returns whether the given T is a ispec.Descriptor.
 func isDescriptor(T reflect.Type) bool {
-	return T.AssignableTo(descriptorType) && descriptorType.AssignableTo(T)
+	return T == descriptorType
 }
 
-// MapDescriptors applies the given function once for every instance of
-// ispec.Descriptor found in the given type, and replaces it with the returned
-// value (which may be the same). This is done through the reflection API in
-// Go, which means that hidden attributes may be inaccessible.
-// DescriptorMapFunc will only be executed once for every ispec.Descriptor
-// found.
-func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
-	V := reflect.ValueOf(i)
-	log.WithFields(log.Fields{
-		"V": V,
-	}).Debugf("MapDescriptors")
+func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
+	// We can ignore this value.
 	if !V.IsValid() {
-		// nil value
 		return nil
 	}
 
@@ -63,47 +53,35 @@ func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
 		old := V.Interface().(ispec.Descriptor)
 		new := mapFunc(old)
 
-		if !V.CanSet() {
-			// No need to return an error if they're equal.
-			if reflect.DeepEqual(old, new) {
-				return nil
+		// We only need to do any assignment if the two are not equal.
+		if !reflect.DeepEqual(new, old) {
+			// P is a ptr to V (or just V if it's already a pointer).
+			P := V
+			if !P.CanSet() {
+				// This is a programmer error.
+				return errors.Errorf("[internal error] cannot apply map function to %v: %v is not settable!", P, P.Type())
 			}
-			return errors.Errorf("cannot apply map function to %v: IsSet != true", V)
+			P.Set(reflect.ValueOf(new))
 		}
-
-		V.Set(reflect.ValueOf(new))
 		return nil
 	}
 
 	// Recurse into all the types.
 	switch V.Kind() {
-	case reflect.Ptr:
-		// Just deref the pointer.
-		log.WithFields(log.Fields{
-			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-		}).Debugf("recursing into ptr")
+	case reflect.Ptr, reflect.Interface:
+		// Just deref the pointer/interface.
 		if V.IsNil() {
 			return nil
 		}
-		return MapDescriptors(V.Elem().Interface(), mapFunc)
+		err := mapDescriptors(V.Elem(), mapFunc)
+		return errors.Wrapf(err, "%v", V.Type())
 
-	case reflect.Array:
-		// Convert to a slice.
-		log.WithFields(log.Fields{
-			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-		}).Debugf("recursing into array")
-		return MapDescriptors(V.Slice(0, V.Len()).Interface(), mapFunc)
-
-	case reflect.Slice:
+	case reflect.Slice, reflect.Array:
 		// Iterate over each element.
 		for idx := 0; idx < V.Len(); idx++ {
-			log.WithFields(log.Fields{
-				"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-				"idx":  idx,
-			}).Debugf("recursing into slice")
-
-			if err := MapDescriptors(V.Index(idx).Interface(), mapFunc); err != nil {
-				return err
+			err := mapDescriptors(V.Index(idx), mapFunc)
+			if err != nil {
+				return errors.Wrapf(err, "%v[%d]->%v", V.Type(), idx, V.Index(idx).Type())
 			}
 		}
 		return nil
@@ -121,13 +99,9 @@ func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
 
 		// We can now actually iterate through a struct to find all descriptors.
 		for idx := 0; idx < V.NumField(); idx++ {
-			log.WithFields(log.Fields{
-				"name":  V.Type().PkgPath() + "::" + V.Type().Name(),
-				"field": V.Type().Field(idx).Name,
-			}).Debugf("recursing into struct")
-
-			if err := MapDescriptors(V.Field(idx).Interface(), mapFunc); err != nil {
-				return err
+			err := mapDescriptors(V.Field(idx), mapFunc)
+			if err != nil {
+				return errors.Wrapf(err, "%v[%d=%s]->%v", V.Type(), idx, V.Type().Field(idx).Name, V.Field(idx).Type())
 			}
 		}
 		return nil
@@ -140,4 +114,14 @@ func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
 	}
 
 	// Unreachable.
+}
+
+// MapDescriptors applies the given function once for every instance of
+// ispec.Descriptor found in the given type, and replaces it with the returned
+// value (which may be the same). This is done through the reflection API in
+// Go, which means that hidden attributes may be inaccessible.
+// DescriptorMapFunc will only be executed once for every ispec.Descriptor
+// found.
+func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
+	return mapDescriptors(reflect.ValueOf(i), mapFunc)
 }
