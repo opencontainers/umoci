@@ -96,9 +96,8 @@ func repack(ctx *cli.Context) error {
 		"map_options": meta.MapOptions,
 	}).Debugf("umoci: loaded UmociMeta metadata")
 
-	// FIXME: Implement support for manifest lists.
-	if meta.From.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid saved from descriptor")
+	if meta.From.Descriptor().MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.Descriptor().MediaType), "invalid saved from descriptor")
 	}
 
 	// Get a reference to the CAS.
@@ -115,7 +114,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
-	mtreeName := strings.Replace(meta.From.Digest.String(), "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -200,14 +199,14 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "add diff layer")
 	}
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	log.Infof("new image manifest created: %s", newDescriptor.Digest)
+	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
-	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptor); err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

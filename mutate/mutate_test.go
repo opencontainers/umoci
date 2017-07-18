@@ -20,10 +20,12 @@ package mutate
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
@@ -147,7 +149,7 @@ func TestMutateCache(t *testing.T) {
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
-	mutator, err := New(engine, fromDescriptor)
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -206,7 +208,7 @@ func TestMutateAdd(t *testing.T) {
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
-	mutator, err := New(engine, fromDescriptor)
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +228,7 @@ func TestMutateAdd(t *testing.T) {
 		t.Fatalf("unexpected error committing changes: %+v", err)
 	}
 
-	if newDescriptor.Digest == fromDescriptor.Digest {
+	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
 		t.Fatalf("new and old descriptors are the same!")
 	}
 
@@ -286,7 +288,7 @@ func TestMutateAddNonDistributable(t *testing.T) {
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
-	mutator, err := New(engine, fromDescriptor)
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -306,7 +308,7 @@ func TestMutateAddNonDistributable(t *testing.T) {
 		t.Fatalf("unexpected error committing changes: %+v", err)
 	}
 
-	if newDescriptor.Digest == fromDescriptor.Digest {
+	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
 		t.Fatalf("new and old descriptors are the same!")
 	}
 
@@ -366,12 +368,12 @@ func TestMutateSet(t *testing.T) {
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
-	mutator, err := New(engine, fromDescriptor)
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	if err != nil {
 		t.Fatal(err)
 	}
 
-	// Add a new layer.
+	// Change the config
 	if err := mutator.Set(context.Background(), ispec.ImageConfig{
 		User: "changed:user",
 	}, Meta{}, nil, ispec.History{
@@ -385,7 +387,7 @@ func TestMutateSet(t *testing.T) {
 		t.Fatalf("unexpected error committing changes: %+v", err)
 	}
 
-	if newDescriptor.Digest == fromDescriptor.Digest {
+	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
 		t.Fatalf("new and old descriptors are the same!")
 	}
 
@@ -426,5 +428,141 @@ func TestMutateSet(t *testing.T) {
 	}
 	if mutator.config.History[1].Comment != "another layer" {
 		t.Errorf("config.History[1].Comment was not set")
+	}
+}
+
+func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.Descriptor) (casext.DescriptorPath, error) {
+	var foundPath *casext.DescriptorPath
+
+	if err := engine.Walk(ctx, root, func(descriptorPath casext.DescriptorPath) error {
+		// Just find the first manifest.
+		if descriptorPath.Descriptor().MediaType == ispec.MediaTypeImageManifest {
+			foundPath = &descriptorPath
+		}
+		return nil
+	}); err != nil {
+		return casext.DescriptorPath{}, err
+	}
+
+	if foundPath == nil {
+		return casext.DescriptorPath{}, fmt.Errorf("count not find manifest from %s", root.Digest)
+	}
+	return *foundPath, nil
+}
+
+func TestMutatePath(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	engine, manifestDescriptor := setup(t, dir)
+	engineExt := casext.Engine{engine}
+	defer engine.Close()
+
+	// Create some additional structure.
+	expectedPaths := []casext.DescriptorPath{
+		{Walk: []ispec.Descriptor{manifestDescriptor}},
+	}
+
+	// Build on top of the previous blob.
+	for idx := 1; idx < 32; idx++ {
+		oldPath := expectedPaths[idx-1]
+
+		// Create an Index that points to the old root.
+		newRoot := ispec.Index{
+			Manifests: []ispec.Descriptor{
+				oldPath.Root(),
+			},
+		}
+		newRootDigest, newRootSize, err := engineExt.PutBlobJSON(context.Background(), newRoot)
+		if err != nil {
+			t.Fatalf("failed to put blob json newroot: %+v", err)
+		}
+		newRootDescriptor := ispec.Descriptor{
+			MediaType: ispec.MediaTypeImageIndex,
+			Digest:    newRootDigest,
+			Size:      newRootSize,
+		}
+
+		// Create a new path.
+		var newPath casext.DescriptorPath
+		newPath.Walk = append([]ispec.Descriptor{newRootDescriptor}, oldPath.Walk...)
+		expectedPaths = append(expectedPaths, newPath)
+	}
+
+	// Mutate each one.
+	for idx, path := range expectedPaths {
+		mutator, err := New(engine, path)
+		if err != nil {
+			t.Fatal(err)
+		}
+
+		// Change the config in some minor way.
+		meta, err := mutator.Meta(context.Background())
+		if err != nil {
+			t.Fatalf("%d: unexpected error getting meta: %+v", idx, err)
+		}
+		config, err := mutator.Config(context.Background())
+		if err != nil {
+			t.Fatalf("%d: unexpected error getting config: %+v", idx, err)
+		}
+
+		// Change the label.
+		label := fmt.Sprintf("TestMutateSet+%d", idx)
+		if config.Labels == nil {
+			config.Labels = map[string]string{}
+		}
+		config.Labels["org.opensuse.testidx"] = label
+
+		// Update it.
+		if err := mutator.Set(context.Background(), config, meta, nil, ispec.History{
+			Comment: "change label " + label,
+		}); err != nil {
+			t.Fatalf("%d: unexpected error modifying config: %+v", idx, err)
+		}
+
+		// Commit.
+		newPath, err := mutator.Commit(context.Background())
+		if err != nil {
+			t.Fatalf("%d: unexpected error committing: %+v", idx, err)
+		}
+
+		// Make sure that the paths are the same length but have different
+		// digests.
+		if len(newPath.Walk) != len(path.Walk) {
+			t.Errorf("%d: new path was a different length than the old one: %v != %v", idx, len(newPath.Walk), len(path.Walk))
+		} else if reflect.DeepEqual(newPath, path) {
+			t.Errorf("%d: new path was identical to old one: %v", idx, path)
+		} else {
+			for i := 0; i < len(path.Walk); i++ {
+				if path.Walk[i].Digest == newPath.Walk[i].Digest {
+					t.Errorf("%d: path[%d].Digest = newPath[%d].Digest: %v = %v", idx, i, i, path.Walk[i].Digest, newPath.Walk[i].Digest)
+				}
+				if path.Walk[i].MediaType != newPath.Walk[i].MediaType {
+					t.Errorf("%d: path[%d].MediaType != newPath[%d].MediaType: %v != %v", idx, i, i, path.Walk[i].MediaType, newPath.Walk[i].MediaType)
+				}
+				if !reflect.DeepEqual(path.Walk[i].Annotations, newPath.Walk[i].Annotations) {
+					t.Errorf("%d: path[%d].Annotations != newPath[%d].Annotations: %v != %v", idx, i, i, path.Walk[i].Annotations, newPath.Walk[i].Annotations)
+				}
+			}
+		}
+
+		// Emulate a reference resolution with walkDescriptorRoot.
+		walkPath, err := walkDescriptorRoot(context.Background(), engineExt, newPath.Root())
+		if err != nil {
+			t.Errorf("%d: unexpected error with walkPath %v", idx, err)
+		} else if !reflect.DeepEqual(newPath, walkPath) {
+			t.Errorf("%d: walkDescriptorRoot didn't give the same path: expected %v got %v", idx, newPath, walkPath)
+		}
+
+		// Make sure the old path still exists (not necessary to be honest).
+		oldWalkPath, err := walkDescriptorRoot(context.Background(), engineExt, path.Root())
+		if err != nil {
+			t.Errorf("%d: unexpected error with oldWalkPath %v", idx, err)
+		} else if !reflect.DeepEqual(oldWalkPath, path) {
+			t.Errorf("%d: walkDescriptorRoot didn't give the same old path: expected %v got %v", idx, newPath, walkPath)
+		}
 	}
 }

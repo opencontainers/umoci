@@ -146,9 +146,8 @@ func config(ctx *cli.Context) error {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
-	fromDescriptor := fromDescriptorPaths[0].Descriptor()
 
-	mutator, err := mutate.New(engine, fromDescriptor)
+	mutator, err := mutate.New(engine, fromDescriptorPaths[0])
 	if err != nil {
 		return errors.Wrap(err, "create mutator for manifest")
 	}
@@ -299,14 +298,14 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "set modified configuration")
 	}
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	log.Infof("new image manifest created: %s", newDescriptor.Digest)
+	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
-	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptor); err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

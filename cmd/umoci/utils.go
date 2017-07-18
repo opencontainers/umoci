@@ -43,10 +43,6 @@ import (
 //        code which repacks images (the changes to the config, manifest and
 //        CAS should be made into a library).
 
-// UmociMetaVersion is the version of UmociMeta supported by this code. The
-// value is only bumped for updates which are not backwards compatible.
-const UmociMetaVersion = "0.2.1"
-
 // MtreeKeywords is the set of keywords used by umoci for verification and diff
 // generation of a bundle. This is based on mtree.DefaultKeywords, but is
 // hardcoded here to ensure that vendor changes don't mess things up.
@@ -67,6 +63,10 @@ var MtreeKeywords = []mtree.Keyword{
 // bundles extracted by umoci.
 const UmociMetaName = "umoci.json"
 
+// UmociMetaVersion is the version of UmociMeta supported by this code. The
+// value is only bumped for updates which are not backwards compatible.
+const UmociMetaVersion = "2"
+
 // UmociMeta represents metadata about how umoci unpacked an image to a bundle
 // and other similar information. It is used to keep track of information that
 // is required when repacking an image and other similar bundle information.
@@ -78,7 +78,7 @@ type UmociMeta struct {
 	// From is a copy of the descriptor pointing to the image manifest that was
 	// used to unpack the bundle. Essentially it's a resolved form of the
 	// --from argument to umoci-unpack(1).
-	From ispec.Descriptor `json:"from_descriptor"`
+	From casext.DescriptorPath `json:"from_descriptor_path"`
 
 	// MapOptions is the parsed version of --uid-map, --gid-map and --rootless
 	// arguments to umoci-unpack(1). While all of these options technically do

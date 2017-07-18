@@ -60,7 +60,17 @@ type DescriptorPath struct {
 	// Walk is the set of descriptors walked to reach Descriptor (inclusive).
 	// The order is the same as the order of the walk, with the target being
 	// the last entry and the entrypoint from index.json being the first.
-	Walk []ispec.Descriptor
+	Walk []ispec.Descriptor `json:"descriptor_walk"`
+}
+
+// Root returns the first step in the DescriptorPath, which is the point where
+// the walk started. This is just shorthand for DescriptorPath.Walk[0]. Root
+// will *panic* if DescriptorPath is invalid.
+func (d DescriptorPath) Root() ispec.Descriptor {
+	if len(d.Walk) < 1 {
+		panic("empty DescriptorPath")
+	}
+	return d.Walk[0]
 }
 
 // Descriptor returns the final step in the DescriptorPath, which is the target

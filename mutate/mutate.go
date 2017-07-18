@@ -25,6 +25,7 @@ package mutate
 import (
 	"compress/gzip"
 	"io"
+	"reflect"
 	"time"
 
 	"github.com/openSUSE/umoci/oci/cas"
@@ -39,6 +40,15 @@ func configPtr(c ispec.Image) *ispec.Image         { return &c }
 func manifestPtr(m ispec.Manifest) *ispec.Manifest { return &m }
 func timePtr(t time.Time) *time.Time               { return &t }
 
+// XXX: Currently this package is very entangled in modifying of a given
+//      Manifest and their associated Config + Layers. While this works fine,
+//      really mutate/ should be a far more generic library that allows you to
+//      apply a delta for a particular OCI structure and then regenerate the
+//      necessary blobs. Something like changing annotations for intermediate
+//      manifests is not really possible at the moment, and it's not clear how
+//      to make it possible without forcing users to interactively make all the
+//      necessary changes.
+
 // Mutator is a wrapper around a cas.Engine instance, and is used to mutate a
 // given image (described by a manifest) in a high-level fashion. It handles
 // creating all necessary blobs and modfying other blobs. In order for changes
@@ -48,7 +58,7 @@ func timePtr(t time.Time) *time.Time               { return &t }
 type Mutator struct {
 	// These are the arguments we got in New().
 	engine casext.Engine
-	source ispec.Descriptor
+	source casext.DescriptorPath
 
 	// Cached values of the configuration and manifest.
 	manifest *ispec.Manifest
@@ -82,7 +92,7 @@ type Meta struct {
 func (m *Mutator) cache(ctx context.Context) error {
 	// We need the manifest
 	if m.manifest == nil {
-		blob, err := m.engine.FromDescriptor(ctx, m.source)
+		blob, err := m.engine.FromDescriptor(ctx, m.source.Descriptor())
 		if err != nil {
 			return errors.Wrap(err, "cache source manifest")
 		}
@@ -120,10 +130,10 @@ func (m *Mutator) cache(ctx context.Context) error {
 
 // New creates a new Mutator for the given descriptor (which _must_ have a
 // MediaType of ispec.MediaTypeImageManifest.
-func New(engine cas.Engine, src ispec.Descriptor) (*Mutator, error) {
-	// TODO: Implement manifest list support.
-	if src.MediaType != ispec.MediaTypeImageManifest {
-		return nil, errors.Errorf("unsupported source type: %s", src.MediaType)
+func New(engine cas.Engine, src casext.DescriptorPath) (*Mutator, error) {
+	// We currently only support changing a given manifest through a walk.
+	if mt := src.Descriptor().MediaType; mt != ispec.MediaTypeImageManifest {
+		return nil, errors.Errorf("unsupported source type: %s", mt)
 	}
 
 	return &Mutator{
@@ -205,19 +215,12 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 	return nil
 }
 
-//
-
 // add adds the given layer to the CAS, and mutates the configuration to
 // include the diffID. The returned string is the digest of the *compressed*
 // layer (which is compressed by us).
 func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
 	if err := m.cache(ctx); err != nil {
 		return "", -1, errors.Wrap(err, "getting cache failed")
-	}
-
-	// XXX: We should not have to do this check here.
-	if cas.BlobAlgorithm != "sha256" {
-		return "", -1, errors.Errorf("unknown blob algorithm: %s", cas.BlobAlgorithm)
 	}
 
 	diffidDigester := cas.BlobAlgorithm.Digester()
@@ -309,15 +312,15 @@ func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history 
 // metadata and manifest to the engine. It then returns a new manifest
 // descriptor (which can be used in place of the source descriptor provided to
 // New).
-func (m *Mutator) Commit(ctx context.Context) (ispec.Descriptor, error) {
+func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 	if err := m.cache(ctx); err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "getting cache failed")
+		return casext.DescriptorPath{}, errors.Wrap(err, "getting cache failed")
 	}
 
 	// We first have to commit the configuration blob.
 	configDigest, configSize, err := m.engine.PutBlobJSON(ctx, m.config)
 	if err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "commit mutated config blob")
+		return casext.DescriptorPath{}, errors.Wrap(err, "commit mutated config blob")
 	}
 
 	m.manifest.Config = ispec.Descriptor{
@@ -329,13 +332,57 @@ func (m *Mutator) Commit(ctx context.Context) (ispec.Descriptor, error) {
 	// Now commit the manifest.
 	manifestDigest, manifestSize, err := m.engine.PutBlobJSON(ctx, m.manifest)
 	if err != nil {
-		return ispec.Descriptor{}, errors.Wrap(err, "commit mutated manifest blob")
+		return casext.DescriptorPath{}, errors.Wrap(err, "commit mutated manifest blob")
 	}
 
-	// Generate a new descriptor.
-	return ispec.Descriptor{
-		MediaType: m.source.MediaType,
-		Digest:    manifestDigest,
-		Size:      manifestSize,
-	}, nil
+	// We now have to create a new DescriptorPath that replaces the one we were
+	// given. Note that we have to walk *up* the path rather than down it
+	// because we have to replace each blob in order to replace its references.
+	pathLength := len(m.source.Walk)
+	newPath := casext.DescriptorPath{
+		Walk: make([]ispec.Descriptor, pathLength),
+	}
+	copy(newPath.Walk, m.source.Walk)
+
+	// Replace the end of the path.
+	end := &newPath.Walk[pathLength-1]
+	end.Digest = manifestDigest
+	end.Size = manifestSize
+
+	// Walk up the path, mutating the parent reference of each descriptor.
+	for idx := pathLength - 1; idx >= 1; idx-- {
+		// Get the blob of the parent.
+		parentBlob, err := m.engine.FromDescriptor(ctx, newPath.Walk[idx-1])
+		if err != nil {
+			return casext.DescriptorPath{}, errors.Wrapf(err, "get parent-%d blob", idx)
+		}
+		defer parentBlob.Close()
+
+		// Replace all references to the child blob with the new one.
+		old := m.source.Walk[idx]
+		new := newPath.Walk[idx]
+		if err := casext.MapDescriptors(parentBlob.Data, func(d ispec.Descriptor) ispec.Descriptor {
+			// XXX: Maybe we should just be comparing the Digest?
+			if reflect.DeepEqual(d, old) {
+				d = new
+			}
+			return d
+		}); err != nil {
+			return casext.DescriptorPath{}, errors.Wrapf(err, "rewrite parent-%d blob", idx)
+		}
+
+		// Re-commit the blob.
+		// TODO: This won't handle foreign blobs correctly, we need to make it
+		//       possible to write a modified blob through the blob API.
+		blobDigest, blobSize, err := m.engine.PutBlobJSON(ctx, parentBlob.Data)
+		if err != nil {
+			return casext.DescriptorPath{}, errors.Wrapf(err, "put json parent-%d blob", idx)
+		}
+
+		// Update the key parts of the descriptor.
+		newPath.Walk[idx-1].Digest = blobDigest
+		newPath.Walk[idx-1].Size = blobSize
+	}
+
+	return newPath, nil
 }

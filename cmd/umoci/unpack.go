@@ -137,20 +137,19 @@ func unpack(ctx *cli.Context) error {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
-	meta.From = fromDescriptorPaths[0].Descriptor()
+	meta.From = fromDescriptorPaths[0]
 
-	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From)
+	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
 		return errors.Wrap(err, "get manifest")
 	}
 	defer manifestBlob.Close()
 
-	// FIXME: Implement support for manifest lists.
 	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
 	}
 
-	mtreeName := strings.Replace(meta.From.Digest.String(), "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
