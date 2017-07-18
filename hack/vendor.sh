@@ -43,9 +43,12 @@ clean() {
 			export GOOS="${platform%/*}";
 			export GOARCH="${platform##*/}";
 			for tags in "${buildtagcombos[@]}"; do
-				# Include dependencies (for packages and package tests).
+				# Include dependencies (for packages).
 				go list -e -tags "$tags" -f '{{join .Deps "\n"}}' "${packages[@]}"
-				go list -e -tags "$tags" -f '{{join .TestImports "\n"}}' "${packages[@]}"
+				# .TestImports is not recursive, so we need to do it manually.
+				for dep in $(go list -e -tags "$tags" -f '{{join .Deps "\n"}}' "${packages[@]}"); do
+					go list -e -tags "$tags" -f '{{join .TestImports "\n"}}' "$dep"
+				done
 			done
 		done | grep -vP "^${PROJECT}/(?!vendor)" | sort -u
 	) )
@@ -76,14 +79,14 @@ clean() {
 	# Delete all top-level files which are not LICENSE or COPYING related, as
 	# well as deleting the actual directory if it's empty.
 	for dir in "${prune[@]}"; do
-		find "$dir" -maxdepth 1 -not -type d -not '(' "${importantfiles[@]}" ')' -exec rm -v -f '{}' ';'
+		find "$dir" -maxdepth 1 -not -type d -not '(' "${importantfiles[@]}" ')' -exec rm -vf '{}' ';'
 		rmdir "$dir" 2>/dev/null || true
 	done
 
 	# Remove any extra files that we know we don't care about.
 	echo -n "pruning unused files, "
-	find vendor -type f -name '*_test.go' -exec rm -v '{}' ';'
-	find vendor -regextype posix-extended -type f -not '(' -regex '.*\.(c|h|go)' -or '(' "${importantfiles[@]}" ')' ')' -exec rm -v '{}' ';'
+	find vendor -type f -name '*_test.go' -exec rm -vf '{}' ';'
+	find vendor -regextype posix-extended -type f -not '(' -regex '.*\.(c|h|go)' -or '(' "${importantfiles[@]}" ')' ')' -exec rm -vf '{}' ';'
 
 	# Remove self from vendor.
 	echo -n "pruning self from vendor, "
