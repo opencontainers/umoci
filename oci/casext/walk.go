@@ -19,7 +19,6 @@ package casext
 
 import (
 	"errors"
-	"reflect"
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
@@ -27,96 +26,18 @@ import (
 	"golang.org/x/net/context"
 )
 
-// Used by walkState.mark() to determine which struct members are descriptors to
-// recurse into them. We aren't interested in struct members which are not
-// either a slice of ispec.Descriptor or ispec.Descriptor themselves.
-var descriptorType = reflect.TypeOf(ispec.Descriptor{})
-
-// isDescriptor returns whether the given T is a ispec.Descriptor.
-func isDescriptor(T reflect.Type) bool {
-	return T.AssignableTo(descriptorType) && descriptorType.AssignableTo(T)
-}
-
-// childDescriptors returns all child ispec.Descriptors given a particular
-// interface{}. This is recursively evaluated, so if you have some cyclic
-// struct pointer stuff going on things won't end well.
-// FIXME: Should we implement this in a way that avoids cycle issues?
+// childDescriptors is a wrapper around MapDescriptors which just creates a
+// slice of all of the arguments, and doesn't modify them.
 func childDescriptors(i interface{}) []ispec.Descriptor {
-	V := reflect.ValueOf(i)
-	log.WithFields(log.Fields{
-		"V": V,
-	}).Debugf("childDescriptors")
-	if !V.IsValid() {
-		// nil value
-		return []ispec.Descriptor{}
+	var children []ispec.Descriptor
+	if err := MapDescriptors(i, func(descriptor ispec.Descriptor) ispec.Descriptor {
+		children = append(children, descriptor)
+		return descriptor
+	}); err != nil {
+		// If we got an error, this is a bug in MapDescriptors proper.
+		log.Fatalf("[internal error] MapDescriptors returned an error inside childDescriptors: %+v", err)
 	}
-
-	// First check that V isn't actually a ispec.Descriptor.
-	if isDescriptor(V.Type()) {
-		return []ispec.Descriptor{V.Interface().(ispec.Descriptor)}
-	}
-
-	// Recurse into all the types.
-	switch V.Kind() {
-	case reflect.Ptr:
-		// Just deref the pointer.
-		log.WithFields(log.Fields{
-			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-		}).Debugf("recursing into ptr")
-		if V.IsNil() {
-			return []ispec.Descriptor{}
-		}
-		return childDescriptors(V.Elem().Interface())
-
-	case reflect.Array:
-		// Convert to a slice.
-		log.WithFields(log.Fields{
-			"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-		}).Debugf("recursing into array")
-		return childDescriptors(V.Slice(0, V.Len()).Interface())
-
-	case reflect.Slice:
-		// Iterate over each element and append them to childDescriptors.
-		children := []ispec.Descriptor{}
-		for idx := 0; idx < V.Len(); idx++ {
-			log.WithFields(log.Fields{
-				"name": V.Type().PkgPath() + "::" + V.Type().Name(),
-				"idx":  idx,
-			}).Debugf("recursing into slice")
-			children = append(children, childDescriptors(V.Index(idx).Interface())...)
-		}
-		return children
-
-	case reflect.Struct:
-		// We are only ever going to be interested in ispec.* types.
-		if V.Type().PkgPath() != descriptorType.PkgPath() {
-			log.WithFields(log.Fields{
-				"name":   V.Type().PkgPath() + "::" + V.Type().Name(),
-				"v1path": descriptorType.PkgPath(),
-			}).Debugf("detected escape to outside ispec.* namespace")
-			return []ispec.Descriptor{}
-		}
-
-		// We can now actually iterate through a struct to find all descriptors.
-		children := []ispec.Descriptor{}
-		for idx := 0; idx < V.NumField(); idx++ {
-			log.WithFields(log.Fields{
-				"name":  V.Type().PkgPath() + "::" + V.Type().Name(),
-				"field": V.Type().Field(idx).Name,
-			}).Debugf("recursing into struct")
-
-			children = append(children, childDescriptors(V.Field(idx).Interface())...)
-		}
-		return children
-
-	default:
-		// FIXME: Should we log something here? While this will be hit normally
-		//        (namely when we hit an io.ReadCloser) this seems a bit
-		//        careless.
-		return []ispec.Descriptor{}
-	}
-
-	// Unreachable.
+	return children
 }
 
 // walkState stores state information about the recursion into a given
