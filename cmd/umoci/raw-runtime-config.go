@@ -89,7 +89,7 @@ func rawConfig(ctx *cli.Context) error {
 	configPath := ctx.App.Metadata["config"].(string)
 
 	var meta UmociMeta
-	meta.Version = ctx.App.Version
+	meta.Version = UmociMetaVersion
 
 	// Parse map options.
 	// We need to set mappings if we're in rootless mode.

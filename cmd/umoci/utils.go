@@ -43,6 +43,10 @@ import (
 //        code which repacks images (the changes to the config, manifest and
 //        CAS should be made into a library).
 
+// UmociMetaVersion is the version of UmociMeta supported by this code. The
+// value is only bumped for updates which are not backwards compatible.
+const UmociMetaVersion = "0.2.1"
+
 // MtreeKeywords is the set of keywords used by umoci for verification and diff
 // generation of a bundle. This is based on mtree.DefaultKeywords, but is
 // hardcoded here to ensure that vendor changes don't mess things up.
@@ -114,6 +118,11 @@ func ReadBundleMeta(bundle string) (UmociMeta, error) {
 	defer fh.Close()
 
 	err = json.NewDecoder(fh).Decode(&meta)
+	if meta.Version != UmociMetaVersion {
+		if err == nil {
+			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
+		}
+	}
 	return meta, errors.Wrap(err, "decode metadata")
 }
 

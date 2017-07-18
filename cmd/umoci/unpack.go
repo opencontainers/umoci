@@ -87,7 +87,7 @@ func unpack(ctx *cli.Context) error {
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	var meta UmociMeta
-	meta.Version = ctx.App.Version
+	meta.Version = UmociMetaVersion
 
 	// Parse map options.
 	// We need to set mappings if we're in rootless mode.
