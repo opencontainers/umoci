@@ -10,10 +10,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   program][cii]. openSUSE/umoci#134
 - `umoci` also now has more extensive architecture, quick-start and roadmap
   documentation. openSUSE/umoci#134
-- `umoci` now supports [`1.0.0-rc7` of the OCI image
-  specification][ispec-v1.0.0-rc7] and [`1.0.0-rc6` of the OCI runtime
-  specification][rspec-v1.0.0-rc6], which are the last `1.0.0` release
-  candidates and will be functionaly identical to `1.0.0` when released. Note
+- `umoci` now supports [`1.0.0` of the OCI image
+  specification][ispec-v1.0.0] and [`1.0.0` of the OCI runtime
+  specification][rspec-v1.0.0], which are the first milestone release. Note
   that there are still some remaining UX issues with `--image` and other parts
   of `umoci` which may be subject to change in future versions. In particular,
   this update of the specification now means that images may have ambiguous
@@ -44,8 +43,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   openSUSE/umoci#127
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
-[rspec-v1.0.0-rc6]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0-rc6
-[ispec-v1.0.0-rc7]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0-rc7
+[rspec-v1.0.0]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0
+[ispec-v1.0.0]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0
 [ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
 [ispec-pr694]: https://github.com/opencontainers/image-spec/pull/694
 
