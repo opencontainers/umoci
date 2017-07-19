@@ -41,12 +41,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   If you wish to retain the old semantics, use `--no-mask-volumes` (though make
   sure to be aware of the reasoning behind `Config.Volume` masking).
   openSUSE/umoci#127
+- `umoci` now uses [`SecureJoin`][securejoin] rather than a patched version of
+  `FollowSymlinkInScope`. The two implementations are roughly equivalent, but
+  `SecureJoin` has a nicer API and is maintained as a separate project.
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [rspec-v1.0.0]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0
 [ispec-v1.0.0]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0
 [ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
 [ispec-pr694]: https://github.com/opencontainers/image-spec/pull/694
+[securejoin]: https://github.com/cyphar/filepath-securejoin
 
 ## [0.2.1] - 2017-04-12
 ### Added
