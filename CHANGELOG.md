@@ -25,6 +25,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   functionality has not been used "in the wild" and `umoci` doesn't have the UX
   to create such structures (yet) but these will be implemented in future
   versions. openSUSE/umoci#145
+- `umoci repack` now supports `--mask-path` to ignore changes in the rootfs
+  that are in a child of at least one of the provided masks when generating new
+  layers. openSUSE/umoci#127
 
 ### Changed
 - Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually
@@ -32,11 +35,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci unpack` now generates `config.json` blobs according to the [still
   proposed][ispec-pr492] OCI image specification conversion document.
   openSUSE/umoci#120
+- `umoci repack` also now automatically adding `Config.Volumes` from the image
+  configuration to the set of masked paths.  This matches recently added
+  [recommendations by the spec][ispec-pr694], but is a backwards-incompatible
+  change because the new default is that `Config.Volumes` **will** be masked.
+  If you wish to retain the old semantics, use `--no-mask-volumes` (though make
+  sure to be aware of the reasoning behind `Config.Volume` masking).
+  openSUSE/umoci#127
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [rspec-v1.0.0-rc6]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0-rc6
 [ispec-v1.0.0-rc7]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.0-rc7
 [ispec-pr492]: https://github.com/opencontainers/image-spec/pull/492
+[ispec-pr694]: https://github.com/opencontainers/image-spec/pull/694
 
 ## [0.2.1] - 2017-04-12
 ### Added

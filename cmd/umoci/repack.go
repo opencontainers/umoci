@@ -31,6 +31,7 @@ import (
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/oci/layer"
+	"github.com/openSUSE/umoci/pkg/mtreefilter"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -64,6 +65,17 @@ manifest and configuration information uses the new diff atop the old manifest.`
 
 	// repack creates a new image, with a given tag.
 	Category: "image",
+
+	Flags: []cli.Flag{
+		cli.StringSliceFlag{
+			Name:  "mask-path",
+			Usage: "set of path prefixes in which deltas will be ignored when generating new layers",
+		},
+		cli.BoolFlag{
+			Name:  "no-mask-volumes",
+			Usage: "do not add the Config.Volumes of the image to the set of masked paths",
+		},
+	},
 
 	Action: repack,
 
@@ -155,6 +167,19 @@ func repack(ctx *cli.Context) error {
 	log.WithFields(log.Fields{
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
+
+	// We need to mask config.Volumes.
+	config, err := mutator.Config(context.Background())
+	if err != nil {
+		return errors.Wrap(err, "get config")
+	}
+	maskedPaths := ctx.StringSlice("mask-path")
+	if !ctx.Bool("no-mask-volumes") {
+		for v := range config.Volumes {
+			maskedPaths = append(maskedPaths, v)
+		}
+	}
+	diffs = mtreefilter.FilterDeltas(diffs, mtreefilter.MaskFilter(maskedPaths))
 
 	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
 	if err != nil {
