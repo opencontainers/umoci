@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016, 2017 SUSE LLC.
+ * Copyright (C) 2017 SUSE LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -15,9 +15,17 @@
  * limitations under the License.
  */
 
-// Package mutate implements various functionality to allow for the
-// modification of container images in a much higher-level fashion than
-// available from github.com/openSUSE/umoci/oci/cas. In particular, this library
-// should be viewed as a wrapper around github.com/openSUSE/umoci/oci/cas that
-// provides many convenience functions.
-package mutate
+package casext
+
+import (
+	"math/rand"
+)
+
+func randomString(n int) string {
+	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = alpha[rand.Intn(len(alpha))]
+	}
+	return string(b)
+}

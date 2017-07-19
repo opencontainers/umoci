@@ -87,7 +87,7 @@ func unpack(ctx *cli.Context) error {
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	var meta UmociMeta
-	meta.Version = ctx.App.Version
+	meta.Version = UmociMetaVersion
 
 	// Parse map options.
 	// We need to set mappings if we're in rootless mode.
@@ -129,29 +129,27 @@ func unpack(ctx *cli.Context) error {
 	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	fromDescriptors, err := engineExt.ResolveReference(context.Background(), fromName)
+	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
-	if len(fromDescriptors) != 1 {
+	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
-	fromDescriptor := fromDescriptors[0]
-	meta.From = fromDescriptor
+	meta.From = fromDescriptorPaths[0]
 
-	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From)
+	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
 		return errors.Wrap(err, "get manifest")
 	}
 	defer manifestBlob.Close()
 
-	// FIXME: Implement support for manifest lists.
 	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.MediaType), "invalid --image tag")
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
 	}
 
-	mtreeName := strings.Replace(meta.From.Digest.String(), "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 

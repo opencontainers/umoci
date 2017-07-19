@@ -138,17 +138,16 @@ func config(ctx *cli.Context) error {
 	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	fromDescriptors, err := engineExt.ResolveReference(context.Background(), fromName)
+	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
-	if len(fromDescriptors) != 1 {
+	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
-	fromDescriptor := fromDescriptors[0]
 
-	mutator, err := mutate.New(engine, fromDescriptor)
+	mutator, err := mutate.New(engine, fromDescriptorPaths[0])
 	if err != nil {
 		return errors.Wrap(err, "create mutator for manifest")
 	}
@@ -299,14 +298,14 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "set modified configuration")
 	}
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "commit mutated image")
 	}
 
-	log.Infof("new image manifest created: %s", newDescriptor.Digest)
+	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
-	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptor); err != nil {
+	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
 		return errors.Wrap(err, "add new tag")
 	}
 

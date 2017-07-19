@@ -48,7 +48,7 @@ func isKnownMediaType(mediaType string) bool {
 //
 // TODO: How are we meant to implement other restrictions such as the
 //       architecture and feature flags? The API will need to change.
-func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.Descriptor, error) {
+func (e Engine) ResolveReference(ctx context.Context, refname string) ([]DescriptorPath, error) {
 	index, err := e.GetIndex(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "get top-level index")
@@ -69,11 +69,13 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.D
 	}
 
 	// The resolved set of descriptors.
-	var resolutions []ispec.Descriptor
+	var resolutions []DescriptorPath
 	for _, root := range roots {
 		// Find all manifests or other blobs that are reachable from the given
 		// descriptor.
-		if err := e.Walk(ctx, root, func(descriptor ispec.Descriptor) error {
+		if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
+			descriptor := descriptorPath.Descriptor()
+
 			// It is very important that we do not ignore unknown media types
 			// here. We only recurse into mediaTypes that are *known* and are
 			// also not ispec.MediaTypeImageManifest.
@@ -82,7 +84,7 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.D
 			}
 
 			// Add the resolution and do not recurse any deeper.
-			resolutions = append(resolutions, descriptor)
+			resolutions = append(resolutions, descriptorPath)
 			return ErrSkipDescriptor
 		}); err != nil {
 			return nil, errors.Wrapf(err, "walk %s", root.Digest)
@@ -94,6 +96,11 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]ispec.D
 	}).Debugf("casext.ResolveReference(%s) got these descriptors", refname)
 	return resolutions, nil
 }
+
+// XXX: Should the *Reference set of interfaces support DescriptorPath? While
+//      it might seem like it doesn't make sense, a DescriptorPath entirely
+//      removes ambiguity with regards to which root needs to be operated on.
+//      If a user has that information we should provide them a way to use it.
 
 // UpdateReference replaces an existing entry for refname with the given
 // descriptor. If there are multiple descriptors that match the refname they
@@ -134,6 +141,9 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 
 // AddReferences adds entries for refname with the given descriptors, without
 // modifying the existing entries.
+//
+// TODO: Remove the variadic part of this interface, it just makes things more
+//       confusing.
 func (e Engine) AddReferences(ctx context.Context, refname string, descriptors ...ispec.Descriptor) error {
 	if len(descriptors) == 0 {
 		// Nothing to do.

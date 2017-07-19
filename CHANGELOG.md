@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   tags. `umoci` will warn you if an operation may have an ambiguous result, but
   we plan to improve this functionality far more in the future.
   openSUSE/umoci#133 openSUSE/umoci#142
+- `umoci` also now supports more complicated descriptor walk structures, and
+  also handles mutation of such structures more sanely. At the moment, this
+  functionality has not been used "in the wild" and `umoci` doesn't have the UX
+  to create such structures (yet) but these will be implemented in future
+  versions. openSUSE/umoci#145
 
 ### Changed
 - Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually

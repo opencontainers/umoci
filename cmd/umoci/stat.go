@@ -67,15 +67,15 @@ func stat(ctx *cli.Context) error {
 	engineExt := casext.Engine{engine}
 	defer engine.Close()
 
-	manifestDescriptors, err := engineExt.ResolveReference(context.Background(), tagName)
+	manifestDescriptorPaths, err := engineExt.ResolveReference(context.Background(), tagName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
-	if len(manifestDescriptors) != 1 {
+	if len(manifestDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", tagName)
 	}
-	manifestDescriptor := manifestDescriptors[0]
+	manifestDescriptor := manifestDescriptorPaths[0].Descriptor()
 
 	// FIXME: Implement support for manifest lists.
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
