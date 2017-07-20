@@ -34,5 +34,3 @@ patch github.com/pkg/errors errors-0001-errors-add-Debug-function.patch
 
 # Backport https://github.com/opencontainers/runtime-tools/pull/359.
 patch github.com/opencontainers/runtime-tools runtime-tools-0001-generate-remove-validate-dependency.patch
-# Fixes the v1.0.0 build.
-patch github.com/opencontainers/runtime-tools runtime-tools-0002-generate-fix-build-for-v1.0.0.patch
