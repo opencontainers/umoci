@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package umoci
+package fseval
 
 import (
 	"os"
@@ -23,6 +23,7 @@ import (
 
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
+	"golang.org/x/sys/unix"
 )
 
 // Ensure that mtree.FsEval is implemented by FsEval.
@@ -44,6 +45,9 @@ type FsEval interface {
 
 	// Lstat is equivalent to os.Lstat.
 	Lstat(path string) (os.FileInfo, error)
+
+	// Lstatx is equivalent to unix.Lstat.
+	Lstatx(path string) (unix.Stat_t, error)
 
 	// Readlink is equivalent to os.Readlink.
 	Readlink(path string) (string, error)

@@ -28,7 +28,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/cyphar/filepath-securejoin"
-	"github.com/openSUSE/umoci"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
@@ -37,15 +37,15 @@ type tarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting filesystem layers.
 	mapOptions MapOptions
 
-	// fsEval is an umoci.FsEval used for extraction.
-	fsEval umoci.FsEval
+	// fsEval is an fseval.FsEval used for extraction.
+	fsEval fseval.FsEval
 }
 
 // newTarExtractor creates a new tarExtractor.
 func newTarExtractor(opt MapOptions) *tarExtractor {
-	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	return &tarExtractor{

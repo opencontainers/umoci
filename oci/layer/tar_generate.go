@@ -24,7 +24,8 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openSUSE/umoci"
+	"github.com/apex/log"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/pkg/errors"
 )
 
@@ -53,8 +54,8 @@ type tarGenerator struct {
 	// Hardlink mapping.
 	inodes map[uint64]string
 
-	// fsEval is an umoci.FsEval used for extraction.
-	fsEval umoci.FsEval
+	// fsEval is an fseval.FsEval used for extraction.
+	fsEval fseval.FsEval
 
 	// XXX: Should we add a saftey check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
@@ -63,9 +64,9 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
-	var fsEval umoci.FsEval = umoci.DefaultFsEval
+	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
-		fsEval = umoci.RootlessFsEval
+		fsEval = fseval.RootlessFsEval
 	}
 
 	return &tarGenerator{
@@ -108,6 +109,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
 func (tg *tarGenerator) AddFile(name, path string) error {
+
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
 		return errors.Wrap(err, "add file lstat")
@@ -143,9 +145,11 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// Different systems have different special things they need to set within
 	// a tar header. For example, device numbers are quite important to be set
 	// by us.
-	if err := updateHeader(hdr, fi); err != nil {
-		return errors.Wrap(err, "update hdr header")
+	statx, err := tg.fsEval.Lstatx(path)
+	if err != nil {
+		return errors.Wrapf(err, "lstatx %q", path)
 	}
+	updateHeader(hdr, statx)
 
 	// Set up xattrs externally to updateHeader because the function signature
 	// would look really dumb otherwise.
@@ -169,28 +173,28 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			//      we try to clear xattrs).
 			return errors.Wrapf(err, "get xattr: %s", name)
 		}
+		// https://golang.org/issues/20698 -- We don't just error out here
+		// because it's not _really_ a fatal error. Currently it's unclear
+		// whether the stdlib will correctly handle reading or disable writing
+		// of these PAX headers so we have to track this ourselves.
+		if len(value) <= 0 {
+			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
+			continue
+		}
 		hdr.Xattrs[name] = string(value)
 	}
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to
 	// handle this in a way that makes anything other than GNU/Linux happy
-	// right now.
-	ino, err := getInode(fi)
-	if err != nil {
-		return errors.Wrap(err, "get inode")
-	}
-
-	// Handle hardlinks.
-	if oldpath, ok := tg.inodes[ino]; ok {
+	// right now. Handle hardlinks.
+	if oldpath, ok := tg.inodes[statx.Ino]; ok {
 		// We just hit a hardlink, so we just have to change the header.
 		hdr.Typeflag = tar.TypeLink
 		hdr.Linkname = oldpath
 		hdr.Size = 0
 	} else {
-		tg.inodes[ino] = name
+		tg.inodes[statx.Ino] = name
 	}
-
-	// XXX: What about xattrs.
 
 	// Apply any header mappings.
 	if err := mapHeader(hdr, tg.mapOptions); err != nil {

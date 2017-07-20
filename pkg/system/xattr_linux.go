@@ -20,37 +20,40 @@ package system
 import (
 	"bytes"
 	"os"
-	"syscall"
-	"unsafe"
 
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
-// Llistxattr is a wrapper around llistxattr(2).
+// Llistxattr is a wrapper around unix.Llistattr, to abstract the NUL-splitting
+// and resizing of the returned []string.
 func Llistxattr(path string) ([]string, error) {
-	bufsize, _, err := syscall.RawSyscall(syscall.SYS_LLISTXATTR, //. int llistxattr(
-		uintptr(assertPtrFromString(path)), // char *path,
-		0, // char *list,
-		0) // size_t size);
-	if err != 0 {
-		return nil, errors.Wrap(err, "llistxattr: get bufsize")
+	var buffer []byte
+	for {
+		// Find the size.
+		sz, err := unix.Llistxattr(path, nil)
+		if err != nil {
+			// Could not get the size.
+			return nil, err
+		}
+		buffer = make([]byte, sz)
+
+		// Get the buffer.
+		_, err = unix.Llistxattr(path, buffer)
+		if err != nil {
+			// If we got an ERANGE then we have to resize the buffer because
+			// someone raced with us getting the list. Don't you just love C
+			// interfaces.
+			if err == unix.ERANGE {
+				continue
+			}
+			return nil, err
+		}
+
+		break
 	}
 
-	if bufsize == 0 {
-		return []string{}, nil
-	}
-
-	buffer := make([]byte, bufsize)
-	n, _, err := syscall.RawSyscall(syscall.SYS_LLISTXATTR, // int llistxattr(
-		uintptr(assertPtrFromString(path)),  // char *path,
-		uintptr(unsafe.Pointer(&buffer[0])), // char *list,
-		uintptr(bufsize))                    // size_t size);
-	if err == syscall.ERANGE || n != bufsize {
-		return nil, errors.Errorf("llistxattr: get buffer: xattr set changed")
-	} else if err != 0 {
-		return nil, errors.Wrap(err, "llistxattr: get buffer")
-	}
-
+	// Split the buffer.
 	var xattrs []string
 	for _, name := range bytes.Split(buffer, []byte{'\x00'}) {
 		// "" is not a valid xattr (weirdly you get ERANGE -- not EINVAL -- if
@@ -63,62 +66,33 @@ func Llistxattr(path string) ([]string, error) {
 	return xattrs, nil
 }
 
-// Lremovexattr is a wrapper around lremovexattr(2).
-func Lremovexattr(path, name string) error {
-	_, _, err := syscall.RawSyscall(syscall.SYS_LREMOVEXATTR, // int lremovexattr(
-		uintptr(assertPtrFromString(path)), //.   char *path
-		uintptr(assertPtrFromString(name)), //.   char *name);
-		0)
-	if err != 0 {
-		return errors.Wrapf(err, "lremovexattr(%s, %s)", path, name)
-	}
-	return nil
-}
-
-// Lsetxattr is a wrapper around lsetxattr(2).
-func Lsetxattr(path, name string, value []byte, flags int) error {
-	_, _, err := syscall.RawSyscall6(syscall.SYS_LSETXATTR, // int lsetxattr(
-		uintptr(assertPtrFromString(path)), //.   char *path,
-		uintptr(assertPtrFromString(name)), //.   char *name,
-		uintptr(unsafe.Pointer(&value[0])), //.   void *value,
-		uintptr(len(value)),                //.   size_t size,
-		uintptr(flags),                     //.   int flags);
-		0)
-	if err != 0 {
-		return errors.Wrapf(err, "lsetxattr(%s, %s, %s, %d): %s", path, name, value, flags)
-	}
-	return nil
-}
-
-// Lgetxattr is a wrapper around lgetxattr(2).
+// Lgetxattr is a wrapper around unix.Lgetattr, to abstract the resizing of the
+// returned []string.
 func Lgetxattr(path string, name string) ([]byte, error) {
-	bufsize, _, err := syscall.RawSyscall6(syscall.SYS_LGETXATTR, //. int lgetxattr(
-		uintptr(assertPtrFromString(path)), // char *path,
-		uintptr(assertPtrFromString(name)), // char *name,
-		0, // void *value,
-		0, // size_t size);
-		0, 0)
-	if err != 0 {
-		return nil, errors.Wrap(err, "lgetxattr: get bufsize")
-	}
+	var buffer []byte
+	for {
+		// Find the size.
+		sz, err := unix.Lgetxattr(path, name, nil)
+		if err != nil {
+			// Could not get the size.
+			return nil, err
+		}
+		buffer = make([]byte, sz)
 
-	if bufsize == 0 {
-		return []byte{}, nil
-	}
+		// Get the buffer.
+		_, err = unix.Lgetxattr(path, name, buffer)
+		if err != nil {
+			// If we got an ERANGE then we have to resize the buffer because
+			// someone raced with us getting the list. Don't you just love C
+			// interfaces.
+			if err == unix.ERANGE {
+				continue
+			}
+			return nil, err
+		}
 
-	buffer := make([]byte, bufsize)
-	n, _, err := syscall.RawSyscall6(syscall.SYS_LGETXATTR, // int lgetxattr(
-		uintptr(assertPtrFromString(path)),  // char *path,
-		uintptr(assertPtrFromString(name)),  // char *name,
-		uintptr(unsafe.Pointer(&buffer[0])), // void *value,
-		uintptr(bufsize),                    // size_t size);
-		0, 0)
-	if err == syscall.ERANGE || n != bufsize {
-		return nil, errors.Errorf("lgetxattr: get buffer: xattr set changed")
-	} else if err != 0 {
-		return nil, errors.Wrap(err, "lgetxattr: get buffer")
+		break
 	}
-
 	return buffer, nil
 }
 
@@ -130,7 +104,7 @@ func Lclearxattrs(path string) error {
 		return errors.Wrap(err, "lclearxattrs: get list")
 	}
 	for _, name := range names {
-		if err := Lremovexattr(path, name); err != nil {
+		if err := unix.Lremovexattr(path, name); err != nil {
 			// Ignore permission errors, because hitting a permission error
 			// means that it's a security.* xattr label or something similar.
 			if os.IsPermission(errors.Cause(err)) {

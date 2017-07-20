@@ -20,7 +20,8 @@ package system
 import (
 	"archive/tar"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/unix"
 )
 
 // Dev_t represents a dev_t structure.
@@ -32,15 +33,15 @@ type Dev_t uint64
 func Tarmode(typeflag byte) uint32 {
 	switch typeflag {
 	case tar.TypeSymlink:
-		return syscall.S_IFLNK
+		return unix.S_IFLNK
 	case tar.TypeChar:
-		return syscall.S_IFCHR
+		return unix.S_IFCHR
 	case tar.TypeBlock:
-		return syscall.S_IFBLK
+		return unix.S_IFBLK
 	case tar.TypeFifo:
-		return syscall.S_IFIFO
+		return unix.S_IFIFO
 	case tar.TypeDir:
-		return syscall.S_IFDIR
+		return unix.S_IFDIR
 	}
 	return 0
 }
@@ -66,5 +67,5 @@ func Minordev(device Dev_t) uint64 {
 
 // Mknod is a wrapper around mknod(2).
 func Mknod(path string, mode os.FileMode, dev Dev_t) error {
-	return syscall.Mknod(path, uint32(mode), int(dev))
+	return unix.Mknod(path, uint32(mode), int(dev))
 }

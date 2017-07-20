@@ -18,12 +18,13 @@
 package system
 
 import (
-	"syscall"
 	"unsafe"
+
+	"golang.org/x/sys/unix"
 )
 
 func assertPtrFromString(s string) unsafe.Pointer {
-	ptr, err := syscall.BytePtrFromString(s)
+	ptr, err := unix.BytePtrFromString(s)
 	if err != nil {
 		panic(err)
 	}

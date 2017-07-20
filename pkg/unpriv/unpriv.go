@@ -23,12 +23,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"time"
 
 	"github.com/cyphar/filepath-securejoin"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given
@@ -199,6 +199,15 @@ func Lstat(path string) (os.FileInfo, error) {
 		return err
 	})
 	return fi, errors.Wrap(err, "unpriv.lstat")
+}
+
+// Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead
+func Lstatx(path string) (unix.Stat_t, error) {
+	var s unix.Stat_t
+	err := Wrap(path, func(path string) error {
+		return unix.Lstat(path, &s)
+	})
+	return s, errors.Wrap(err, "unpriv.lstatx")
 }
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
@@ -388,7 +397,7 @@ func MkdirAll(path string, perm os.FileMode) error {
 			if fi.IsDir() {
 				return nil
 			}
-			return &os.PathError{Op: "mkdir", Path: path, Err: syscall.ENOTDIR}
+			return &os.PathError{Op: "mkdir", Path: path, Err: unix.ENOTDIR}
 		}
 
 		// Create parent.
@@ -441,7 +450,7 @@ func Llistxattr(path string) ([]string, error) {
 // currently have the required access bits to resolve the path.
 func Lremovexattr(path, name string) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Lremovexattr(path, name)
+		return unix.Lremovexattr(path, name)
 	}), "unpriv.lremovexattr")
 }
 
@@ -450,7 +459,7 @@ func Lremovexattr(path, name string) error {
 // currently have the required access bits to resolve the path.
 func Lsetxattr(path, name string, value []byte, flags int) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Lsetxattr(path, name, value, flags)
+		return unix.Lsetxattr(path, name, value, flags)
 	}), "unpriv.lsetxattr")
 }
 

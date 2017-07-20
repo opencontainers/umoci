@@ -19,11 +19,9 @@ package layer
 
 import (
 	"archive/tar"
-	"fmt"
-	"os"
-	"syscall"
 
 	"github.com/openSUSE/umoci/pkg/system"
+	"golang.org/x/sys/unix"
 )
 
 // These values come from new_decode_dev() inside <linux/kdev_t.h>.
@@ -36,26 +34,11 @@ func minor(device uint64) uint64 {
 	return (device & 0xff) | ((device >> 12) & 0xfff00)
 }
 
-func updateHeader(hdr *tar.Header, fi os.FileInfo) error {
-	s, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		return fmt.Errorf("failed to cast fileinfo to *syscall.stat_t")
-	}
-
+func updateHeader(hdr *tar.Header, s unix.Stat_t) {
 	// Currently the Go stdlib doesn't fill in the major/minor numbers of
 	// devices, so we have to do it manually.
-	if s.Mode&syscall.S_IFBLK == syscall.S_IFBLK || s.Mode&syscall.S_IFCHR == syscall.S_IFCHR {
+	if s.Mode&unix.S_IFBLK == unix.S_IFBLK || s.Mode&unix.S_IFCHR == unix.S_IFCHR {
 		hdr.Devmajor = int64(system.Majordev(system.Dev_t(s.Rdev)))
 		hdr.Devminor = int64(system.Minordev(system.Dev_t(s.Rdev)))
 	}
-
-	return nil
-}
-
-func getInode(fi os.FileInfo) (uint64, error) {
-	s, ok := fi.Sys().(*syscall.Stat_t)
-	if !ok {
-		return 0, fmt.Errorf("failed to cast fileinfo to *syscall.stat_t")
-	}
-	return s.Ino, nil
 }

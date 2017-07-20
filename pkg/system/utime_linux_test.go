@@ -21,12 +21,15 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
+
+	"golang.org/x/sys/unix"
 )
 
 func TestLutimesFile(t *testing.T) {
+	var fiOld, fiNew unix.Stat_t
+
 	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesFile")
 	if err != nil {
 		t.Fatal(err)
@@ -42,8 +45,7 @@ func TestLutimesFile(t *testing.T) {
 	atime := time.Unix(125812851, 128518257)
 	mtime := time.Unix(257172893, 995216512)
 
-	fiOld, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
 	}
 
@@ -51,15 +53,14 @@ func TestLutimesFile(t *testing.T) {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	fiNew, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiNew); err != nil {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
+	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
+	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
+	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -76,6 +77,8 @@ func TestLutimesFile(t *testing.T) {
 }
 
 func TestLutimesDirectory(t *testing.T) {
+	var fiOld, fiNew unix.Stat_t
+
 	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesDirectory")
 	if err != nil {
 		t.Fatal(err)
@@ -91,8 +94,7 @@ func TestLutimesDirectory(t *testing.T) {
 	atime := time.Unix(128551231, 273285257)
 	mtime := time.Unix(185726393, 752135712)
 
-	fiOld, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
 	}
 
@@ -100,15 +102,14 @@ func TestLutimesDirectory(t *testing.T) {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	fiNew, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiNew); err != nil {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
+	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
+	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
+	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -125,6 +126,8 @@ func TestLutimesDirectory(t *testing.T) {
 }
 
 func TestLutimesSymlink(t *testing.T) {
+	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
+
 	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesSymlink")
 	if err != nil {
 		t.Fatal(err)
@@ -140,12 +143,10 @@ func TestLutimesSymlink(t *testing.T) {
 	atime := time.Unix(128551231, 273285257)
 	mtime := time.Unix(185726393, 752135712)
 
-	fiOld, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
 	}
-	fiParentOld, err := os.Lstat(dir)
-	if err != nil {
+	if err := unix.Lstat(dir, &fiParentOld); err != nil {
 		t.Fatal(err)
 	}
 
@@ -153,19 +154,17 @@ func TestLutimesSymlink(t *testing.T) {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	fiNew, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiNew); err != nil {
 		t.Fatal(err)
 	}
-	fiParentNew, err := os.Lstat(dir)
-	if err != nil {
+	if err := unix.Lstat(dir, &fiParentNew); err != nil {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
+	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
+	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
+	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -181,10 +180,10 @@ func TestLutimesSymlink(t *testing.T) {
 	}
 
 	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeParentOld := time.Unix(fiParentOld.Atim.Sec, fiParentOld.Atim.Nsec)
+	mtimeParentOld := time.Unix(fiParentOld.Mtim.Sec, fiParentOld.Mtim.Nsec)
+	atimeParentNew := time.Unix(fiParentNew.Atim.Sec, fiParentNew.Atim.Nsec)
+	mtimeParentNew := time.Unix(fiParentNew.Mtim.Sec, fiParentNew.Mtim.Nsec)
 
 	if !atimeParentOld.Equal(atimeParentNew) {
 		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
@@ -195,6 +194,8 @@ func TestLutimesSymlink(t *testing.T) {
 }
 
 func TestLutimesRelative(t *testing.T) {
+	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
+
 	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesRelative")
 	if err != nil {
 		t.Fatal(err)
@@ -220,12 +221,10 @@ func TestLutimesRelative(t *testing.T) {
 	atime := time.Unix(134858232, 258921237)
 	mtime := time.Unix(171257291, 425815288)
 
-	fiOld, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
 	}
-	fiParentOld, err := os.Lstat(".")
-	if err != nil {
+	if err := unix.Lstat(".", &fiParentOld); err != nil {
 		t.Fatal(err)
 	}
 
@@ -233,19 +232,17 @@ func TestLutimesRelative(t *testing.T) {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	fiNew, err := os.Lstat(path)
-	if err != nil {
+	if err := unix.Lstat(path, &fiNew); err != nil {
 		t.Fatal(err)
 	}
-	fiParentNew, err := os.Lstat(".")
-	if err != nil {
+	if err := unix.Lstat(".", &fiParentNew); err != nil {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
+	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
+	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
+	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -261,10 +258,10 @@ func TestLutimesRelative(t *testing.T) {
 	}
 
 	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeParentOld := time.Unix(fiParentOld.Sys().(*syscall.Stat_t).Mtim.Unix())
-	atimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Atim.Unix())
-	mtimeParentNew := time.Unix(fiParentNew.Sys().(*syscall.Stat_t).Mtim.Unix())
+	atimeParentOld := time.Unix(fiParentOld.Atim.Sec, fiParentOld.Atim.Nsec)
+	mtimeParentOld := time.Unix(fiParentOld.Mtim.Sec, fiParentOld.Mtim.Nsec)
+	atimeParentNew := time.Unix(fiParentNew.Atim.Sec, fiParentNew.Atim.Nsec)
+	mtimeParentNew := time.Unix(fiParentNew.Mtim.Sec, fiParentNew.Mtim.Nsec)
 
 	if !atimeParentOld.Equal(atimeParentNew) {
 		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
