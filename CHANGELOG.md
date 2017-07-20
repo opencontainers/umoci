@@ -44,6 +44,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci` now uses [`SecureJoin`][securejoin] rather than a patched version of
   `FollowSymlinkInScope`. The two implementations are roughly equivalent, but
   `SecureJoin` has a nicer API and is maintained as a separate project.
+- Switched to using `golang.org/x/sys/unix` over `syscall` where possible,
+  which makes the codebase significantly cleaner. openSUSE/umoci#141
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [rspec-v1.0.0]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0
