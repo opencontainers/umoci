@@ -76,10 +76,9 @@ RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 
 # Reinstall oci-runtime-tools from source to avoid having to package new versions
 # in openSUSE while testing PRs.
-# XXX: Switch back to upstream runtime-tools once https://github.com/opencontainers/runtime-tools/pull/432 is merged.
-ENV RUNTIMETOOLS_VERSION=c18317bd9b103c5454c2bd2b61cf6d3484e836bf RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
+ENV RUNTIMETOOLS_VERSION=2d270b8764c02228eeb13e36f076f5ce6f2e3591 RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
 RUN mkdir -p /go/src/$RUNTIMETOOLS_PROJECT && \
-	git clone https://github.com/cyphar/runtime-tools /go/src/$RUNTIMETOOLS_PROJECT && \
+	git clone https://$RUNTIMETOOLS_PROJECT /go/src/$RUNTIMETOOLS_PROJECT && \
 	( cd /go/src/$RUNTIMETOOLS_PROJECT ; git checkout $RUNTIMETOOLS_VERSION ; ) && \
 	make -C /go/src/$RUNTIMETOOLS_PROJECT tool && \
 	install -m0755 /go/src/$RUNTIMETOOLS_PROJECT/oci-runtime-tool /usr/bin/oci-runtime-tool && \
