@@ -27,9 +27,9 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/cyphar/filepath-securejoin"
 	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/pkg/system"
-	"github.com/openSUSE/umoci/third_party/symlink"
 	"github.com/pkg/errors"
 )
 
@@ -155,16 +155,15 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	}).Debugf("unpacking entry")
 
 	// Get directory and filename, but we have to safely get the directory
-	// component of the path. FollowSymlinkInScope will evaluate the path
-	// itself, which we don't want (we're clever enough to handle the actual
-	// path being a symlink).
-	unsafePath := filepath.Join(root, hdr.Name)
-	unsafeDir, file := filepath.Split(unsafePath)
+	// component of the path. SecureJoinVFS will evaluate the path itself,
+	// which we don't want (we're clever enough to handle the actual path being
+	// a symlink).
+	unsafeDir, file := filepath.Split(hdr.Name)
 	if filepath.Join("/", hdr.Name) == "/" {
 		// If we got an entry for the root, then unsafeDir is the full path.
-		unsafeDir, file = unsafePath, "."
+		unsafeDir, file = hdr.Name, "."
 	}
-	dir, err := symlink.FollowSymlinkInScope(unsafeDir, root, te.fsEval)
+	dir, err := securejoin.SecureJoinVFS(root, unsafeDir, te.fsEval)
 	if err != nil {
 		return errors.Wrap(err, "sanitise symlinks in root")
 	}
@@ -302,16 +301,15 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		case tar.TypeLink:
 			linkFn = te.fsEval.Link
 			// Because hardlinks are inode-based we need to scope the link to
-			// the rootfs using FollowSymlinkInScope. As before, we need to be
-			// careful that we don't resolve the last part of the link path (in
-			// case the user actually wanted to hardlink to a symlink).
-			linkname = filepath.Join(root, CleanPath(linkname))
-			linkdir, file := filepath.Split(linkname)
-			dir, err := symlink.FollowSymlinkInScope(linkdir, root, te.fsEval)
+			// the rootfs using SecureJoinVFS. As before, we need to be careful
+			// that we don't resolve the last part of the link path (in case
+			// the user actually wanted to hardlink to a symlink).
+			unsafeLinkDir, linkFile := filepath.Split(CleanPath(linkname))
+			linkDir, err := securejoin.SecureJoinVFS(root, unsafeLinkDir, te.fsEval)
 			if err != nil {
 				return errors.Wrap(err, "sanitise hardlink target in root")
 			}
-			linkname = filepath.Join(dir, file)
+			linkname = filepath.Join(linkDir, linkFile)
 		case tar.TypeSymlink:
 			linkFn = te.fsEval.Symlink
 		}
