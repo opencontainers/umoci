@@ -26,6 +26,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cyphar/filepath-securejoin"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
@@ -53,25 +54,6 @@ func splitpath(path string) []string {
 		parts = append([]string{string(os.PathSeparator)}, parts...)
 	}
 	return parts
-}
-
-// isNotExist tells you if err is an error that implies that either the path
-// accessed does not exist (or path components don't exist).
-func isNotExist(err error) bool {
-	if os.IsNotExist(errors.Cause(err)) {
-		return true
-	}
-
-	// Check that it's not actually an ENOTDIR.
-	perr, ok := errors.Cause(err).(*os.PathError)
-	if !ok {
-		return false
-	}
-	errno, ok := perr.Err.(syscall.Errno)
-	if !ok {
-		return false
-	}
-	return errno == syscall.ENOTDIR || errno == syscall.ENOENT
 }
 
 // Wrap will wrap a given function, and call it in a context where all of the
@@ -323,7 +305,8 @@ func RemoveAll(path string) error {
 		// Is this a directory?
 		fi, serr := os.Lstat(path)
 		if serr != nil {
-			if isNotExist(errors.Cause(serr)) {
+			// Use securejoin's IsNotExist to handle ENOTDIR sanely.
+			if securejoin.IsNotExist(errors.Cause(serr)) {
 				serr = nil
 			}
 			return errors.Wrap(serr, "lstat")
