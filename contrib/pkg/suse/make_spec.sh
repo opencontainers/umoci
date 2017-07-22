@@ -103,7 +103,7 @@ install -D -m 0755 %{name} "%{buildroot}/%{_bindir}/%{name}"
 
 # Install all of the docs.
 %ifarch %{go_arches}
-for file in man/*.1; do
+for file in doc/man/*.1; do
   install -D -m 0644 \$file "%{buildroot}/%{_mandir}/man1/\$(basename \$file)"
 done
 %endif
@@ -116,7 +116,7 @@ hack/test-unit.sh
 
 %files
 %defattr(-,root,root)
-%doc COPYING README.md man/*.md
+%doc COPYING README.md doc/*
 %{_bindir}/%{name}
 %ifarch %{go_arches}
 %{_mandir}/man1/umoci*
