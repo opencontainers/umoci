@@ -46,11 +46,13 @@ STATIC_BUILD_FLAGS := $(BUILD_FLAGS) -ldflags "-s -w -extldflags '-static' -X ma
 
 GO_SRC = $(shell find . -name \*.go)
 
+# NOTE: If you change these make sure you also update local-validate-build.
+
 umoci: $(GO_SRC)
 	$(GO) build ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.static: $(GO_SRC)
-	CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.cover: $(GO_SRC)
 	$(GO) test -c -cover -covermode=count -coverpkg=./... ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
@@ -81,7 +83,7 @@ validate: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-validate
 
 .PHONY: local-validate
-local-validate: local-validate-git local-validate-go local-validate-reproducible
+local-validate: local-validate-git local-validate-go local-validate-reproducible local-validate-build
 
 # TODO: Remove the special-case ignored system/* warnings.
 .PHONY: local-validate-go
@@ -115,6 +117,12 @@ local-validate-reproducible:
 	diff -s .tmp-validate/umoci.{a,b}
 	sha256sum .tmp-validate/umoci.{a,b}
 	rm -r .tmp-validate/umoci.{a,b}
+
+.PHONY: local-validate-build
+local-validate-build:
+	$(GO) build ${DYN_BUILD_FLAGS} -o /dev/null ${CMD}
+	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o /dev/null ${CMD}
+	$(GO) test -run nothing ${DYN_BUILD_FLAGS} $(PROJECT)/...
 
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
@@ -161,4 +169,5 @@ shell: umociimage
 
 .PHONY: ci
 ci: umoci umoci.cover doc local-validate test-unit test-integration
-	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE))
+	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep -v '^total:' | sort -k 3gr
+	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep    '^total:'
