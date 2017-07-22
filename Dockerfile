@@ -50,9 +50,8 @@ RUN go get -u github.com/golang/lint/golint
 
 # Reinstall skopeo from source, since there's a bootstrapping issue because
 # packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
-# uses both). This should no longer be necessary once we hit OCI v1.0.
-# NOTE: We can't use 0.1.22 because of libostree.
-ENV SKOPEO_VERSION=91e801b45115580c0709905719ae14c42f201027 SKOPEO_PROJECT=github.com/projectatomic/skopeo
+# uses both). XXX: This should no longer be necessary once we hit OCI v1.0.
+ENV SKOPEO_VERSION=v0.1.23 SKOPEO_PROJECT=github.com/projectatomic/skopeo
 RUN zypper -n in \
 		device-mapper-devel \
 		glib2-devel \
@@ -65,7 +64,8 @@ RUN zypper -n in \
 	rm -rf /go/src/$SKOPEO_PROJECT
 
 # Reinstall oci-image-tools from source to avoid having to package new versions
-# in openSUSE while testing PRs.
+# in openSUSE while testing PRs. XXX: This should no longer be necessary once
+# we hit OCI v1.0.
 ENV IMAGETOOLS_VERSION=91950f9a3a4413f893673a8d5786975cabb7a88d IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
 RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
@@ -75,7 +75,8 @@ RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 	rm -rf /go/src/$IMAGETOOLS_PROJECT
 
 # Reinstall oci-runtime-tools from source to avoid having to package new versions
-# in openSUSE while testing PRs.
+# in openSUSE while testing PRs. XXX: This should no longer be necessary once
+# we hit OCI v1.0.
 ENV RUNTIMETOOLS_VERSION=2d270b8764c02228eeb13e36f076f5ce6f2e3591 RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
 RUN mkdir -p /go/src/$RUNTIMETOOLS_PROJECT && \
 	git clone https://$RUNTIMETOOLS_PROJECT /go/src/$RUNTIMETOOLS_PROJECT && \
