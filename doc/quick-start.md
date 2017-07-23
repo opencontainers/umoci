@@ -74,6 +74,8 @@ bundle][oci-runtime]. This bundle can be used by an OCI compliant container
 runtime to spawn a container, but also can be used directly by non-containers
 (as it is just a directory).
 
+[oci-runtime]: https://github.com/opencontainers/runtime-spec
+
 ```
 % sudo umoci unpack --image opensuse:42.2 bundle
 % ls -l bundle
@@ -98,6 +100,8 @@ HOME_URL="https://www.opensuse.org/"
 You can spawn new containers with [`runc`][runc]. If you make any changes to
 the root filesystem, you can create a new delta layer and add it to the image
 by using [`umoci repack`](#repack).
+
+[runc]: https://github.com/opencontainers/runc
 
 ```
 % sudo runc run -b bundle ctr-name
