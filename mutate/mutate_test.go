@@ -57,7 +57,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 
 	// Write a tar layer.
 	var buffer bytes.Buffer
@@ -458,7 +458,7 @@ func TestMutatePath(t *testing.T) {
 	defer os.RemoveAll(dir)
 
 	engine, manifestDescriptor := setup(t, dir)
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Create some additional structure.

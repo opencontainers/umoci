@@ -87,7 +87,7 @@ func isLayerType(mediaType string) bool {
 //
 // FIXME: This interface is ugly.
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) error {
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
@@ -227,7 +227,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 //
 // XXX: I don't like this API. It has way too many arguments.
 func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Writer, rootfs string, manifest ispec.Manifest, opt *MapOptions) error {
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 
 	var mapOptions MapOptions
 	if opt != nil {
