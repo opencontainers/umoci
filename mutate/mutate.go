@@ -137,7 +137,7 @@ func New(engine cas.Engine, src casext.DescriptorPath) (*Mutator, error) {
 	}
 
 	return &Mutator{
-		engine: casext.Engine{engine},
+		engine: casext.NewEngine(engine),
 		source: src,
 	}, nil
 }

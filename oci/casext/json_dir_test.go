@@ -49,7 +49,7 @@ func TestEngineBlobJSON(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
-	engineExt := Engine{engine}
+	engineExt := NewEngine(engine)
 	defer engine.Close()
 
 	type object struct {
@@ -145,7 +145,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
-		engineExt := Engine{engine}
+		engineExt := NewEngine(engine)
 
 		digest, _, err := engineExt.PutBlobJSON(ctx, test.object)
 		if err != nil {
@@ -163,7 +163,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}
-		newEngineExt := Engine{newEngine}
+		newEngineExt := NewEngine(newEngine)
 
 		blobReader, err := newEngineExt.GetBlob(ctx, digest)
 		if err != nil {

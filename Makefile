@@ -45,7 +45,6 @@ STATIC_BUILD_FLAGS := $(BUILD_FLAGS) -ldflags "-s -w -extldflags '-static' -X ma
 .DEFAULT: umoci
 
 GO_SRC = $(shell find . -name \*.go)
-.PHONY: umoci umoci.static umoci.cover install install.static
 
 umoci: $(GO_SRC)
 	$(GO) build ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
@@ -60,9 +59,11 @@ umoci.cover: $(GO_SRC)
 release:
 	hack/release.sh -S "$(GPG_KEYID)" -r release/$(VERSION) -v $(VERSION)
 
+.PHONY: install
 install: $(GO_SRC)
 	$(GO) install -v ${DYN_BUILD_FLAGS} ${CMD}
 
+.PHONY: install.static
 install.static: $(GO_SRC)
 	$(GO) install -v ${STATIC_BUILD_FLAGS} ${CMD}
 
@@ -75,37 +76,45 @@ clean:
 	rm -f umoci umoci.static
 	rm -f $(MANPAGES)
 
+.PHONY: validate
 validate: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-validate
 
-EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
 .PHONY: local-validate
-local-validate: local-validate-reproducible
-	test -z "$$(gofmt -s -l . | grep -v '^vendor/' | grep -v '^third_party/' | tee /dev/stderr)"
-	out="$$(golint $(PROJECT)/... | grep -v '/vendor/' | grep -v '/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores')"; \
-	if [ -n "$$out" ]; then \
-		echo "$$out"; \
-		exit 1; \
-	fi
-	go vet $(shell go list $(PROJECT)/... | grep -v /vendor/ | grep -v /third_party/)
-	#@echo "git-validation"
-	#@git-validation -v -run DCO,short-subject,dangling-whitespace $(EPOCH_COMMIT)..HEAD
+local-validate: local-validate-git local-validate-go local-validate-reproducible
+
+# TODO: Remove the special-case ignored system/* warnings.
+.PHONY: local-validate-go
+local-validate-go:
+	@which gofmt    >/dev/null 2>/dev/null || (echo "ERROR: gofmt not found." && false)
+	test -z "$$(gofmt -s -l . | grep -vE '^vendor/|^third_party/' | tee /dev/stderr)"
+	@which golint   >/dev/null 2>/dev/null || (echo "ERROR: golint not found." && false)
+	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/|/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores' | tee /dev/stderr)"
+	@go doc cmd/vet >/dev/null 2>/dev/null || (echo "ERROR: go vet not found." && false)
+	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/|/third_party/') 2>&1 | tee /dev/stderr)"
+
+EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
+.PHONY: local-validate-git
+local-validate-git:
+	@which git-validation > /dev/null 2>/dev/null || (echo "ERROR: git-validation not found." && false)
+ifdef TRAVIS_COMMIT_RANGE
+	git-validation -q -run DCO,short-subject
+else
+	git-validation -q -run DCO,short-subject -range $(EPOCH_COMMIT)..HEAD
+endif
 
 # Make sure that our builds are reproducible even if you wait between them and
 # the modified time of the files is different.
 .PHONY: local-validate-reproducible
 local-validate-reproducible:
-	@mkdir -p .tmp-validate
-	@echo " [MAKE-A] umoci"
-	@make -B umoci && cp umoci .tmp-validate/umoci.a
-	@echo " [WAIT]"
+	mkdir -p .tmp-validate
+	make -B umoci && cp umoci .tmp-validate/umoci.a
+	@echo sleep 10s
 	@sleep 10s && touch $(GO_SRC)
-	@echo " [MAKE-B] umoci"
-	@make -B umoci && cp umoci .tmp-validate/umoci.b
-	@echo "  [CMP] umoci"
-	@diff -s .tmp-validate/umoci.{a,b}
-	@sha256sum .tmp-validate/umoci.{a,b}
-	@rm -r .tmp-validate/umoci.{a,b}
+	make -B umoci && cp umoci .tmp-validate/umoci.b
+	diff -s .tmp-validate/umoci.{a,b}
+	sha256sum .tmp-validate/umoci.{a,b}
+	rm -r .tmp-validate/umoci.{a,b}
 
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
@@ -151,5 +160,5 @@ shell: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover validate doc test-unit test-integration
+ci: umoci umoci.cover doc local-validate test-unit test-integration
 	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE))

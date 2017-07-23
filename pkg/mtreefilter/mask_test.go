@@ -62,7 +62,7 @@ func TestMaskDeltas(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	var mtreeKeywords []mtree.Keyword = append(mtree.DefaultKeywords, "sha256digest")
+	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some files.
 	if err != ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0644) {

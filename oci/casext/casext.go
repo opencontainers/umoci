@@ -22,8 +22,17 @@ package casext
 
 import "github.com/openSUSE/umoci/oci/cas"
 
+// TODO: Convert this to an interface and make Engine private.
+
 // Engine is a wrapper around cas.Engine that provides additional, generic
 // extensions to the transport-dependent cas.Engine implementation.
 type Engine struct {
 	cas.Engine
+}
+
+// NewEngine returns a new Engine which acts as a wrapper around the given
+// cas.Engine and provides additional, generic extensions to the
+// transport-dependent cas.Engine implementation.
+func NewEngine(engine cas.Engine) Engine {
+	return Engine{Engine: engine}
 }

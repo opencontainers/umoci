@@ -8,6 +8,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed
 - Fix several minor bugs in `hack/release.sh` that caused the release artefacts
   to not match the intended style. openSUSE/umoci#155
+- A recent configuration issue caused `go vet` and `go lint` to not run as part
+  of our CI jobs. This means that some of the information submitted as part of
+  [CII best practices badging][cii] was not accurate. This has been corrected,
+  and after review we concluded that only stylistic issues were discovered by
+  static analysis. openSUSE/umoci#158
+
+[cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 
 ## [0.3.0] - 2017-07-20
 ### Added

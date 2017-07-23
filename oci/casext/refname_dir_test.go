@@ -254,7 +254,7 @@ func TestEngineReference(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
-	engineExt := Engine{engine}
+	engineExt := NewEngine(engine)
 	defer engine.Close()
 
 	descMap, err := fakeSetupEngine(t, engineExt)
@@ -318,7 +318,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
-	engineExt := Engine{engine}
+	engineExt := NewEngine(engine)
 
 	descMap, err := fakeSetupEngine(t, engineExt)
 	if err != nil {
@@ -336,7 +336,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
-		engineExt := Engine{engine}
+		engineExt := NewEngine(engine)
 
 		if err := engineExt.UpdateReference(ctx, name, test.index); err != nil {
 			t.Errorf("UpdateReference: unexpected error: %+v", err)
@@ -353,7 +353,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}
-		newEngineExt := Engine{newEngine}
+		newEngineExt := NewEngine(newEngine)
 
 		gotDescriptorPaths, err := newEngineExt.ResolveReference(ctx, name)
 		if err != nil {

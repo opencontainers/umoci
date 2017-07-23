@@ -66,7 +66,7 @@ func tagAdd(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Get original descriptor.
@@ -114,7 +114,7 @@ func tagRemove(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Remove it.
@@ -151,7 +151,7 @@ func tagList(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
-	engineExt := casext.Engine{engine}
+	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	names, err := engineExt.ListReferences(context.Background())
