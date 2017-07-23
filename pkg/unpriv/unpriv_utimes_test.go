@@ -56,10 +56,10 @@ func TestLutimesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
-	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
-	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
-	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
+	atimeOld := time.Unix(fiOld.Atim.Unix())
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	atimeNew := time.Unix(fiNew.Atim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -104,10 +104,10 @@ func TestLutimesDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
-	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
-	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
-	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
+	atimeOld := time.Unix(fiOld.Atim.Unix())
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	atimeNew := time.Unix(fiNew.Atim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -158,10 +158,10 @@ func TestLutimesSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
-	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
-	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
-	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
+	atimeOld := time.Unix(fiOld.Atim.Unix())
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	atimeNew := time.Unix(fiNew.Atim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -177,10 +177,10 @@ func TestLutimesSymlink(t *testing.T) {
 	}
 
 	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Atim.Sec, fiParentOld.Atim.Nsec)
-	mtimeParentOld := time.Unix(fiParentOld.Mtim.Sec, fiParentOld.Mtim.Nsec)
-	atimeParentNew := time.Unix(fiParentNew.Atim.Sec, fiParentNew.Atim.Nsec)
-	mtimeParentNew := time.Unix(fiParentNew.Mtim.Sec, fiParentNew.Mtim.Nsec)
+	atimeParentOld := time.Unix(fiParentOld.Atim.Unix())
+	mtimeParentOld := time.Unix(fiParentOld.Mtim.Unix())
+	atimeParentNew := time.Unix(fiParentNew.Atim.Unix())
+	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
 
 	if !atimeParentOld.Equal(atimeParentNew) {
 		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
@@ -236,10 +236,10 @@ func TestLutimesRelative(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atimeOld := time.Unix(fiOld.Atim.Sec, fiOld.Atim.Nsec)
-	mtimeOld := time.Unix(fiOld.Mtim.Sec, fiOld.Mtim.Nsec)
-	atimeNew := time.Unix(fiNew.Atim.Sec, fiNew.Atim.Nsec)
-	mtimeNew := time.Unix(fiNew.Mtim.Sec, fiNew.Mtim.Nsec)
+	atimeOld := time.Unix(fiOld.Atim.Unix())
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	atimeNew := time.Unix(fiNew.Atim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
 
 	if atimeOld.Equal(atimeNew) {
 		t.Errorf("atime was not changed at all!")
@@ -255,10 +255,10 @@ func TestLutimesRelative(t *testing.T) {
 	}
 
 	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Atim.Sec, fiParentOld.Atim.Nsec)
-	mtimeParentOld := time.Unix(fiParentOld.Mtim.Sec, fiParentOld.Mtim.Nsec)
-	atimeParentNew := time.Unix(fiParentNew.Atim.Sec, fiParentNew.Atim.Nsec)
-	mtimeParentNew := time.Unix(fiParentNew.Mtim.Sec, fiParentNew.Mtim.Nsec)
+	atimeParentOld := time.Unix(fiParentOld.Atim.Unix())
+	mtimeParentOld := time.Unix(fiParentOld.Mtim.Unix())
+	atimeParentNew := time.Unix(fiParentNew.Atim.Unix())
+	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
 
 	if !atimeParentOld.Equal(atimeParentNew) {
 		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
