@@ -5,6 +5,9 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- Fix several minor bugs in `hack/release.sh` that caused the release artefacts
+  to not match the intended style. openSUSE/umoci#155
 
 ## [0.3.0] - 2017-07-20
 ### Added
