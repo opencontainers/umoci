@@ -5,15 +5,13 @@ sudo: required
 services:
   - docker
 
-# We can't test Go 1.5, because golint requires >1.6 (which is annoying).
-# Also note that this probably doesn't work with `make ci` right now.
 go:
-  - 1.7
-  #- 1.6
-  #- master
+  - 1.x
 
 before_install:
   - go get -u github.com/cpuguy83/go-md2man
+  - go get -u github.com/vbatts/git-validation
+  - go get -u github.com/golang/lint/golint
 
 env:
   - DOCKER_IMAGE="opensuse/amd64:42.2"
@@ -26,7 +24,4 @@ notifications:
 
 script:
   - chmod a+rwx . # Necessary to make Travis co-operate with Docker.
-  - make umoci
-  - make umoci.static
-  - make local-validate-reproducible
   - make DOCKER_IMAGE=$DOCKER_IMAGE ci
