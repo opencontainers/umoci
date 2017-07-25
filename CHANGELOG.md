@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   [CII best practices badging][cii] was not accurate. This has been corrected,
   and after review we concluded that only stylistic issues were discovered by
   static analysis. openSUSE/umoci#158
+- 32-bit unit test builds were broken in a refactor in [0.3.0]. This has been
+  fixed, and we've added tests to our CI to ensure that something like this
+  won't go unnoticed in the future. openSUSE/umoci#157
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 
