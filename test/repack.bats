@@ -395,8 +395,7 @@ function teardown() {
 	chmod +w "$BUNDLE_A/rootfs/etc"  && xattr -w user.another    valuegoeshere      "$BUNDLE_A/rootfs/etc"
 	chmod +w "$BUNDLE_A/rootfs/var"  && xattr -w user.3rd        halflife3confirmed "$BUNDLE_A/rootfs/var"
 	chmod +w "$BUNDLE_A/rootfs/usr"  && xattr -w user."key also" "works if you try" "$BUNDLE_A/rootfs/usr"
-	# FIXME: https://golang.org/issues/20698
-	#chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
+	chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE_A"
@@ -430,10 +429,9 @@ function teardown() {
 	sane_run xattr -p user."key also" "$BUNDLE_B/rootfs/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
-	# FIXME: https://golang.org/issues/20698
-	#sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "" ]]
+	# Empty-valued xattrs are disallowed by PAX.
+	sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
+	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 
 	# Now make some changes.
 	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
@@ -470,10 +468,9 @@ function teardown() {
 	sane_run xattr -p user."key also" "$BUNDLE_C/rootfs/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
-	# FIXME: https://golang.org/issues/20698
-	#sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "" ]]
+	# Empty-valued xattrs are disallowed by PAX.
+	sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
+	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 
 	image-verify "${IMAGE}"
 }
