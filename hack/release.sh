@@ -15,15 +15,45 @@
 
 set -e
 
+## --->
+# Project-specific options and functions. In *theory* you shouldn't need to
+# touch anything else in this script in order to use this elsewhere.
+project="umoci"
 root="$(readlink -f "$(dirname "${BASH_SOURCE}")/..")"
 
+# This function takes an output path as an argument, where the built
+# (preferably static) binary should be placed.
+function build_project() {
+	builddir="$(dirname "$1")"
+
+	make -C "$root" BUILD_DIR="$builddir" COMMIT_NO= "$project.static"
+	mv "$builddir/$project.static" "$1"
+}
+
+# End of the easy-to-configure portion.
+## <---
+
+# Print usage information.
 function usage() {
 	echo "usage: release.sh [-S <gpg-key-id>] [-c <commit-ish>] [-r <release-dir>] [-v <version>]" >&2
 	exit 1
 }
 
+# Log something to stderr.
 function log() {
 	echo "[*] $*" >&2
+}
+
+# Log something to stderr and then exit with 0.
+function bail() {
+	log "$@"
+	exit 0
+}
+
+# Conduct a sanity-check to make sure that GPG provided with the given
+# arguments can sign something. Inability to sign things is not a fatal error.
+function gpg_cansign() {
+	gpg "$@" --clear-sign </dev/null >/dev/null
 }
 
 # When creating releases we need to build static binaries, an archive of the
@@ -64,8 +94,9 @@ done
 version="${version:-$(<"$root/VERSION")}"
 releasedir="${releasedir:-release/$version}"
 hashcmd="${hashcmd:-sha256sum}"
+goarch="$(go env GOARCH || echo "amd64")"
 
-log "creating umoci release in '$releasedir'"
+log "creating $project release in '$releasedir'"
 log "  version: $version"
 log "   commit: $commit"
 log "      key: ${keyid:-DEFAULT}"
@@ -77,20 +108,22 @@ set -x
 # Make the release directory.
 rm -rf "$releasedir" && mkdir -p "$releasedir"
 
-# Build umoci.
-make -C "$root" BUILD_DIR="$releasedir" COMMIT_NO= umoci.static
-mv "$releasedir"/umoci.{static,amd64}
+# Build project.
+build_project "$releasedir/$project.$goarch"
 
 # Generate new archive.
-git archive --format=tar --prefix="umoci-$version/" "$commit" | xz > "$releasedir/umoci.tar.xz"
+git archive --format=tar --prefix="$project-$version/" "$commit" | xz > "$releasedir/$project.tar.xz"
 
 # Generate sha256 checksums for both.
-( cd "$releasedir" ; "$hashcmd" umoci.{amd64,tar.xz} > umoci.sha256sum ; )
+( cd "$releasedir" ; "$hashcmd" "$project".{"$goarch",tar.xz} > "$project.$hashcmd" ; )
+
+# Set up the gpgflags.
+[[ "$keyid" ]] && export gpgflags="--default-key $keyid"
+gpg_cansign $gpgflags || bail "Could not find suitable GPG key, skipping signing step."
 
 # Sign everything.
-[[ "$keyid" ]] && export gpgflags="--default-key $keyid"
-gpg $gpgflags --detach-sign --armor "$releasedir/umoci.amd64"
-gpg $gpgflags --detach-sign --armor "$releasedir/umoci.tar.xz"
+gpg $gpgflags --detach-sign --armor "$releasedir/$project.$goarch"
+gpg $gpgflags --detach-sign --armor "$releasedir/$project.tar.xz"
 gpg $gpgflags --clear-sign --armor \
-	--output $releasedir/umoci.sha256sum{.tmp,} && \
-	mv $releasedir/umoci.sha256sum{.tmp,}
+	--output "$releasedir/$project.$hashcmd"{.tmp,} && \
+	mv "$releasedir/$project.$hashcmd"{.tmp,}
