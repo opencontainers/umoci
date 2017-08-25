@@ -60,7 +60,7 @@ func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 	return -1, errors.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
-// ParseMapping takes a mapping string of the form "host:container[:size]" and
+// ParseMapping takes a mapping string of the form "container:host[:size]" and
 // returns the corresponding rspec.LinuxIDMapping. An error is returned if not
 // enough fields are provided or are otherwise invalid. The default size is 1.
 func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
@@ -80,14 +80,14 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
 	}
 
-	hostID, err = strconv.Atoi(parts[0])
-	if err != nil {
-		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
-	}
-
-	contID, err = strconv.Atoi(parts[1])
+	contID, err = strconv.Atoi(parts[0])
 	if err != nil {
 		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
+	}
+
+	hostID, err = strconv.Atoi(parts[1])
+	if err != nil {
+		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
 	}
 
 	return rspec.LinuxIDMapping{

@@ -55,11 +55,11 @@ creation with umoci-repack(1).`,
 	Flags: []cli.Flag{
 		cli.StringSliceFlag{
 			Name:  "uid-map",
-			Usage: "specifies a uid mapping to use when repacking",
+			Usage: "specifies a uid mapping to use when repacking (container:host:size)",
 		},
 		cli.StringSliceFlag{
 			Name:  "gid-map",
-			Usage: "specifies a gid mapping to use when repacking",
+			Usage: "specifies a gid mapping to use when repacking (container:host:size)",
 		},
 		cli.BoolFlag{
 			Name:  "rootless",
@@ -94,10 +94,10 @@ func unpack(ctx *cli.Context) error {
 	meta.MapOptions.Rootless = ctx.Bool("rootless")
 	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
-			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
+			ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid()))
 		}
 		if !ctx.IsSet("gid-map") {
-			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
+			ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid()))
 		}
 	}
 	// Parse and set up the mapping options.

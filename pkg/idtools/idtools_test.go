@@ -297,10 +297,10 @@ func TestParseIDMapping(t *testing.T) {
 		failure               bool
 	}{
 		{spec: "0:0:1", host: 0, container: 0, size: 1, failure: false},
-		{spec: "100:32:2421", host: 100, container: 32, size: 2421, failure: false},
-		{spec: "1337:0:1924", host: 1337, container: 0, size: 1924, failure: false},
-		{spec: "1:2", host: 1, container: 2, size: 1, failure: false},
-		{spec: "123:422", host: 123, container: 422, size: 1, failure: false},
+		{spec: "32:100:2421", host: 100, container: 32, size: 2421, failure: false},
+		{spec: "0:1337:1924", host: 1337, container: 0, size: 1924, failure: false},
+		{spec: "2:1", host: 1, container: 2, size: 1, failure: false},
+		{spec: "422:123", host: 123, container: 422, size: 1, failure: false},
 		{spec: "", host: 0, container: 0, size: 0, failure: true},
 		{spec: "::", host: 0, container: 0, size: 0, failure: true},
 		{spec: "1:2:", host: 0, container: 0, size: 0, failure: true},
@@ -318,13 +318,13 @@ func TestParseIDMapping(t *testing.T) {
 				t.Errorf("unexpected error: %+v", err)
 			} else {
 				if idMap.HostID != test.host {
-					t.Errorf("expected to get host %d, got %d", test.host, idMap.HostID)
+					t.Errorf("%q: expected to get host %d, got %d", test.spec, test.host, idMap.HostID)
 				}
 				if idMap.ContainerID != test.container {
-					t.Errorf("expected to get container %d, got %d", test.container, idMap.HostID)
+					t.Errorf("%q: expected to get container %d, got %d", test.spec, test.container, idMap.HostID)
 				}
 				if idMap.Size != test.size {
-					t.Errorf("expected to get size %d, got %d", test.size, idMap.HostID)
+					t.Errorf("%q: expected to get size %d, got %d", test.spec, test.size, idMap.HostID)
 				}
 			}
 		}
