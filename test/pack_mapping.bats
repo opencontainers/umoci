@@ -35,7 +35,7 @@ function teardown() {
 	BUNDLE_B="$(setup_tmpdir)"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "8888:0:65535" "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "0:1337:65535" --gid-map "0:8888:65535" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -53,7 +53,7 @@ function teardown() {
 	}'
 
 	# Unpack the image with a differen uid and gid mapping.
-	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "8080:0:65535" --gid-map "7777:0:65535" "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "0:8080:65535" --gid-map "0:7777:65535" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
@@ -73,7 +73,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci repack [with unpack --uid-map --gid-map]" {
+@test "umoci repack [--uid-map --gid-map]" {
 	# We do a bunch of remapping tricks, which we can't really do if we're not root.
 	requires root
 
@@ -84,7 +84,7 @@ function teardown() {
 	BUNDLE_C="$(setup_tmpdir)"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "1337:0:65535" --gid-map "7331:0:65535" "$BUNDLE_A"
+	umoci unpack --image "${IMAGE}:${TAG}" --uid-map "0:1337:65535" --gid-map "0:7331:65535" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
@@ -101,7 +101,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack it again with a different mapping.
-	umoci unpack --image "${IMAGE}:${TAG}-new" --uid-map "4000:0:65535" --gid-map "4000:0:65535" "$BUNDLE_B"
+	umoci unpack --image "${IMAGE}:${TAG}-new" --uid-map "0:4000:65535" --gid-map "0:4000:65535" "$BUNDLE_B"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 

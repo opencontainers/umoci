@@ -27,16 +27,18 @@ The global options are defined in **umoci**(1).
 
 **--uid-map**=[*value*]
   Specifies a UID mapping to use while unpacking layers. This is used in a
-  similar fashion to **user_namespaces**(7).
+  similar fashion to **user_namespaces**(7), and is of the form
+  **container:host[:size]**.
 
 **--gid-map**=[*value*]
   Specifies a GID mapping to use while unpacking layers. This is used in a
-  similar fashion to **user_namespaces**(7).
+  similar fashion to **user_namespaces**(7), and is of the form
+  **container:host[:size]**.
 
 **--rootless**
   Enable rootless unpacking support. This allows for **umoci-unpack**(1) and
   **umoci-repack**(1) to be used as an unprivileged user. Use of this flag
-  implies **--uid-map=$(id -u):0:1** and **--gid-map=$(id -g):0:1**, as well as
+  implies **--uid-map=0:$(id -u):1** and **--gid-map=0:$(id -g):1**, as well as
   enabling several features to fake parts of the unpacking in the attempt to
   generate an as-close-as-possible extraction of the filesystem. Note that it
   is almost always not possible to perfectly extract an OCI image with
