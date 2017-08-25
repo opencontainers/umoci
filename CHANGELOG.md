@@ -18,7 +18,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   fixed, and we've added tests to our CI to ensure that something like this
   won't go unnoticed in the future. openSUSE/umoci#157
 
+### Changed
+- `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
+  interface change, to better match the [`user_namespaces(7)`][user_namespaces]
+  interfaces. Note that this is a **breaking change**, but the workaround is to
+  switch to the trivially different (but now more consistent) format.
+  openSUSE/umoci#XXX
+
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
+[user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html
 
 ## [0.3.0] - 2017-07-20
 ### Added
