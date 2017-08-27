@@ -67,20 +67,22 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		isSymlink = realFi.Mode()&os.ModeSymlink == os.ModeSymlink
 	}
 
-	// We cannot apply hdr.Mode to symlinks, because symlinks don't have a mode
-	// of their own (they're special in that way).
-	if !isSymlink {
-		if err := te.fsEval.Chmod(path, fi.Mode()); err != nil {
-			return errors.Wrapf(err, "restore chmod metadata: %s", path)
-		}
-	}
-
-	// Apply owner (only used in rootless case).
+	// Apply owner (only used in non-rootless case).
 	if !te.mapOptions.Rootless {
 		// XXX: While unpriv.Lchown doesn't make a whole lot of sense this
 		//      should _probably_ be put inside FsEval.
 		if err := os.Lchown(path, hdr.Uid, hdr.Gid); err != nil {
 			return errors.Wrapf(err, "restore chown metadata: %s", path)
+		}
+	}
+
+	// We cannot apply hdr.Mode to symlinks, because symlinks don't have a mode
+	// of their own (they're special in that way). We have to apply this after
+	// we've applied the owner because setuid bits are cleared when changing
+	// owner (in rootless we don't care because we're always the owner).
+	if !isSymlink {
+		if err := te.fsEval.Chmod(path, fi.Mode()); err != nil {
+			return errors.Wrapf(err, "restore chmod metadata: %s", path)
 		}
 	}
 
