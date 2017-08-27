@@ -119,4 +119,36 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# TODO: Add a test using OCI extraction and verify it with go-mtree.
+@test "umoci unpack [setuid]" {
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Make some files setuid and setgid.
+	touch "$BUNDLE_A/setuid"  && chmod u+xs  "$BUNDLE_A/setuid"
+	touch "$BUNDLE_A/setgid"  && chmod g+xs  "$BUNDLE_A/setgid"
+	touch "$BUNDLE_A/setugid" && chmod ug+xs "$BUNDLE_A/setugid"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Check that the set{uid,gid} bits were preserved.
+	[ -u "$BUNDLE_A/setuid" ]
+	[ -g "$BUNDLE_A/setgid" ]
+	[ -u "$BUNDLE_A/setugid" ] && [ -g "$BUNDLE_A/setugid" ]
+
+	image-verify "${IMAGE}"
+}

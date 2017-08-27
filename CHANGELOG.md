@@ -17,13 +17,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - 32-bit unit test builds were broken in a refactor in [0.3.0]. This has been
   fixed, and we've added tests to our CI to ensure that something like this
   won't go unnoticed in the future. openSUSE/umoci#157
+- `umoci unpack` would not correctly preserve set{uid,gid} bits. While this
+  would not cause issues when building an image (as we only create a manifest
+  of the final extracted rootfs), it would cause issues for other users of
+  `umoci`. openSUSE/umoci#166 openSUSE/umoci#169
 
 ### Changed
 - `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
   interface change, to better match the [`user_namespaces(7)`][user_namespaces]
   interfaces. Note that this is a **breaking change**, but the workaround is to
   switch to the trivially different (but now more consistent) format.
-  openSUSE/umoci#XXX
+  openSUSE/umoci#167
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html
