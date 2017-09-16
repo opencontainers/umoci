@@ -78,12 +78,13 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.0.0~rc3
+   0.3.1
 
 AUTHOR(S):
    Aleksa Sarai <asarai@suse.com>
 
 COMMANDS:
+     raw      advanced internal image tooling
      help, h  Shows a list of commands or help for one command
 
    image:
@@ -101,7 +102,8 @@ COMMANDS:
      list, ls  lists the set of tags in an OCI image
 
 GLOBAL OPTIONS:
-   --debug        set log level to debug
+   --verbose      alias for --log=info
+   --log value    set the log level (debug, info, [warn], error, fatal) (default: "warn")
    --help, -h     show help
    --version, -v  print the version
 ```
