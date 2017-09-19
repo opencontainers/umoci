@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -54,7 +54,7 @@ func initLayout(ctx *cli.Context) error {
 		return errors.Wrap(err, "image layout creation")
 	}
 
-	if err := cas.Create(imagePath); err != nil {
+	if err := dir.Create(imagePath); err != nil {
 		return errors.Wrap(err, "image layout creation")
 	}
 

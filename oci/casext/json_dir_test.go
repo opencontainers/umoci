@@ -25,8 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openSUSE/umoci/oci/cas"
-	_ "github.com/openSUSE/umoci/oci/cas/drivers"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -41,11 +40,11 @@ func TestEngineBlobJSON(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := cas.Create(image); err != nil {
+	if err := dir.Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := cas.Open(image)
+	engine, err := dir.Open(image)
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -125,7 +124,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := cas.Create(image); err != nil {
+	if err := dir.Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -141,7 +140,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		{object{"a value", 100}},
 		{object{"another value", 200}},
 	} {
-		engine, err := cas.Open(image)
+		engine, err := dir.Open(image)
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
@@ -159,7 +158,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		// make it readonly
 		readonly(t, image)
 
-		newEngine, err := cas.Open(image)
+		newEngine, err := dir.Open(image)
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}

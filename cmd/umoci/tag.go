@@ -21,7 +21,7 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -62,7 +62,7 @@ func tagAdd(ctx *cli.Context) error {
 	tagName := ctx.App.Metadata["new-tag"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
@@ -110,7 +110,7 @@ func tagRemove(ctx *cli.Context) error {
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
@@ -147,7 +147,7 @@ func tagList(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

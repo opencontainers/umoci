@@ -32,7 +32,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/opencontainers/go-digest"
 	ispecs "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -246,11 +246,11 @@ func TestEngineReference(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := cas.Create(image); err != nil {
+	if err := dir.Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := cas.Open(image)
+	engine, err := dir.Open(image)
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -310,11 +310,11 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := cas.Create(image); err != nil {
+	if err := dir.Create(image); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := cas.Open(image)
+	engine, err := dir.Open(image)
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -332,7 +332,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	for idx, test := range descMap {
 		name := fmt.Sprintf("new_tag_%d", idx)
 
-		engine, err := cas.Open(image)
+		engine, err := dir.Open(image)
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
@@ -349,7 +349,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		// make it readonly
 		readonly(t, image)
 
-		newEngine, err := cas.Open(image)
+		newEngine, err := dir.Open(image)
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}
