@@ -104,34 +104,18 @@ func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 	}
 }
 
-// parseEnv splits a given environment variable (of the form name=value) into
-// (name, value). An error is returned if there is no "=" in the line or if the
-// name is empty.
-func parseEnv(env string) (string, string, error) {
-	parts := strings.SplitN(env, "=", 2)
-	if len(parts) != 2 {
-		return "", "", errors.Errorf("environment variable must contain '=': %s", env)
-	}
-
-	name, value := parts[0], parts[1]
-	if name == "" {
-		return "", "", errors.Errorf("environment variable must have non-empty name: %s", env)
-	}
-	return name, value, nil
-}
-
-// parseLabel splits a given label (of the form name=value) into (name,
+// parseKV splits a given string (of the form name=value) into (name,
 // value). An error is returned if there is no "=" in the line or if the
 // name is empty.
-func parseLabel(label string) (string, string, error) {
-	parts := strings.SplitN(label, "=", 2)
+func parseKV(input string) (string, string, error) {
+	parts := strings.SplitN(input, "=", 2)
 	if len(parts) != 2 {
-		return "", "", errors.Errorf("label must contain '=': %s", label)
+		return "", "", errors.Errorf("must contain '=': %s", input)
 	}
 
 	name, value := parts[0], parts[1]
 	if name == "" {
-		return "", "", errors.Errorf("label must have non-empty name: %s", label)
+		return "", "", errors.Errorf("must have non-empty name: %s", input)
 	}
 	return name, value, nil
 }
@@ -247,9 +231,9 @@ func config(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("config.env") {
 		for _, env := range ctx.StringSlice("config.env") {
-			name, value, err := parseEnv(env)
+			name, value, err := parseKV(env)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "config.env")
 			}
 			g.AddConfigEnv(name, value)
 		}
@@ -269,9 +253,9 @@ func config(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("config.label") {
 		for _, label := range ctx.StringSlice("config.label") {
-			name, value, err := parseLabel(label)
+			name, value, err := parseKV(label)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "config.label")
 			}
 			g.AddConfigLabel(name, value)
 		}
