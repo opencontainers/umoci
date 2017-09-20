@@ -120,6 +120,22 @@ func parseEnv(env string) (string, string, error) {
 	return name, value, nil
 }
 
+// parseLabel splits a given label (of the form name=value) into (name,
+// value). An error is returned if there is no "=" in the line or if the
+// name is empty.
+func parseLabel(label string) (string, string, error) {
+	parts := strings.SplitN(label, "=", 2)
+	if len(parts) != 2 {
+		return "", "", errors.Errorf("label must contain '=': %s", label)
+	}
+
+	name, value := parts[0], parts[1]
+	if name == "" {
+		return "", "", errors.Errorf("label must have non-empty name: %s", label)
+	}
+	return name, value, nil
+}
+
 func config(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
@@ -253,8 +269,11 @@ func config(ctx *cli.Context) error {
 	}
 	if ctx.IsSet("config.label") {
 		for _, label := range ctx.StringSlice("config.label") {
-			parts := strings.SplitN(label, "=", 2)
-			g.AddConfigLabel(parts[0], parts[1])
+			name, value, err := parseLabel(label)
+			if err != nil {
+				return err
+			}
+			g.AddConfigLabel(name, value)
 		}
 	}
 	if ctx.IsSet("manifest.annotation") {
