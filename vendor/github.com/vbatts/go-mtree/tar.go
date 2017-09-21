@@ -5,11 +5,11 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"log"
 	"os"
 	"path/filepath"
 	"strings"
 
+	"github.com/Sirupsen/logrus"
 	"github.com/vbatts/go-mtree/pkg/govis"
 )
 
@@ -144,16 +144,16 @@ hdrloop:
 
 		// Keep track of which files are hardlinks so we can resolve them later
 		if hdr.Typeflag == tar.TypeLink {
-			linkFunc := KeywordFuncs["link"]
-			kv, err := linkFunc(hdr.Name, hdr.FileInfo(), nil)
+			keyFunc := KeywordFuncs["link"]
+			kvs, err := keyFunc(hdr.Name, hdr.FileInfo(), nil)
 			if err != nil {
-				log.Println(err)
-				break
+				logrus.Warn(err)
+				break // XXX is breaking an okay thing to do here?
 			}
-			linkname, err := govis.Unvis(KeyVal(kv).Value(), DefaultVisFlags)
+			linkname, err := govis.Unvis(KeyVal(kvs[0]).Value(), DefaultVisFlags)
 			if err != nil {
-				log.Println(err)
-				break
+				logrus.Warn(err)
+				break // XXX is breaking an okay thing to do here?
 			}
 			if _, ok := ts.hardlinks[linkname]; !ok {
 				ts.hardlinks[linkname] = []string{hdr.Name}
@@ -164,19 +164,19 @@ hdrloop:
 
 		// now collect keywords on the file
 		for _, keyword := range ts.keywords {
-			if keyFunc, ok := KeywordFuncs[keyword]; ok {
+			if keyFunc, ok := KeywordFuncs[keyword.Prefix()]; ok {
 				// We can't extract directories on to disk, so "size" keyword
 				// is irrelevant for now
 				if hdr.FileInfo().IsDir() && keyword == "size" {
 					continue
 				}
-				val, err := keyFunc(hdr.Name, hdr.FileInfo(), tmpFile)
+				kvs, err := keyFunc(hdr.Name, hdr.FileInfo(), tmpFile)
 				if err != nil {
 					ts.setErr(err)
 				}
 				// for good measure, check that we actually get a value for a keyword
-				if val != "" {
-					e.Keywords = append(e.Keywords, val)
+				if len(kvs) > 0 && kvs[0] != "" {
+					e.Keywords = append(e.Keywords, kvs[0])
 				}
 
 				// don't forget to reset the reader
@@ -196,13 +196,15 @@ hdrloop:
 				Type: SpecialType,
 			}
 			for _, setKW := range SetKeywords {
-				if keyFunc, ok := KeywordFuncs[setKW]; ok {
-					val, err := keyFunc(hdr.Name, hdr.FileInfo(), tmpFile)
+				if keyFunc, ok := KeywordFuncs[setKW.Prefix()]; ok {
+					kvs, err := keyFunc(hdr.Name, hdr.FileInfo(), tmpFile)
 					if err != nil {
 						ts.setErr(err)
 					}
-					if val != "" {
-						s.Keywords = append(s.Keywords, val)
+					for _, kv := range kvs {
+						if kv != "" {
+							s.Keywords = append(s.Keywords, kv)
+						}
 					}
 					if _, err := tmpFile.Seek(0, 0); err != nil {
 						tmpFile.Close()
@@ -383,7 +385,7 @@ func resolveHardlinks(root *Entry, hardlinks map[string][]string, countlinks boo
 		if seen, ok := originals[base]; !ok {
 			basefile = root.Find(base)
 			if basefile == nil {
-				log.Printf("%s does not exist in this tree\n", base)
+				logrus.Printf("%s does not exist in this tree\n", base)
 				continue
 			}
 			originals[base] = basefile
@@ -393,7 +395,7 @@ func resolveHardlinks(root *Entry, hardlinks map[string][]string, countlinks boo
 		for _, link := range links {
 			linkfile := root.Find(link)
 			if linkfile == nil {
-				log.Printf("%s does not exist in this tree\n", link)
+				logrus.Printf("%s does not exist in this tree\n", link)
 				continue
 			}
 			linkfile.Keywords = basefile.Keywords

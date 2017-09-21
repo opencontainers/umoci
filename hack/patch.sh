@@ -34,3 +34,6 @@ patch github.com/pkg/errors errors-0001-errors-add-Debug-function.patch
 
 # Backport https://github.com/opencontainers/runtime-tools/pull/359.
 patch github.com/opencontainers/runtime-tools runtime-tools-0001-generate-remove-validate-dependency.patch
+
+# Backport https://github.com/vbatts/go-mtree/pull/141.
+patch github.com/vbatts/go-mtree mtree-compare-correctly-use-.Prefix-during-comparisons.patch

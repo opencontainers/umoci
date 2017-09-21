@@ -23,11 +23,12 @@ var ExcludeNonDirectories = func(path string, info os.FileInfo) bool {
 	return !info.IsDir()
 }
 
-var defaultSetKeywords = []KeyVal{"type=file", "nlink=1", "flags=none", "mode=0664"}
+var defaultSetKeyVals = []KeyVal{"type=file", "nlink=1", "flags=none", "mode=0664"}
 
-// Walk from root directory and assemble the DirectoryHierarchy. excludes
-// provided are used to skip paths. keywords are the set to collect from the
-// walked paths. The recommended default list is DefaultKeywords.
+// Walk from root directory and assemble the DirectoryHierarchy
+// * `excludes` provided are used to skip paths
+// * `keywords` are the set to collect from the walked paths. The recommended default list is DefaultKeywords.
+// * `fsEval` is the interface to use in evaluating files. If `nil`, then DefaultFsEval is used.
 func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval) (*DirectoryHierarchy, error) {
 	if fsEval == nil {
 		fsEval = DefaultFsEval{}
@@ -87,7 +88,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 					Name:     "/set",
 					Type:     SpecialType,
 					Pos:      len(creator.DH.Entries),
-					Keywords: keyvalSelector(defaultSetKeywords, keywords),
+					Keywords: keyvalSelector(defaultSetKeyVals, keywords),
 				}
 				for _, keyword := range SetKeywords {
 					err := func() error {
@@ -100,14 +101,18 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 							defer fh.Close()
 							r = fh
 						}
-						keywordFunc, ok := KeywordFuncs[keyword]
+						keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 						if !ok {
-							return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+							return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
 						}
-						if str, err := creator.fs.KeywordFunc(keywordFunc)(path, info, r); err == nil && str != "" {
-							e.Keywords = append(e.Keywords, str)
-						} else if err != nil {
+						kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
+						if err != nil {
 							return err
+						}
+						for _, kv := range kvs {
+							if kv != "" {
+								e.Keywords = append(e.Keywords, kv)
+							}
 						}
 						return nil
 					}()
@@ -131,16 +136,18 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 							defer fh.Close()
 							r = fh
 						}
-						keywordFunc, ok := KeywordFuncs[keyword]
+						keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 						if !ok {
-							return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+							return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
 						}
-						str, err := creator.fs.KeywordFunc(keywordFunc)(path, info, r)
+						kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
 						if err != nil {
 							return err
 						}
-						if str != "" {
-							klist = append(klist, str)
+						for _, kv := range kvs {
+							if kv != "" {
+								klist = append(klist, kv)
+							}
 						}
 						return nil
 					}()
@@ -160,7 +167,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 						Name:     "/set",
 						Type:     SpecialType,
 						Pos:      len(creator.DH.Entries),
-						Keywords: keyvalSelector(append(defaultSetKeywords, klist...), keywords),
+						Keywords: keyvalSelector(append(defaultSetKeyVals, klist...), keywords),
 					}
 					creator.curSet = &e
 					creator.DH.Entries = append(creator.DH.Entries, e)
@@ -189,16 +196,18 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 					defer fh.Close()
 					r = fh
 				}
-				keywordFunc, ok := KeywordFuncs[keyword]
+				keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 				if !ok {
-					return fmt.Errorf("Unknown keyword %q for file %q", keyword, path)
+					return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
 				}
-				str, err := creator.fs.KeywordFunc(keywordFunc)(path, info, r)
+				kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
 				if err != nil {
 					return err
 				}
-				if str != "" && !inKeyValSlice(str, creator.curSet.Keywords) {
-					e.Keywords = append(e.Keywords, str)
+				for _, kv := range kvs {
+					if kv != "" && !inKeyValSlice(kv, creator.curSet.Keywords) {
+						e.Keywords = append(e.Keywords, kv)
+					}
 				}
 				return nil
 			}()

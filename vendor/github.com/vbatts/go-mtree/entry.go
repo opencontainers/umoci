@@ -112,6 +112,16 @@ func (e Entry) AllKeys() []KeyVal {
 	return e.Keywords
 }
 
+// IsDir checks the type= value for this entry on whether it is a directory
+func (e Entry) IsDir() bool {
+	for _, kv := range e.AllKeys() {
+		if kv.Keyword().Prefix() == "type" {
+			return kv.Value() == "dir"
+		}
+	}
+	return false
+}
+
 // EntryType are the formats of lines in an mtree spec file
 type EntryType int
 

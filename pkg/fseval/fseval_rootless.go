@@ -139,8 +139,8 @@ func (fs unprivFsEval) Lclearxattrs(path string) error {
 
 // KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
 func (fs unprivFsEval) KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc {
-	return func(path string, info os.FileInfo, r io.Reader) (mtree.KeyVal, error) {
-		var kv mtree.KeyVal
+	return func(path string, info os.FileInfo, r io.Reader) ([]mtree.KeyVal, error) {
+		var kv []mtree.KeyVal
 		err := unpriv.Wrap(path, func(path string) error {
 			var err error
 			kv, err = fn(path, info, r)

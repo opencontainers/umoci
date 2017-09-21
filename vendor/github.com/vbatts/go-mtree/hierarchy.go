@@ -36,7 +36,7 @@ func (dh DirectoryHierarchy) UsedKeywords() []Keyword {
 			if e.Type != SpecialType || e.Name == "/set" {
 				kvs := e.Keywords
 				for _, kv := range kvs {
-					kw := KeyVal(kv).Keyword()
+					kw := KeyVal(kv).Keyword().Prefix()
 					if !InKeywordSlice(kw, usedkeywords) {
 						usedkeywords = append(usedkeywords, KeywordSynonym(string(kw)))
 					}

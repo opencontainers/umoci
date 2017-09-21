@@ -1,0 +1,90 @@
+From 8e5c54f51dae35cd6c6f13afd664bef032a61030 Mon Sep 17 00:00:00 2001
+From: Aleksa Sarai <asarai@suse.de>
+Date: Fri, 29 Sep 2017 20:33:41 +1000
+Subject: [PATCH] compare: correctly use .Prefix() during comparisons
+
+During the rework of how xattr fields are handled, the comparison code
+was not correctly updated. As a result, changes to xattrs would not be
+detected in any form. This was detected in the umoci integration suite.
+In addition, fix the dh.UsedKeywords logic so auto-detection works
+correctly with prefix-based xattrs.
+
+Fixes: ed464af779f0 ("*: xattr can Update()")
+Signed-off-by: Aleksa Sarai <asarai@suse.de>
+---
+ compare.go        |  6 +++---
+ hierarchy.go      |  2 +-
+ hierarchy_test.go | 13 +++++++++++++
+ 3 files changed, 17 insertions(+), 4 deletions(-)
+
+diff --git a/compare.go b/compare.go
+index b45600fc483e..7f5514272987 100644
+--- a/compare.go
++++ b/compare.go
+@@ -197,7 +197,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
+ 	for _, kv := range oldKeys {
+ 		key := kv.Keyword()
+ 		// only add this diff if the new keys has this keyword
+-		if key != "tar_time" && key != "time" && key != "xattr" && len(HasKeyword(newKeys, key)) == 0 {
++		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(newKeys, key)) == 0 {
+ 			continue
+ 		}
+ 
+@@ -216,7 +216,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
+ 	for _, kv := range newKeys {
+ 		key := kv.Keyword()
+ 		// only add this diff if the old keys has this keyword
+-		if key != "tar_time" && key != "time" && key != "xattr" && len(HasKeyword(oldKeys, key)) == 0 {
++		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(oldKeys, key)) == 0 {
+ 			continue
+ 		}
+ 
+@@ -414,7 +414,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
+ 			if keys != nil {
+ 				var filterChanged []KeyDelta
+ 				for _, keyDiff := range changed {
+-					if InKeywordSlice(keyDiff.name, keys) {
++					if InKeywordSlice(keyDiff.name.Prefix(), keys) {
+ 						filterChanged = append(filterChanged, keyDiff)
+ 					}
+ 				}
+diff --git a/hierarchy.go b/hierarchy.go
+index 3a970cda9e9f..0c3b8953c050 100644
+--- a/hierarchy.go
++++ b/hierarchy.go
+@@ -36,7 +36,7 @@ func (dh DirectoryHierarchy) UsedKeywords() []Keyword {
+ 			if e.Type != SpecialType || e.Name == "/set" {
+ 				kvs := e.Keywords
+ 				for _, kv := range kvs {
+-					kw := KeyVal(kv).Keyword()
++					kw := KeyVal(kv).Keyword().Prefix()
+ 					if !InKeywordSlice(kw, usedkeywords) {
+ 						usedkeywords = append(usedkeywords, KeywordSynonym(string(kw)))
+ 					}
+diff --git a/hierarchy_test.go b/hierarchy_test.go
+index 7dee81ab3a77..6cc65704af5e 100644
+--- a/hierarchy_test.go
++++ b/hierarchy_test.go
+@@ -20,6 +20,19 @@ var checklist = []struct {
+   .COMMIT_EDITMSG.un~ size=1006 mode=0644 time=1479325423.450468662 sha1digest=dead0face
+   .TAG_EDITMSG.un~ size=1069 mode=0600 time=1471362316.801317529 sha256digest=dead0face
+ `, set: []Keyword{"size", "mode", "time", "sha256digest"}},
++	{blob: `
++#          user: cyphar
++#       machine: ryuk
++#          tree: xattr
++#          date: Fri Sep 29 21:00:41 2017
++#      keywords: size,type,uid,gid,mode,link,nlink,time,xattr
++
++# .
++/set type=file nlink=1 mode=0664 uid=1000 gid=100 xattr.user.kira=SSdsbCB0YWtlIGEgcG90YXRvIGNoaXAuLi4gYW5kIGVhdCBpdCE=
++. size=8 type=dir mode=0755 time=1506666472.255992830
++    file size=0 mode=0644 time=1506666472.255992830 xattr.user.something=dGVzdA==
++..
++`, set: []Keyword{"size", "type", "uid", "gid", "mode", "nlink", "time", "xattr"}},
+ }
+ 
+ func TestUsedKeywords(t *testing.T) {
+-- 
+2.14.1
+
