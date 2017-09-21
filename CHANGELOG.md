@@ -23,6 +23,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `umoci`. openSUSE/umoci#166 openSUSE/umoci#169
 - Updated to [v0.4.0 of `go-mtree`][gomtree-v0.4.0], which fixes several minor
   bugs with manifest generation. openSUSE/umoci#176
+- `umoci unpack` would not handle "weird" tar archive layers previously (it
+  would error out with DiffID errors). While this wouldn't cause issues for
+  layers generated using Go's `archive/tar` implementation, it would cause
+  issues for GNU gzip and other such tools.
 
 ### Changed
 - `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
