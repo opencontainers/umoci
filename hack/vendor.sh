@@ -129,7 +129,7 @@ clone golang.org/x/sys fb4cac33e3196ff7f507ab9b2d2a44b0142f5b5a https://github.c
 clone github.com/docker/go-units v0.3.1
 clone github.com/pkg/errors v0.8.0
 clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
-clone github.com/urfave/cli v1.18.1
+clone github.com/urfave/cli v1.20.0
 clone github.com/cyphar/filepath-securejoin v0.2.1
 clone github.com/vbatts/go-mtree v0.4.0
 clone github.com/Sirupsen/logrus v1.0.3
