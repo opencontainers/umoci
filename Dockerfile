@@ -29,7 +29,6 @@ RUN zypper -n in \
 		git \
 		'go>=1.6' \
 		golang-github-cpuguy83-go-md2man \
-		go-mtree \
 		jq \
 		make \
 		moreutils \
