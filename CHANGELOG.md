@@ -21,7 +21,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   would not cause issues when building an image (as we only create a manifest
   of the final extracted rootfs), it would cause issues for other users of
   `umoci`. openSUSE/umoci#166 openSUSE/umoci#169
-- Updated to [v0.4.0 of `go-mtree`][gomtree-v0.4.0], which fixes several minor
+- Updated to [v0.4.1 of `go-mtree`][gomtree-v0.4.1], which fixes several minor
   bugs with manifest generation. openSUSE/umoci#176
 - `umoci unpack` would not handle "weird" tar archive layers previously (it
   would error out with DiffID errors). While this wouldn't cause issues for
@@ -46,7 +46,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   openSUSE/umoci#182
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
-[gomtree-v0.4.0]: https://github.com/vbatts/go-mtree/releases/tag/v0.4.0
+[gomtree-v0.4.1]: https://github.com/vbatts/go-mtree/releases/tag/v0.4.1
 [user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html
 
 ## [0.3.0] - 2017-07-20
