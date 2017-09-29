@@ -29,6 +29,10 @@ const (
 	// have different values (or have not been set in one of the
 	// manifests).
 	Modified DifferenceType = "modified"
+
+	// ErrorDifference represents an attempted update to the values of
+	// a keyword that failed
+	ErrorDifference DifferenceType = "errored"
 )
 
 // These functions return *type from the parameter. It's just shorthand, to
@@ -126,6 +130,7 @@ type KeyDelta struct {
 	name Keyword
 	old  string
 	new  string
+	err  error // used for update delta results
 }
 
 // Type returns the type of discrepancy encountered when comparing this key
@@ -192,7 +197,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	for _, kv := range oldKeys {
 		key := kv.Keyword()
 		// only add this diff if the new keys has this keyword
-		if key != "tar_time" && key != "time" && key != "xattr" && HasKeyword(newKeys, key) == emptyKV {
+		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(newKeys, key)) == 0 {
 			continue
 		}
 
@@ -211,7 +216,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	for _, kv := range newKeys {
 		key := kv.Keyword()
 		// only add this diff if the old keys has this keyword
-		if key != "tar_time" && key != "time" && key != "xattr" && HasKeyword(oldKeys, key) == emptyKV {
+		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(oldKeys, key)) == 0 {
 			continue
 		}
 
@@ -294,7 +299,7 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 
 		// Modified
 		default:
-			if !KeyValEqual(*diff.Old, *diff.New) {
+			if !diff.Old.Equal(*diff.New) {
 				results = append(results, KeyDelta{
 					diff: Modified,
 					name: name,
@@ -409,7 +414,7 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
 			if keys != nil {
 				var filterChanged []KeyDelta
 				for _, keyDiff := range changed {
-					if InKeywordSlice(keyDiff.name, keys) {
+					if InKeywordSlice(keyDiff.name.Prefix(), keys) {
 						filterChanged = append(filterChanged, keyDiff)
 					}
 				}

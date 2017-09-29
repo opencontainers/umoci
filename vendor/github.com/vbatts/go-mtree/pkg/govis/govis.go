@@ -17,6 +17,7 @@
 
 package govis
 
+// VisFlag manipulates how the characters are encoded/decoded
 type VisFlag uint
 
 // vis() has a variety of flags when deciding what encodings to use. While

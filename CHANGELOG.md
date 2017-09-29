@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   would not cause issues when building an image (as we only create a manifest
   of the final extracted rootfs), it would cause issues for other users of
   `umoci`. openSUSE/umoci#166 openSUSE/umoci#169
+- Updated to [v0.4.0 of `go-mtree`][gomtree-v0.4.0], which fixes several minor
+  bugs with manifest generation. openSUSE/umoci#176
 
 ### Changed
 - `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
@@ -30,6 +32,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   openSUSE/umoci#167
 
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
+[gomtree-v0.4.0]: https://github.com/vbatts/go-mtree/releases/tag/v0.4.0
 [user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html
 
 ## [0.3.0] - 2017-07-20

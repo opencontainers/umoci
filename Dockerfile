@@ -20,9 +20,8 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 # into openSUSE:Factory yet.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
     zypper ar -f -p 10 -g obs://devel:languages:go obs-dlg && \
-    zypper ar -f -p 10 -g obs://home:cyphar:containers obs-home-cyphar-containers && \
     zypper ar -f -p 15 -g obs://home:cyphar obs-home-cyphar && \
-    zypper ar -f -p 15 -g obs://devel:languages:python3 obs-py3k && \
+    zypper ar -f -p 15 -g obs://devel:languages:python obs-py && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
@@ -36,8 +35,7 @@ RUN zypper -n in \
 		moreutils \
 		oci-image-tools \
 		oci-runtime-tools \
-		python3-setuptools \
-		python3-xattr \
+		python-setuptools python-xattr \
 		skopeo
 
 ENV GOPATH /go
@@ -51,7 +49,8 @@ RUN go get -u github.com/golang/lint/golint
 # Reinstall skopeo from source, since there's a bootstrapping issue because
 # packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
 # uses both). XXX: This should no longer be necessary once we hit OCI v1.0.
-ENV SKOPEO_VERSION=v0.1.23 SKOPEO_PROJECT=github.com/projectatomic/skopeo
+# XXX: Switch to proper version once v0.1.24 is released.
+ENV SKOPEO_VERSION=875dd2e7a965adb92dfc97c69eaceba9d33b27ba SKOPEO_PROJECT=github.com/projectatomic/skopeo
 RUN zypper -n in \
 		device-mapper-devel \
 		glib2-devel \
