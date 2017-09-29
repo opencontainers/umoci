@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
@@ -56,7 +56,7 @@ func newImage(ctx *cli.Context) error {
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

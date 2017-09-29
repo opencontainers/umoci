@@ -22,7 +22,7 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -60,7 +60,7 @@ func stat(ctx *cli.Context) error {
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

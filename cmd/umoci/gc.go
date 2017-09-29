@@ -18,7 +18,7 @@
 package main
 
 import (
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -53,7 +53,7 @@ func gc(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

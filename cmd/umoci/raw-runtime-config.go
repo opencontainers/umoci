@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
 	"github.com/openSUSE/umoci/pkg/idtools"
@@ -124,7 +124,7 @@ func rawConfig(ctx *cli.Context) error {
 	}).Debugf("parsed mappings")
 
 	// Get a reference to the CAS.
-	engine, err := cas.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

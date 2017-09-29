@@ -29,14 +29,12 @@ import (
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	casdir "github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
-
-	// Include all known drivers.
-	_ "github.com/openSUSE/umoci/oci/cas/drivers"
 )
 
 // These come from just running the code.
@@ -49,11 +47,11 @@ const (
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	dir = filepath.Join(dir, "image")
-	if err := cas.Create(dir); err != nil {
+	if err := casdir.Create(dir); err != nil {
 		t.Fatal(err)
 	}
 
-	engine, err := cas.Open(dir)
+	engine, err := casdir.Open(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

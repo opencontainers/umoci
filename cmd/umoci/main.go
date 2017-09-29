@@ -25,9 +25,6 @@ import (
 	logcli "github.com/apex/log/handlers/cli"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-
-	// Include all official OCI images.
-	_ "github.com/openSUSE/umoci/oci/cas/drivers"
 )
 
 // version is version ID for the source, read from VERSION in the source and
