@@ -24,6 +24,7 @@ import (
 	_ "crypto/sha256"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -194,6 +195,14 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
 			return errors.Wrap(err, "unpack layer")
 		}
+		// Different tar implementations can have different levels of redundant
+		// padding and other similar weird behaviours. While on paper they are
+		// all entirely valid archives, Go's tar.Reader implementation doesn't
+		// guarantee that the entire stream will be consumed (which can result
+		// in the later diff_id check failing because the digester didn't get
+		// the whole uncompressed stream). Just blindly consume anything left
+		// in the layer.
+		_, _ = io.Copy(ioutil.Discard, layer)
 		// XXX: Is it possible this breaks in the error path?
 		layerGzip.Close()
 
