@@ -35,6 +35,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   switch to the trivially different (but now more consistent) format.
   openSUSE/umoci#167
 
+### Security
+- `umoci unpack` used to create the bundle and rootfs with world
+  read-and-execute permissions by default. This could potentially result in an
+  unsafe rootfs (containing dangerous setuid binaries for instance) being
+  accessible by an unprivileged user. This has been fixed by always setting the
+  mode of the bundle to `0700`, which requires a user to explicitly work around
+  this basic protection. This scenario was documented in our security
+  documentation previously, but has now been fixed. openSUSE/umoci#181
+  openSUSE/umoci#182
+
 [cii]: https://bestpractices.coreinfrastructure.org/projects/1084
 [gomtree-v0.4.0]: https://github.com/vbatts/go-mtree/releases/tag/v0.4.0
 [user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html

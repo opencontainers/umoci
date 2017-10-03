@@ -96,6 +96,13 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	if err := os.MkdirAll(bundle, 0755); err != nil {
 		return errors.Wrap(err, "mkdir bundle")
 	}
+	// We change the mode of the bundle directory to 0700. A user can easily
+	// change this after-the-fact, but we do this explicitly to avoid cases
+	// where an unprivileged user could recurse into an otherwise unsafe image
+	// (giving them potential root access through setuid binaries for example).
+	if err := os.Chmod(bundle, 0700); err != nil {
+		return errors.Wrap(err, "chmod bundle 0700")
+	}
 
 	configPath := filepath.Join(bundle, "config.json")
 	rootfsPath := filepath.Join(bundle, RootfsName)
