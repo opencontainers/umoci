@@ -6,11 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
 
-## [0.3.1] - 2017-09-16
+## [0.3.1] - 2017-10-04
 ### Fixed
 - Fix several minor bugs in `hack/release.sh` that caused the release artefacts
   to not match the intended style, as well as making it more generic so other
-  projects can use it. openSUSE/umoci#155 opensuse/umoci#163
+  projects can use it. openSUSE/umoci#155 openSUSE/umoci#163
 - A recent configuration issue caused `go vet` and `go lint` to not run as part
   of our CI jobs. This means that some of the information submitted as part of
   [CII best practices badging][cii] was not accurate. This has been corrected,
@@ -28,7 +28,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci unpack` would not handle "weird" tar archive layers previously (it
   would error out with DiffID errors). While this wouldn't cause issues for
   layers generated using Go's `archive/tar` implementation, it would cause
-  issues for GNU gzip and other such tools.
+  issues for GNU gzip and other such tools. openSUSE/umoci#178
+  openSUSE/umoci#179
 
 ### Changed
 - `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
