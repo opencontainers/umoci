@@ -20,8 +20,7 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 # into openSUSE:Factory yet.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
     zypper ar -f -p 10 -g obs://devel:languages:go obs-dlg && \
-    zypper ar -f -p 15 -g obs://home:cyphar obs-home-cyphar && \
-    zypper ar -f -p 15 -g obs://devel:languages:python obs-py && \
+    zypper ar -f -p 10 -g obs://devel:languages:python obs-py && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
@@ -65,7 +64,7 @@ RUN zypper -n in \
 # Reinstall oci-image-tools from source to avoid having to package new versions
 # in openSUSE while testing PRs. XXX: This should no longer be necessary once
 # we hit OCI v1.0.
-ENV IMAGETOOLS_VERSION=91950f9a3a4413f893673a8d5786975cabb7a88d IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
+ENV IMAGETOOLS_VERSION=v0.3.0 IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
 RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
 	( cd /go/src/$IMAGETOOLS_PROJECT ; git checkout $IMAGETOOLS_VERSION ; ) && \

@@ -119,7 +119,7 @@ clone() {
 # Update everything.
 # TODO: Put this in a vendor.conf file or something like that (to be compatible
 #       with LK4D4/vndr). This setup is a bit unwieldy.
-clone github.com/opencontainers/go-digest v1.0.0-rc0
+clone github.com/opencontainers/go-digest v1.0.0-rc1
 clone github.com/opencontainers/image-spec v1.0.0
 clone github.com/opencontainers/runtime-spec v1.0.0
 clone github.com/opencontainers/runtime-tools 2d270b8764c02228eeb13e36f076f5ce6f2e3591
@@ -131,7 +131,7 @@ clone github.com/pkg/errors v0.8.0
 clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
 clone github.com/urfave/cli v1.20.0
 clone github.com/cyphar/filepath-securejoin v0.2.1
-clone github.com/vbatts/go-mtree v0.4.0
+clone github.com/vbatts/go-mtree v0.4.1
 clone github.com/Sirupsen/logrus v1.0.3
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
 # Used purely for testing.
