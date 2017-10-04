@@ -119,7 +119,7 @@ clone() {
 # Update everything.
 # TODO: Put this in a vendor.conf file or something like that (to be compatible
 #       with LK4D4/vndr). This setup is a bit unwieldy.
-clone github.com/opencontainers/go-digest v1.0.0-rc0
+clone github.com/opencontainers/go-digest v1.0.0-rc1
 clone github.com/opencontainers/image-spec v1.0.0
 clone github.com/opencontainers/runtime-spec v1.0.0
 clone github.com/opencontainers/runtime-tools 2d270b8764c02228eeb13e36f076f5ce6f2e3591

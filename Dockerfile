@@ -64,7 +64,7 @@ RUN zypper -n in \
 # Reinstall oci-image-tools from source to avoid having to package new versions
 # in openSUSE while testing PRs. XXX: This should no longer be necessary once
 # we hit OCI v1.0.
-ENV IMAGETOOLS_VERSION=91950f9a3a4413f893673a8d5786975cabb7a88d IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
+ENV IMAGETOOLS_VERSION=v0.3.0 IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
 RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
 	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
 	( cd /go/src/$IMAGETOOLS_PROJECT ; git checkout $IMAGETOOLS_VERSION ; ) && \
