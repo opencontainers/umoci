@@ -67,7 +67,7 @@ demographic is not Plan9 so this tid-bit is not of much use to us.
 
 [securejoin]: https://github.com/cyphar/filepath-securejoin
 
-### Arbitrary Inode Creation ###
+### Arbitrary Inode and Mode Creation ###
 
 Note that this attack is only applicable if `umoci` is being executed as a
 **privileged user** (on GNU/Linux this means having `CAP_SYS_ADMIN` and a host
@@ -84,18 +84,14 @@ world-writeable inode that corresponds to the host's hard-drive (or
 `/dev/kmem`). There are a variety of other possible attacks that can occur.
 Note that the default `umoci` runtime configuration defends against containers
 from being able to mess with such files, but this doesn't help against
-host-side attackers.
+host-side attackers. This attack also could be used to provide an unprivileged
+user (in the host) access unsafe set-uid binaries, allowing for possible
+privilege escalation.
 
-**`umoci` currently has no specific defences against this attack.** We are
-working on it, but there is a legitimate concern that we are not truly spec
-compliant if we start rewriting layer entries (not to mention that in some
-cases this will cause the manifests to produce confusing results -- which isn't
-a problem with `--rootless` but will be a problem if we do this in general).
-
-However, a very trivial workaround is to make the `bundle` directory `chmod
+`umoci`'s defence against this attack is to make the `bundle` directory `chmod
 go-rwx` which will ensure that unprivileged users won't be able to resolve the
-dangerous inode (note that bind-mounts can circumvent this, but a user cannot
-create a bind-mount without being able to resolve the path).
+dangerous inode or setuid binary (note that bind-mounts can circumvent this,
+but a user cannot create a bind-mount without being able to resolve the path).
 
 ### Compression Bomb Attacks ###
 
