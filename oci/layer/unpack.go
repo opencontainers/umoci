@@ -34,6 +34,7 @@ import (
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
 	iconv "github.com/openSUSE/umoci/oci/config/convert"
+	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/openSUSE/umoci/pkg/idtools"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/opencontainers/go-digest"
@@ -87,7 +88,7 @@ func isLayerType(mediaType string) bool {
 // extraction.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) error {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) (err error) {
 	engineExt := casext.NewEngine(engine)
 
 	// Create the bundle directory. We only error out if config.json or rootfs/
@@ -124,6 +125,20 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	if err := os.Mkdir(rootfsPath, 0755); err != nil {
 		return errors.Wrap(err, "mkdir rootfs")
 	}
+
+	// In order to avoid having a broken bundle in the case of an error, we
+	// remove the bundle. In the case of rootless this is particularly
+	// important (`rm -rf` won't work on most distro rootfs's).
+	defer func() {
+		if err != nil {
+			fsEval := fseval.DefaultFsEval
+			if opt != nil && opt.Rootless {
+				fsEval = fseval.RootlessFsEval
+			}
+			// It's too late to care about errors.
+			_ = fsEval.RemoveAll(bundle)
+		}
+	}()
 
 	// Make sure that the owner is correct.
 	rootUID, err := idtools.ToHost(0, opt.UIDMappings)
