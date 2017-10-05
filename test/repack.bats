@@ -384,6 +384,12 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
+	# Make a test directory to make sure nesting works.
+	mkdir -p "$BUNDLE_A/rootfs/some/test/directory"
+	xattr -w user.toplevel.some "some directory" "$BUNDLE_A/rootfs/some"
+	xattr -w user.midlevel.test "test directory" "$BUNDLE_A/rootfs/some/test"
+	xattr -w user.lowlevel.direct "directory" "$BUNDLE_A/rootfs/some/test/directory"
+
 	# Set user.* xattrs.
 	chmod +w "$BUNDLE_A/rootfs/root" && xattr -w user.some.value thisisacoolfile    "$BUNDLE_A/rootfs/root"
 	chmod +w "$BUNDLE_A/rootfs/etc"  && xattr -w user.another    valuegoeshere      "$BUNDLE_A/rootfs/etc"
@@ -403,6 +409,15 @@ function teardown() {
 	bundle-verify "$BUNDLE_B"
 
 	# Make sure the xattrs have been set.
+	sane_run xattr -p user.toplevel.some "$BUNDLE_B/rootfs/some"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "some directory" ]]
+	sane_run xattr -p user.midlevel.test "$BUNDLE_B/rootfs/some/test"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "test directory" ]]
+	sane_run xattr -p user.lowlevel.direct "$BUNDLE_B/rootfs/some/test/directory"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "directory" ]]
 	sane_run xattr -p user.some.value "$BUNDLE_B/rootfs/root"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "thisisacoolfile" ]]
@@ -422,6 +437,7 @@ function teardown() {
 
 	# Now make some changes.
 	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
+	xattr -d user.midlevel.test "$BUNDLE_B/rootfs/some/test"
 	xattr -w user.3rd "jk, hl3 isn't here yet" "$BUNDLE_B/rootfs/var"
 
 	# Repack the image.
@@ -435,6 +451,14 @@ function teardown() {
 	bundle-verify "$BUNDLE_C"
 
 	# Make sure the xattrs have been set.
+	sane_run xattr -p user.toplevel.some "$BUNDLE_C/rootfs/some"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "some directory" ]]
+	sane_run xattr -p user.midlevel.test "$BUNDLE_C/rootfs/some/test"
+	[[ "$output" == *"No such xattr: user.midlevel.test"* ]]
+	sane_run xattr -p user.lowlevel.direct "$BUNDLE_C/rootfs/some/test/directory"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "directory" ]]
 	sane_run xattr -p user.some.value "$BUNDLE_C/rootfs/root"
 	[[ "$output" == *"No such xattr: user.some.value"* ]]
 	sane_run xattr -p user.another "$BUNDLE_C/rootfs/etc"

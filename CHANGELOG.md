@@ -5,6 +5,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Fixed
+- Fix a bug in our "parent directory restore" code, which is responsible for
+  ensuring that the mtime and other similar properties of a directory are not
+  modified by extraction inside said directory. The bug would manifest as
+  xattrs not being restored properly in certain edge-cases (which we
+  incidentally hit in a test-case). openSUSE/umoci#161
 
 ## [0.3.1] - 2017-10-04
 ### Fixed

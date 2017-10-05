@@ -182,12 +182,29 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		link, _ := te.fsEval.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
-			return errors.Wrap(err, "convert hdr to fi")
+			return errors.Wrap(err, "convert dirFi to dirHdr")
 		}
 
 		// More faking to trick restoreMetadata to actually restore the directory.
 		dirHdr.Typeflag = tar.TypeDir
 		dirHdr.Linkname = ""
+
+		// os.Lstat doesn't get the list of xattrs by default. We need to fill
+		// this explicitly.
+		xattrs, err := te.fsEval.Llistxattr(dir)
+		if err != nil {
+			return errors.Wrap(err, "get dirHdr.Xattrs")
+		}
+		if len(xattrs) > 0 {
+			dirHdr.Xattrs = map[string]string{}
+			for _, xattr := range xattrs {
+				value, err := te.fsEval.Lgetxattr(dir, xattr)
+				if err != nil {
+					return errors.Wrap(err, "get xattr")
+				}
+				dirHdr.Xattrs[xattr] = string(value)
+			}
+		}
 
 		// Ensure that after everything we correctly re-apply the old metadata.
 		// We don't map this header because we're restoring files that already
