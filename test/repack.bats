@@ -384,13 +384,18 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
+	# Make a test directory to make sure nesting works.
+	mkdir -p "$BUNDLE_A/rootfs/some/test/directory"
+	xattr -w user.toplevel.some "some directory" "$BUNDLE_A/rootfs/some"
+	xattr -w user.midlevel.test "test directory" "$BUNDLE_A/rootfs/some/test"
+	xattr -w user.lowlevel.direct "directory" "$BUNDLE_A/rootfs/some/test/directory"
+
 	# Set user.* xattrs.
 	chmod +w "$BUNDLE_A/rootfs/root" && xattr -w user.some.value thisisacoolfile    "$BUNDLE_A/rootfs/root"
 	chmod +w "$BUNDLE_A/rootfs/etc"  && xattr -w user.another    valuegoeshere      "$BUNDLE_A/rootfs/etc"
 	chmod +w "$BUNDLE_A/rootfs/var"  && xattr -w user.3rd        halflife3confirmed "$BUNDLE_A/rootfs/var"
 	chmod +w "$BUNDLE_A/rootfs/usr"  && xattr -w user."key also" "works if you try" "$BUNDLE_A/rootfs/usr"
-	# FIXME: https://golang.org/issues/20698
-	#chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
+	chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE_A"
@@ -403,6 +408,15 @@ function teardown() {
 	bundle-verify "$BUNDLE_B"
 
 	# Make sure the xattrs have been set.
+	sane_run xattr -p user.toplevel.some "$BUNDLE_B/rootfs/some"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "some directory" ]]
+	sane_run xattr -p user.midlevel.test "$BUNDLE_B/rootfs/some/test"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "test directory" ]]
+	sane_run xattr -p user.lowlevel.direct "$BUNDLE_B/rootfs/some/test/directory"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "directory" ]]
 	sane_run xattr -p user.some.value "$BUNDLE_B/rootfs/root"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "thisisacoolfile" ]]
@@ -415,13 +429,13 @@ function teardown() {
 	sane_run xattr -p user."key also" "$BUNDLE_B/rootfs/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
-	# FIXME: https://golang.org/issues/20698
-	#sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "" ]]
+	# Empty-valued xattrs are disallowed by PAX.
+	sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
+	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 
 	# Now make some changes.
 	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
+	xattr -d user.midlevel.test "$BUNDLE_B/rootfs/some/test"
 	xattr -w user.3rd "jk, hl3 isn't here yet" "$BUNDLE_B/rootfs/var"
 
 	# Repack the image.
@@ -435,6 +449,14 @@ function teardown() {
 	bundle-verify "$BUNDLE_C"
 
 	# Make sure the xattrs have been set.
+	sane_run xattr -p user.toplevel.some "$BUNDLE_C/rootfs/some"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "some directory" ]]
+	sane_run xattr -p user.midlevel.test "$BUNDLE_C/rootfs/some/test"
+	[[ "$output" == *"No such xattr: user.midlevel.test"* ]]
+	sane_run xattr -p user.lowlevel.direct "$BUNDLE_C/rootfs/some/test/directory"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "directory" ]]
 	sane_run xattr -p user.some.value "$BUNDLE_C/rootfs/root"
 	[[ "$output" == *"No such xattr: user.some.value"* ]]
 	sane_run xattr -p user.another "$BUNDLE_C/rootfs/etc"
@@ -446,10 +468,9 @@ function teardown() {
 	sane_run xattr -p user."key also" "$BUNDLE_C/rootfs/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
-	# FIXME: https://golang.org/issues/20698
-	#sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "" ]]
+	# Empty-valued xattrs are disallowed by PAX.
+	sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
+	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 
 	image-verify "${IMAGE}"
 }
