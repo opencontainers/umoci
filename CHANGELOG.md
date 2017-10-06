@@ -10,7 +10,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   ensuring that the mtime and other similar properties of a directory are not
   modified by extraction inside said directory. The bug would manifest as
   xattrs not being restored properly in certain edge-cases (which we
-  incidentally hit in a test-case). openSUSE/umoci#161
+  incidentally hit in a test-case). openSUSE/umoci#161 openSUSE/umoci#162
+- `umoci unpack` will now "clean up" the bundle generated if an error occurs
+  during unpacking. Previously this didn't happen, which made cleaning up the
+  responsibility of the caller (which was quite difficult if you were
+  unprivileged). This is a breaking change, but is in the error path so it's
+  not critical. openSUSE/umoci#174 openSUSE/umoci#187
 
 ## [0.3.1] - 2017-10-04
 ### Fixed
