@@ -26,3 +26,8 @@ themeVariant = "green"
 
 [output]
 home = ["HTML", "RSS", "JSON"]
+
+[[menu.shortcuts]]
+name = "<i class='fa fa-git'></i> Source Code"
+url = "https://github.com/openSUSE/umoci"
+weight = 0

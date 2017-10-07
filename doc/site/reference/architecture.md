@@ -1,4 +1,7 @@
-## `umoci` Architecture ##
++++
+title = "Architecture"
+weight = 20
++++
 
 `umoci` is a fairly simple tool, that takes advantage of a couple of tricks in
 order to allow for modification of OCI images. This architecture document is

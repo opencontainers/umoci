@@ -1,4 +1,7 @@
-## `umoci`'s Security Considerations ##
++++
+title = "Security Considerations"
+weight = 25
++++
 
 `umoci` is entrusted with taking a particular image and expanding it on the
 filesystem (as well as computing deltas of the expanded filesystem). As a

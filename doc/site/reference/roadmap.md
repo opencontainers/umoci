@@ -1,4 +1,7 @@
-## `umoci` Roadmap ##
++++
+title = "Roadmap"
+weight = 15
++++
 
 This document describes an informal roadmap for the future of the `umoci`
 project, in both technical and operational aspects. If you feel there is

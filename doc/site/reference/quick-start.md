@@ -1,4 +1,7 @@
-## `umoci` Quick Start Guide ##
++++
+title = "Quick Start Guide"
+weight = 10
++++
 
 This document gives you a very quick insight in how to use `umoci`, as well as
 some idea about where you can get an OCI image from and how you can use it. If
