@@ -23,6 +23,7 @@ author = "Aleksa Sarai"
 description = "Documentation for umoci -- a tool for modifying OCI images."
 showVisitedLinks = false
 themeVariant = "green"
+disableInlineCopyToClipBoard = true
 
 [output]
 home = ["HTML", "RSS", "JSON"]
