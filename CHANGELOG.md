@@ -22,6 +22,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
   image tag. This means that the bundle can be used as a base layer for
   future diffs without needing to unpack the image again. openSUSE/umoci#196
+- Added a website, and reworked the documentation to be better structured. You
+  can visit the website at [`umo.ci`][umo.ci]. openSUSE/umoci#188
+
+[umo.ci]: https://umo.ci/
 
 ## [0.3.1] - 2017-10-04
 ### Fixed
