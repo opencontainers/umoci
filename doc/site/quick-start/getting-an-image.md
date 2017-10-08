@@ -19,6 +19,17 @@ convert a Docker image (from a registry, local daemon or even from a file saved
 with `docker save`) to an OCI image (and vice-versa). Read their documentation
 for more information about the various other formats they support.
 
+{{% notice warning %}}
+At the time of writing there is a <a
+href="https://github.com/projectatomic/skopeo/pull/420">known issue in
+skopeo</a> (and the latest release does not contain an existing hotfix), caused
+by a change in <a
+href="https://blog.docker.com/2017/09/docker-official-images-now-multi-platform/">the
+"official" library</a>. Some images (such as the above openSUSE images) are not
+multi-arch and thus still work properly, but this should be taken into
+consideration.
+{{% /notice %}}
+
 After getting skopeo, you can download an image as follows. Note that you can
 include multiple Docker images inside the same OCI image (under different
 "tags").
@@ -47,6 +58,13 @@ Storing signatures
 At this point, you have a directory called `opensuse` which is the downloaded
 OCI image stored as a directory. This is currently the only type of layout that
 umoci can interact with.
+
+{{% notice warning %}}
+At the time of writing there is a <a
+href="https://github.com/projectatomic/skopeo/pull/306">known issue in
+skopeo</a>, which causes the above examples to not act correctly (only the
+latest image fetched will be accessible by it's tag name from the OCI image).
+{{% /notice %}}
 
 [oci-image]: https://github.com/opencontainers/image-spec
 [parcel]: https://github.com/cyphar/parcel

@@ -12,8 +12,16 @@ provides one of the most flexible image management toolsets, requiring neither
 a daemon nor any particular filesystem setup. It is already used in a variety
 of different projects and by several companies.
 
+{{% notice tip %}}
+umoci is currently in desparate need of a logo design. If you're interested in
+creating a logo for us (and releasing it under a <a
+href="https://creativecommons.org/">free artwork license</a>) then don't
+hesitate to reach out!
+{{% /notice %}}
+
 [openSUSE]: https://opensuse.org/
 [oci]: https://www.opencontainers.org/
+[creative-commons]: https://creativecommons.org/
 
 ### Features ###
 
