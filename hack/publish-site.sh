@@ -15,9 +15,15 @@
 
 set -e
 
+
 # Change to site root.
 site_root="$(readlink -f "$(dirname "${BASH_SOURCE}")/../.site")"
 cd "$site_root"
+
+# Copy key files from the source directory to the right place.
+# These are ignored by git.
+cp ../CHANGELOG.md content/changelog.md
+cp ../CONTRIBUTING.md content/contributing.md
 
 # Check out the 'gh-pages' worktree.
 rm -rf public/ && git worktree prune

@@ -1,0 +1,5 @@
+# These are automatically copied from the source root when the site is
+# published. While I'd love these to live in one place, git doesn't support
+# hardlinks, and using symlinks breaks no matter which way it's done.
+/changelog.md
+/contributing.md

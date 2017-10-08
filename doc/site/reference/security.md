@@ -16,7 +16,7 @@ consideration we haven't considered before, please follow our instructions on
 been resolved, feel free to contribute to this document a description of the
 consideration that we were missing.
 
-[contributing.md]: /CONTRIBUTING.md
+[contributing.md]: /contributing
 
 ### Path Traversal ###
 

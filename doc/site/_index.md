@@ -70,11 +70,12 @@ umoci is also available from several distribution's repositories:
 * [Arch Linux (AUR)](https://aur.archlinux.org/packages/umoci/)
 
 To build umoci from the [source code][source], a simple `make && make install`
-should work on most machines.
+should work on most machines. The [changelog][changelog] is also available.
 
 [releases]: https://github.com/openSUSE/umoci/releases
 [umoci-keyring]: /umoci.keyring
 [source]: https://github.com/openSUSE/umoci
+[changelog]: /changelog
 
 ### License ###
 

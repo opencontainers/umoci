@@ -13,7 +13,7 @@ When umoci was first released, I also published [a blog post][blog] outlying
 the original architecture (which has remained fairly similar over time).
 
 [roadmap.md]: /doc/roadmap.md
-[contributing.md]: /CONTRIBUTING.md
+[contributing.md]: /contributing
 [blog]: https://www.cyphar.com/blog/post/umoci-new-oci-image-tool
 
 ### Manifests ###

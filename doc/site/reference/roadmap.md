@@ -8,7 +8,7 @@ project, in both technical and operational aspects. If you feel there is
 something missing from this document, feel free to
 [contribute][contributing.md].
 
-[contributing.md]: /CONTRIBUTING.md
+[contributing.md]: /contributing
 
 ### Improved API Design ###
 
