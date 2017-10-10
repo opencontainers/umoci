@@ -1,0 +1,14 @@
+#! /bin/bash
+
+UMOCI_CMDS="
+"
+
+_umoci() {
+    local cur
+    COMPREPLY=()
+    cur="${COMP_WORDS[COMP_CWORD]}"
+    COMPREPLY=( $(compgen -W "${UMOCI_CMDS}" -- ${cur}) )
+    return 0
+}
+
+complete -F _umoci umoci

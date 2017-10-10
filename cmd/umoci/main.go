@@ -43,6 +43,10 @@ const (
 	categoryImage  = "image"
 )
 
+// bashCompletion is used to generate a list of commands for the bash and zsh
+// autocompletion scripts.
+var bashCompletion = "false"
+
 func main() {
 	app := cli.NewApp()
 	app.Name = "umoci"
@@ -52,6 +56,10 @@ func main() {
 			Name:  "Aleksa Sarai",
 			Email: "asarai@suse.com",
 		},
+	}
+
+	if bashCompletion == "true" {
+		app.EnableBashCompletion = true
 	}
 
 	// Fill the version.

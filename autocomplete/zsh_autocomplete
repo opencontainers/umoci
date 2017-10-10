@@ -1,0 +1,6 @@
+#compdef _umoci umoci
+
+autoload -U compinit && compinit
+autoload -U bashcompinit && bashcompinit
+
+source /etc/bash_completion.d/umoci

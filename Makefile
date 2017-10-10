@@ -62,12 +62,24 @@ umoci.cover: $(GO_SRC)
 release:
 	hack/release.sh -S "$(GPG_KEYID)" -r release/$(VERSION) -v $(VERSION)
 
+.PHONY: generate-completion
+generate-completion: $(GO_SRC)
+	$(GO) build ${DYN_BUILD_FLAGS} -ldflags "-X main.bashCompletion=true" -o $(BUILD_DIR)/umoci-gen ${CMD}
+	$(BUILD_DIR)/umoci-gen --generate-bash-completion > autocomplete/umoci_commands.txt
+	sed -e "3r autocomplete/umoci_commands.txt" autocomplete/bash_autocomplete > autocomplete/bash_autocomplete-gen
+	rm $(BUILD_DIR)/umoci-gen
+
+.PHONY: install-completion
+install-completion: generate-completion
+	cp -v autocomplete/bash_autocomplete-gen /etc/zsh_completion.d/_umoci
+	cp -v autocomplete/zsh_autocomplete /etc/zsh_completion.d/_umoci
+
 .PHONY: install
-install: $(GO_SRC)
+install: $(GO_SRC) install-completion
 	$(GO) install -v ${DYN_BUILD_FLAGS} ${CMD}
 
 .PHONY: install.static
-install.static: $(GO_SRC)
+install.static: $(GO_SRC) install-completion
 	$(GO) install -v ${STATIC_BUILD_FLAGS} ${CMD}
 
 .PHONY: update-deps

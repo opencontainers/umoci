@@ -1,0 +1,15 @@
+config
+unpack
+repack
+gc
+init
+new
+tag
+remove
+rm
+list
+ls
+stat
+raw
+help
+h
