@@ -83,6 +83,7 @@ func unpack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
+	sharedCasPath := ctx.String("shared-cas")
 
 	var meta UmociMeta
 	meta.Version = UmociMetaVersion
@@ -120,7 +121,7 @@ func unpack(ctx *cli.Context) error {
 	}).Debugf("parsed mappings")
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.Open(imagePath, sharedCasPath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

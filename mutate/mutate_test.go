@@ -46,12 +46,12 @@ const (
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
-	dir = filepath.Join(dir, "image")
-	if err := casdir.Create(dir); err != nil {
+	image := filepath.Join(dir, "image")
+	if err := casdir.Create(image); err != nil {
 		t.Fatal(err)
 	}
 
-	engine, err := casdir.Open(dir)
+	engine, err := casdir.Open(image, "")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	tw.Close()
 
 	// Push the base layer.
-	diffidDigester := cas.BlobAlgorithm.Digester()
+	diffidDigester := cas.DefaultBlobAlgorithm.Digester()
 	hashReader := io.TeeReader(&buffer, diffidDigester.Hash())
 	layerDigest, layerSize, err := engine.PutBlob(context.Background(), hashReader)
 	if err != nil {

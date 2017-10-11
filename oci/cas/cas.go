@@ -32,13 +32,18 @@ import (
 )
 
 const (
-	// BlobAlgorithm is the name of the only supported digest algorithm for blobs.
-	// FIXME: We can make this a list.
-	BlobAlgorithm = digest.SHA256
+	// DefaultBlobAlgorithm is the default supported digest algorithm for blobs
+	DefaultBlobAlgorithm = digest.SHA256
 )
 
-// Exposed errors.
 var (
+	// BlobAlgorithms contains the supported digest algorithms for blobs
+	BlobAlgorithms = []digest.Algorithm{
+		digest.SHA256,
+	}
+
+	// Exposed errors
+
 	// ErrNotExist is effectively an implementation-neutral version of
 	// os.ErrNotExist.
 	ErrNotExist = fmt.Errorf("no such blob or index")

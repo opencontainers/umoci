@@ -250,7 +250,7 @@ func TestEngineReference(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := dir.Open(image)
+	engine, err := dir.Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -314,7 +314,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := dir.Open(image)
+	engine, err := dir.Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -332,7 +332,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	for idx, test := range descMap {
 		name := fmt.Sprintf("new_tag_%d", idx)
 
-		engine, err := dir.Open(image)
+		engine, err := dir.Open(image, "")
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
@@ -349,7 +349,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		// make it readonly
 		readonly(t, image)
 
-		newEngine, err := dir.Open(image)
+		newEngine, err := dir.Open(image, "")
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}

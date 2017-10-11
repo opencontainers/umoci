@@ -99,6 +99,7 @@ func repack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
+	sharedCasPath := ctx.String("shared-cas")
 
 	// Read the metadata first.
 	meta, err := ReadBundleMeta(bundlePath)
@@ -117,7 +118,7 @@ func repack(ctx *cli.Context) error {
 	}
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.Open(imagePath, sharedCasPath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

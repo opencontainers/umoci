@@ -60,9 +60,10 @@ func tagAdd(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	tagName := ctx.App.Metadata["new-tag"].(string)
+	sharedCasPath := ctx.String("shared-cas")
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.Open(imagePath, sharedCasPath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
@@ -111,9 +112,10 @@ tag to remove.`,
 func tagRemove(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
+	sharedCasPath := ctx.String("shared-cas")
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.Open(imagePath, sharedCasPath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
@@ -148,9 +150,10 @@ line. See umoci-stat(1) to get more information about each tagged image.`,
 
 func tagList(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
+	sharedCasPath := ctx.String("shared-cas")
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.Open(imagePath, sharedCasPath)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

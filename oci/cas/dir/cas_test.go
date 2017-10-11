@@ -47,7 +47,7 @@ func TestCreateLayout(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := Open(image)
+	engine, err := Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -85,7 +85,7 @@ func TestEngineBlob(t *testing.T) {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
-	engine, err := Open(image)
+	engine, err := Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -98,7 +98,7 @@ func TestEngineBlob(t *testing.T) {
 		{[]byte("some blob")},
 		{[]byte("another blob")},
 	} {
-		digester := cas.BlobAlgorithm.Digester()
+		digester := cas.DefaultBlobAlgorithm.Digester()
 		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
 		}
@@ -172,7 +172,7 @@ func TestEngineValidate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -186,7 +186,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -200,7 +200,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -220,7 +220,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
 		t.Fatalf("unexpected error deleting blobdir: %+v", err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -243,7 +243,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755); err != nil {
 		t.Fatal(err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -263,7 +263,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
 		t.Fatalf("unexpected error deleting index: %+v", err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -286,7 +286,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Mkdir(filepath.Join(image, indexFile), 0755); err != nil {
 		t.Fatal(err)
 	}
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
@@ -294,7 +294,7 @@ func TestEngineValidate(t *testing.T) {
 
 	// No such directory.
 	image = filepath.Join(root, "non-exist")
-	engine, err = Open(image)
+	engine, err = Open(image, "")
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()

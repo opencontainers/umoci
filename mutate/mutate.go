@@ -223,7 +223,7 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int
 		return "", -1, errors.Wrap(err, "getting cache failed")
 	}
 
-	diffidDigester := cas.BlobAlgorithm.Digester()
+	diffidDigester := cas.DefaultBlobAlgorithm.Digester()
 	hashReader := io.TeeReader(reader, diffidDigester.Hash())
 
 	pipeReader, pipeWriter := io.Pipe()

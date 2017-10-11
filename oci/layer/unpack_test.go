@@ -91,7 +91,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 	if err := dir.Create(image); err != nil {
 		t.Fatal(err)
 	}
-	engine, err := dir.Open(image)
+	engine, err := dir.Open(image, "")
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -85,7 +85,7 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	readonly(t, image)
 	defer readwrite(t, image)
 
-	engine, err := Open(image)
+	engine, err := Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
@@ -125,12 +125,12 @@ func TestEngineBlobReadonly(t *testing.T) {
 		{[]byte("some blob")},
 		{[]byte("another blob")},
 	} {
-		engine, err := Open(image)
+		engine, err := Open(image, "")
 		if err != nil {
 			t.Fatalf("unexpected error opening image: %+v", err)
 		}
 
-		digester := cas.BlobAlgorithm.Digester()
+		digester := cas.DefaultBlobAlgorithm.Digester()
 		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
 			t.Fatalf("could not hash bytes: %+v", err)
 		}
@@ -155,7 +155,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		// make it readonly
 		readonly(t, image)
 
-		newEngine, err := Open(image)
+		newEngine, err := Open(image, "")
 		if err != nil {
 			t.Errorf("unexpected error opening ro image: %+v", err)
 		}
@@ -209,12 +209,12 @@ func TestEngineGCLocking(t *testing.T) {
 	content := []byte("here's some sample content")
 
 	// Open a reference to the CAS, and make sure that it has a .temp set up.
-	engine, err := Open(image)
+	engine, err := Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}
 
-	digester := cas.BlobAlgorithm.Digester()
+	digester := cas.DefaultBlobAlgorithm.Digester()
 	if _, err := io.Copy(digester.Hash(), bytes.NewReader(content)); err != nil {
 		t.Fatalf("could not hash bytes: %+v", err)
 	}
@@ -248,7 +248,7 @@ func TestEngineGCLocking(t *testing.T) {
 	}
 
 	// Open a new reference and GC it.
-	gcEngine, err := Open(image)
+	gcEngine, err := Open(image, "")
 	if err != nil {
 		t.Fatalf("unexpected error opening image: %+v", err)
 	}

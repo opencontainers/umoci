@@ -130,10 +130,17 @@ func uxTag(cmd cli.Command) cli.Command {
 // tag) will be stored in ctx.Metadata["--image-path"] and
 // ctx.Metadata["--image-tag"] as strings (both will be nil if --image is not
 // specified).
+// A --shared-cas flag is also added to the given cli.Command, which allows
+// users to provide a different directory to be used for blob operations
 func uxImage(cmd cli.Command) cli.Command {
 	cmd.Flags = append(cmd.Flags, cli.StringFlag{
 		Name:  "image",
 		Usage: "OCI image URI of the form 'path[:tag]'",
+	})
+
+	cmd.Flags = append(cmd.Flags, cli.StringFlag{
+		Name:  "shared-cas",
+		Usage: "shared directory to use for blobs (instead of internal image layout directory)",
 	})
 
 	oldBefore := cmd.Before
@@ -181,13 +188,20 @@ func uxImage(cmd cli.Command) cli.Command {
 	return cmd
 }
 
-// uxLayout adds an --layout flag to the given cli.Command as well as adding
+// uxLayout adds a --layout flag to the given cli.Command as well as adding
 // relevant validation logic to the .Before of the command. The value is stored
 // in ctx.App.Metadata["--image-path"] as a string (or nil --layout was not set).
+// A --shared-cas flag is also added to the given cli.Command, which allows
+// users to provide a different directory to be used for blob operations
 func uxLayout(cmd cli.Command) cli.Command {
 	cmd.Flags = append(cmd.Flags, cli.StringFlag{
 		Name:  "layout",
 		Usage: "path to an OCI image layout",
+	})
+
+	cmd.Flags = append(cmd.Flags, cli.StringFlag{
+		Name:  "shared-cas",
+		Usage: "shared directory to use for blobs (instead of internal image layout directory)",
 	})
 
 	oldBefore := cmd.Before
