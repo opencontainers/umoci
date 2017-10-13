@@ -135,6 +135,9 @@ func rawConfig(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
+	if len(fromDescriptorPaths) == 0 {
+		return errors.Errorf("tag not found: %s", fromName)
+	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)
