@@ -50,19 +50,17 @@ func Tarmode(typeflag byte) uint32 {
 // similar to makedev(3).
 func Makedev(major, minor uint64) Dev_t {
 	// These values come from new_envode_dev inside <linux/kdev_t.h>.
-	return Dev_t((minor & 0xff) | (major << 8) | ((minor &^ 0xff) << 12))
+	return Dev_t(unix.Mkdev(uint32(major), uint32(minor)))
 }
 
 // Majordev returns the major device number given a dev_t, similar to major(3).
 func Majordev(device Dev_t) uint64 {
-	// These values come from new_decode_dev() inside <linux/kdev_t.h>.
-	return uint64((device & 0xfff00) >> 8)
+	return uint64(unix.Major(uint64(device)))
 }
 
 // Minordev returns the minor device number given a dev_t, similar to minor(3).
 func Minordev(device Dev_t) uint64 {
-	// These values come from new_decode_dev() inside <linux/kdev_t.h>.
-	return uint64((device & 0xff) | ((device >> 12) & 0xfff00))
+	return uint64(unix.Minor(uint64(device)))
 }
 
 // Mknod is a wrapper around mknod(2).

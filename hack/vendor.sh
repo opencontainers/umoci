@@ -125,7 +125,7 @@ clone github.com/opencontainers/runtime-spec v1.0.0
 clone github.com/opencontainers/runtime-tools 2d270b8764c02228eeb13e36f076f5ce6f2e3591
 clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
 clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
-clone golang.org/x/sys fb4cac33e3196ff7f507ab9b2d2a44b0142f5b5a https://github.com/golang/sys
+clone golang.org/x/sys 686000749eaec0b8855b8eef5336cf63899fe51d https://github.com/golang/sys
 clone github.com/docker/go-units v0.3.1
 clone github.com/pkg/errors v0.8.0
 clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
