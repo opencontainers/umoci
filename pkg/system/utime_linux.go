@@ -21,7 +21,6 @@ import (
 	"os"
 	"path/filepath"
 	"time"
-	"unsafe"
 
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
@@ -31,9 +30,10 @@ import (
 // set, to allow changing the time of a symlink rather than the file it points
 // to.
 func Lutimes(path string, atime, mtime time.Time) error {
-	var times [2]unix.Timespec
-	times[0] = unix.NsecToTimespec(atime.UnixNano())
-	times[1] = unix.NsecToTimespec(mtime.UnixNano())
+	times := []unix.Timespec{
+		unix.NsecToTimespec(atime.UnixNano()),
+		unix.NsecToTimespec(mtime.UnixNano()),
+	}
 
 	// Split up the path.
 	dir, file := filepath.Split(path)
@@ -47,15 +47,9 @@ func Lutimes(path string, atime, mtime time.Time) error {
 	}
 	defer dirFile.Close()
 
-	// The interface for this is really, really silly.
-	_, _, errno := unix.RawSyscall6(unix.SYS_UTIMENSAT, // int utimensat(
-		uintptr(dirFile.Fd()),              // int dirfd,
-		uintptr(assertPtrFromString(file)), // char *pathname,
-		uintptr(unsafe.Pointer(&times[0])), // struct timespec times[2],
-		uintptr(_AT_SYMLINK_NOFOLLOW),      // int flags);
-		0, 0)
-	if errno != 0 {
-		return &os.PathError{Op: "lutimes", Path: path, Err: errno}
+	err = unix.UtimesNanoAt(int(dirFile.Fd()), file, times, unix.AT_SYMLINK_NOFOLLOW)
+	if err != nil {
+		return &os.PathError{Op: "lutimes", Path: path, Err: err}
 	}
 	return nil
 }
