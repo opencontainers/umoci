@@ -28,6 +28,7 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/wking/casengine"
 	"golang.org/x/net/context"
 )
 
@@ -63,13 +64,20 @@ var (
 // Engine is an interface that provides methods for accessing and modifying an
 // OCI image, namely allowing access to reference descriptors and blobs.
 type Engine interface {
+	// CAS returns the casengine.Engine backing this engine.
+	CAS() (casEngine casengine.Engine)
+
 	// PutBlob adds a new blob to the image. This is idempotent; a nil error
 	// means that "the content is stored at DIGEST" without implying "because
 	// of this PutBlob() call".
+	//
+	// Deprecated: Use CAS().Put instead.
 	PutBlob(ctx context.Context, reader io.Reader) (digest digest.Digest, size int64, err error)
 
 	// GetBlob returns a reader for retrieving a blob from the image, which the
 	// caller must Close(). Returns ErrNotExist if the digest is not found.
+	//
+	// Deprecated: Use CAS().Get instead.
 	GetBlob(ctx context.Context, digest digest.Digest) (reader io.ReadCloser, err error)
 
 	// PutIndex sets the index of the OCI image to the given index, replacing
@@ -92,9 +100,13 @@ type Engine interface {
 	// DeleteBlob removes a blob from the image. This is idempotent; a nil
 	// error means "the content is not in the store" without implying "because
 	// of this DeleteBlob() call".
+	//
+	// Deprecated: Use CAS().Delete instead.
 	DeleteBlob(ctx context.Context, digest digest.Digest) (err error)
 
 	// ListBlobs returns the set of blob digests stored in the image.
+	//
+	// Deprecated: Use CAS().Digests instead.
 	ListBlobs(ctx context.Context) (digests []digest.Digest, err error)
 
 	// Clean executes a garbage collection of any non-blob garbage in the store

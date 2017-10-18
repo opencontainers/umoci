@@ -19,10 +19,13 @@ package dir
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
@@ -30,6 +33,9 @@ import (
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/wking/casengine"
+	"github.com/wking/casengine/counter"
+	"github.com/wking/casengine/dir"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )
@@ -42,6 +48,10 @@ const (
 	ImageLayoutVersion = "1.0.0"
 
 	// blobDirectory is the directory inside an OCI image that contains blobs.
+	//
+	// FIXME: if the URI Template currently hard-coded Open() changes,
+	// then this variable will no longer be meaningful, and its consumers
+	// will have to be updated to use other logic.
 	blobDirectory = "blobs"
 
 	// indexFile is the file inside an OCI image that contains the top-level
@@ -53,24 +63,8 @@ const (
 	layoutFile = "oci-layout"
 )
 
-// blobPath returns the path to a blob given its digest, relative to the root
-// of the OCI image. The digest must be of the form algorithm:hex.
-func blobPath(digest digest.Digest) (string, error) {
-	if err := digest.Validate(); err != nil {
-		return "", errors.Wrapf(err, "invalid digest: %q", digest)
-	}
-
-	algo := digest.Algorithm()
-	hash := digest.Hex()
-
-	if algo != cas.BlobAlgorithm {
-		return "", errors.Errorf("unsupported algorithm: %q", algo)
-	}
-
-	return filepath.Join(blobDirectory, algo.String(), hash), nil
-}
-
 type dirEngine struct {
+	cas      casengine.DigestListerEngine
 	path     string
 	temp     string
 	tempFile *os.File
@@ -146,56 +140,29 @@ func (e *dirEngine) validate() error {
 	return nil
 }
 
+// CAS returns the casengine.Engine backing this engine.
+func (e *dirEngine) CAS() (casEngine casengine.Engine) {
+	return e.cas
+}
+
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
+//
+// Deprecated: Use CAS().Put instead.
 func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
-	if err := e.ensureTempDir(); err != nil {
-		return "", -1, errors.Wrap(err, "ensure tempdir")
-	}
-
-	digester := cas.BlobAlgorithm.Digester()
-
-	// We copy this into a temporary file because we need to get the blob hash,
-	// but also to avoid half-writing an invalid blob.
-	fh, err := ioutil.TempFile(e.temp, "blob-")
-	if err != nil {
-		return "", -1, errors.Wrap(err, "create temporary blob")
-	}
-	tempPath := fh.Name()
-	defer fh.Close()
-
-	writer := io.MultiWriter(fh, digester.Hash())
-	size, err := io.Copy(writer, reader)
-	if err != nil {
-		return "", -1, errors.Wrap(err, "copy to temporary blob")
-	}
-	fh.Close()
-
-	// Get the digest.
-	path, err := blobPath(digester.Digest())
-	if err != nil {
-		return "", -1, errors.Wrap(err, "compute blob name")
-	}
-
-	// Move the blob to its correct path.
-	path = filepath.Join(e.path, path)
-	if err := os.Rename(tempPath, path); err != nil {
-		return "", -1, errors.Wrap(err, "rename temporary blob")
-	}
-
-	return digester.Digest(), int64(size), nil
+	counter := &counter.Counter{}
+	countedReader := io.TeeReader(reader, counter)
+	dig, err := e.cas.Put(ctx, cas.BlobAlgorithm, countedReader)
+	return dig, int64(counter.Count()), err
 }
 
 // GetBlob returns a reader for retrieving a blob from the image, which the
 // caller must Close(). Returns os.ErrNotExist if the digest is not found.
+//
+// Deprecated: Use CAS().Get instead.
 func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
-	path, err := blobPath(digest)
-	if err != nil {
-		return nil, errors.Wrap(err, "compute blob path")
-	}
-	fh, err := os.Open(filepath.Join(e.path, path))
-	return fh, errors.Wrap(err, "open blob")
+	return e.cas.Get(ctx, digest)
 }
 
 // PutIndex sets the index of the OCI image to the given index, replacing the
@@ -259,36 +226,23 @@ func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 // DeleteBlob removes a blob from the image. This is idempotent; a nil
 // error means "the content is not in the store" without implying "because
 // of this DeleteBlob() call".
+//
+// Deprecated: Use CAS().Delete instead.
 func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error {
-	path, err := blobPath(digest)
-	if err != nil {
-		return errors.Wrap(err, "compute blob path")
-	}
-
-	err = os.Remove(filepath.Join(e.path, path))
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "remove blob")
-	}
-	return nil
+	return e.cas.Delete(ctx, digest)
 }
 
 // ListBlobs returns the set of blob digests stored in the image.
+//
+// Deprecated: Use CAS().Digests instead.
 func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 	digests := []digest.Digest{}
-	blobDir := filepath.Join(e.path, blobDirectory, cas.BlobAlgorithm.String())
-
-	if err := filepath.Walk(blobDir, func(path string, _ os.FileInfo, _ error) error {
-		// Skip the actual directory.
-		if path == blobDir {
-			return nil
-		}
-
-		// XXX: Do we need to handle multiple-directory-deep cases?
-		digest := digest.NewDigestFromHex(cas.BlobAlgorithm.String(), filepath.Base(path))
+	err := e.cas.Digests(ctx, "", "", -1, 0, func(ctx context.Context, digest digest.Digest) (err error) {
 		digests = append(digests, digest)
 		return nil
-	}); err != nil {
-		return nil, errors.Wrap(err, "walk blobdir")
+	})
+	if err != nil {
+		return nil, err
 	}
 
 	return digests, nil
@@ -340,25 +294,69 @@ func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
 
 // Close releases all references held by the e. Subsequent operations may
 // fail.
-func (e *dirEngine) Close() error {
-	if e.temp != "" {
-		if err := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_UN); err != nil {
-			return errors.Wrap(err, "unlock tempdir")
-		}
-		if err := e.tempFile.Close(); err != nil {
-			return errors.Wrap(err, "close tempdir")
-		}
-		if err := os.RemoveAll(e.temp); err != nil {
-			return errors.Wrap(err, "remove tempdir")
+func (e *dirEngine) Close() (err error) {
+	ctx := context.Background()
+	var err2 error
+	if e.cas != nil {
+		if err2 = e.cas.Close(ctx); err2 != nil {
+			err = errors.Wrap(err, "close CAS")
 		}
 	}
-	return nil
+
+	if e.temp != "" {
+		if err2 := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_UN); err2 != nil {
+			err2 = errors.Wrap(err2, "unlock tempdir")
+			if err == nil {
+				err = err2
+			}
+		}
+		if err2 := e.tempFile.Close(); err2 != nil {
+			err2 = errors.Wrap(err2, "close tempdir")
+			if err == nil {
+				err = err2
+			}
+		}
+		if err2 := os.RemoveAll(e.temp); err != nil {
+			err2 = errors.Wrap(err2, "remove tempdir")
+			if err == nil {
+				err = err2
+			}
+		}
+	}
+	return err
 }
 
 // Open opens a new reference to the directory-backed OCI image referenced by
 // the provided path.
 func Open(path string) (cas.Engine, error) {
+	ctx := context.Background()
+	uri := "blobs/{algorithm}/{encoded}"
+
+	pattern := `^blobs/(?P<algorithm>[a-z0-9+._-]+)/(?P<encoded>[a-zA-Z0-9=_-]{1,})$`
+	if filepath.Separator != '/' {
+		if filepath.Separator == '\\' {
+			pattern = strings.Replace(pattern, "/", `\\`, -1)
+		} else {
+			return nil, fmt.Errorf("unknown path separator %q", string(filepath.Separator))
+		}
+	}
+
+	getDigestRegexp, err := regexp.Compile(pattern)
+	if err != nil {
+		return nil, errors.Wrap(err, "get-digest regexp")
+	}
+
+	getDigest := &dir.RegexpGetDigest{
+		Regexp: getDigestRegexp,
+	}
+
+	casEngine, err := dir.NewDigestListerEngine(ctx, path, uri, getDigest.GetDigest)
+	if err != nil {
+		return nil, errors.Wrap(err, "initialize CAS engine")
+	}
+
 	engine := &dirEngine{
+		cas:  casEngine,
 		path: path,
 		temp: "",
 	}

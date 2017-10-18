@@ -26,6 +26,8 @@ import (
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	imeta "github.com/opencontainers/image-spec/specs-go"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
@@ -232,8 +234,14 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(content), size)
 	}
 
+	err = engine.PutIndex(ctx, ispec.Index{
+		Versioned: imeta.Versioned{
+			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
+		},
+	})
+
 	if engine.(*dirEngine).temp == "" {
-		t.Errorf("engine doesn't have a tempdir after putting a blob!")
+		t.Errorf("engine doesn't have a tempdir after putting an index!")
 	}
 
 	// Create umoci and other directories and files to make sure things work.
