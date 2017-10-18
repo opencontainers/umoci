@@ -16,6 +16,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   responsibility of the caller (which was quite difficult if you were
   unprivileged). This is a breaking change, but is in the error path so it's
   not critical. openSUSE/umoci#174 openSUSE/umoci#187
+- `umoci gc` now will no longer remove unknown files and directories that
+  aren't `flock(2)`ed, thus ensuring that any possible OCI image-spec
+  extensions or other users of an image being operated on will no longer
+  break.  openSUSE/umoci#198
 
 ### Added
 - `umoci repack` now supports `--refresh-bundle` which will update the
