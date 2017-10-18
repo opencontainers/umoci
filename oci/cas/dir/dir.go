@@ -63,10 +63,6 @@ func blobPath(digest digest.Digest) (string, error) {
 	algo := digest.Algorithm()
 	hash := digest.Hex()
 
-	if algo != cas.BlobAlgorithm {
-		return "", errors.Errorf("unsupported algorithm: %q", algo)
-	}
-
 	return filepath.Join(blobDirectory, algo.String(), hash), nil
 }
 
