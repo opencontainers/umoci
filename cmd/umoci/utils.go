@@ -77,7 +77,7 @@ type UmociMeta struct {
 
 	// From is a copy of the descriptor pointing to the image manifest that was
 	// used to unpack the bundle. Essentially it's a resolved form of the
-	// --from argument to umoci-unpack(1).
+	// --image argument to umoci-unpack(1).
 	From casext.DescriptorPath `json:"from_descriptor_path"`
 
 	// MapOptions is the parsed version of --uid-map, --gid-map and --rootless
