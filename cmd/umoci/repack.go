@@ -243,7 +243,7 @@ func repack(ctx *cli.Context) error {
 
 	if ctx.Bool("refresh-bundle") {
 		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
-		if err := writeMtree(newMtreeName, bundlePath, fsEval); err != nil {
+		if err := generateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
 			return errors.Wrap(err, "write mtree metadata")
 		}
 		if err := os.Remove(mtreePath); err != nil {

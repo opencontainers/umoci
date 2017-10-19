@@ -185,7 +185,7 @@ func unpack(ctx *cli.Context) error {
 		fsEval = fseval.RootlessFsEval
 	}
 
-	if err := writeMtree(mtreeName, bundlePath, fsEval); err != nil {
+	if err := generateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
 

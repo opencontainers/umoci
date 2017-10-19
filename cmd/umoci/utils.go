@@ -247,9 +247,9 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	return stat, nil
 }
 
-// writeMtree writes an mtree of the rootfs in the given bundle path into the
-// file by the given name, using the supplied fsEval method
-func writeMtree(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
+// generateBundleManifest creates and writes an mtree of the rootfs in the given
+// bundle path, using the supplied fsEval method
+func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
