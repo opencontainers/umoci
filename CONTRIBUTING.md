@@ -138,6 +138,7 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 ```
 
+[pr-new]: https://github.com/openSUSE/umoci/compare
 [changelog]: /CHANGELOG.md
 [lk-commit]: https://www.kernel.org/doc/Documentation/process/submitting-patches.rst
 [dco]: https://developercertificate.org/
