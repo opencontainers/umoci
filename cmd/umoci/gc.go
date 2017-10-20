@@ -18,10 +18,13 @@
 package main
 
 import (
+	"regexp"
+
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
+	casDir "github.com/wking/casengine/dir"
 	"golang.org/x/net/context"
 )
 
@@ -35,6 +38,12 @@ Where "<image-path>" is the path to the OCI image.
 This command will do a mark-and-sweep garbage collection of the provided OCI
 image, only retaining blobs which can be reached by a descriptor path from the
 root set of references. All other blobs will be removed.`,
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "digest-regexp",
+			Usage: "regular expression for calculating the digest from a filesystem path.  This is required if your oci-layout declares an oci-cas-template-v1 CAS engine (e.g. via 'umoci init --blob-uri ...')",
+		},
+	},
 
 	// create modifies an image layout.
 	Category: "layout",
@@ -52,8 +61,22 @@ root set of references. All other blobs will be removed.`,
 func gc(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
+	var getDigest casDir.GetDigest
+	if ctx.IsSet("digest-regexp") {
+		getDigestRegexp, err := regexp.Compile(ctx.String("digest-regexp"))
+		if err != nil {
+			return errors.Wrap(err, "compile digest-regexp")
+		}
+
+		regexpGetDigest := &casDir.RegexpGetDigest{
+			Regexp: getDigestRegexp,
+		}
+
+		getDigest = regexpGetDigest.GetDigest
+	}
+
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	engine, err := dir.OpenWithDigestLister(imagePath, getDigest)
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}

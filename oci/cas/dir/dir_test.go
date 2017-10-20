@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
@@ -79,7 +80,7 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -116,7 +117,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -204,7 +205,7 @@ func TestEngineGCLocking(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -283,5 +284,41 @@ func TestEngineGCLocking(t *testing.T) {
 		} else if !os.IsNotExist(errors.Cause(err)) {
 			t.Errorf("expected IsNotExist for %s after GC: %+v", path, err)
 		}
+	}
+}
+
+// Check for error when getDigest is needed but not provided.
+func TestEngineMissingGetDigest(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestCreateLayoutReadonly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+	if err := Create(image, "file:///some/where/{blob}/{algorithm:2}/{algorithm}"); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	engine, err := OpenWithDigestLister(image, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = engine.ListBlobs(ctx)
+	if err == nil {
+		t.Fatal("open did not raise an error")
+	}
+	matched, err2 := regexp.MatchString(
+		`^cannot list blobs without a DigestListerEngine$`,
+		err.Error(),
+	)
+	if err2 != nil {
+		t.Fatal(err2)
+	}
+	if !matched {
+		t.Fatalf("open did not raise the expected error: %s", err)
 	}
 }

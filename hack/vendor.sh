@@ -135,6 +135,7 @@ clone github.com/jtacoma/uritemplates v1.0.0
 clone github.com/vbatts/go-mtree 005af4d18f8ab74174ce23565be732a3101cf316
 clone github.com/sirupsen/logrus v1.0.3
 clone github.com/wking/casengine 3ed08888a9365a2753ab8b809b7efb286566fe8d
+clone github.com/xiekeyang/oci-discovery 17aaa9ee7538d1db09b5f142ed319e06dee7407e
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
 # Used purely for testing.
 clone github.com/mohae/deepcopy 491d3605edfb866af34a48075bd4355ac1bf46ca

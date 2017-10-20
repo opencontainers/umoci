@@ -67,6 +67,10 @@ type Engine interface {
 	// CAS returns the casengine.Engine backing this engine.
 	CAS() (casEngine casengine.Engine)
 
+	// DigestListerEngine returns the casengine.DigestListerEngine
+	// backing this engine, or nil if no such engine exists.
+	DigestListerEngine() (casEngine casengine.DigestListerEngine)
+
 	// PutBlob adds a new blob to the image. This is idempotent; a nil error
 	// means that "the content is stored at DIGEST" without implying "because
 	// of this PutBlob() call".
@@ -106,7 +110,7 @@ type Engine interface {
 
 	// ListBlobs returns the set of blob digests stored in the image.
 	//
-	// Deprecated: Use CAS().Digests instead.
+	// Deprecated: Use DigestListerEngine().Digests instead.
 	ListBlobs(ctx context.Context) (digests []digest.Digest, err error)
 
 	// Clean executes a garbage collection of any non-blob garbage in the store

@@ -40,7 +40,7 @@ func TestEngineBlobJSON(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
+	if err := dir.Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -124,7 +124,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
+	if err := dir.Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 

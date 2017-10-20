@@ -19,14 +19,18 @@ package dir
 
 import (
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"regexp"
 	"testing"
 
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
+	"github.com/wking/casengine/dir"
 	"golang.org/x/net/context"
 )
 
@@ -43,7 +47,8 @@ func TestCreateLayout(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
+
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -66,7 +71,7 @@ func TestCreateLayout(t *testing.T) {
 	}
 
 	// We should get an error if we try to create a new image atop an old one.
-	if err := Create(image); err == nil {
+	if err := Create(image, ""); err == nil {
 		t.Errorf("expected to get a cowardly no-clobber error!")
 	}
 }
@@ -81,7 +86,7 @@ func TestEngineBlob(t *testing.T) {
 	defer os.RemoveAll(root)
 
 	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 
@@ -214,7 +219,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
@@ -234,7 +239,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
@@ -257,7 +262,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
@@ -277,7 +282,7 @@ func TestEngineValidate(t *testing.T) {
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
-	if err := Create(image); err != nil {
+	if err := Create(image, ""); err != nil {
 		t.Fatalf("unexpected error creating image: %+v", err)
 	}
 	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
@@ -298,5 +303,75 @@ func TestEngineValidate(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
+	}
+}
+
+func TestEngineURITemplate(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestEngineURITemplate")
+	if err != nil {
+		t.Fatal(err)
+	}
+	//defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+
+	if filepath.Separator != '/' {
+		t.Fatalf("CAS URI Template initialization is not implemented for filepath.Separator %q", filepath.Separator)
+	}
+
+	if err := Create(image, fmt.Sprintf("file://%s/blobs/{algorithm}/{encoded:2}/{encoded}", root)); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	getDigestRegexp, err := regexp.Compile(`^.*/blobs/(?P<algorithm>[a-z0-9+._-]+)/[a-zA-Z0-9=_-]{1,2}/(?P<encoded>[a-zA-Z0-9=_-]{1,})$`)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	getDigest := &dir.RegexpGetDigest{
+		Regexp: getDigestRegexp,
+	}
+
+	engine, err := OpenWithDigestLister(image, getDigest.GetDigest)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+	defer engine.Close()
+
+	bytesIn := []byte("Hello, World!")
+	dig, err := engine.CAS().Put(ctx, digest.SHA256, bytes.NewReader(bytesIn))
+	if err != nil {
+		t.Errorf("Put: unexpected error: %+v", err)
+	}
+
+	reader, err := engine.CAS().Get(ctx, dig)
+	if err != nil {
+		t.Errorf("Get: unexpected error: %+v", err)
+	}
+	defer reader.Close()
+
+	gotBytes, err := ioutil.ReadAll(reader)
+	if err != nil {
+		t.Errorf("Get: failed to ReadAll: %+v", err)
+	}
+	if !bytes.Equal(bytesIn, gotBytes) {
+		t.Errorf("Get: bytes did not match: expected=%s got=%s", string(bytesIn), string(gotBytes))
+	}
+
+	path := filepath.Join(root, "blobs", digest.SHA256.String(), "df", "dffd6021bb2bd5b0af676290809ec3a53191dd81c7f70a4b28688a362182986f")
+	reader, err = os.Open(path)
+	if err != nil {
+		t.Error(err)
+	}
+	defer reader.Close()
+
+	gotBytes, err = ioutil.ReadAll(reader)
+	if err != nil {
+		t.Errorf("Open: failed to ReadAll: %+v", err)
+	}
+	if !bytes.Equal(bytesIn, gotBytes) {
+		t.Errorf("Open: bytes did not match: expected=%s got=%s", string(bytesIn), string(gotBytes))
 	}
 }

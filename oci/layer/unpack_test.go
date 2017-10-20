@@ -88,7 +88,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 
 	// Create our image.
 	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
+	if err := dir.Create(image, ""); err != nil {
 		t.Fatal(err)
 	}
 	engine, err := dir.Open(image)

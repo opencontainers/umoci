@@ -38,6 +38,13 @@ The new OCI image does not contain any references or blobs, but those can be
 created through the use of umoci-new(1), umoci-tag(1) and other similar
 commands.`,
 
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "blob-uri",
+			Usage: "URI Template for storing blobs, interpreted with the image path as the base URI.  Defaults to blobs/{algorithm}/{encoded}",
+		},
+	},
+
 	// create modifies an image layout.
 	Category: "layout",
 
@@ -54,7 +61,7 @@ func initLayout(ctx *cli.Context) error {
 		return errors.Wrap(err, "image layout creation")
 	}
 
-	if err := dir.Create(imagePath); err != nil {
+	if err := dir.Create(imagePath, ctx.String("blob-uri")); err != nil {
 		return errors.Wrap(err, "image layout creation")
 	}
 

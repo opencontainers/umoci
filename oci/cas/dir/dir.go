@@ -36,17 +36,12 @@ import (
 	"github.com/wking/casengine"
 	"github.com/wking/casengine/counter"
 	"github.com/wking/casengine/dir"
+	"github.com/xiekeyang/oci-discovery/tools/refenginediscovery"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )
 
 const (
-	// ImageLayoutVersion is the version of the image layout we support. This
-	// value is *not* the same as imagespec.Version, and the meaning of this
-	// field is still under discussion in the spec. For now we'll just hardcode
-	// the value and hope for the best.
-	ImageLayoutVersion = "1.0.0"
-
 	// blobDirectory is the directory inside an OCI image that contains blobs.
 	//
 	// FIXME: if the URI Template currently hard-coded Open() changes,
@@ -64,10 +59,11 @@ const (
 )
 
 type dirEngine struct {
-	cas      casengine.DigestListerEngine
-	path     string
-	temp     string
-	tempFile *os.File
+	cas                casengine.Engine
+	digestListerEngine casengine.DigestListerEngine
+	path               string
+	temp               string
+	tempFile           *os.File
 }
 
 func (e *dirEngine) ensureTempDir() error {
@@ -94,55 +90,15 @@ func (e *dirEngine) ensureTempDir() error {
 	return nil
 }
 
-// verify ensures that the image is valid.
-func (e *dirEngine) validate() error {
-	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
-	if err != nil {
-		if os.IsNotExist(err) {
-			err = cas.ErrInvalid
-		}
-		return errors.Wrap(err, "read oci-layout")
-	}
-
-	var ociLayout ispec.ImageLayout
-	if err := json.Unmarshal(content, &ociLayout); err != nil {
-		return errors.Wrap(err, "parse oci-layout")
-	}
-
-	// XXX: Currently the meaning of this field is not adequately defined by
-	//      the spec, nor is the "official" value determined by the spec.
-	if ociLayout.Version != ImageLayoutVersion {
-		return errors.Wrap(cas.ErrInvalid, "layout version is not supported")
-	}
-
-	// Check that "blobs" and "index.json" exist in the image.
-	// FIXME: We also should check that blobs *only* contains a cas.BlobAlgorithm
-	//        directory (with no subdirectories) and that refs *only* contains
-	//        files (optionally also making sure they're all JSON descriptors).
-	if fi, err := os.Stat(filepath.Join(e.path, blobDirectory)); err != nil {
-		if os.IsNotExist(err) {
-			err = cas.ErrInvalid
-		}
-		return errors.Wrap(err, "check blobdir")
-	} else if !fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "blobdir is not a directory")
-	}
-
-	if fi, err := os.Stat(filepath.Join(e.path, indexFile)); err != nil {
-		if os.IsNotExist(err) {
-			err = cas.ErrInvalid
-		}
-		return errors.Wrap(err, "check index")
-	} else if fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "index is a directory")
-	}
-
-	return nil
-}
-
 // CAS returns the casengine.Engine backing this engine.
 func (e *dirEngine) CAS() (casEngine casengine.Engine) {
 	return e.cas
+}
+
+// DigestListerEngine returns the casengine.DigestListerEngine backing
+// this engine.
+func (e *dirEngine) DigestListerEngine() (casEngine casengine.DigestListerEngine) {
+	return e.digestListerEngine
 }
 
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
@@ -234,10 +190,14 @@ func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error 
 
 // ListBlobs returns the set of blob digests stored in the image.
 //
-// Deprecated: Use CAS().Digests instead.
+// Deprecated: Use DigestListerEngine().Digests instead.
 func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
+	if e.digestListerEngine == nil {
+		return nil, fmt.Errorf("cannot list blobs without a DigestListerEngine")
+	}
+
 	digests := []digest.Digest{}
-	err := e.cas.Digests(ctx, "", "", -1, 0, func(ctx context.Context, digest digest.Digest) (err error) {
+	err := e.digestListerEngine.Digests(ctx, "", "", -1, 0, func(ctx context.Context, digest digest.Digest) (err error) {
 		digests = append(digests, digest)
 		return nil
 	})
@@ -326,12 +286,117 @@ func (e *dirEngine) Close() (err error) {
 	return err
 }
 
-// Open opens a new reference to the directory-backed OCI image referenced by
-// the provided path.
-func Open(path string) (cas.Engine, error) {
+// Open opens a new reference to the directory-backed OCI image
+// referenced by the provided path.  If your image configures a custom
+// blob URI, use OpenWithDigestLister instead.
+func Open(path string) (engine cas.Engine, err error) {
+	return OpenWithDigestLister(path, nil)
+}
+
+// OpenWithDigestLister opens a new reference to the directory-backed
+// OCI image referenced by the provided path.  Use this function
+// instead of Open when your image configures a custom blob URI.
+func OpenWithDigestLister(path string, getDigest dir.GetDigest) (engine cas.Engine, err error) {
 	ctx := context.Background()
+
+	configBytes, err := ioutil.ReadFile(filepath.Join(path, layoutFile))
+	if err != nil {
+		if os.IsNotExist(err) {
+			err = cas.ErrInvalid
+		}
+		return nil, errors.Wrap(err, "read oci-layout")
+	}
+
+	var ociLayout ispec.ImageLayout
+	if err := json.Unmarshal(configBytes, &ociLayout); err != nil {
+		return nil, errors.Wrap(err, "parse oci-layout")
+	}
+
 	uri := "blobs/{algorithm}/{encoded}"
 
+	// XXX: Currently the meaning of this field is not adequately defined by
+	//      the spec, nor is the "official" value determined by the spec.
+	switch ociLayout.Version {
+	case "1.0.0": // nothing to configure here
+	case "1.1.0":
+		var engines refenginediscovery.Engines
+		if err := json.Unmarshal(configBytes, &engines); err != nil {
+			return nil, errors.Wrap(err, "parse oci-layout")
+		}
+		for _, config := range engines.CASEngines {
+			if config.Protocol == "oci-cas-template-v1" {
+				uriInterface, ok := config.Data["uri"]
+				if !ok {
+					return nil, fmt.Errorf("CAS-template config missing required 'uri' property: %v", config.Data)
+				}
+
+				uri, ok = uriInterface.(string)
+				if !ok {
+					return nil, fmt.Errorf("CAS-template config 'uri' is not a string: %v", uriInterface)
+				}
+
+				break
+			}
+		}
+	default:
+		return nil, errors.Wrap(cas.ErrInvalid, fmt.Sprintf("layout version %s is not supported", ociLayout.Version))
+	}
+
+	if uri == "blobs/{algorithm}/{encoded}" {
+		getDigest, err = defaultGetDigest()
+		if err != nil {
+			return nil, err
+		}
+	}
+
+	var casEngine casengine.Engine
+	var digestListerEngine casengine.DigestListerEngine
+	if getDigest == nil {
+		casEngine, err = dir.NewEngine(ctx, path, uri)
+		if err != nil {
+			return nil, errors.Wrap(err, "initialize CAS engine")
+		}
+	} else {
+		digestListerEngine, err = dir.NewDigestListerEngine(ctx, path, uri, getDigest)
+		if err != nil {
+			return nil, errors.Wrap(err, "initialize CAS engine")
+		}
+		casEngine = digestListerEngine
+	}
+	defer func() {
+		if err != nil {
+			casEngine.Close(ctx)
+		}
+	}()
+
+	// Check that "blobs" and "index.json" exist in the image.
+	if fi, err := os.Stat(filepath.Join(path, blobDirectory)); err != nil {
+		if os.IsNotExist(err) {
+			err = cas.ErrInvalid
+		}
+		return nil, errors.Wrap(err, "check blobdir")
+	} else if !fi.IsDir() {
+		return nil, errors.Wrap(cas.ErrInvalid, "blobdir is not a directory")
+	}
+
+	if fi, err := os.Stat(filepath.Join(path, indexFile)); err != nil {
+		if os.IsNotExist(err) {
+			err = cas.ErrInvalid
+		}
+		return nil, errors.Wrap(err, "check index")
+	} else if fi.IsDir() {
+		return nil, errors.Wrap(cas.ErrInvalid, "index is a directory")
+	}
+
+	return &dirEngine{
+		cas:                casEngine,
+		digestListerEngine: digestListerEngine,
+		path:               path,
+		temp:               "",
+	}, nil
+}
+
+func defaultGetDigest() (getDigest dir.GetDigest, err error) {
 	pattern := `^blobs/(?P<algorithm>[a-z0-9+._-]+)/(?P<encoded>[a-zA-Z0-9=_-]{1,})$`
 	if filepath.Separator != '/' {
 		if filepath.Separator == '\\' {
@@ -346,32 +411,17 @@ func Open(path string) (cas.Engine, error) {
 		return nil, errors.Wrap(err, "get-digest regexp")
 	}
 
-	getDigest := &dir.RegexpGetDigest{
+	regexpGetDigest := &dir.RegexpGetDigest{
 		Regexp: getDigestRegexp,
 	}
 
-	casEngine, err := dir.NewDigestListerEngine(ctx, path, uri, getDigest.GetDigest)
-	if err != nil {
-		return nil, errors.Wrap(err, "initialize CAS engine")
-	}
-
-	engine := &dirEngine{
-		cas:  casEngine,
-		path: path,
-		temp: "",
-	}
-
-	if err := engine.validate(); err != nil {
-		return nil, errors.Wrap(err, "validate")
-	}
-
-	return engine, nil
+	return regexpGetDigest.GetDigest, nil
 }
 
 // Create creates a new OCI image layout at the given path. If the path already
 // exists, os.ErrExist is returned. However, all of the parent components of
 // the path will be created if necessary.
-func Create(path string) error {
+func Create(path string, uri string) error {
 	// We need to fail if path already exists, but we first create all of the
 	// parent paths.
 	dir := filepath.Dir(path)
@@ -413,8 +463,22 @@ func Create(path string) error {
 	}
 	defer layoutFh.Close()
 
-	ociLayout := ispec.ImageLayout{
-		Version: ImageLayoutVersion,
+	var ociLayout interface{}
+	switch uri {
+	case "":
+		ociLayout = ispec.ImageLayout{
+			Version: "1.0.0",
+		}
+	default:
+		ociLayout = map[string]interface{}{
+			"imageLayoutVersion": "1.1.0",
+			"casEngines": []map[string]interface{}{
+				{
+					"protocol": "oci-cas-template-v1",
+					"uri":      uri,
+				},
+			},
+		}
 	}
 	if err := json.NewEncoder(layoutFh).Encode(ociLayout); err != nil {
 		return errors.Wrap(err, "encode oci-layout")

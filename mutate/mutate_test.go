@@ -47,7 +47,7 @@ const (
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	dir = filepath.Join(dir, "image")
-	if err := casdir.Create(dir); err != nil {
+	if err := casdir.Create(dir, ""); err != nil {
 		t.Fatal(err)
 	}
 

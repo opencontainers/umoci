@@ -65,6 +65,40 @@ function teardown() {
 	image-verify "$NEWIMAGE"
 }
 
+@test "umoci init --blob-uri file://... --layout ..." {
+	# Setup up $NEWIMAGE.
+	NEWIMAGE="$(setup_tmpdir)"
+	rm -rf "$NEWIMAGE"
+
+	# Create a separate directory for CAS blobs
+	CAS="$(setup_tmpdir)"
+
+	# Create a new image with no tags.
+	umoci init --blob-uri "file://${CAS}" --layout "$NEWIMAGE"
+	[ "$status" -eq 0 ]
+	image-verify "$NEWIMAGE"
+
+	# Make sure that there are no references or blobs.
+	sane_run find "$NEWIMAGE/blobs" -type f
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 0 ]
+	# Note that this is _very_ dodgy at the moment because of how complicated
+	# the reference handling is now.
+	# XXX: Make sure to update this for 1.0.0-rc6 where the refname changed.
+	sane_run jq -SMr '.manifests[]? | .annotations["org.opencontainers.ref.name"] | strings' "$NEWIMAGE/index.json"
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 0 ]
+
+	# Make sure that the required files exist.
+	[ -f "$NEWIMAGE/oci-layout" ]
+	[ -d "$NEWIMAGE/blobs" ]
+	[ -f "$NEWIMAGE/index.json" ]
+
+	# FIXME: check that oci-layout contains the expected casEngines.
+
+	image-verify "$NEWIMAGE"
+}
+
 @test "umoci new [missing args]" {
 	umoci new
 	[ "$status" -ne 0 ]
