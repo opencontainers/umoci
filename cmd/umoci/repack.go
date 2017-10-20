@@ -130,7 +130,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
-	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -242,7 +242,7 @@ func repack(ctx *cli.Context) error {
 	log.Infof("created new tag for image manifest: %s", tagName)
 
 	if ctx.Bool("refresh-bundle") {
-		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
+		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
 		if err := generateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
 			return errors.Wrap(err, "write mtree metadata")
 		}
