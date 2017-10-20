@@ -17,6 +17,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   unprivileged). This is a breaking change, but is in the error path so it's
   not critical. openSUSE/umoci#174 openSUSE/umoci#187
 
+### Added
+- `umoci repack` now supports `--refresh-bundle` which will update the
+  OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
+  image tag. This means that the bundle can be used as a base layer for
+  future diffs without needing to unpack the image again. openSUSE/umoci#196
+
 ## [0.3.1] - 2017-10-04
 ### Fixed
 - Fix several minor bugs in `hack/release.sh` that caused the release artefacts
