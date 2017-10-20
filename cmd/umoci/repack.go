@@ -77,7 +77,7 @@ manifest and configuration information uses the new diff atop the old manifest.`
 		},
 		cli.BoolFlag{
 			Name:  "refresh-bundle",
-			Usage: "update the bundle metadata (mtree) to reflect the packed rootfs",
+			Usage: "update the bundle metadata to reflect the packed rootfs",
 		},
 	},
 
