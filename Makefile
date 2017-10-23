@@ -26,6 +26,7 @@ CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev
+DOCKER_RUN := docker run --rm -it --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
 
 # Output directory.
 BUILD_DIR ?= .
@@ -80,7 +81,7 @@ clean:
 
 .PHONY: validate
 validate: umociimage
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) make local-validate
+	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-validate
 
 .PHONY: local-validate
 local-validate: local-validate-git local-validate-go local-validate-reproducible local-validate-build
@@ -147,8 +148,8 @@ endif
 .PHONY: test-unit
 test-unit: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit:
@@ -157,15 +158,15 @@ local-test-unit:
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
 	TESTS="${TESTS}" COVER=1 hack/test-integration.sh
 
 shell: umociimage
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
+	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
 ci: umoci umoci.cover doc local-validate test-unit test-integration
