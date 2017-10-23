@@ -686,6 +686,8 @@ function teardown() {
 
 	# Repack under a new tag again, without refreshing the metadata.
 	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
 	# Unpack it again into a new bundle.
 	umoci unpack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_C"
