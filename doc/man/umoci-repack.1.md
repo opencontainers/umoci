@@ -11,6 +11,7 @@ umoci repack - Repacks an OCI runtime bundle into an image tag
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
 [**--history-created**=*date*]
+[**--refresh-bundle**]
 *bundle*
 
 # DESCRIPTION
@@ -61,6 +62,11 @@ The global options are defined in **umoci**(1).
   Creation date for the history entry corresponding to this modifications of
   the image. This must be an ISO8601 formatted timestamp (see **date**(1)). If
   unspecified, the current time is used.
+
+**--refresh-bundle**
+  Whether to update the OCI bundle's metadata (i.e. mtree and umoci
+  metadata) after repacking the image. If set, then the new state of
+  the bundle should be equivalent to unpacking the new image tag.
 
 # EXAMPLE
 The following downloads an image from a **docker**(1) registry using

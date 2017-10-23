@@ -75,6 +75,10 @@ manifest and configuration information uses the new diff atop the old manifest.`
 			Name:  "no-mask-volumes",
 			Usage: "do not add the Config.Volumes of the image to the set of masked paths",
 		},
+		cli.BoolFlag{
+			Name:  "refresh-bundle",
+			Usage: "update the bundle metadata to reflect the packed rootfs",
+		},
 	},
 
 	Action: repack,
@@ -126,7 +130,7 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
-	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -236,5 +240,20 @@ func repack(ctx *cli.Context) error {
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)
+
+	if ctx.Bool("refresh-bundle") {
+		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
+		if err := generateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
+			return errors.Wrap(err, "write mtree metadata")
+		}
+		if err := os.Remove(mtreePath); err != nil {
+			return errors.Wrap(err, "remove old mtree metadata")
+		}
+		meta.From = newDescriptorPath
+		if err := WriteBundleMeta(bundlePath, meta); err != nil {
+			return errors.Wrap(err, "write umoci.json metadata")
+		}
+	}
+
 	return nil
 }

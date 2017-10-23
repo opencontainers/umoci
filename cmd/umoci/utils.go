@@ -27,6 +27,7 @@ import (
 	"strings"
 	"text/tabwriter"
 
+	"github.com/apex/log"
 	"github.com/docker/go-units"
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
@@ -244,4 +245,38 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	}
 
 	return stat, nil
+}
+
+// generateBundleManifest creates and writes an mtree of the rootfs in the given
+// bundle path, using the supplied fsEval method
+func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
+	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
+	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
+
+	log.WithFields(log.Fields{
+		"keywords": MtreeKeywords,
+		"mtree":    mtreePath,
+	}).Debugf("umoci: generating mtree manifest")
+
+	log.Info("computing filesystem manifest ...")
+	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
+	if err != nil {
+		return errors.Wrap(err, "generate mtree spec")
+	}
+	log.Info("... done")
+
+	flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
+	fh, err := os.OpenFile(mtreePath, flags, 0644)
+	if err != nil {
+		return errors.Wrap(err, "open mtree")
+	}
+	defer fh.Close()
+
+	log.Debugf("umoci: saving mtree manifest")
+
+	if _, err := dh.WriteTo(fh); err != nil {
+		return errors.Wrap(err, "write mtree")
+	}
+
+	return nil
 }

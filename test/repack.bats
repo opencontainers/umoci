@@ -59,7 +59,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_B"
 
-	# Ensure that gomtree suceeds on the old bundle, which is what this was
+	# Ensure that gomtree succeeds on the old bundle, which is what this was
 	# generated from.
 	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
@@ -71,7 +71,7 @@ function teardown() {
 	[ -f "$BUNDLE_B/rootfs/newdir/anotherfile" ]
 	[ -L "$BUNDLE_B/rootfs/newdir/link" ]
 
-	# Make sure that unpack fails without a bundle path.
+	# Make sure that repack fails without a bundle path.
 	umoci repack --image "${IMAGE}:${TAG}-new2"
 	[ "$status" -ne 0 ]
 	umoci stat --image "${IMAGE}:${TAG}-new2" --json
@@ -635,4 +635,92 @@ function teardown() {
 	# And volumes will also not be included.
 	! [ -e "$BUNDLE_D/rootfs/some nutty/path name" ]
 	! [ -e "$BUNDLE_D/rootfs/some nutty/path name/ here" ]
+}
+
+@test "umoci repack [--refresh-bundle]" {
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
+
+	# Unpack the original image
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Make sure the files we're creating don't exist.
+	! [ -e "$BUNDLE_A/rootfs/newfile" ]
+	! [ -e "$BUNDLE_A/rootfs/newdir" ]
+	! [ -e "$BUNDLE_A/rootfs/newdir/anotherfile" ]
+
+	# Create them.
+	echo "first file" > "$BUNDLE_A/rootfs/newfile"
+	mkdir "$BUNDLE_A/rootfs/newdir"
+	echo "subfile" > "$BUNDLE_A/rootfs/newdir/anotherfile"
+
+	# Repack the image under a new tag, refreshing the bundle metadata.
+	umoci repack --refresh-bundle --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Ensure the gomtree has been refreshed in the bundle
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+
+	# Unpack it again.
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Ensure that gomtree succeeds across bundles - they should be the same rootfs
+	# and have the same mtree manifest
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+
+	# Make some other changes to the first bundle
+	echo "second file" > "$BUNDLE_A/rootfs/newfile2"
+
+	# Repack under a new tag again, without refreshing the metadata.
+	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_A"
+
+	# Unpack it again into a new bundle.
+	umoci unpack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# Ensure all changes are reflected
+	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_C"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+	gomtree -p "$BUNDLE_C/rootfs" -f "$BUNDLE_C"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+
+	# Final bundle sanity check
+	[ -f "$BUNDLE_C/rootfs/newfile" ]
+	[ -d "$BUNDLE_C/rootfs/newdir" ]
+	[ -f "$BUNDLE_C/rootfs/newdir/anotherfile" ]
+	[ -f "$BUNDLE_C/rootfs/newfile2" ]
+
+	# Now check the image.
+	# Make sure we added a new layer on both repacks.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SM '.history | length')"
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SM '.history | length')"
+
+	umoci stat --image "${IMAGE}:${TAG}-new2" --json
+	[ "$status" -eq 0 ]
+	numLinesC="$(echo "$output" | jq -SM '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	[ "$numLinesC" -gt "$numLinesB" ]
 }

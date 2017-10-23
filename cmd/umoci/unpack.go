@@ -20,7 +20,6 @@ package main
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
@@ -32,7 +31,6 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
 )
 
@@ -152,10 +150,7 @@ func unpack(ctx *cli.Context) error {
 		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
 	}
 
-	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), "sha256:", "sha256_", 1)
-	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
-	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
-
+	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	log.WithFields(log.Fields{
 		"image":  imagePath,
 		"bundle": bundlePath,
@@ -185,32 +180,12 @@ func unpack(ctx *cli.Context) error {
 	}
 	log.Info("... done")
 
-	log.WithFields(log.Fields{
-		"keywords": MtreeKeywords,
-		"mtree":    mtreePath,
-	}).Debugf("umoci: generating mtree manifest")
-
 	fsEval := fseval.DefaultFsEval
 	if meta.MapOptions.Rootless {
 		fsEval = fseval.RootlessFsEval
 	}
 
-	log.Info("computing filesystem manifest ...")
-	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
-	if err != nil {
-		return errors.Wrap(err, "generate mtree spec")
-	}
-	log.Info("... done")
-
-	fh, err := os.OpenFile(mtreePath, os.O_EXCL|os.O_CREATE|os.O_WRONLY, 0644)
-	if err != nil {
-		return errors.Wrap(err, "open mtree")
-	}
-	defer fh.Close()
-
-	log.Debugf("umoci: saving mtree manifest")
-
-	if _, err := dh.WriteTo(fh); err != nil {
+	if err := generateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
 
