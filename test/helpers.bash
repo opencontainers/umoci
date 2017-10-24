@@ -101,11 +101,11 @@ function umoci() {
 function gomtree() {
 	local args=("$@")
 
-	# We're rootless. Note that this is _not_ available from the upstream
-	# version of go-mtree. It's a feature I implemented in the library for
-	# umoci's support, and is currently being proposed in
-	# https://github.com/vbatts/go-mtree/pull/96. I would not hold my breath
-	# that it'll be merged any time soon.
+	# We're rootless. Note that this is _not_ available in the upstream
+	# version of go-mtree and is unlikely to be accepted there (see
+	# https://github.com/vbatts/go-mtree/pull/96).
+	# It's maintained instead as an openSUSE extension:
+	# https://build.opensuse.org/package/view_file/Virtualization:containers/go-mtree/0001-gomtree-add-rootless-flag.patch?expand=1
 	if [[ "$ROOTLESS" != 0 ]]; then
 		args+=("-rootless")
 	fi
