@@ -529,6 +529,47 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci {un,re}pack [--shared-cas]" {
+	BUNDLE="$(setup_tmpdir)"
+	CASDIR="$(setup_tmpdir)"
+	cp -ar ${IMAGE}/blobs/* "${CASDIR}"/
+	rm -fr ${IMAGE}/blobs/*
+
+	# Sanity checks.
+	# No blobs left inside the image.
+	numBlobsImage=$(find ${IMAGE}/blobs/ -type f | wc -l)
+	[ "$numBlobsImage" -eq 0 ]
+	# At least three blobs (image manifest, image config, rootfs) in the shared CAS.
+	numBlobsCasdir=$(find ${CASDIR}/ -type f | wc -l)
+	[ "$numBlobsCasdir" -ge 3 ]
+
+# 	TODO(jonboulle): this requires https://github.com/openSUSE/umoci/pull/207
+#	run image-verify "${IMAGE}"
+#   [ "$status" -ne 0 ]
+
+	# Unpacking the image normally should fail.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	! [ -e $BUNDLE ]
+
+	# Unpacking with the shared CAS should succeed.
+	umoci unpack --shared-cas "${CASDIR}" --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make a new layer and repack
+	echo "a file" > "$BUNDLE/rootfs/newfile"
+	umoci repack --shared-cas "${CASDIR}" --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+
+	# Should still have no blobs inside the image
+	numBlobsImage=$(find ${IMAGE}/blobs/ -type f | wc -l)
+	[ "$numBlobsImage" -eq 0 ]
+	# At least two more blobs (image manifest, rootfs) in the shared CAS.
+	newNumBlobsCasdir=$(find ${CASDIR}/ -type f | wc -l)
+	[ "$newNumBlobsCasdir" -ge $((numBlobsCasDir+3)) ]
+}
+
+
 @test "umoci repack [--config.volumes]" {
 	BUNDLE_A="$(setup_tmpdir)"
 	BUNDLE_B="$(setup_tmpdir)"
