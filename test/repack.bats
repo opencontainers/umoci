@@ -46,7 +46,6 @@ function teardown() {
 	echo "first file" > "$BUNDLE_A/rootfs/newfile"
 	mkdir "$BUNDLE_A/rootfs/newdir"
 	echo "subfile" > "$BUNDLE_A/rootfs/newdir/anotherfile"
-	# this currently breaks go-mtree but I've backported a patch to fix it in openSUSE
 	ln -s "this is a dummy symlink" "$BUNDLE_A/rootfs/newdir/link"
 
 	# Repack the image under a new tag.
@@ -184,7 +183,6 @@ function teardown() {
 	chmod +w "$BUNDLE_A/rootfs/bin/." && rm "$BUNDLE_A/rootfs/bin/sh"
 	mkdir "$BUNDLE_A/rootfs/bin/sh"
 	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
-	# this currently breaks go-mtree but I've backported a patch to fix it in openSUSE
 	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under the same tag.

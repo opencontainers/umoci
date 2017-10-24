@@ -27,11 +27,6 @@ import (
 	"github.com/vbatts/go-mtree"
 )
 
-// NOTE: This currently requires a version of go-mtree which has my Compare()
-//       PR added. While we don't use this interface here, my work also
-//       implemented the InodeDelta and supporting interfaces. Hopefully my PR
-//       will be merged soon. https://github.com/vbatts/go-mtree/pull/48
-
 // inodeDeltas is a wrapper around []mtree.InodeDelta that allows for sorting
 // the set of deltas by the pathname.
 type inodeDeltas []mtree.InodeDelta
