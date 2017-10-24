@@ -51,7 +51,7 @@ function requires() {
 }
 
 function image-verify() {
-	oci-image-validate --type "imageLayout" "$@"
+	oci-image-tool validate --type "imageLayout" "$@"
 	return $?
 }
 
