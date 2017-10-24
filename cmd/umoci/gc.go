@@ -51,10 +51,12 @@ root set of references. All other blobs will be removed.`,
 
 func gc(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
-	sharedCasPath := ctx.String("shared-cas")
+	if ctx.String("shared-cas") != "" {
+		return errors.New("gc not supported with --shared-cas")
+	}
 
 	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath, sharedCasPath)
+	engine, err := dir.Open(imagePath, "")
 	if err != nil {
 		return errors.Wrap(err, "open CAS")
 	}
