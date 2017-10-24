@@ -87,6 +87,5 @@ ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed
 RUN skopeo copy docker://$DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
-VOLUME ["/go/src/github.com/openSUSE/umoci"]
 WORKDIR /go/src/github.com/openSUSE/umoci
 COPY . /go/src/github.com/openSUSE/umoci
