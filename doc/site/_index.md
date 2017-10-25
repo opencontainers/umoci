@@ -13,7 +13,7 @@ a daemon nor any particular filesystem setup. It is already used in a variety
 of different projects and by several companies.
 
 {{% notice tip %}}
-umoci is currently in desparate need of a logo design. If you're interested in
+umoci is currently in desperate need of a logo design. If you're interested in
 creating a logo for us (and releasing it under a <a
 href="https://creativecommons.org/">free artwork license</a>) then don't
 hesitate to reach out!
