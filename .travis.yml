@@ -15,7 +15,7 @@ before_install:
   - go get -u github.com/golang/lint/golint
 
 env:
-  - DOCKER_IMAGE="opensuse/amd64:42.2"
+  - DOCKER_IMAGE="opensuse/amd64:42.3"
   - DOCKER_IMAGE="fedora:latest"
   - DOCKER_IMAGE="debian:jessie"
   - DOCKER_IMAGE="ubuntu:16.04"
