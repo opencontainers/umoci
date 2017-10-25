@@ -157,12 +157,12 @@ local-test-unit:
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
-	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-integration
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
-	COVER=1 hack/test-integration.sh
+	TESTS="${TESTS}" COVER=1 hack/test-integration.sh
 
 shell: umociimage
 	docker run --rm -it -v $(PWD):/go/src/$(PROJECT) $(UMOCI_IMAGE) bash
