@@ -91,7 +91,7 @@ local-validate-go:
 	@which gofmt    >/dev/null 2>/dev/null || (echo "ERROR: gofmt not found." && false)
 	test -z "$$(gofmt -s -l . | grep -vE '^vendor/|^third_party/' | tee /dev/stderr)"
 	@which golint   >/dev/null 2>/dev/null || (echo "ERROR: golint not found." && false)
-	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/|/third_party/' | grep -vE 'system/utils_linux.*ALL_CAPS|system/mknod_linux.*underscores' | tee /dev/stderr)"
+	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/|/third_party/' | tee /dev/stderr)"
 	@go doc cmd/vet >/dev/null 2>/dev/null || (echo "ERROR: go vet not found." && false)
 	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/|/third_party/') 2>&1 | tee /dev/stderr)"
 

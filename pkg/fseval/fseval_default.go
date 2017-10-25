@@ -107,9 +107,9 @@ func (fs osFsEval) Mkdir(path string, perm os.FileMode) error {
 	return os.Mkdir(path, perm)
 }
 
-// Mknod is equivalent to system.Mknod.
-func (fs osFsEval) Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
-	return system.Mknod(path, mode, dev)
+// Mknod is equivalent to unix.Mknod.
+func (fs osFsEval) Mknod(path string, mode os.FileMode, dev uint64) error {
+	return unix.Mknod(path, uint32(mode), int(dev))
 }
 
 // MkdirAll is equivalent to os.MkdirAll.

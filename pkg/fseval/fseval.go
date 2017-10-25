@@ -21,7 +21,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 )
@@ -76,8 +75,8 @@ type FsEval interface {
 	// MkdirAll is equivalent to os.MkdirAll.
 	MkdirAll(path string, perm os.FileMode) error
 
-	// Mknod is equivalent to system.Mknod.
-	Mknod(path string, mode os.FileMode, dev system.Dev_t) error
+	// Mknod is equivalent to unix.Mknod.
+	Mknod(path string, mode os.FileMode, dev uint64) error
 
 	// Llistxattr is equivalent to system.Llistxattr
 	Llistxattr(path string) ([]string, error)

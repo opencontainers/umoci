@@ -31,6 +31,7 @@ import (
 	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 type tarExtractor struct {
@@ -373,7 +374,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// safe side.
 
 		mode := system.Tarmode(hdr.Typeflag)
-		dev := system.Makedev(uint64(hdr.Devmajor), uint64(hdr.Devminor))
+		dev := unix.Mkdev(uint32(hdr.Devmajor), uint32(hdr.Devminor))
 
 		// Unlink the old path, and ignore it if the path didn't exist.
 		if err := te.fsEval.RemoveAll(path); err != nil {

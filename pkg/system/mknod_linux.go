@@ -19,13 +19,9 @@ package system
 
 import (
 	"archive/tar"
-	"os"
 
 	"golang.org/x/sys/unix"
 )
-
-// Dev_t represents a dev_t structure.
-type Dev_t uint64
 
 // Tarmode takes a Typeflag (from a tar.Header for example) and returns the
 // corresponding os.Filemode bit. Unknown typeflags are treated like regular
@@ -44,26 +40,4 @@ func Tarmode(typeflag byte) uint32 {
 		return unix.S_IFDIR
 	}
 	return 0
-}
-
-// Makedev produces a dev_t from the individual major and minor numbers,
-// similar to makedev(3).
-func Makedev(major, minor uint64) Dev_t {
-	// These values come from new_envode_dev inside <linux/kdev_t.h>.
-	return Dev_t(unix.Mkdev(uint32(major), uint32(minor)))
-}
-
-// Majordev returns the major device number given a dev_t, similar to major(3).
-func Majordev(device Dev_t) uint64 {
-	return uint64(unix.Major(uint64(device)))
-}
-
-// Minordev returns the minor device number given a dev_t, similar to minor(3).
-func Minordev(device Dev_t) uint64 {
-	return uint64(unix.Minor(uint64(device)))
-}
-
-// Mknod is a wrapper around mknod(2).
-func Mknod(path string, mode os.FileMode, dev Dev_t) error {
-	return unix.Mknod(path, uint32(mode), int(dev))
 }
