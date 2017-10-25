@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM opensuse/amd64:42.2
+FROM opensuse/amd64:42.3
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
@@ -26,7 +26,7 @@ RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 RUN zypper -n in \
 		bats \
 		git \
-		'go>=1.6' \
+		go \
 		golang-github-cpuguy83-go-md2man \
 		go-mtree \
 		jq \
@@ -40,48 +40,6 @@ RUN zypper -n in \
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/golang/lint/golint
-
-# XXX(cyphar): Improve all of the following re-install code in the future. It's
-# quite gross IMO, as it means that our packages aren't being tested and we're
-# encoding information about external projects in our project.
-
-# Reinstall skopeo from source, since there's a bootstrapping issue because
-# packaging of skopeo in openSUSE is often blocked by umoci updates (since KIWI
-# uses both). XXX: This should no longer be necessary once we hit OCI v1.0.
-# XXX: Switch to proper version once v0.1.24 is released.
-ENV SKOPEO_VERSION=875dd2e7a965adb92dfc97c69eaceba9d33b27ba SKOPEO_PROJECT=github.com/projectatomic/skopeo
-RUN zypper -n in \
-		device-mapper-devel \
-		glib2-devel \
-		libbtrfs-devel \
-		libgpgme-devel && \
-	mkdir -p /go/src/$SKOPEO_PROJECT && \
-	git clone https://$SKOPEO_PROJECT /go/src/$SKOPEO_PROJECT && \
-	( cd /go/src/$SKOPEO_PROJECT ; git checkout $SKOPEO_VERSION ; ) && \
-	make BUILDTAGS="containers_image_ostree_stub" -C /go/src/$SKOPEO_PROJECT binary-local install-binary && \
-	rm -rf /go/src/$SKOPEO_PROJECT
-
-# Reinstall oci-image-tools from source to avoid having to package new versions
-# in openSUSE while testing PRs. XXX: This should no longer be necessary once
-# we hit OCI v1.0.
-ENV IMAGETOOLS_VERSION=v0.3.0 IMAGETOOLS_PROJECT=github.com/opencontainers/image-tools
-RUN mkdir -p /go/src/$IMAGETOOLS_PROJECT && \
-	git clone https://$IMAGETOOLS_PROJECT /go/src/$IMAGETOOLS_PROJECT && \
-	( cd /go/src/$IMAGETOOLS_PROJECT ; git checkout $IMAGETOOLS_VERSION ; ) && \
-	make -C /go/src/$IMAGETOOLS_PROJECT tool && \
-	install -m0755 /go/src/$IMAGETOOLS_PROJECT/oci-image-tool /usr/bin/oci-image-tool && \
-	rm -rf /go/src/$IMAGETOOLS_PROJECT
-
-# Reinstall oci-runtime-tools from source to avoid having to package new versions
-# in openSUSE while testing PRs. XXX: This should no longer be necessary once
-# we hit OCI v1.0.
-ENV RUNTIMETOOLS_VERSION=2d270b8764c02228eeb13e36f076f5ce6f2e3591 RUNTIMETOOLS_PROJECT=github.com/opencontainers/runtime-tools
-RUN mkdir -p /go/src/$RUNTIMETOOLS_PROJECT && \
-	git clone https://$RUNTIMETOOLS_PROJECT /go/src/$RUNTIMETOOLS_PROJECT && \
-	( cd /go/src/$RUNTIMETOOLS_PROJECT ; git checkout $RUNTIMETOOLS_VERSION ; ) && \
-	make -C /go/src/$RUNTIMETOOLS_PROJECT tool && \
-	install -m0755 /go/src/$RUNTIMETOOLS_PROJECT/oci-runtime-tool /usr/bin/oci-runtime-tool && \
-	rm -rf /go/src/$RUNTIMETOOLS_PROJECT
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed
