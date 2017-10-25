@@ -85,13 +85,13 @@ function teardown() {
 	# Create a new image with another tag.
 	umoci new --image "${NEWIMAGE}:latest"
 	[ "$status" -eq 0 ]
-	# XXX: oci-image-validate doesn't like empty images (without layers)
+	# XXX: oci-image-tool validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
 
 	# Modify the config.
 	umoci config --image "${NEWIMAGE}" --config.user "1234:1332"
 	[ "$status" -eq 0 ]
-	# XXX: oci-image-validate doesn't like empty images (without layers)
+	# XXX: oci-image-tool validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
 
 	# Unpack the image.
@@ -125,6 +125,6 @@ function teardown() {
 	# There should be no non-empty_layers.
 	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == null] | any')" == "false" ]]
 
-	# XXX: oci-image-validate doesn't like empty images (without layers)
+	# XXX: oci-image-tool validate doesn't like empty images (without layers)
 	#image-verify "$NEWIMAGE"
 }
