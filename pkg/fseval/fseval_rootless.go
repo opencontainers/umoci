@@ -22,7 +22,6 @@ import (
 	"os"
 	"time"
 
-	"github.com/openSUSE/umoci/pkg/system"
 	"github.com/openSUSE/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
@@ -103,7 +102,7 @@ func (fs unprivFsEval) Mkdir(path string, perm os.FileMode) error {
 }
 
 // Mknod is equivalent to unpriv.Mknod.
-func (fs unprivFsEval) Mknod(path string, mode os.FileMode, dev system.Dev_t) error {
+func (fs unprivFsEval) Mknod(path string, mode os.FileMode, dev uint64) error {
 	return unpriv.Mknod(path, mode, dev)
 }
 
