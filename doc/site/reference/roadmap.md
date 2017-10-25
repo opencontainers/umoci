@@ -1,15 +1,18 @@
-## `umoci` Roadmap ##
++++
+title = "Roadmap"
+weight = 15
++++
 
-This document describes an informal roadmap for the future of the `umoci`
+This document describes an informal roadmap for the future of the umoci
 project, in both technical and operational aspects. If you feel there is
 something missing from this document, feel free to
 [contribute][contributing.md].
 
-[contributing.md]: /CONTRIBUTING.md
+[contributing.md]: /contributing
 
 ### Improved API Design ###
 
-One of the main goals of `umoci` is to act as a "defacto" implementation of the
+One of the main goals of umoci is to act as a "defacto" implementation of the
 relevant image-spec interfaces. In particular, the `oci/cas` and `oci/casext`
 packages are perfect examples of the style of interface that would be
 incredibly reusable. In addition, the `oci/cas/driver` model allows for
@@ -55,7 +58,7 @@ design.
   for the modified object -- should we therefore re-create the entire tree of
   the original "reference" and work from there?). Ultimately I feel it may be
   required to store the `Manifest` descriptor as well as the highest-level
-  (from the `index.json`) descriptor so that `umoci` knows where to re-create
+  (from the `index.json`) descriptor so that umoci knows where to re-create
   the structure from.
 
 * When creating a new `Manifest` in an image, we need to be able to handle any
@@ -86,7 +89,7 @@ though it would break the ability to have a "default" tag.
 
 ### Direct `mtree`-from-layer Generation ###
 
-Currently `umoci` generates its `mtree(8)` manifest from the real filesystem
+Currently umoci generates its `mtree(8)` manifest from the real filesystem
 after the entire bundle has been extracted. This works well enough in practice
 (and actually guarantees us that a `repack` will contain an empty archive if we
 just did an `unpack` and nothing else). However, it has several issues.
@@ -103,7 +106,7 @@ just did an `unpack` and nothing else). However, it has several issues.
 * In addition, binding the `mtree(8)` tricks to the layer representation will
   mean that any future improvements to the OCI image-spec (such as removing the
   need for linear archives) will result in far more complicated changes to
-  `umoci`. However, if the generator is designed in an extensible fashion this
+  umoci. However, if the generator is designed in an extensible fashion this
   should not be a huge deal.
 
 Vincent Batts (the author of `gomtree`) has expressed interest in this sort of
@@ -116,6 +119,6 @@ that already exists in order to implement `tar` archive support).
 At the moment this project was effectively entirely written and maintained by
 one person. This is obviously an unsustainable development model, and also
 raises several other issues. In addition, currently there is no public mailing
-list for the development of `umoci` (nor is there a security mailing list)
+list for the development of umoci (nor is there a security mailing list)
 which makes it difficult to on-board new maintainers or significant
 contributors.
