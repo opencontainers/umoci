@@ -1,7 +1,7 @@
 +++
 title = "Basics"
 chapter = true
-weight = 10
+weight = 100
 +++
 
 # Quick Start #
