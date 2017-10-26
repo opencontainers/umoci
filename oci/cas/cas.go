@@ -46,6 +46,11 @@ var (
 	// ErrInvalid is returned when an image was detected as being invalid.
 	ErrInvalid = fmt.Errorf("invalid image detected")
 
+	// ErrUnknownType is returned when an unknown (or otherwise unparseable)
+	// mediatype is encountered. Callers should not ignore this error unless it
+	// is in a context where ignoring it is more friendly to spec extensions.
+	ErrUnknownType = fmt.Errorf("unknown mediatype encountered")
+
 	// ErrNotImplemented is returned when a requested operation has not been
 	// implementing the backing image store.
 	ErrNotImplemented = fmt.Errorf("operation not implemented")
