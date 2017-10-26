@@ -74,6 +74,9 @@ func tagAdd(ctx *cli.Context) error {
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
+	if len(descriptorPaths) == 0 {
+		return errors.Errorf("tag not found: %s", fromName)
+	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
 		return errors.Errorf("tag is ambiguous: %s", fromName)

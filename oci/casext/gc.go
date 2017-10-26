@@ -50,6 +50,9 @@ func (e Engine) GC(ctx context.Context) error {
 		if err != nil {
 			return errors.Wrapf(err, "get root %s", name)
 		}
+		if len(descriptorPaths) == 0 {
+			return errors.Errorf("tag not found: %s", name)
+		}
 		if len(descriptorPaths) != 1 {
 			// TODO: Handle this more nicely.
 			return errors.Errorf("tag is ambiguous: %s", name)
