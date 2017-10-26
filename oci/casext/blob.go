@@ -113,7 +113,7 @@ func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 		b.Data = parsed
 
 	default:
-		return fmt.Errorf("cas blob: unsupported mediatype: %s", b.MediaType)
+		return cas.ErrUnknownType
 	}
 
 	if b.Data == nil {
