@@ -23,8 +23,8 @@ behaviour.
 % id -u
 1000
 % umoci unpack --rootless --image opensuse:42.2 bundle
-   • restoreMetadata: ignoring EPERM on setxattr: security.capability: unpriv.lsetxattr: operation not permitted
-   • restoreMetadata: ignoring EPERM on setxattr: security.capability: unpriv.lsetxattr: operation not permitted
+   • rootless{usr/bin/ping} ignoring (usually) harmless EPERM on setxattr "security.capability"
+   • rootless{usr/bin/ping6} ignoring (usually) harmless EPERM on setxattr "security.capability"
 % runc run -b bundle rootless-ctr
 bash-4.3# whoami
 root
