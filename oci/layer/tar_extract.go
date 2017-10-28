@@ -113,7 +113,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
 			if te.mapOptions.Rootless && os.IsPermission(errors.Cause(err)) {
-				log.Warnf("restoreMetadata: ignoring EPERM on setxattr: %s: %v", name, err)
+				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
 				continue
 			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)
@@ -268,7 +268,6 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// We do a MkdirAll here because even though you need to have a tar entry
 	// for every component of a new path, applyMetadata will correct any
 	// inconsistencies.
-	//
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
@@ -311,11 +310,11 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 	// hard link, symbolic link
 	case tar.TypeLink, tar.TypeSymlink:
-		// Hardlinks and symlinks act differently when it comes to the scoping.
 		linkname := hdr.Linkname
 
-		// In both cases, we have to just unlinkg and then re-link the given
-		// path. The only difference is the function we're using.
+		// Hardlinks and symlinks act differently when it comes to the scoping.
+		// In both cases, we have to just unlink and then re-link the given
+		// path. But the function used and the argument are slightly different.
 		var linkFn func(string, string) error
 		switch hdr.Typeflag {
 		case tar.TypeLink:
@@ -354,6 +353,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	case tar.TypeChar, tar.TypeBlock:
 		// In rootless mode we have to fake this.
 		if te.mapOptions.Rootless {
+			log.Warnf("rootless{%s} creating empty file in place of device %d:%d", hdr.Name, hdr.Devmajor, hdr.Devminor)
 			fh, err := te.fsEval.Create(path)
 			if err != nil {
 				return errors.Wrap(err, "create rootless block")
