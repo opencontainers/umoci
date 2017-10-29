@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
@@ -77,7 +78,7 @@ type dirEngine struct {
 
 func (e *dirEngine) ensureTempDir() error {
 	if e.temp == "" {
-		tempDir, err := ioutil.TempDir(e.path, "tmp-")
+		tempDir, err := ioutil.TempDir(e.path, ".umoci-")
 		if err != nil {
 			return errors.Wrap(err, "create tempdir")
 		}
@@ -297,46 +298,42 @@ func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 // (this includes temporary files and directories not reachable from the CAS
 // interface). This MUST NOT remove any blobs or references in the store.
 func (e *dirEngine) Clean(ctx context.Context) error {
-	// Effectively we are going to remove every directory except the standard
-	// directories, unless they have a lock already.
-	fh, err := os.Open(e.path)
+	// Remove every .umoci directory that isn't flocked.
+	matches, err := filepath.Glob(filepath.Join(e.path, ".umoci-*"))
 	if err != nil {
-		return errors.Wrap(err, "open imagedir")
+		return errors.Wrap(err, "glob .umoci-*")
 	}
-	defer fh.Close()
-
-	children, err := fh.Readdir(-1)
-	if err != nil {
-		return errors.Wrap(err, "readdir imagedir")
-	}
-
-	for _, child := range children {
-		// Skip any children that are expected to exist.
-		switch child.Name() {
-		case blobDirectory, indexFile, layoutFile:
-			continue
-		}
-
-		// Try to get a lock on the directory.
-		path := filepath.Join(e.path, child.Name())
-		cfh, err := os.Open(path)
-		if err != nil {
-			// Ignore errors because it might've been deleted underneath us.
-			continue
-		}
-		defer cfh.Close()
-
-		if err := unix.Flock(int(cfh.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
-			// If we fail to get a flock(2) then it's probably already locked,
-			// so we shouldn't touch it.
-			continue
-		}
-		defer unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
-
-		if err := os.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "remove garbage path")
+	for _, path := range matches {
+		err = e.cleanPath(ctx, path)
+		if err != nil && err != filepath.SkipDir {
+			return err
 		}
 	}
+
+	return nil
+}
+
+func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
+	cfh, err := os.Open(path)
+	if err != nil && !os.IsNotExist(err) {
+		return errors.Wrap(err, "open for locking")
+	}
+	defer cfh.Close()
+
+	if err := unix.Flock(int(cfh.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
+		// If we fail to get a flock(2) then it's probably already locked,
+		// so we shouldn't touch it.
+		return filepath.SkipDir
+	}
+	defer unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
+
+	if err := os.RemoveAll(path); os.IsNotExist(err) {
+		return nil // somebody else beat us to it
+	} else if err != nil {
+		log.Warnf("failed to remove %s: %v", path, err)
+		return filepath.SkipDir
+	}
+	log.Debugf("cleaned %s", path)
 
 	return nil
 }

@@ -236,8 +236,13 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Errorf("engine doesn't have a tempdir after putting a blob!")
 	}
 
-	// Create tempdir to make sure things work.
-	removedDir, err := ioutil.TempDir(image, "testdir")
+	// Create umoci and other directories and files to make sure things work.
+	umociTestDir, err := ioutil.TempDir(image, ".umoci-dead-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	otherTestDir, err := ioutil.TempDir(image, "other-")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,15 +258,22 @@ func TestEngineGCLocking(t *testing.T) {
 		t.Fatalf("unexpected error while GCing image: %+v", err)
 	}
 
-	// Make sure that engine.temp is still around.
-	if _, err := os.Lstat(engine.(*dirEngine).temp); err != nil {
-		t.Errorf("expected active direngine.temp to still exist after GC: %+v", err)
+	for _, path := range []string{
+		engine.(*dirEngine).temp,
+		otherTestDir,
+	} {
+		if _, err := os.Lstat(path); err != nil {
+			t.Errorf("expected %s to still exist after GC: %+v", path, err)
+		}
 	}
 
-	// Make sure that removedDir is still around
-	if _, err := os.Lstat(removedDir); err == nil {
-		t.Errorf("expected inactive temporary dir to not exist after GC")
-	} else if !os.IsNotExist(errors.Cause(err)) {
-		t.Errorf("expected IsNotExist for temporary dir after GC: %+v", err)
+	for _, path := range []string{
+		umociTestDir,
+	} {
+		if _, err := os.Lstat(path); err == nil {
+			t.Errorf("expected %s to not exist after GC", path)
+		} else if !os.IsNotExist(errors.Cause(err)) {
+			t.Errorf("expected IsNotExist for %s after GC: %+v", path, err)
+		}
 	}
 }
