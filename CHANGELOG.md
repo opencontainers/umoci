@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- `umoci repack` now supports `--refresh-bundle` which will update the
+  OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
+  image tag. This means that the bundle can be used as a base layer for
+  future diffs without needing to unpack the image again. openSUSE/umoci#196
+- Added a website, and reworked the documentation to be better structured. You
+  can visit the website at [`umo.ci`][umo.ci]. openSUSE/umoci#188
+
+### Changed
+- Updated the [runtime][runtime-v1.0.1] and [image][image-v1.0.1]
+  specifications to v1.0.1. There are no important functional changes
+  associated with this update. openSUSE/umoci#215
+
 ### Fixed
 - Fix a bug in our "parent directory restore" code, which is responsible for
   ensuring that the mtime and other similar properties of a directory are not
@@ -21,15 +34,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   extensions or other users of an image being operated on will no longer
   break.  openSUSE/umoci#198
 
-### Added
-- `umoci repack` now supports `--refresh-bundle` which will update the
-  OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
-  image tag. This means that the bundle can be used as a base layer for
-  future diffs without needing to unpack the image again. openSUSE/umoci#196
-- Added a website, and reworked the documentation to be better structured. You
-  can visit the website at [`umo.ci`][umo.ci]. openSUSE/umoci#188
-
 [umo.ci]: https://umo.ci/
+[image-v1.0.1]: https://github.com/opencontainers/image-spec/releases/tag/v1.0.1
+[runtime-v1.0.1]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.1
 
 ## [0.3.1] - 2017-10-04
 ### Fixed
