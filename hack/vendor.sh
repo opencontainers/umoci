@@ -120,8 +120,8 @@ clone() {
 # TODO: Put this in a vendor.conf file or something like that (to be compatible
 #       with LK4D4/vndr). This setup is a bit unwieldy.
 clone github.com/opencontainers/go-digest v1.0.0-rc1
-clone github.com/opencontainers/image-spec v1.0.0
-clone github.com/opencontainers/runtime-spec v1.0.0
+clone github.com/opencontainers/image-spec v1.0.1
+clone github.com/opencontainers/runtime-spec v1.0.1
 clone github.com/opencontainers/runtime-tools 2d270b8764c02228eeb13e36f076f5ce6f2e3591
 clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
 clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
