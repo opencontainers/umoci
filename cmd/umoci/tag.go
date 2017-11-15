@@ -132,12 +132,12 @@ func tagRemove(ctx *cli.Context) error {
 var tagListCommand = cli.Command{
 	Name:    "list",
 	Aliases: []string{"ls"},
-	Usage:   "lists the set of tags in an OCI image",
+	Usage:   "lists the set of tags in an OCI layout",
 	ArgsUsage: `--layout <image-path>
 
-Where "<image-path>" is the path to the OCI image.
+Where "<image-path>" is the path to the OCI layout.
 
-Gives the full list of tags in an OCI image, with each tag name on a single
+Gives the full list of tags in an OCI layout, with each tag name on a single
 line. See umoci-stat(1) to get more information about each tagged image.`,
 
 	// tag modifies an image layout.
