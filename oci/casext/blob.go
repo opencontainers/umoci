@@ -51,6 +51,7 @@ type Blob struct {
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
 	// ispec.MediaTypeImageConfig => ispec.Image
+	// unknown => io.ReadCloser
 	Data interface{}
 }
 
@@ -60,9 +61,43 @@ func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 		return errors.Wrap(err, "get blob")
 	}
 
-	// The layer media types are special, we don't want to do any parsing (or
-	// close the blob reference).
 	switch b.MediaType {
+	// ispec.MediaTypeDescriptor => ispec.Descriptor
+	case ispec.MediaTypeDescriptor:
+		defer reader.Close()
+		parsed := ispec.Descriptor{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeDescriptor")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageManifest => ispec.Manifest
+	case ispec.MediaTypeImageManifest:
+		defer reader.Close()
+		parsed := ispec.Manifest{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageManifest")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageIndex => ispec.Index
+	case ispec.MediaTypeImageIndex:
+		defer reader.Close()
+		parsed := ispec.Index{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageIndex")
+		}
+		b.Data = parsed
+
+	// ispec.MediaTypeImageConfig => ispec.Image
+	case ispec.MediaTypeImageConfig:
+		defer reader.Close()
+		parsed := ispec.Image{}
+		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
+			return errors.Wrap(err, "parse MediaTypeImageConfig")
+		}
+		b.Data = parsed
+
 	// ispec.MediaTypeImageLayer => io.ReadCloser
 	// ispec.MediaTypeImageLayerGzip => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
@@ -72,48 +107,11 @@ func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 		// There isn't anything else we can practically do here.
 		b.Data = reader
 		return nil
-	}
 
-	defer reader.Close()
-
-	// It would be great if this code didn't require tying the JSON decoding to
-	// the type decisions -- but because of Go's lack of generics we can't
-	// return regular structs as an interface without some ugly code.
-	switch b.MediaType {
-	// ispec.MediaTypeDescriptor => ispec.Descriptor
-	case ispec.MediaTypeDescriptor:
-		parsed := ispec.Descriptor{}
-		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
-			return errors.Wrap(err, "parse MediaTypeDescriptor")
-		}
-		b.Data = parsed
-
-	// ispec.MediaTypeImageManifest => ispec.Manifest
-	case ispec.MediaTypeImageManifest:
-		parsed := ispec.Manifest{}
-		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
-			return errors.Wrap(err, "parse MediaTypeImageManifest")
-		}
-		b.Data = parsed
-
-	// ispec.MediaTypeImageIndex => ispec.Index
-	case ispec.MediaTypeImageIndex:
-		parsed := ispec.Index{}
-		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
-			return errors.Wrap(err, "parse MediaTypeImageIndex")
-		}
-		b.Data = parsed
-
-	// ispec.MediaTypeImageConfig => ispec.Image
-	case ispec.MediaTypeImageConfig:
-		parsed := ispec.Image{}
-		if err := json.NewDecoder(reader).Decode(&parsed); err != nil {
-			return errors.Wrap(err, "parse MediaTypeImageConfig")
-		}
-		b.Data = parsed
-
+	// unknown => io.ReadCloser()
 	default:
-		return cas.ErrUnknownType
+		b.Data = reader
+		return nil
 	}
 
 	if b.Data == nil {
