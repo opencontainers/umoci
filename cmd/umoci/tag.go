@@ -62,33 +62,15 @@ func tagAdd(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	tagName := ctx.App.Metadata["new-tag"].(string)
 
-	// Get a reference to the CAS.
-	engine, err := dir.Open(imagePath)
+	layout, err := umoci.OpenLayout(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return errors.Wrap(err, "open layout")
 	}
-	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer layout.Close()
 
-	// Get original descriptor.
-	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
-	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+	if err := layout.Tag(fromName, tagName); err != nil {
+		return errors.Wrap(err, "create tag")
 	}
-	if len(descriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", fromName)
-	}
-	if len(descriptorPaths) != 1 {
-		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
-	}
-	descriptor := descriptorPaths[0].Descriptor()
-
-	// Add it.
-	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
-		return errors.Wrap(err, "put reference")
-	}
-
 	log.Infof("created new tag: %q -> %q", tagName, fromName)
 	return nil
 }
