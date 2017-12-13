@@ -19,7 +19,7 @@ package main
 
 import (
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas/dir"
+	"github.com/openSUSE/umoci"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -44,10 +44,11 @@ commands.`,
 func initLayout(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
-	if err := dir.Create(imagePath); err != nil {
-		return errors.Wrap(err, "image layout creation")
+	layout, err := umoci.CreateLayout(imagePath)
+	if err != nil {
+		return errors.Wrap(err, "create layout")
 	}
-
+	layout.Close()
 	log.Infof("created new OCI image: %s", imagePath)
 	return nil
 }
