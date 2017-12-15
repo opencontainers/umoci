@@ -15,11 +15,14 @@ import (
 	"golang.org/x/net/context"
 )
 
+// Layout represents an OCI image layout.
 type Layout struct {
 	engine cas.Engine
 	ext    casext.Engine
 }
 
+// OpenLayout opens an existing OCI image layout, and fails if it does not
+// exist.
 func OpenLayout(imagePath string) (*Layout, error) {
 	l := &Layout{}
 	var err error
@@ -34,6 +37,8 @@ func OpenLayout(imagePath string) (*Layout, error) {
 	return l, nil
 }
 
+// CreateLayout creates an existing OCI image layout, and fails if it already
+// exists.
 func CreateLayout(imagePath string) (*Layout, error) {
 	err := dir.Create(imagePath)
 	if err != nil {
@@ -63,6 +68,7 @@ func (l *Layout) resolve(fromName string) (ispec.Descriptor, error) {
 	return descriptor, nil
 }
 
+// Tag adds a tag based on a previously existing descriptor.
 func (l *Layout) Tag(from string, to string) error {
 	descriptor, err := l.resolve(from)
 	if err != nil {
@@ -76,6 +82,8 @@ func (l *Layout) Tag(from string, to string) error {
 	return nil
 }
 
+// PutBlob adds the content of the reader to the OCI image as a blob, and
+// returns a Layer describing the result.
 func (l *Layout) PutBlob(b io.Reader) (Layer, error) {
 	// This unpacking is a little awkward, but I don't know how to work
 	// around the vendoring of go-digest.
@@ -87,15 +95,19 @@ func (l *Layout) PutBlob(b io.Reader) (Layer, error) {
 	return Layer{Hash: string(digest), Size: size}, nil
 }
 
+// Layer describes a layer that has been added to the OCI image.
 type Layer struct {
 	Hash string
 	Size int64
 }
 
+// ToDigest converts this layer into an opencontainers digest
 func (l Layer) ToDigest() (digest.Digest, error) {
 	return digest.Parse(l.Hash)
 }
 
+// NewImage creates a new OCI manifest in the OCI image, and adds the specified
+// layers to it.
 func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Layer, mediaType string) error {
 	layerDescriptors := []ispec.Descriptor{}
 	for _, l := range layers {
@@ -151,14 +163,17 @@ func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Layer, med
 	return nil
 }
 
+// ListTags lists the tags in the OCI image.
 func (l *Layout) ListTags() ([]string, error) {
 	return l.ext.ListReferences(context.Background())
 }
 
+// Close closes the OCI image.
 func (l *Layout) Close() error {
 	return l.engine.Close()
 }
 
+// LayersForTag returns the layer blobs that the particular tag references.
 func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
 	tagDescriptor, err := l.resolve(tag)
 	if err != nil {

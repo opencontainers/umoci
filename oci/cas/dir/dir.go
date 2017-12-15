@@ -385,7 +385,7 @@ func Create(path string) error {
 	}
 	if err := os.Mkdir(path, 0755); err != nil {
 		if os.IsExist(err) {
-			return fmt.Errorf("path already exists %", path)
+			return fmt.Errorf("path %s already exists", path)
 		}
 		return errors.Wrap(err, "mkdir")
 	}
