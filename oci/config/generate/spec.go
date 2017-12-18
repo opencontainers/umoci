@@ -306,6 +306,16 @@ func (g *Generator) AddRootfsDiffID(diffid digest.Digest) {
 	g.image.RootFS.DiffIDs = append(g.image.RootFS.DiffIDs, diffid)
 }
 
+// AddRootfsDiffIDStr appends to the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
+func (g *Generator) AddRootfsDiffIDStr(diffid string) error {
+	d, err := digest.Parse(diffid)
+	if err != nil {
+		return err
+	}
+	g.AddRootfsDiffID(d)
+	return nil
+}
+
 // RootfsDiffIDs returns the the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
 func (g *Generator) RootfsDiffIDs() []digest.Digest {
 	copy := []digest.Digest{}
