@@ -7,6 +7,7 @@ import (
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
+	"github.com/openSUSE/umoci/oci/layer"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
@@ -83,32 +84,32 @@ func (l *Layout) Tag(from string, to string) error {
 }
 
 // PutBlob adds the content of the reader to the OCI image as a blob, and
-// returns a Layer describing the result.
-func (l *Layout) PutBlob(b io.Reader) (Layer, error) {
+// returns a Blob describing the result.
+func (l *Layout) PutBlob(b io.Reader) (Blob, error) {
 	// This unpacking is a little awkward, but I don't know how to work
 	// around the vendoring of go-digest.
 	digest, size, err := l.engine.PutBlob(context.Background(), b)
 	if err != nil {
-		return Layer{}, err
+		return Blob{}, err
 	}
 
-	return Layer{Hash: string(digest), Size: size}, nil
+	return Blob{Hash: string(digest), Size: size}, nil
 }
 
-// Layer describes a layer that has been added to the OCI image.
-type Layer struct {
+// Blob describes a blob that has been added to the OCI image.
+type Blob struct {
 	Hash string
 	Size int64
 }
 
 // ToDigest converts this layer into an opencontainers digest
-func (l Layer) ToDigest() (digest.Digest, error) {
+func (l Blob) ToDigest() (digest.Digest, error) {
 	return digest.Parse(l.Hash)
 }
 
 // NewImage creates a new OCI manifest in the OCI image, and adds the specified
 // layers to it.
-func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Layer, mediaType string) error {
+func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Blob, mediaType string) error {
 	layerDescriptors := []ispec.Descriptor{}
 	for _, l := range layers {
 		d, err := digest.Parse(l.Hash)
@@ -173,27 +174,36 @@ func (l *Layout) Close() error {
 	return l.engine.Close()
 }
 
-// LayersForTag returns the layer blobs that the particular tag references.
-func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
+func (l *Layout) LookupManifest(tag string) (ispec.Manifest, error) {
 	tagDescriptor, err := l.resolve(tag)
 	if err != nil {
-		return nil, err
+		return ispec.Manifest{}, err
 	}
 
 	manifestBlob, err := l.ext.FromDescriptor(context.Background(), tagDescriptor)
 	if err != nil {
-		return nil, errors.Wrap(err, "get manifest")
+		return ispec.Manifest{}, errors.Wrap(err, "get manifest")
 	}
 	defer manifestBlob.Close()
 
 	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
-		return nil, errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
+		return ispec.Manifest{}, errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
 	}
 
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return nil, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+		return ispec.Manifest{}, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+	}
+
+	return manifest, nil
+}
+
+// LayersForTag returns the layer blobs that the particular tag references.
+func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
+	manifest, err := l.LookupManifest(tag)
+	if err != nil {
+		return nil, err
 	}
 
 	blobs := []*casext.Blob{}
@@ -207,4 +217,42 @@ func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
 	}
 
 	return blobs, nil
+}
+
+func (l *Layout) LookupConfig(b Blob) (ispec.Image, error) {
+	d, err := b.ToDigest()
+	if err != nil {
+		return ispec.Image{}, err
+	}
+
+	desc := ispec.Descriptor{
+		MediaType: ispec.MediaTypeImageConfig,
+		Digest: d,
+		Size:   b.Size,
+	}
+
+	config, err := l.ext.FromDescriptor(context.Background(), desc)
+	if err != nil {
+		return ispec.Image{}, err
+	}
+
+	if config.MediaType != ispec.MediaTypeImageConfig {
+		return ispec.Image{}, fmt.Errorf("bad image config: %s", config.MediaType)
+	}
+
+	img, ok := config.Data.(ispec.Image)
+	if !ok {
+		return ispec.Image{}, fmt.Errorf("BUG: image config not n ispec.Image?")
+	}
+
+	return img, nil
+}
+
+func (l *Layout) Unpack(tag string, path string, mo *layer.MapOptions) error {
+	manifest, err := l.LookupManifest(tag)
+	if err != nil {
+		return err
+	}
+
+	return layer.UnpackManifest(context.Background(), l.ext, path, manifest, mo)
 }
