@@ -82,6 +82,10 @@ func isLayerType(mediaType string) bool {
 		mediaType == ispec.MediaTypeImageLayerGzip || mediaType == ispec.MediaTypeImageLayerNonDistributableGzip
 }
 
+func needsGunzip(mediaType string) bool {
+	return mediaType == ispec.MediaTypeImageLayerGzip || mediaType == ispec.MediaTypeImageLayerNonDistributableGzip
+}
+
 // UnpackManifest extracts all of the layers in the given manifest, as well as
 // generating a runtime bundle and configuration. The rootfs is extracted to
 // <bundle>/<layer.RootfsName>. Some verification is done during image
@@ -198,19 +202,23 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if !isLayerType(layerBlob.MediaType) {
 			return errors.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
 		}
-		layerGzip, ok := layerBlob.Data.(io.ReadCloser)
+		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
 			// Should _never_ be reached.
 			return errors.Errorf("[internal error] layerBlob was not an io.ReadCloser")
 		}
 
-		// We have to extract a gzip'd version of the above layer. Also note
-		// that we have to check the DiffID we're extracting (which is the
-		// sha256 sum of the *uncompressed* layer).
-		layerRaw, err := gzip.NewReader(layerGzip)
-		if err != nil {
-			return errors.Wrap(err, "create gzip reader")
+		layerRaw := layerData
+		if needsGunzip(layerBlob.MediaType) {
+			// We have to extract a gzip'd version of the above layer. Also note
+			// that we have to check the DiffID we're extracting (which is the
+			// sha256 sum of the *uncompressed* layer).
+			layerRaw, err = gzip.NewReader(layerData)
+			if err != nil {
+				return errors.Wrap(err, "create gzip reader")
+			}
 		}
+
 		layerDigester := digest.SHA256.Digester()
 		layer := io.TeeReader(layerRaw, layerDigester.Hash())
 
@@ -226,7 +234,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		// in the layer.
 		_, _ = io.Copy(ioutil.Discard, layer)
 		// XXX: Is it possible this breaks in the error path?
-		layerGzip.Close()
+		layerData.Close()
 
 		layerDigest := layerDigester.Digest()
 		if layerDigest != layerDiffID {
