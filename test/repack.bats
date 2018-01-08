@@ -324,6 +324,7 @@ function teardown() {
 @test "umoci {un,re}pack [unpriv]" {
 	BUNDLE_A="$(setup_tmpdir)"
 	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
 
 	image-verify "${IMAGE}"
 
@@ -337,9 +338,13 @@ function teardown() {
 
 	# mkfifo and some other stuff
 	mkfifo "$BUNDLE_A/rootfs/some/directory/path/fifo"
-	echo "some contents" >> "$BUNDLE_A/rootfs/some/directory/path/file"
+	echo "some contents" > "$BUNDLE_A/rootfs/some/directory/path/file"
 	mkdir "$BUNDLE_A/rootfs/some/directory/path/dir"
 	ln -s "/../././././/../../../../etc/shadow" "$BUNDLE_A/rootfs/some/directory/path/link"
+
+	# Make sure that replacing a file we don't have write access to works.
+	echo "another file" > "$BUNDLE_A/rootfs/some/directory/NOWRITE"
+	chmod 0000 "$BUNDLE_A/rootfs/some/directory/NOWRITE"
 
 	# Chmod.
 	chmod 0000 "$BUNDLE_A/rootfs/some/directory/path"
@@ -360,12 +365,43 @@ function teardown() {
 	chmod +rwx "$BUNDLE_B/rootfs/some"
 	chmod +rwx "$BUNDLE_B/rootfs/some/directory"
 	chmod +rwx "$BUNDLE_B/rootfs/some/directory/path"
+	chmod +rwx "$BUNDLE_B/rootfs/some/directory/NOWRITE"
 
 	# Make sure the types are right.
 	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/fifo")" == "fifo" ]]
 	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/file")" == "regular file" ]]
+	[ -f "$BUNDLE_B/rootfs/some/directory/NOWRITE" ]
 	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/dir")" == "directory" ]]
 	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/link")" == "symbolic link" ]]
+
+	# Try to overwite the NOWRITE file.
+	echo "different data" > "$BUNDLE_B/rootfs/some/directory/NOWRITE"
+	chmod 0000 "$BUNDLE_B/rootfs/some/directory/NOWRITE"
+
+	# Chmod.
+	chmod 0000 "$BUNDLE_B/rootfs/some/directory/path"
+	chmod 0000 "$BUNDLE_B/rootfs/some/directory"
+	chmod 0000 "$BUNDLE_B/rootfs/some"
+
+	# Repack the image again.
+	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# Undo the chmodding.
+	chmod +rwx "$BUNDLE_C/rootfs/some"
+	chmod +rwx "$BUNDLE_C/rootfs/some/directory"
+	chmod +rwx "$BUNDLE_C/rootfs/some/directory/path"
+	chmod +rwx "$BUNDLE_C/rootfs/some/directory/NOWRITE"
+
+	# Check NOWRITE.
+	[ -f "$BUNDLE_C/rootfs/some/directory/NOWRITE" ]
+	[[ "$(cat "$BUNDLE_C/rootfs/some/directory/NOWRITE")" == "different data" ]]
 
 	image-verify "${IMAGE}"
 }
