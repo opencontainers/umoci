@@ -275,6 +275,24 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		return errors.Wrap(err, "mkdir parent")
 	}
 
+	// At this moment, we have sorted out all other special cases of the path.
+	// In order to avoid potential permission or clobbering issues, just do the
+	// noble thing and massacre whatever path points to (*unless* it's a
+	// directory). This is necessary to avoid permission errors with os.Create
+	// and similar issues. Note that this technically might break (the
+	// currently undefined) hardlink semantics for replaced inodes (a new layer
+	// will cause old hard-links to no longer be hard-links to the new inode).
+	//
+	// Ideally we would also handle the case where a TarLink entry exists
+	// before its target entry in the same layer (as this logic would
+	// technically break that), but it's not clear whether such an archive
+	// would be technically considered a valid tar archive.
+	if hdr.Typeflag != tar.TypeDir {
+		if err := te.fsEval.RemoveAll(path); err != nil {
+			return errors.Wrap(err, "clobber old")
+		}
+	}
+
 	// Now create or otherwise modify the state of the path. Right now, either
 	// the type of path matches hdr or the path doesn't exist. Note that we
 	// don't care about umasks or the initial mode here, since applyMetadata
@@ -282,7 +300,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	switch hdr.Typeflag {
 	// regular file
 	case tar.TypeReg, tar.TypeRegA:
-		// Truncate file, then just copy the data.
+		// Create a new file, then just copy the data.
 		fh, err := te.fsEval.Create(path)
 		if err != nil {
 			return errors.Wrap(err, "create regular")
@@ -333,11 +351,6 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			linkFn = te.fsEval.Symlink
 		}
 
-		// Unlink the old path, and ignore it if the path didn't exist.
-		if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "remove link old")
-		}
-
 		// Link the new one.
 		if err := linkFn(linkname, path); err != nil {
 			// FIXME: Currently this can break if tar hardlink entries occur
@@ -375,11 +388,6 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		mode := system.Tarmode(hdr.Typeflag)
 		dev := unix.Mkdev(uint32(hdr.Devmajor), uint32(hdr.Devminor))
-
-		// Unlink the old path, and ignore it if the path didn't exist.
-		if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "remove block old")
-		}
 
 		// Create the node.
 		if err := te.fsEval.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {

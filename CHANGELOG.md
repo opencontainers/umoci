@@ -20,6 +20,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   aren't `flock(2)`ed, thus ensuring that any possible OCI image-spec
   extensions or other users of an image being operated on will no longer
   break.  openSUSE/umoci#198
+- `umoci unpack --rootless` will now correctly handle regular file unpacking
+  when overwriting a file that `umoci` doesn't have write access to. In
+  addition, the semantics of pre-existing hardlinks to a clobbered file are
+  clarified (the hard-links will not refer to the new layer's inode).
+  openSUSE/umoci#222 openSUSE/umoci#223
 
 ### Added
 - `umoci repack` now supports `--refresh-bundle` which will update the
