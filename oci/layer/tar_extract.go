@@ -231,8 +231,16 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// Typeflag, expecting that the path is the only thing that matters in a
 	// whiteout entry.
 	if strings.HasPrefix(file, whPrefix) {
+		isOpaque := file == whOpaque
 		file = strings.TrimPrefix(file, whPrefix)
 		path = filepath.Join(dir, file)
+
+		// XXX: We currently don't have any way of handling opaque files if
+		//      they occur after other entries inside the path. So we have to
+		//      error out (for now).
+		if isOpaque {
+			return errors.Errorf("unsupported whiteout type: %s", hdr.Name)
+		}
 
 		// Unfortunately we can't just stat the file here, because if we hit a
 		// parent directory whiteout earlier than this one then stating here
@@ -245,6 +253,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "whiteout remove all")
 		}
+
 		return nil
 	}
 
@@ -284,9 +293,9 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// In order to avoid potential permission or clobbering issues, just do the
 	// noble thing and massacre whatever path points to (*unless* it's a
 	// directory). This is necessary to avoid permission errors with os.Create
-	// and similar issues. Note that this technically might break (the
-	// currently undefined) hardlink semantics for replaced inodes (a new layer
-	// will cause old hard-links to no longer be hard-links to the new inode).
+	// and similar issues, as well as to remain fully spec-compliant (note that
+	// this will cause hard-links in the "lower" layer to not be able to point
+	// to "upper" layer inodes).
 	//
 	// Ideally we would also handle the case where a TarLink entry exists
 	// before its target entry in the same layer (as this logic would
