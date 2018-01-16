@@ -8,7 +8,6 @@ import (
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
-	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -85,48 +84,15 @@ func (l *Layout) Tag(from string, to string) error {
 
 // PutBlob adds the content of the reader to the OCI image as a blob, and
 // returns a Blob describing the result.
-func (l *Layout) PutBlob(b io.Reader) (Blob, error) {
-	// This unpacking is a little awkward, but I don't know how to work
-	// around the vendoring of go-digest.
-	digest, size, err := l.engine.PutBlob(context.Background(), b)
-	if err != nil {
-		return Blob{}, err
-	}
-
-	return Blob{Hash: string(digest), Size: size}, nil
-}
-
-// Blob describes a blob that has been added to the OCI image.
-type Blob struct {
-	Hash string
-	Size int64
-}
-
-// ToDigest converts this layer into an opencontainers digest
-func (l Blob) ToDigest() (digest.Digest, error) {
-	return digest.Parse(l.Hash)
+func (l *Layout) PutBlob(b io.Reader) (digest.Digest, int64, error) {
+	return l.engine.PutBlob(context.Background(), b)
 }
 
 // NewImage creates a new OCI manifest in the OCI image, and adds the specified
 // layers to it.
-func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Blob, mediaType string) error {
-	layerDescriptors := []ispec.Descriptor{}
-	for _, l := range layers {
-		d, err := digest.Parse(l.Hash)
-		if err != nil {
-			return err
-		}
-
-		layerDescriptors = append(layerDescriptors, ispec.Descriptor{
-			MediaType: mediaType,
-			Digest:    d,
-			Size:      l.Size,
-		})
-	}
-
+func (l *Layout) NewImage(tagName string, i *ispec.Image, layers []ispec.Descriptor) error {
 	// Update config and create a new blob for it.
-	config := g.Image()
-	configDigest, configSize, err := l.ext.PutBlobJSON(context.Background(), config)
+	configDigest, configSize, err := l.ext.PutBlobJSON(context.Background(), i)
 	if err != nil {
 		return errors.Wrap(err, "put config blob")
 	}
@@ -142,7 +108,7 @@ func (l *Layout) NewImage(tagName string, g *igen.Generator, layers []Blob, medi
 			Digest:    configDigest,
 			Size:      configSize,
 		},
-		Layers: layerDescriptors,
+		Layers: layers,
 	}
 
 	manifestDigest, manifestSize, err := l.ext.PutBlobJSON(context.Background(), manifest)
@@ -219,18 +185,7 @@ func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
 	return blobs, nil
 }
 
-func (l *Layout) LookupConfig(b Blob) (ispec.Image, error) {
-	d, err := b.ToDigest()
-	if err != nil {
-		return ispec.Image{}, err
-	}
-
-	desc := ispec.Descriptor{
-		MediaType: ispec.MediaTypeImageConfig,
-		Digest: d,
-		Size:   b.Size,
-	}
-
+func (l *Layout) LookupConfig(desc ispec.Descriptor) (ispec.Image, error) {
 	config, err := l.ext.FromDescriptor(context.Background(), desc)
 	if err != nil {
 		return ispec.Image{}, err
