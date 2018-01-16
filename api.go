@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 
-	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -17,22 +16,20 @@ import (
 
 // Layout represents an OCI image layout.
 type Layout struct {
-	engine cas.Engine
-	ext    casext.Engine
+	ext casext.Engine
 }
 
 // OpenLayout opens an existing OCI image layout, and fails if it does not
 // exist.
 func OpenLayout(imagePath string) (*Layout, error) {
-	l := &Layout{}
-	var err error
 	// Get a reference to the CAS.
-	l.engine, err = dir.Open(imagePath)
+	engine, err := dir.Open(imagePath)
 	if err != nil {
 		return nil, errors.Wrap(err, "open CAS")
 	}
 
-	l.ext = casext.NewEngine(l.engine)
+	l := &Layout{}
+	l.ext = casext.NewEngine(engine)
 
 	return l, nil
 }
@@ -85,7 +82,7 @@ func (l *Layout) Tag(from string, to string) error {
 // PutBlob adds the content of the reader to the OCI image as a blob, and
 // returns a Blob describing the result.
 func (l *Layout) PutBlob(b io.Reader) (digest.Digest, int64, error) {
-	return l.engine.PutBlob(context.Background(), b)
+	return l.ext.PutBlob(context.Background(), b)
 }
 
 // NewImage creates a new OCI manifest in the OCI image, and adds the specified
@@ -137,7 +134,7 @@ func (l *Layout) ListTags() ([]string, error) {
 
 // Close closes the OCI image.
 func (l *Layout) Close() error {
-	return l.engine.Close()
+	return l.ext.Close()
 }
 
 func (l *Layout) LookupManifest(tag string) (ispec.Manifest, error) {
