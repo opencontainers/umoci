@@ -24,6 +24,7 @@ import (
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -76,8 +77,13 @@ func newImage(ctx *cli.Context) error {
 	g.SetRootfsType("layers")
 	g.ClearRootfsDiffIDs()
 
+	p := ispec.Platform{
+		Architecture: runtime.GOARCH,
+		OS:           runtime.GOOS,
+	}
+
 	img := g.Image()
-	if err := layout.NewImage(tagName, &img, nil); err != nil {
+	if err := layout.NewImage(tagName, &img, nil, &p); err != nil {
 		return errors.Wrap(err, "new image")
 	}
 	return nil

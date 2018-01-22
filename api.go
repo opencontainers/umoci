@@ -87,7 +87,7 @@ func (l *Layout) PutBlob(b io.Reader) (digest.Digest, int64, error) {
 
 // NewImage creates a new OCI manifest in the OCI image, and adds the specified
 // layers to it.
-func (l *Layout) NewImage(tagName string, i *ispec.Image, layers []ispec.Descriptor) error {
+func (l *Layout) NewImage(tagName string, i *ispec.Image, layers []ispec.Descriptor, platform *ispec.Platform) error {
 	// Update config and create a new blob for it.
 	configDigest, configSize, err := l.ext.PutBlobJSON(context.Background(), i)
 	if err != nil {
@@ -118,6 +118,7 @@ func (l *Layout) NewImage(tagName string, i *ispec.Image, layers []ispec.Descrip
 		MediaType: ispec.MediaTypeImageManifest,
 		Digest:    manifestDigest,
 		Size:      manifestSize,
+		Platform:  platform,
 	}
 
 	if err := l.ext.UpdateReference(context.Background(), tagName, descriptor); err != nil {
