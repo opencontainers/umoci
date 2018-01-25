@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -75,11 +76,11 @@ func unpack(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
-	var meta UmociMeta
-	meta.Version = UmociMetaVersion
+	var meta umoci.Meta
+	meta.Version = umoci.MetaVersion
 
 	// Parse and set up the mapping options.
-	err := parseIdmapOptions(&meta, ctx)
+	err := umoci.ParseIdmapOptions(&meta, ctx)
 	if err != nil {
 		return err
 	}
@@ -152,7 +153,7 @@ func unpack(ctx *cli.Context) error {
 		fsEval = fseval.RootlessFsEval
 	}
 
-	if err := generateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
+	if err := umoci.GenerateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
 
@@ -160,9 +161,9 @@ func unpack(ctx *cli.Context) error {
 		"version":     meta.Version,
 		"from":        meta.From,
 		"map_options": meta.MapOptions,
-	}).Debugf("umoci: saving UmociMeta metadata")
+	}).Debugf("umoci: saving Meta metadata")
 
-	if err := WriteBundleMeta(bundlePath, meta); err != nil {
+	if err := umoci.WriteBundleMeta(bundlePath, meta); err != nil {
 		return errors.Wrap(err, "write umoci.json metadata")
 	}
 

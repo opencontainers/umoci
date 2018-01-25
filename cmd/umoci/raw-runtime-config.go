@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -75,11 +76,11 @@ func rawConfig(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	configPath := ctx.App.Metadata["config"].(string)
 
-	var meta UmociMeta
-	meta.Version = UmociMetaVersion
+	var meta umoci.Meta
+	meta.Version = umoci.MetaVersion
 
 	// Parse and set up the mapping options.
-	err := parseIdmapOptions(&meta, ctx)
+	err := umoci.ParseIdmapOptions(&meta, ctx)
 	if err != nil {
 		return err
 	}
