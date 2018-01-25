@@ -22,6 +22,7 @@ import (
 	"os"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -88,8 +89,8 @@ func rawConfig(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	configPath := ctx.App.Metadata["config"].(string)
 
-	var meta UmociMeta
-	meta.Version = UmociMetaVersion
+	var meta umoci.UmociMeta
+	meta.Version = umoci.UmociMetaVersion
 
 	// Parse map options.
 	// We need to set mappings if we're in rootless mode.

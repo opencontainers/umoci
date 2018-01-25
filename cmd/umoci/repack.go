@@ -25,6 +25,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/mutate"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
@@ -101,7 +102,7 @@ func repack(ctx *cli.Context) error {
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
 	// Read the metadata first.
-	meta, err := ReadBundleMeta(bundlePath)
+	meta, err := umoci.ReadBundleMeta(bundlePath)
 	if err != nil {
 		return errors.Wrap(err, "read umoci.json metadata")
 	}
@@ -153,7 +154,7 @@ func repack(ctx *cli.Context) error {
 	}
 
 	log.WithFields(log.Fields{
-		"keywords": MtreeKeywords,
+		"keywords": umoci.MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
 	fsEval := fseval.DefaultFsEval
@@ -162,7 +163,7 @@ func repack(ctx *cli.Context) error {
 	}
 
 	log.Info("computing filesystem diff ...")
-	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
+	diffs, err := mtree.Check(fullRootfsPath, spec, umoci.MtreeKeywords, fsEval)
 	if err != nil {
 		return errors.Wrap(err, "check mtree")
 	}
@@ -243,14 +244,14 @@ func repack(ctx *cli.Context) error {
 
 	if ctx.Bool("refresh-bundle") {
 		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
-		if err := generateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
+		if err := umoci.GenerateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
 			return errors.Wrap(err, "write mtree metadata")
 		}
 		if err := os.Remove(mtreePath); err != nil {
 			return errors.Wrap(err, "remove old mtree metadata")
 		}
 		meta.From = newDescriptorPath
-		if err := WriteBundleMeta(bundlePath, meta); err != nil {
+		if err := umoci.WriteBundleMeta(bundlePath, meta); err != nil {
 			return errors.Wrap(err, "write umoci.json metadata")
 		}
 	}

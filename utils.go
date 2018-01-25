@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package main
+package umoci
 
 import (
 	"bytes"
@@ -247,9 +247,9 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	return stat, nil
 }
 
-// generateBundleManifest creates and writes an mtree of the rootfs in the given
+// GenerateBundleManifest creates and writes an mtree of the rootfs in the given
 // bundle path, using the supplied fsEval method
-func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
+func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
