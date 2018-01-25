@@ -84,6 +84,10 @@ func (l *Layout) UpdateReference(name string, desc ispec.Descriptor) error {
 	return l.ext.UpdateReference(context.Background(), name, desc)
 }
 
+func (l *Layout) GC() error {
+	return l.ext.GC(context.Background())
+}
+
 // PutBlob adds the content of the reader to the OCI image as a blob, and
 // returns a Blob describing the result.
 func (l *Layout) PutBlob(b io.Reader) (digest.Digest, int64, error) {
