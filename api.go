@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/openSUSE/umoci/mutate"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -208,4 +209,22 @@ func (l *Layout) Unpack(tag string, path string, mo *layer.MapOptions) error {
 	}
 
 	return layer.UnpackManifest(context.Background(), l.ext, path, manifest, mo)
+}
+
+func (l *Layout) Mutator(tag string) (*mutate.Mutator, error) {
+	descriptorPaths, err := l.ext.ResolveReference(context.Background(), tag)
+	if err != nil {
+		return nil, err
+	}
+
+	if len(descriptorPaths) == 0 {
+		return nil, errors.Errorf("tag not found: %s", tag)
+	}
+
+	if len(descriptorPaths) != 1 {
+		// TODO: Handle this more nicely.
+		return nil, errors.Errorf("tag is ambiguous: %s", tag)
+	}
+
+	return mutate.New(l.ext, descriptorPaths[0])
 }
