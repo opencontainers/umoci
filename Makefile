@@ -26,7 +26,7 @@ CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev
-DOCKER_RUN := docker run --rm -it --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
+DOCKER_RUN := docker run --rm -it --security-opt apparmor:unconfined --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
 
 # Output directory.
 BUILD_DIR ?= .
@@ -170,5 +170,4 @@ shell: umociimage
 
 .PHONY: ci
 ci: umoci umoci.cover doc local-validate test-unit test-integration
-	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep -v '^total:' | sort -k 3gr
-	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep    '^total:'
+	hack/ci-coverage.sh $(COVERAGE)

@@ -139,47 +139,6 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	return nil
 }
 
-// AddReferences adds entries for refname with the given descriptors, without
-// modifying the existing entries.
-//
-// TODO: Remove the variadic part of this interface, it just makes things more
-//       confusing.
-func (e Engine) AddReferences(ctx context.Context, refname string, descriptors ...ispec.Descriptor) error {
-	if len(descriptors) == 0 {
-		// Nothing to do.
-		return nil
-	}
-
-	// Get index to modify.
-	index, err := e.GetIndex(ctx)
-	if err != nil {
-		return errors.Wrap(err, "get top-level index")
-	}
-
-	if len(descriptors) > 1 {
-		// Warn users that they're intentionally creating ambiguous images.
-		log.Warn("umoci has been requested to add multiple descriptors with the same reference name -- this is intentionally creating ambiguity in the OCI image that some tools may be unable to resolve")
-	}
-
-	// Modify the descriptors so that they have the right refname.
-	// TODO: Handle refname = "".
-	var convertedDescriptors []ispec.Descriptor
-	for _, descriptor := range descriptors {
-		if descriptor.Annotations == nil {
-			descriptor.Annotations = map[string]string{}
-		}
-		descriptor.Annotations[ispec.AnnotationRefName] = refname
-		convertedDescriptors = append(convertedDescriptors, descriptor)
-	}
-
-	// Commit to image.
-	index.Manifests = append(index.Manifests, convertedDescriptors...)
-	if err := e.PutIndex(ctx, index); err != nil {
-		return errors.Wrap(err, "replace index")
-	}
-	return nil
-}
-
 // DeleteReference removes all entries in the index that match the given
 // refname.
 func (e Engine) DeleteReference(ctx context.Context, refname string) error {

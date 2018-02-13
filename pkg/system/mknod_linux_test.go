@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016, 2017 SUSE LLC.
+ * Copyright (C) 2016, 2017, 2018 SUSE LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -17,9 +17,29 @@
 
 package system
 
-import "golang.org/x/sys/unix"
+import (
+	"archive/tar"
+	"testing"
 
-// Unlink is a wrapper around unlink(2).
-func Unlink(path string) error {
-	return unix.Unlink(path)
+	"golang.org/x/sys/unix"
+)
+
+// Exhaustive test for Tarmode mapping.
+func TestTarmode(t *testing.T) {
+	for _, test := range []struct {
+		typeflag byte
+		mode     uint32
+	}{
+		{tar.TypeReg, 0},
+		{tar.TypeSymlink, unix.S_IFLNK},
+		{tar.TypeChar, unix.S_IFCHR},
+		{tar.TypeBlock, unix.S_IFBLK},
+		{tar.TypeFifo, unix.S_IFIFO},
+		{tar.TypeDir, unix.S_IFDIR},
+	} {
+		mode := Tarmode(test.typeflag)
+		if mode != test.mode {
+			t.Errorf("got unexpected mode %x with tar typeflag %x, expected %x", mode, test.typeflag, test.mode)
+		}
+	}
 }
