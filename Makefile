@@ -26,7 +26,7 @@ CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev
-DOCKER_RUN := docker run --rm -it --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
+DOCKER_RUN := docker run --rm -it --security-opt apparmor:unconfined --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
 
 # Output directory.
 BUILD_DIR ?= .
