@@ -23,16 +23,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// These values come from new_decode_dev() inside <linux/kdev_t.h>.
-func major(device uint64) uint64 {
-	return (device & 0xfff00) >> 8
-}
-
-// These values come from new_decode_dev() inside <linux/kdev_t.h>.
-func minor(device uint64) uint64 {
-	return (device & 0xff) | ((device >> 12) & 0xfff00)
-}
-
 func updateHeader(hdr *tar.Header, s unix.Stat_t) {
 	// Currently the Go stdlib doesn't fill in the major/minor numbers of
 	// devices, so we have to do it manually.
