@@ -170,5 +170,4 @@ shell: umociimage
 
 .PHONY: ci
 ci: umoci umoci.cover doc local-validate test-unit test-integration
-	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep -v '^total:' | sort -k 3gr
-	$(GO) tool cover -func <(egrep -v 'vendor|third_party' $(COVERAGE)) | egrep    '^total:'
+	hack/ci-coverage.sh $(COVERAGE)
