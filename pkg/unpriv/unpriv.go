@@ -19,7 +19,6 @@ package unpriv
 
 import (
 	"archive/tar"
-	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -56,6 +55,11 @@ func splitpath(path string) []string {
 	return parts
 }
 
+// WrapFunc is a function that can be passed to Wrap. It takes a path (and
+// presumably operates on it -- since Wrap only ensures that the path given is
+// resolvable) and returns some form of error.
+type WrapFunc func(path string) error
+
 // Wrap will wrap a given function, and call it in a context where all of the
 // parent directories in the given path argument are such that the path can be
 // resolved (you may need to make your own changes to the path to make it
@@ -63,7 +67,7 @@ func splitpath(path string) []string {
 // if the error returned is such that !os.IsPermission(err), then no trickery
 // will be performed. If fn returns an error, so will this function. All of the
 // trickery is reverted when this function returns (which is when fn returns).
-func Wrap(path string, fn func(path string) error) error {
+func Wrap(path string, fn WrapFunc) error {
 	// FIXME: Should we be calling fn() here first?
 	if err := fn(path); err == nil || !os.IsPermission(errors.Cause(err)) {
 		return err
@@ -299,10 +303,50 @@ func Remove(path string) error {
 	return errors.Wrap(Wrap(path, os.Remove), "unpriv.remove")
 }
 
-// RemoveAll is similar to os.RemoveAll but in order to implement it properly
-// all of the internal functions were wrapped with unpriv.Wrap to make it
-// possible to remove a path (even if it has child paths) even if you do not
-// currently have enough access bits.
+// foreachSubpath executes WrapFunc for each child of the given path (not
+// including the path itself). If path is not a directory, then WrapFunc will
+// not be called and no error will be returned. This should be called within a
+// context where path has already been made resolveable. If WrapFunc returns an
+// error, the first error is returned and iteration is halted.
+func foreachSubpath(path string, wrapFn WrapFunc) error {
+	// Is the path a directory?
+	fi, err := os.Lstat(path)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	if !fi.IsDir() {
+		return nil
+	}
+
+	// Open the directory.
+	fd, err := Open(path)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	defer fd.Close()
+
+	// We need to change the mode to Readdirnames. We don't need to worry about
+	// permissions because we're already in a context with filepath.Dir(path)
+	// is at least a+rx.
+	os.Chmod(path, fi.Mode()|0400)
+	defer fiRestore(path, fi)
+
+	// Remove contents recursively.
+	names, err := fd.Readdirnames(-1)
+	if err != nil {
+		return errors.WithStack(err)
+	}
+	for _, name := range names {
+		if err := wrapFn(filepath.Join(path, name)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// RemoveAll is similar to os.RemoveAll but with all of the internal functions
+// wrapped with unpriv.Wrap to make it possible to remove a path (even if it
+// has child paths) even if you do not currently have enough access bits.
 func RemoveAll(path string) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
 		// If remove works, we're done.
@@ -324,49 +368,25 @@ func RemoveAll(path string) error {
 		if !fi.IsDir() {
 			return errors.Wrap(err, "remove non-directory")
 		}
-
-		// Open the directory.
-		fd, err := Open(path)
-		if err != nil {
-			// We hit a race, but don't worry about it.
-			if os.IsNotExist(errors.Cause(err)) {
-				err = nil
-			}
-			return errors.Wrap(err, "opendir")
-		}
-
-		// We need to change the mode to Readdirnames. We don't need to worry
-		// about permissions because we're already in a context with
-		// filepath.Dir(path) is writeable.
-		os.Chmod(path, fi.Mode()|0400)
-		defer fiRestore(path, fi)
-
-		// Remove contents recursively.
 		err = nil
-		for {
-			names, err1 := fd.Readdirnames(128)
-			for _, name := range names {
-				err1 := RemoveAll(filepath.Join(path, name))
-				if err == nil {
-					err = err1
-				}
-			}
-			if err1 == io.EOF {
-				break
-			}
-			if err == nil {
-				err = err1
-			}
-			if len(names) == 0 {
-				break
-			}
-		}
 
-		// Close the directory.
-		fd.Close()
+		err1 := foreachSubpath(path, func(subpath string) error {
+			err2 := RemoveAll(subpath)
+			if err == nil {
+				err = err2
+			}
+			return nil
+		})
+		if err1 != nil {
+			// We must have hit a race, but we don't care.
+			if os.IsNotExist(errors.Cause(err1)) {
+				err1 = nil
+			}
+			return errors.Wrap(err1, "foreach subpath")
+		}
 
 		// Remove the directory. This should now work.
-		err1 := os.Remove(path)
+		err1 = os.Remove(path)
 		if err1 == nil || os.IsNotExist(errors.Cause(err1)) {
 			return nil
 		}
