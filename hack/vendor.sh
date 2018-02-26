@@ -134,6 +134,7 @@ clone github.com/cyphar/filepath-securejoin v0.2.1
 clone github.com/vbatts/go-mtree v0.4.1
 clone github.com/Sirupsen/logrus v1.0.3
 clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
+clone github.com/golang/protobuf v1.0.0
 # Used purely for testing.
 clone github.com/mohae/deepcopy 491d3605edfb866af34a48075bd4355ac1bf46ca
 
