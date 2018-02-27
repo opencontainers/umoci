@@ -68,7 +68,8 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		isSymlink = realFi.Mode()&os.ModeSymlink == os.ModeSymlink
 	}
 
-	// Apply owner (only used in non-rootless case).
+	// Apply the owner. If we are rootless then "user.rootlesscontainers" has
+	// already been set up by unmapHeader, so nothing to do here.
 	if !te.mapOptions.Rootless {
 		// XXX: While unpriv.Lchown doesn't make a whole lot of sense this
 		//      should _probably_ be put inside FsEval.
@@ -191,7 +192,11 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		dirHdr.Linkname = ""
 
 		// os.Lstat doesn't get the list of xattrs by default. We need to fill
-		// this explicitly.
+		// this explicitly. Note that while Go's "archive/tar" takes strings,
+		// in Go strings can be arbitrary byte sequences so this doesn't
+		// restrict the possible values.
+		// TODO: Move this to a separate function so we can share it with
+		//       tar_generate.go.
 		xattrs, err := te.fsEval.Llistxattr(dir)
 		if err != nil {
 			return errors.Wrap(err, "get dirHdr.Xattrs")

@@ -23,3 +23,15 @@ package rootlesscontainers
 // Keyname is the official xattr key used to store rootlesscontainers.proto
 // blobs, and is the only key we will treat in this special way.
 const Keyname = "user.rootlesscontainers"
+
+// NoopID is the uint32 that represents the "noop" id for uid/gid values. It is
+// equal to uint32(-1) but since we cannot write that in Go we have to
+// explicitly write the wrapped value.
+var NoopID uint32 = 0xFFFFFFFF
+
+// IsDefault returns whether the given Resource is the default. If a Resource
+// is equal to the default Resource then it is not necesary to include it on
+// the filesystem.
+func IsDefault(r Resource) bool {
+	return r.Uid == NoopID && r.Gid == NoopID
+}

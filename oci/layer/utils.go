@@ -22,7 +22,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/apex/log"
+	"github.com/golang/protobuf/proto"
 	"github.com/openSUSE/umoci/pkg/idtools"
+	"github.com/openSUSE/umoci/pkg/rootlesscontainers-proto"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 )
@@ -45,20 +48,53 @@ type MapOptions struct {
 // container mappings. Returns an error if it's not possible to map the given
 // UID.
 func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
-	// If we're in rootless mode, we assume all of the files are owned by
-	// (0, 0) in the container -- since we cannot map any other users.
-	if mapOptions.Rootless {
-		hdr.Uid, _ = idtools.ToHost(0, mapOptions.UIDMappings)
-		hdr.Gid, _ = idtools.ToHost(0, mapOptions.GIDMappings)
+	var newUID, newGID int
+
+	// It only makes sense to do un-mapping if we're not rootless. If we're
+	// rootless then all of the files will be owned by us anyway.
+	if !mapOptions.Rootless {
+		var err error
+		newUID, err = idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
+		if err != nil {
+			return errors.Wrap(err, "map uid to container")
+		}
+		newGID, err = idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
+		if err != nil {
+			return errors.Wrap(err, "map gid to container")
+		}
 	}
 
-	newUID, err := idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
-	if err != nil {
-		return errors.Wrap(err, "map uid to container")
-	}
-	newGID, err := idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
-	if err != nil {
-		return errors.Wrap(err, "map gid to container")
+	// We have special handling for the "user.rootlesscontainers" xattr. If
+	// we're rootless then we override the owner of the file we're currently
+	// parsing (and then remove the xattr). If we're not rootless then the user
+	// is doing something strange, so we log a warning but just ignore the
+	// xattr otherwise.
+	//
+	// TODO: We should probably add a flag to opt-out of this (though I'm not
+	//       sure why anyone would intentionally use this incorrectly).
+	if value, ok := hdr.Xattrs[rootlesscontainers.Keyname]; !ok {
+		// noop
+	} else if !mapOptions.Rootless {
+		log.Warnf("suspicious filesystem: saw special rootless xattr %s in non-rootless invocation", rootlesscontainers.Keyname)
+	} else {
+		var payload rootlesscontainers.Resource
+		if err := proto.Unmarshal([]byte(value), &payload); err != nil {
+			return errors.Wrap(err, "unmarshal rootlesscontainers payload")
+		}
+
+		// If the payload isn't uint32(-1) we apply it. The xattr includes the
+		// *in-container* owner so we don't want to map it.
+		if uid := payload.GetUid(); uid != rootlesscontainers.NoopID {
+			newUID = int(uid)
+		}
+		if gid := payload.GetGid(); gid != rootlesscontainers.NoopID {
+			newGID = int(gid)
+		}
+
+		// Drop the xattr since it's just a marker for us and shouldn't be in
+		// layers. This is technically out-of-spec, but so is
+		// "user.rootlesscontainers".
+		delete(hdr.Xattrs, rootlesscontainers.Keyname)
 	}
 
 	hdr.Uid = newUID
@@ -71,10 +107,58 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 // involves applying an ID mapping from the container filesystem to the host
 // mappings. Returns an error if it's not possible to map the given UID.
 func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
-	// If we're in rootless mode we assume that all of the files in the layer
-	// are owned by (0, 0) because we cannot map any other users in the
-	// container (and we cannot Lchown to any user other than ourselves).
+	// To avoid nil references.
+	if hdr.Xattrs == nil {
+		hdr.Xattrs = make(map[string]string)
+	}
+
+	// If there is already a "user.rootlesscontainers" we give a warning in
+	// both rootless and root cases -- but in rootless we explicitly delete the
+	// entry because we might replace it.
+	if _, ok := hdr.Xattrs[rootlesscontainers.Keyname]; ok {
+		if mapOptions.Rootless {
+			log.Warnf("rootless{%s} ignoring special xattr %s stored in layer", hdr.Name, rootlesscontainers.Keyname)
+			delete(hdr.Xattrs, rootlesscontainers.Keyname)
+		} else {
+			log.Warnf("suspicious layer: saw special xattr %s in non-rootless invocation", rootlesscontainers.Keyname)
+		}
+	}
+
+	// In rootless mode there are a few things we need to do. We need to map
+	// all of the files in the layer to have an owner of (0, 0) because we
+	// cannot lchown(2) anything -- and then if the owner was non-root we have
+	// to create a "user.rootlesscontainers" xattr for it.
 	if mapOptions.Rootless {
+		// Fill the rootlesscontainers payload with the original (uid, gid). If
+		// either is 0, we replace it with uint32(-1). Technically we could
+		// just leave it as 0 (since that is what the source of truth told us
+		// the owner was), but this would result in a massive increase in
+		// xattrs with no real benefit.
+		payload := rootlesscontainers.Resource{
+			Uid: rootlesscontainers.NoopID,
+			Gid: rootlesscontainers.NoopID,
+		}
+		if uid := hdr.Uid; uid != 0 {
+			payload.Uid = uint32(uid)
+		}
+		if gid := hdr.Gid; gid != 0 {
+			payload.Gid = uint32(gid)
+		}
+
+		// Don't add the xattr if the owner isn't just (0, 0) because that's a
+		// waste of space.
+		if !rootlesscontainers.IsDefault(payload) {
+			valueBytes, err := proto.Marshal(&payload)
+			if err != nil {
+				return errors.Wrap(err, "marshal rootlesscontainers payload")
+			}
+			// While the payload is almost certainly not UTF-8, Go strings can
+			// actually be arbitrary bytes (in case you didn't know this and
+			// were confused like me when this worked). See
+			// <https://blog.golang.org/strings> for more detail.
+			hdr.Xattrs[rootlesscontainers.Keyname] = string(valueBytes)
+		}
+
 		hdr.Uid = 0
 		hdr.Gid = 0
 	}

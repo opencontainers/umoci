@@ -29,13 +29,13 @@ import (
 	"github.com/pkg/errors"
 )
 
-// ignoreXattrList is a list of xattr names that should be ignored when
+// ignoreXattrs is a list of xattr names that should be ignored when
 // creating a new image layer, because they are host-specific and/or would be a
 // bad idea to unpack.
 // XXX: Maybe we should make this configurable so users can manually blacklist
 //      (or even whitelist) xattrs that they actually want included? Like how
 //      GNU tar's xattr setup works.
-var ignoreXattrList = map[string]struct{}{
+var ignoreXattrs = map[string]struct{}{
 	// SELinux doesn't allow you to set SELinux policies generically. They're
 	// also host-specific. So just ignore them during extraction.
 	"security.selinux": {},
@@ -109,7 +109,6 @@ func normalise(rawPath string, isDir bool) (string, error) {
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
 func (tg *tarGenerator) AddFile(name, path string) error {
-
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
 		return errors.Wrap(err, "add file lstat")
@@ -162,10 +161,9 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		// Some xattrs need to be skipped for sanity reasons, such as
 		// security.selinux, because they are very much host-specific and
 		// carrying them to other hosts would be a really bad idea.
-		if _, ignore := ignoreXattrList[name]; ignore {
+		if _, ignore := ignoreXattrs[name]; ignore {
 			continue
 		}
-
 		value, err := tg.fsEval.Lgetxattr(path, name)
 		if err != nil {
 			// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
@@ -181,6 +179,9 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
 			continue
 		}
+
+		// Note that Go strings can actually be arbitrary byte sequences, so
+		// this conversion (while it might look a bit wrong) is actually fine.
 		hdr.Xattrs[name] = string(value)
 	}
 
