@@ -32,7 +32,7 @@ RUN zypper -n in \
 		moreutils \
 		oci-image-tools \
 		oci-runtime-tools \
-		python-setuptools python-xattr \
+		python-setuptools python-xattr attr \
 		skopeo
 
 ENV GOPATH /go

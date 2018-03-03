@@ -68,7 +68,7 @@ function bundle-verify() {
 
 function umoci() {
 	local args=()
-	if [ "$COVER" -eq 1 ]; then
+	if [[ "$COVER" == 1 ]]; then
 		if [ "$COVERAGE_DIR" ]; then
 			args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)")
 		fi
@@ -87,7 +87,7 @@ function umoci() {
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 
-	if [ "$COVER" -eq 1 ]; then
+	if [[ "$COVER" == 1 ]]; then
 		# Because this is running as a -test.cover test, we need to remove the last
 		# two lines.
 		if [ "$status" -eq 0 ]; then
@@ -160,4 +160,25 @@ function teardown_tmpdirs() {
 
 	# Clear tmpdir list.
 	rm "$TESTDIR_LIST"
+}
+
+# _getfattr is a sane wrapper around getfattr(1) which only extracts the value
+# of the requested xattr (and removes any of the other crap that it spits out).
+# The usage is "sane_getfattr <xattr name> <path>" and outputs the hex
+# representation in a single line. Exit status is non-zero if the xattr isn't
+# set.
+function _getfattr() {
+	# We only support single-file inputs.
+	[ "$#" -eq 2 ] || return 1
+
+	local xattr="$1"
+	local path="$2"
+
+	# Run getfattr.
+	(
+		set -o pipefail
+		getfattr -e hex -n "$xattr" "$path" 2>/dev/null \
+			| grep "^$xattr=" | sed "s|^$xattr=||g"
+	)
+	return $?
 }
