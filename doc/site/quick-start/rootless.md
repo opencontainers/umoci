@@ -16,7 +16,11 @@ reason for this is that there are a set of security restrictions imposed by the
 operating system that stop us from creating certain device inodes and set-uid
 binaries. umoci will do its best to try to emulate the correct behaviour, and
 the runtime configuration generated will further try to emulate the correct
-behaviour.
+behaviour. umoci also supports the `user.rootlesscontainers` specification,
+which allows for further emulation of things like `chmod(2)` inside rootless
+containers using tools like [`PRoot`][as-proot].
+
+[as-proot]: https://github.com/AkihiroSuda/runrootless
 {{% /notice %}}
 
 ```text

@@ -5,6 +5,20 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- `umoci repack` now supports `--refresh-bundle` which will update the
+  OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
+  image tag. This means that the bundle can be used as a base layer for
+  future diffs without needing to unpack the image again. openSUSE/umoci#196
+- Added a website, and reworked the documentation to be better structured. You
+  can visit the website at [`umo.ci`][umo.ci]. openSUSE/umoci#188
+- Added support for the `user.rootlesscontainers` specification, which allows
+  for persistent on-disk emulation of `chown(2)` inside rootless containers.
+  This implementation is interoperable with [@AkihiroSuda's `PRoot`
+  fork][as-proot-fork] (though we do not test its interoperability at the
+  moment) as both tools use [the same protobuf
+  specification][rootlesscontainers-proto]. openSUSE/umoci#227
+
 ### Fixed
 - Fix a bug in our "parent directory restore" code, which is responsible for
   ensuring that the mtime and other similar properties of a directory are not
@@ -26,14 +40,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   clarified (the hard-links will not refer to the new layer's inode).
   openSUSE/umoci#222 openSUSE/umoci#223
 
-### Added
-- `umoci repack` now supports `--refresh-bundle` which will update the
-  OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
-  image tag. This means that the bundle can be used as a base layer for
-  future diffs without needing to unpack the image again. openSUSE/umoci#196
-- Added a website, and reworked the documentation to be better structured. You
-  can visit the website at [`umo.ci`][umo.ci]. openSUSE/umoci#188
-
+[as-proot-fork]: https://github.com/AkihiroSuda/runrootless
+[rootlesscontainers-proto]: https://rootlesscontaine.rs/proto/rootlesscontainers.proto
 [umo.ci]: https://umo.ci/
 
 ## [0.3.1] - 2017-10-04
