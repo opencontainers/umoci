@@ -5,14 +5,12 @@
 
 [![Go Report Card](https://goreportcard.com/badge/github.com/openSUSE/umoci)](https://goreportcard.com/report/github.com/openSUSE/umoci)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1084/badge)](https://bestpractices.coreinfrastructure.org/projects/1084)
+[![DOI](https://zenodo.org/badge/72283469.svg)](https://zenodo.org/badge/latestdoi/72283469)
 
-**Status: Beta**
+**u**moci **m**odifies **O**pen **C**ontainer **i**mages. See [the official
+website][umoci-site] for more accessible documentation about how to use umoci.
 
-**u**moci **m**odifies **O**pen **C**ontainer **i**mages. Not a great name, but
-what are you going to do. It also is a cool way for people to "dip their toe"
-into OCI images ("umoci" also means "to dip" in Serbian).
-
-`umoci` intends to be a complete manipulation tool for [OCI images][oci-image-spec].
+umoci intends to be a complete manipulation tool for [OCI images][oci-image-spec].
 In particular, it should be seen as a more end-user-focused version of the
 [`oci-image-tools` provided by the OCI][oci-image-tools]. The hope is that all
 of this tooling will eventually be merged with the upstream repository, so that
@@ -29,6 +27,7 @@ If you wish to provide feedback or contribute, read the
 about how to submit good bug reports and patches. Information about how to
 submit responsible security disclosures is also provided.
 
+[umoci-site]: https://umo.ci/
 [oci-image-spec]: https://github.com/opencontainers/image-spec
 [oci-image-tools]: https://github.com/opencontainers/image-tools
 [disc-1]: https://github.com/opencontainers/image-spec/pull/411
@@ -51,7 +50,7 @@ source code for each release from the [releases page][releases].
 
 ### Installation ###
 
-If you wish to build `umoci` from source, follow these steps to build in with
+If you wish to build umoci from source, follow these steps to build in with
 [golang](https://golang.org).
 
 ```bash
@@ -65,7 +64,7 @@ Your `umoci` binary will be in `$HOME/bin`.
 
 ### Usage ###
 
-`umoci` has a subcommand-based command-line. For more detailed information, see
+umoci has a subcommand-based command-line. For more detailed information, see
 the generated man pages (which you can build with `make doc`). You can also
 read through our [quick start guide][quickstart].
 
@@ -110,17 +109,9 @@ GLOBAL OPTIONS:
 
 [quickstart]: /doc/quick-start.md
 
-### In Progress ###
-
-Currently `umoci` relies on several from-scratch implementations of existing
-PRs against upstream projects (or aliased vendor projects that include PRs
-merged that are not merged upstream). This is because currently upstream
-projects are simply not mature enough to be used. However, this is something
-that I'm working on fixing.
-
 ### License ###
 
-`umoci` is licensed under the terms of the Apache 2.0 license.
+umoci is licensed under the terms of the Apache 2.0 license.
 
 ```
 umoci: Umoci Modifies Open Containers' Images
@@ -138,3 +129,20 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 ```
+
+### Citation ###
+
+If you have used umoci in your research, please cite it like you would any
+other useful software. Here is a handy BibTex citation.
+
+```
+@misc{umoci,
+	title = {umoci - Standalone Tool For Manipulating Container Images},
+	author = {Aleksa Sarai et al.},
+	year = {2016},
+	url = {https://umo.ci/},
+	doi = {http://dx.doi.org/10.5281/zenodo.1188474},
+}
+```
+
+Thank you.
