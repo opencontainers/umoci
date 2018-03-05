@@ -260,22 +260,10 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// Get information about the path. This has to be done after we've dealt
 	// with whiteouts because it turns out that lstat(2) will return EPERM if
 	// you try to stat a whiteout on AUFS.
-	hdrFi := hdr.FileInfo()
 	fi, err := te.fsEval.Lstat(path)
 	if err != nil {
 		// File doesn't exist, just switch fi to the file header.
 		fi = hdr.FileInfo()
-	}
-
-	// If the type of the file has changed, there's nothing we can do other
-	// than just remove the old path and replace it.
-	// XXX: Is this actually valid according to the spec? Do you need to have a
-	//      whiteout in this case, or can we just assume that a change in the
-	//      type is reason enough to purge the old type.
-	if hdrFi.Mode()&os.ModeType != fi.Mode()&os.ModeType {
-		if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "replace removeall")
-		}
 	}
 
 	// Attempt to create the parent directory of the path we're unpacking.
@@ -289,21 +277,21 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		return errors.Wrap(err, "mkdir parent")
 	}
 
-	// At this moment, we have sorted out all other special cases of the path.
-	// In order to avoid potential permission or clobbering issues, just do the
-	// noble thing and massacre whatever path points to (*unless* it's a
-	// directory). This is necessary to avoid permission errors with os.Create
-	// and similar issues, as well as to remain fully spec-compliant (note that
-	// this will cause hard-links in the "lower" layer to not be able to point
-	// to "upper" layer inodes).
+	// We remove whatever existed at the old path to clobber it so that
+	// creating a new path will not break. The only exception is if the path is
+	// a directory in both the layer and the current filesystem, in which case
+	// we don't delete it for obvious reasons. In all other cases we clobber.
 	//
-	// Ideally we would also handle the case where a TarLink entry exists
-	// before its target entry in the same layer (as this logic would
-	// technically break that), but it's not clear whether such an archive
-	// would be technically considered a valid tar archive.
-	if hdr.Typeflag != tar.TypeDir {
+	// Note that this will cause hard-links in the "lower" layer to not be able
+	// to point to "upper" layer inodes even if the extracted type is the same
+	// as the old one, however it is not clear whether this is something a user
+	// would expect anyway. In addition, this will incorrectly deal with a
+	// TarLink that is present before the "upper" entry in the layer but the
+	// "lower" file still exists (so the hard-link would point to the old
+	// inode). It's not clear if such an archive is actually valid though.
+	if !fi.IsDir() || hdr.Typeflag != tar.TypeDir {
 		if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "clobber old")
+			return errors.Wrap(err, "clobber old path")
 		}
 	}
 
