@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"reflect"
 	"testing"
 	"time"
 
@@ -1789,5 +1790,103 @@ func TestMkdirRPerm(t *testing.T) {
 	}
 	if fi.Mode()&os.ModePerm != 0555 {
 		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	}
+}
+
+func TestWalk(t *testing.T) {
+	// There are two important things to make sure of here. That we actually
+	// hit all of the paths (once), and that the fileinfo we get is the one we
+	// expected.
+
+	if os.Geteuid() == 0 {
+		t.Log("unpriv.* tests only work with non-root privileges")
+		t.Skip()
+	}
+
+	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWalk")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer RemoveAll(dir)
+
+	// Create some structure.
+	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
+		t.Fatal(err)
+	}
+	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0123); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(dir, 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	// Walk over it.
+	seen := map[string]int{}
+	err = Walk(dir, func(path string, info os.FileInfo, err error) error {
+		// Don't expect errors.
+		if err != nil {
+			t.Errorf("unexpected error in walkfunc(%s): %v", path, err)
+			return err
+		}
+
+		// Run Lstat first, and return an error if it would fail so Wrap "works".
+		newFi, err := os.Lstat(path)
+		if err != nil {
+			return err
+		}
+
+		// Figure out the expected mode.
+		expectedMode := os.FileMode(0xFFFFFFFF)
+		switch path {
+		case dir:
+			expectedMode = 0755 | os.ModeDir
+		case filepath.Join(dir, "some"),
+			filepath.Join(dir, "some", "parent"):
+			expectedMode = os.ModeDir
+		case filepath.Join(dir, "some", "parent", "directories"):
+			expectedMode = 0123 | os.ModeDir
+		case filepath.Join(dir, "some", "parent", "directories", "file"):
+			expectedMode = 0
+		default:
+			t.Errorf("saw unexpected path %s", path)
+			return nil
+		}
+
+		// Check the mode.
+		if info.Mode() != expectedMode {
+			t.Errorf("got unexpected mode on %s: expected %o got %o", path, info.Mode(), expectedMode)
+		}
+		if !reflect.DeepEqual(info, newFi) {
+			t.Errorf("got different info after lstat: before=%#v after=%#v", info, newFi)
+		}
+
+		// Update seen map.
+		seen[path]++
+		return nil
+	})
+	if err != nil {
+		t.Errorf("unexpected walk error: %v", err)
+	}
+
+	// Check the seen map.
+	for path, num := range seen {
+		if num != 1 {
+			t.Errorf("path %s seen an unexpected number of times %d (expected %d)", path, num, 1)
+		}
+	}
+	if len(seen) != 5 {
+		t.Errorf("saw an unexpected number of paths: len(%v) != %v", seen, 5)
 	}
 }

@@ -19,6 +19,7 @@ package fseval
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/openSUSE/umoci/pkg/system"
@@ -145,4 +146,9 @@ func (fs osFsEval) Lclearxattrs(path string) error {
 // KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
 func (fs osFsEval) KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc {
 	return fn
+}
+
+// Walk is equivalent to filepath.Walk.
+func (fs osFsEval) Walk(root string, fn filepath.WalkFunc) error {
+	return filepath.Walk(root, fn)
 }

@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"time"
 
@@ -306,7 +307,7 @@ func Remove(path string) error {
 // foreachSubpath executes WrapFunc for each child of the given path (not
 // including the path itself). If path is not a directory, then WrapFunc will
 // not be called and no error will be returned. This should be called within a
-// context where path has already been made resolveable. If WrapFunc returns an
+// context where path has already been made resolveable, however the . If WrapFunc returns an
 // error, the first error is returned and iteration is halted.
 func foreachSubpath(path string, wrapFn WrapFunc) error {
 	// Is the path a directory?
@@ -327,17 +328,23 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 
 	// We need to change the mode to Readdirnames. We don't need to worry about
 	// permissions because we're already in a context with filepath.Dir(path)
-	// is at least a+rx.
-	os.Chmod(path, fi.Mode()|0400)
-	defer fiRestore(path, fi)
-
-	// Remove contents recursively.
+	// is at least a+rx. However, because we are calling wrapFn we need to
+	// restore the original mode immediately.
+	os.Chmod(path, fi.Mode()|0444)
 	names, err := fd.Readdirnames(-1)
+	fiRestore(path, fi)
 	if err != nil {
 		return errors.WithStack(err)
 	}
+
+	// Make iteration order consistent.
+	sort.Strings(names)
+
+	// Call on all the sub-directories. We run it in a Wrap context to ensure
+	// that the path we pass is resolveable when executed.
 	for _, name := range names {
-		if err := wrapFn(filepath.Join(path, name)); err != nil {
+		subpath := filepath.Join(path, name)
+		if err := Wrap(subpath, wrapFn); err != nil {
 			return err
 		}
 	}
@@ -520,4 +527,56 @@ func Lclearxattrs(path string) error {
 		}
 		return nil
 	}), "unpriv.lclearxattrs")
+}
+
+// walk is the inner implementation of Walk.
+func walk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
+	// Always run walkFn first. If we're not a directory there's no children to
+	// iterate over and so we bail even if there wasn't an error.
+	err := walkFn(path, info, nil)
+	if !info.IsDir() || err != nil {
+		return err
+	}
+
+	// Now just execute walkFn over each subpath.
+	return foreachSubpath(path, func(subpath string) error {
+		info, err := Lstat(subpath)
+		if err != nil {
+			// If it doesn't exist, just pass it directly to walkFn.
+			if err := walkFn(subpath, info, err); err != nil {
+				// Ignore SkipDir.
+				if errors.Cause(err) != filepath.SkipDir {
+					return err
+				}
+			}
+		} else {
+			if err := walk(subpath, info, walkFn); err != nil {
+				// Ignore error if it's SkipDir and subpath is a directory.
+				if !(info.IsDir() && errors.Cause(err) == filepath.SkipDir) {
+					return err
+				}
+			}
+		}
+		return nil
+	})
+}
+
+// Walk is a reimplementation of filepath.Walk, wrapping all of the relevant
+// function calls with Wrap, allowing you to walk over a tree even in the face
+// of multiple nested cases where paths are not normally accessible. The
+// os.FileInfo passed to walkFn is the "pristine" version (as opposed to the
+// currently-on-disk version that may have been temporarily modified by Wrap).
+func Walk(root string, walkFn filepath.WalkFunc) error {
+	return Wrap(root, func(root string) error {
+		info, err := Lstat(root)
+		if err != nil {
+			err = walkFn(root, nil, err)
+		} else {
+			err = walk(root, info, walkFn)
+		}
+		if errors.Cause(err) == filepath.SkipDir {
+			err = nil
+		}
+		return errors.Wrap(err, "unpriv.walk")
+	})
 }

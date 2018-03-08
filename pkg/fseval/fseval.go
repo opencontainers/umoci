@@ -19,6 +19,7 @@ package fseval
 
 import (
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/vbatts/go-mtree"
@@ -95,4 +96,7 @@ type FsEval interface {
 
 	// KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
 	KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc
+
+	// Walk is equivalent to filepath.Walk.
+	Walk(root string, fn filepath.WalkFunc) error
 }
