@@ -18,6 +18,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   fork][as-proot-fork] (though we do not test its interoperability at the
   moment) as both tools use [the same protobuf
   specification][rootlesscontainers-proto]. openSUSE/umoci#227
+- `umoci unpack` now has support for opaque whiteouts (whiteouts which remove
+  all children of a directory in the lower layer), though `umoci repack` does
+  not currently have support for generating them. While this is technically a
+  spec requirement, through testing we've never encountered an actual user of
+  these whiteouts. openSUSE/umoci#224 openSUSE/umoci#229
 
 ### Fixed
 - Fix a bug in our "parent directory restore" code, which is responsible for

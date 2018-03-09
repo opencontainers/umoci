@@ -35,11 +35,21 @@ import (
 )
 
 type tarExtractor struct {
-	// mapOptions is the set of mapping options to use when extracting filesystem layers.
+	// mapOptions is the set of mapping options to use when extracting
+	// filesystem layers.
 	mapOptions MapOptions
 
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
+
+	// upperPaths are paths that have either been extracted in the execution of
+	// this tarExtractor or are ancestors of paths extracted. The purpose of
+	// having this stored in-memory is to be able to handle opaque whiteouts as
+	// well as some other possible ordering issues with malformed archives (the
+	// downside of this approach is that it takes up memory -- we could switch
+	// to a trie if necessary). These paths are relative to the tar root but
+	// are fully symlink-expanded so no need to worry about that line noise.
+	upperPaths map[string]struct{}
 }
 
 // newTarExtractor creates a new tarExtractor.
@@ -52,6 +62,7 @@ func newTarExtractor(opt MapOptions) *tarExtractor {
 	return &tarExtractor{
 		mapOptions: opt,
 		fsEval:     fsEval,
+		upperPaths: make(map[string]struct{}),
 	}
 }
 
@@ -233,27 +244,75 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	if strings.HasPrefix(file, whPrefix) {
 		isOpaque := file == whOpaque
 		file = strings.TrimPrefix(file, whPrefix)
+
+		// We have special handling for opaque whiteouts. All other brands of
+		// whiteouts are just removed without prejudice (with the note that we
+		// cannot error out if a layer removes a non-existant file with this
+		// implementation -- in future we could add lowerPaths that would help
+		// track whether another whiteout caused the removal to "fail" or if
+		// the path was actually missing -- which would allow us to actually
+		// error out here).
+
 		path = filepath.Join(dir, file)
-
-		// XXX: We currently don't have any way of handling opaque files if
-		//      they occur after other entries inside the path. So we have to
-		//      error out (for now).
 		if isOpaque {
-			return errors.Errorf("unsupported whiteout type: %s", hdr.Name)
+			path = dir
 		}
 
-		// Unfortunately we can't just stat the file here, because if we hit a
-		// parent directory whiteout earlier than this one then stating here
-		// would fail. The best solution would be to keep a list of whiteouts
-		// we've seen and then Lstat accordingly (though it won't help in some
-		// cases).
+		removeFunc := te.fsEval.RemoveAll
+		if isOpaque {
+			removeFunc = func(path string) error {
+				// Check that root exists.
+				if fi, err := te.fsEval.Lstat(path); err != nil {
+					return errors.Wrap(err, "check whiteout root")
+				} else if !fi.IsDir() {
+					return errors.Errorf("expected whiteout root to be directory: %v", path)
+				}
 
-		// Just remove the path. The defer will reapply the correct parent
-		// metadata. We have nothing left to do here.
-		if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "whiteout remove all")
+				// Walk over the path to remove children.
+				err := te.fsEval.Walk(path, func(subpath string, info os.FileInfo, err error) error {
+					// If we are passed an error, bail unless it's ENOENT.
+					if err != nil {
+						// If something was deleted outside of our knowledge
+						// it's not the end of the world. We've already checked
+						// that the root path exists.
+						if os.IsNotExist(errors.Cause(err)) {
+							err = filepath.SkipDir
+						}
+						return err
+					}
+
+					// Skip the top-level dir.
+					if CleanPath(path) == CleanPath(subpath) {
+						return nil
+					}
+
+					// Get the relative form of subpath to root to match
+					// te.upperPaths.
+					upperPath, err := filepath.Rel(root, subpath)
+					if err != nil {
+						return errors.Wrap(err, "find relative-to-root [should never happen]")
+					}
+
+					// Remove the path only if it hasn't been touched.
+					if _, ok := te.upperPaths[upperPath]; !ok {
+						err := errors.Wrap(te.fsEval.RemoveAll(subpath), "whiteout subpath")
+						// Skip anything underneath the subpath if it's a
+						// directory, since we just purged it.
+						if err == nil && info.IsDir() {
+							err = filepath.SkipDir
+						}
+						return err
+					}
+					return nil
+				})
+				return errors.Wrap(err, "opaque whiteout")
+			}
 		}
 
+		// Run the removal function now.
+		if err := removeFunc(path); err != nil {
+			return errors.Wrap(err, "whiteout remove")
+		}
 		return nil
 	}
 
@@ -412,5 +471,16 @@ out:
 		}
 	}
 
+	// Everything is done -- the path now exists. Add it (and all its
+	// ancestors) to the set of upper paths. We first have to figure out the
+	// proper path corresponding to hdr.Name though.
+	upperPath, err := filepath.Rel(root, path)
+	if err != nil {
+		// Really shouldn't happen because of the guarantees of SecureJoinVFS.
+		return errors.Wrap(err, "find relative-to-root [should never happen]")
+	}
+	for pth := upperPath; pth != filepath.Dir(pth); pth = filepath.Dir(pth) {
+		te.upperPaths[pth] = struct{}{}
+	}
 	return nil
 }
