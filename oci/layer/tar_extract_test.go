@@ -20,6 +20,8 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
+	"crypto/rand"
+	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,6 +29,7 @@ import (
 	"time"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -307,6 +310,241 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 	}(t)
 }
 
+// TestUnpackOpaqueWhiteout checks whether *opaque* whiteout handling is done
+// correctly, as well as ensuring that the metadata of the parent is
+// maintained -- and that upperdir entries are handled.
+func TestUnpackOpaqueWhiteout(t *testing.T) {
+	type pseudoHdr struct {
+		path     string
+		linkname string
+		typeflag byte
+		upper    bool
+	}
+
+	fromPseudoHdr := func(ph pseudoHdr) (*tar.Header, io.Reader) {
+		var r io.Reader
+		var size int64
+		if ph.typeflag == tar.TypeReg || ph.typeflag == tar.TypeRegA {
+			size = 256 * 1024
+			r = &io.LimitedReader{
+				R: rand.Reader,
+				N: size,
+			}
+		}
+
+		mode := os.FileMode(0777)
+		if ph.typeflag == tar.TypeDir {
+			mode |= os.ModeDir
+		}
+
+		return &tar.Header{
+			Name:       ph.path,
+			Linkname:   ph.linkname,
+			Typeflag:   ph.typeflag,
+			Mode:       int64(mode),
+			Size:       size,
+			ModTime:    time.Unix(1210393, 4528036),
+			AccessTime: time.Unix(7892829, 2341211),
+			ChangeTime: time.Unix(8731293, 8218947),
+		}, r
+	}
+
+	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
+	func(t *testing.T) {
+		for _, test := range []struct {
+			name          string
+			ignoreExist   bool // ignore if extra upper files exist
+			pseudoHeaders []pseudoHdr
+		}{
+			{"EmptyDir", false, nil},
+			{"OneLevel", false, []pseudoHdr{
+				{"file", "", tar.TypeReg, false},
+				{"link", "..", tar.TypeSymlink, true},
+				{"badlink", "./nothing", tar.TypeSymlink, true},
+				{"fifo", "", tar.TypeFifo, false},
+			}},
+			{"OneLevelNoUpper", false, []pseudoHdr{
+				{"file", "", tar.TypeReg, false},
+				{"link", "..", tar.TypeSymlink, false},
+				{"badlink", "./nothing", tar.TypeSymlink, false},
+				{"fifo", "", tar.TypeFifo, false},
+			}},
+			{"TwoLevel", false, []pseudoHdr{
+				{"file", "", tar.TypeReg, true},
+				{"link", "..", tar.TypeSymlink, false},
+				{"badlink", "./nothing", tar.TypeSymlink, false},
+				{"dir", "", tar.TypeDir, true},
+				{"dir/file", "", tar.TypeRegA, true},
+				{"dir/link", "../badlink", tar.TypeSymlink, false},
+				{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
+				{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+			}},
+			{"TwoLevelNoUpper", false, []pseudoHdr{
+				{"file", "", tar.TypeReg, false},
+				{"link", "..", tar.TypeSymlink, false},
+				{"badlink", "./nothing", tar.TypeSymlink, false},
+				{"dir", "", tar.TypeDir, false},
+				{"dir/file", "", tar.TypeRegA, false},
+				{"dir/link", "../badlink", tar.TypeSymlink, false},
+				{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+				{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+			}},
+			{"MultiLevel", false, []pseudoHdr{
+				{"level1_file", "", tar.TypeReg, true},
+				{"level1_link", "..", tar.TypeSymlink, false},
+				{"level1a", "", tar.TypeDir, true},
+				{"level1a/level2_file", "", tar.TypeRegA, false},
+				{"level1a/level2_link", "../../../", tar.TypeSymlink, true},
+				{"level1a/level2a", "", tar.TypeDir, false},
+				{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
+				{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
+				{"level1a/level2b", "", tar.TypeDir, true},
+				{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
+				{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
+				{"level1a/level2b/level3", "", tar.TypeDir, false},
+				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+				{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
+				{"level1b", "", tar.TypeDir, false},
+				{"level1b/level2_fileA", "", tar.TypeReg, false},
+				{"level1b/level2_fileB", "", tar.TypeReg, false},
+				{"level1b/level2", "", tar.TypeDir, false},
+				{"level1b/level2/level3_file", "", tar.TypeReg, false},
+			}},
+			{"MultiLevelNoUpper", false, []pseudoHdr{
+				{"level1_file", "", tar.TypeReg, false},
+				{"level1_link", "..", tar.TypeSymlink, false},
+				{"level1a", "", tar.TypeDir, false},
+				{"level1a/level2_file", "", tar.TypeRegA, false},
+				{"level1a/level2_link", "../../../", tar.TypeSymlink, false},
+				{"level1a/level2a", "", tar.TypeDir, false},
+				{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
+				{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
+				{"level1a/level2b", "", tar.TypeDir, false},
+				{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
+				{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
+				{"level1a/level2b/level3", "", tar.TypeDir, false},
+				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+				{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
+				{"level1b", "", tar.TypeDir, false},
+				{"level1b/level2_fileA", "", tar.TypeReg, false},
+				{"level1b/level2_fileB", "", tar.TypeReg, false},
+				{"level1b/level2", "", tar.TypeDir, false},
+				{"level1b/level2/level3_file", "", tar.TypeReg, false},
+			}},
+			{"MissingUpperAncestor", true, []pseudoHdr{
+				{"some", "", tar.TypeDir, false},
+				{"some/dir", "", tar.TypeDir, false},
+				{"some/dir/somewhere", "", tar.TypeReg, true},
+				{"another", "", tar.TypeDir, false},
+				{"another/dir", "", tar.TypeDir, false},
+				{"another/dir/somewhere", "", tar.TypeReg, false},
+			}},
+		} {
+			t.Logf("running Test%s", test.name)
+			mapOptions := MapOptions{
+				Rootless: os.Geteuid() != 0,
+			}
+
+			dir, err := ioutil.TempDir("", "umoci-TestUnpackOpaqueWhiteout")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer os.RemoveAll(dir)
+
+			// We do all whiteouts in a subdirectory.
+			whiteoutDir := "test-subdir"
+			whiteoutRoot := filepath.Join(dir, whiteoutDir)
+			if err := os.MkdirAll(whiteoutRoot, 0755); err != nil {
+				t.Fatal(err)
+			}
+
+			// Track if we have upper entries.
+			numUpper := 0
+
+			// First we apply the non-upper files in a new tarExtractor.
+			te := newTarExtractor(mapOptions)
+			for _, ph := range test.pseudoHeaders {
+				// Skip upper.
+				if ph.upper {
+					numUpper++
+					continue
+				}
+				hdr, rdr := fromPseudoHdr(ph)
+				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
+				if err := te.unpackEntry(dir, hdr, rdr); err != nil {
+					t.Errorf("unpackEntry %s failed: %v", hdr.Name, err)
+				}
+			}
+
+			// Now we apply the upper files in another tarExtractor.
+			te = newTarExtractor(mapOptions)
+			for _, ph := range test.pseudoHeaders {
+				// Skip non-upper.
+				if !ph.upper {
+					continue
+				}
+				hdr, rdr := fromPseudoHdr(ph)
+				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
+				if err := te.unpackEntry(dir, hdr, rdr); err != nil {
+					t.Errorf("unpackEntry %s failed: %v", hdr.Name, err)
+				}
+			}
+
+			// And now apply a whiteout for the whiteoutRoot.
+			whHdr := &tar.Header{
+				Name:     filepath.Join(whiteoutDir, whOpaque),
+				Typeflag: tar.TypeReg,
+			}
+			if err := te.unpackEntry(dir, whHdr, nil); err != nil {
+				t.Errorf("unpack whiteout %s failed: %v", whiteoutRoot, err)
+				continue
+			}
+
+			// Now we double-check it worked. If the file was in "upper" it
+			// should have survived. If it was in lower it shouldn't. We don't
+			// bother checking the contents here.
+			for _, ph := range test.pseudoHeaders {
+				fullPath := filepath.Join(whiteoutRoot, ph.path)
+
+				_, err := te.fsEval.Lstat(fullPath)
+				if err != nil && !os.IsNotExist(errors.Cause(err)) {
+					t.Errorf("unexpected lstat error of %s: %v", ph.path, err)
+				} else if ph.upper && err != nil {
+					t.Errorf("expected upper %s to exist: got %v", ph.path, err)
+				} else if !ph.upper && err == nil {
+					if !test.ignoreExist {
+						t.Errorf("expected lower %s to not exist", ph.path)
+					}
+				}
+			}
+
+			// Make sure the whiteoutRoot still exists.
+			if fi, err := te.fsEval.Lstat(whiteoutRoot); err != nil {
+				if os.IsNotExist(errors.Cause(err)) {
+					t.Errorf("expected whiteout root to still exist: %v", err)
+				} else {
+					t.Errorf("unexpected error in lstat of whiteout root: %v", err)
+				}
+			} else if !fi.IsDir() {
+				t.Errorf("expected whiteout root to still be a directory")
+			}
+
+			// Check that the directory is empty if there's no uppers.
+			if numUpper == 0 {
+				if fd, err := os.Open(whiteoutRoot); err != nil {
+					t.Errorf("unexpected error opening whiteoutRoot: %v", err)
+				} else if names, err := fd.Readdirnames(-1); err != nil {
+					t.Errorf("unexpected error reading dirnames: %v", err)
+				} else if len(names) != 0 {
+					t.Errorf("expected empty opaque'd dir: got %v", names)
+				}
+			}
+		}
+	}(t)
+}
+
 // TestUnpackHardlink makes sure that hardlinks are correctly unpacked in all
 // cases. In particular when it comes to hardlinks to symlinks.
 func TestUnpackHardlink(t *testing.T) {
@@ -474,8 +712,6 @@ func TestUnpackEntryMap(t *testing.T) {
 				t.Fatal(err)
 			}
 			defer os.RemoveAll(dir)
-
-			t.Logf("running with uid=%#v gid=%#v", test.uidMap, test.gidMap)
 
 			var (
 				hdrUID, hdrGID, uUID, uGID int

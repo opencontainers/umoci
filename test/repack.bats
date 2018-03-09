@@ -151,14 +151,32 @@ function teardown() {
 	[ -z "$output" ]
 
 	# Just for sanity, check that everything looks okay.
-	! [ -e "$BUNDLE_A/rootfs/etc" ]
-	! [ -e "$BUNDLE_A/rootfs/bin/sh" ]
-	! [ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
+	! [ -e "$BUNDLE_B/rootfs/etc" ]
+	! [ -e "$BUNDLE_B/rootfs/bin/sh" ]
+	! [ -e "$BUNDLE_B/rootfs/usr/bin/env" ]
 
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}-new" --json
 	[ "$status" -eq 0 ]
 	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "null" ]]
+
+	# Try to create a layer containing a ".wh." file.
+	mkdir -p "$BUNDLE_B/rootfs/whiteout_test"
+	echo "some data" > "$BUNDLE_B/rootfs/whiteout_test/.wh. THIS IS A TEST "
+
+	# Repacking a rootfs with a '.wh.' file *must* fail.
+	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_B"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Try to create a layer containing a ".wh." directory.
+	rm -rf "$BUNDLE_B/rootfs/whiteout_test"
+	mkdir -p "$BUNDLE_B/rootfs/.wh.another_whiteout"
+
+	# Repacking a rootfs with a '.wh.' directory *must* fail.
+	umoci repack --image "${IMAGE}:${TAG}-new3" "$BUNDLE_B"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci repack [replace]" {
@@ -202,9 +220,9 @@ function teardown() {
 	[ -z "$output" ]
 
 	# Just for sanity, check that everything looks okay.
-	[ -f "$BUNDLE_A/rootfs/etc" ]
-	[ -d "$BUNDLE_A/rootfs/bin/sh" ]
-	[ -L "$BUNDLE_A/rootfs/usr/bin/env" ]
+	[ -f "$BUNDLE_B/rootfs/etc" ]
+	[ -d "$BUNDLE_B/rootfs/bin/sh" ]
+	[ -L "$BUNDLE_B/rootfs/usr/bin/env" ]
 
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}" --json

@@ -22,6 +22,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -133,6 +134,13 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	}
 	hdr.Name = name
 
+	// Make sure that we don't include any files with the name ".wh.". This
+	// will almost certainly confuse some users (unfortunately) but there's
+	// nothing we can do to store such files on-disk.
+	if strings.HasPrefix(filepath.Base(name), whPrefix) {
+		return errors.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+	}
+
 	// FIXME: Do we need to ensure that the parent paths have all been added to
 	//        the archive? I haven't found any tar specification that makes
 	//        this mandatory, but I have a feeling that some people might rely
@@ -225,7 +233,14 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	return nil
 }
 
+// whPrefix is the whiteout prefix, which is used to signify "special" files in
+// an OCI image layer archive. An expanded filesystem image cannot contain
+// files that have a basename starting with this prefix.
 const whPrefix = ".wh."
+
+// whOpaque is the *full* basename of a special file which indicates that all
+// siblings in a directory are to be dropped in the "lower" layer.
+const whOpaque = whPrefix + whPrefix + ".opq"
 
 // AddWhiteout adds a whiteout file for the given name inside the tar archive.
 // It's not recommended to add a file with AddFile and then white it out.
@@ -239,6 +254,11 @@ func (tg *tarGenerator) AddWhiteout(name string) error {
 	dir, file := filepath.Split(name)
 	whiteout := filepath.Join(dir, whPrefix+file)
 	timestamp := time.Now()
+
+	// Disallow having a whiteout of a whiteout, purely for our own sanity.
+	if strings.HasPrefix(file, whPrefix) {
+		return errors.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+	}
 
 	// Add a dummy header for the whiteout file.
 	if err := tg.tw.WriteHeader(&tar.Header{

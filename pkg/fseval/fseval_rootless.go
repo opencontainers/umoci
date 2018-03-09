@@ -20,6 +20,7 @@ package fseval
 import (
 	"io"
 	"os"
+	"path/filepath"
 	"time"
 
 	"github.com/openSUSE/umoci/pkg/unpriv"
@@ -147,4 +148,9 @@ func (fs unprivFsEval) KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc {
 		})
 		return kv, err
 	}
+}
+
+// Walk is equivalent to filepath.Walk.
+func (fs unprivFsEval) Walk(root string, fn filepath.WalkFunc) error {
+	return unpriv.Walk(root, fn)
 }
