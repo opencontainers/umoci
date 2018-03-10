@@ -23,6 +23,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   not currently have support for generating them. While this is technically a
   spec requirement, through testing we've never encountered an actual user of
   these whiteouts. openSUSE/umoci#224 openSUSE/umoci#229
+- `umoci unpack` will now use some rootless tricks inside user namespaces for
+  operations that are known to fail (such as `mknod(2)`) while other operations
+  will be carried out as normal (such as `lchown(2)`). It should be noted that
+  the `/proc/self/uid_map` checking we do can be tricked into not detecting
+  user namespaces, but you would need to be trying to break it on purpose.
+  openSUSE/umoci#171 openSUSE/umoci#230
 
 ### Fixed
 - Fix a bug in our "parent directory restore" code, which is responsible for

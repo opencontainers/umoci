@@ -30,14 +30,26 @@ import (
 	"github.com/cyphar/filepath-securejoin"
 	"github.com/openSUSE/umoci/pkg/fseval"
 	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/openSUSE/umoci/third_party/shared"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
+
+// inUserNamespace is a cached return value of shared.RunningInUserNS(). We
+// compute this once globally rather than for each unpack. It won't change (we
+// would hope) after we check it the first time.
+var inUserNamespace = shared.RunningInUserNS()
 
 type tarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting
 	// filesystem layers.
 	mapOptions MapOptions
+
+	// partialRootless indicates whether "partial rootless" tricks should be
+	// applied in our extraction. Rootless and userns execution have some
+	// similar tricks necessary, but not all rootless tricks should be applied
+	// when running in a userns -- hence the term "partial rootless" tricks.
+	partialRootless bool
 
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
@@ -60,9 +72,10 @@ func newTarExtractor(opt MapOptions) *tarExtractor {
 	}
 
 	return &tarExtractor{
-		mapOptions: opt,
-		fsEval:     fsEval,
-		upperPaths: make(map[string]struct{}),
+		mapOptions:      opt,
+		partialRootless: opt.Rootless || inUserNamespace,
+		fsEval:          fsEval,
+		upperPaths:      make(map[string]struct{}),
 	}
 }
 
@@ -124,7 +137,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
-			if te.mapOptions.Rootless && os.IsPermission(errors.Cause(err)) {
+			if te.partialRootless && os.IsPermission(errors.Cause(err)) {
 				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
 				continue
 			}
@@ -425,8 +438,15 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 	// character device node, block device node
 	case tar.TypeChar, tar.TypeBlock:
-		// In rootless mode we have to fake this.
-		if te.mapOptions.Rootless {
+		// In rootless mode we have no choice but to fake this, since mknod(2)
+		// doesn't work as an unprivileged user here.
+		//
+		// TODO: We need to add the concept of a fake block device in
+		//       "user.rootlesscontainers", because this workaround suffers
+		//       from the obvious issue that if the file is touched (even the
+		//       metadata) then it will be incorrectly copied into the layer.
+		//       This would break distribution images fairly badly.
+		if te.partialRootless {
 			log.Warnf("rootless{%s} creating empty file in place of device %d:%d", hdr.Name, hdr.Devmajor, hdr.Devminor)
 			fh, err := te.fsEval.Create(path)
 			if err != nil {
