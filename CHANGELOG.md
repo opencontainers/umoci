@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.0] - 2018-03-10
 ### Added
 - `umoci repack` now supports `--refresh-bundle` which will update the
   OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
@@ -300,7 +302,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.3.1...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.0...HEAD
+[0.4.0]: https://github.com/openSUSE/umoci/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/openSUSE/umoci/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/openSUSE/umoci/compare/v0.2.1...v0.3.0
 [0.2.1]: https://github.com/openSUSE/umoci/compare/v0.2.0...v0.2.1
