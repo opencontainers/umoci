@@ -28,12 +28,6 @@ performed.
 
 ### `--refresh-bundle` ###
 
-{{% notice tip %}}
-Note that while this functionality <a
-href="https://github.com/openSUSE/umoci/pull/201">has been merged</a>, it has
-not yet been released in a version of umoci.
-{{% /notice %}}
-
 A very common workflow when building a series of layers in an image is that,
 since you want to place different files in different layers of the image, you
 have to do something like the following:
