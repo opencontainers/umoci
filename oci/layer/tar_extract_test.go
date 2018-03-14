@@ -25,6 +25,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 	"time"
 
@@ -441,6 +442,31 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				{"another/dir", "", tar.TypeDir, false},
 				{"another/dir/somewhere", "", tar.TypeReg, false},
 			}},
+			{"UpperWhiteout", false, []pseudoHdr{
+				{whPrefix + "fileB", "", tar.TypeReg, true},
+				{"fileA", "", tar.TypeReg, true},
+				{"fileB", "", tar.TypeReg, true},
+				{"fileC", "", tar.TypeReg, false},
+				{whPrefix + "fileA", "", tar.TypeReg, true},
+				{whPrefix + "fileC", "", tar.TypeReg, true},
+			}},
+			// XXX: What umoci should do here is not really defined by the
+			//      spec. In particular, whether you need a whiteout for every
+			//      sub-path or just the path itself is not well-defined. This
+			//      code assumes that you *do not*.
+			{"UpperDirWhiteout", false, []pseudoHdr{
+				{whPrefix + "dir2", "", tar.TypeReg, true},
+				{"file", "", tar.TypeReg, false},
+				{"dir1", "", tar.TypeDir, true},
+				{"dir1/file", "", tar.TypeRegA, true},
+				{"dir1/link", "../badlink", tar.TypeSymlink, false},
+				{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
+				{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+				{whPrefix + "dir1", "", tar.TypeReg, true},
+				{"dir2", "", tar.TypeDir, true},
+				{"dir2/file", "", tar.TypeRegA, true},
+				{"dir2/link", "../badlink", tar.TypeSymlink, false},
+			}},
 		} {
 			t.Logf("running Test%s", test.name)
 			mapOptions := MapOptions{
@@ -506,8 +532,14 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			// should have survived. If it was in lower it shouldn't. We don't
 			// bother checking the contents here.
 			for _, ph := range test.pseudoHeaders {
-				fullPath := filepath.Join(whiteoutRoot, ph.path)
+				// If there's an explicit whiteout in the headers we ignore it
+				// here, since it won't be on the filesystem.
+				if strings.HasPrefix(filepath.Base(ph.path), whPrefix) {
+					t.Logf("ignoring whiteout entry %q during post-check", ph.path)
+					continue
+				}
 
+				fullPath := filepath.Join(whiteoutRoot, ph.path)
 				_, err := te.fsEval.Lstat(fullPath)
 				if err != nil && !os.IsNotExist(errors.Cause(err)) {
 					t.Errorf("unexpected lstat error of %s: %v", ph.path, err)

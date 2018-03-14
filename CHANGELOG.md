@@ -5,6 +5,10 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+- `umoci unpack` now handles out-of-order regular whiteouts correctly (though
+  this ordering is not recommended by the spec -- nor is it required). This is
+  an extension of openSUSE/umoci#229 that was missed during review.
+  openSUSE/umoci#232
 
 ## [0.4.0] - 2018-03-10
 ### Added

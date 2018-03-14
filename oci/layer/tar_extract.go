@@ -258,75 +258,83 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		isOpaque := file == whOpaque
 		file = strings.TrimPrefix(file, whPrefix)
 
-		// We have special handling for opaque whiteouts. All other brands of
-		// whiteouts are just removed without prejudice (with the note that we
-		// cannot error out if a layer removes a non-existant file with this
-		// implementation -- in future we could add lowerPaths that would help
-		// track whether another whiteout caused the removal to "fail" or if
-		// the path was actually missing -- which would allow us to actually
-		// error out here).
+		// We have to be quite careful here. While the most intuitive way of
+		// handling whiteouts would be to just RemoveAll without prejudice, We
+		// have to be careful here. If there is a whiteout entry for a file
+		// *after* a normal entry (in the same layer) then the whiteout must
+		// not remove the new entry. We handle this by keeping track of
+		// whichpaths have been touched by this layer's extraction (these form
+		// the "upperdir"). We also have to handle cases where a directory has
+		// been marked for deletion, but a child has been extracted in this
+		// layer.
 
 		path = filepath.Join(dir, file)
 		if isOpaque {
 			path = dir
 		}
 
-		removeFunc := te.fsEval.RemoveAll
-		if isOpaque {
-			removeFunc = func(path string) error {
-				// Check that root exists.
-				if fi, err := te.fsEval.Lstat(path); err != nil {
-					return errors.Wrap(err, "check whiteout root")
-				} else if !fi.IsDir() {
-					return errors.Errorf("expected whiteout root to be directory: %v", path)
+		// If the root doesn't exist we've got nothing to do.
+		// XXX: We currently cannot error out if a layer asks us to remove a
+		//      non-existent path with this implementation (because we don't
+		//      know if it was implicitly removed by another whiteout). In
+		//      future we could add lowerPaths that would help track whether
+		//      another whiteout caused the removal to "fail" or if the path
+		//      was actually missing -- which would allow us to actually error
+		//      out here if the layer is invalid).
+		if _, err := te.fsEval.Lstat(path); err != nil {
+			// Need to use securejoin.IsNotExist to handle ENOTDIR.
+			if securejoin.IsNotExist(errors.Cause(err)) {
+				err = nil
+			}
+			return errors.Wrap(err, "check whiteout target")
+		}
+
+		// Walk over the path to remove it. We remove a given path as soon as
+		// it isn't present in upperPaths (which includes ancestors of paths
+		// we've extracted so we only need to look up the one path). Otherwise
+		// we iterate over any children and try again. The only difference
+		// between opaque whiteouts and regular whiteouts is that we don't
+		// delete the directory itself with opaque whiteouts.
+		err = te.fsEval.Walk(path, func(subpath string, info os.FileInfo, err error) error {
+			// If we are passed an error, bail unless it's ENOENT.
+			if err != nil {
+				// If something was deleted outside of our knowledge it's not
+				// the end of the world. In principle this shouldn't happen
+				// though, so we log it for posterity.
+				if os.IsNotExist(errors.Cause(err)) {
+					log.Debugf("whiteout removal hit already-deleted path: %s", subpath)
+					err = filepath.SkipDir
+				}
+				return err
+			}
+
+			// Get the relative form of subpath to root to match
+			// te.upperPaths.
+			upperPath, err := filepath.Rel(root, subpath)
+			if err != nil {
+				return errors.Wrap(err, "find relative-to-root [should never happen]")
+			}
+
+			// Remove the path only if it hasn't been touched.
+			if _, ok := te.upperPaths[upperPath]; !ok {
+				// Opaque whiteouts don't remove the directory itself, so skip
+				// the top-level directory.
+				if isOpaque && CleanPath(path) == CleanPath(subpath) {
+					return nil
 				}
 
-				// Walk over the path to remove children.
-				err := te.fsEval.Walk(path, func(subpath string, info os.FileInfo, err error) error {
-					// If we are passed an error, bail unless it's ENOENT.
-					if err != nil {
-						// If something was deleted outside of our knowledge
-						// it's not the end of the world. We've already checked
-						// that the root path exists.
-						if os.IsNotExist(errors.Cause(err)) {
-							err = filepath.SkipDir
-						}
-						return err
-					}
-
-					// Skip the top-level dir.
-					if CleanPath(path) == CleanPath(subpath) {
-						return nil
-					}
-
-					// Get the relative form of subpath to root to match
-					// te.upperPaths.
-					upperPath, err := filepath.Rel(root, subpath)
-					if err != nil {
-						return errors.Wrap(err, "find relative-to-root [should never happen]")
-					}
-
-					// Remove the path only if it hasn't been touched.
-					if _, ok := te.upperPaths[upperPath]; !ok {
-						err := errors.Wrap(te.fsEval.RemoveAll(subpath), "whiteout subpath")
-						// Skip anything underneath the subpath if it's a
-						// directory, since we just purged it.
-						if err == nil && info.IsDir() {
-							err = filepath.SkipDir
-						}
-						return err
-					}
-					return nil
-				})
-				return errors.Wrap(err, "opaque whiteout")
+				// Purge the path. We skip anything underneath (if it's a
+				// directory) since we just purged it -- and we don't want to
+				// hit ENOENT during iteration for no good reason.
+				err := errors.Wrap(te.fsEval.RemoveAll(subpath), "whiteout subpath")
+				if err == nil && info.IsDir() {
+					err = filepath.SkipDir
+				}
+				return err
 			}
-		}
-
-		// Run the removal function now.
-		if err := removeFunc(path); err != nil {
-			return errors.Wrap(err, "whiteout remove")
-		}
-		return nil
+			return nil
+		})
+		return errors.Wrap(err, "whiteout remove")
 	}
 
 	// Get information about the path. This has to be done after we've dealt
