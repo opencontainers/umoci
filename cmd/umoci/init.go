@@ -18,11 +18,8 @@
 package main
 
 import (
-	"fmt"
-	"os"
-
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas/dir"
+	"github.com/openSUSE/umoci"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -47,17 +44,11 @@ commands.`,
 func initLayout(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
-	if _, err := os.Stat(imagePath); !os.IsNotExist(err) {
-		if err == nil {
-			err = fmt.Errorf("path already exists: %s", imagePath)
-		}
-		return errors.Wrap(err, "image layout creation")
+	layout, err := umoci.CreateLayout(imagePath)
+	if err != nil {
+		return errors.Wrap(err, "create layout")
 	}
-
-	if err := dir.Create(imagePath); err != nil {
-		return errors.Wrap(err, "image layout creation")
-	}
-
+	layout.Close()
 	log.Infof("created new OCI image: %s", imagePath)
 	return nil
 }
