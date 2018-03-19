@@ -147,12 +147,18 @@ func (l *Layout) Close() error {
 	return l.ext.Close()
 }
 
+// LookupManifest looks up a manifest by tag name.
 func (l *Layout) LookupManifest(tag string) (ispec.Manifest, error) {
 	tagDescriptor, err := l.resolve(tag)
 	if err != nil {
 		return ispec.Manifest{}, err
 	}
 
+	return l.LookupManifestByDescriptor(tagDescriptor)
+}
+
+// LookupManifestByDescriptor looks up a manifest by descriptor.
+func (l *Layout) LookupManifestByDescriptor(tagDescriptor ispec.Descriptor) (ispec.Manifest, error) {
 	manifestBlob, err := l.ext.FromDescriptor(context.Background(), tagDescriptor)
 	if err != nil {
 		return ispec.Manifest{}, errors.Wrap(err, "get manifest")
