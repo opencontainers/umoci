@@ -157,6 +157,12 @@ func (l *Layout) LookupManifest(tag string) (ispec.Manifest, error) {
 	return l.LookupManifestByDescriptor(tagDescriptor)
 }
 
+// LookupManifestDescriptor returns the descriptor for a particular manifest
+// tag.
+func (l *Layout) LookupManifestDescriptor(tag string) (ispec.Descriptor, error) {
+	return l.resolve(tag)
+}
+
 // LookupManifestByDescriptor looks up a manifest by descriptor.
 func (l *Layout) LookupManifestByDescriptor(tagDescriptor ispec.Descriptor) (ispec.Manifest, error) {
 	manifestBlob, err := l.ext.FromDescriptor(context.Background(), tagDescriptor)
