@@ -5,6 +5,19 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+### Added
+- The number of possible tags that are now valid with `umoci` subcommands has
+  increased significantly due to an expansion in the specification of the
+  format of the `ref.name` annotation. To quote the specification, the
+  following is the EBNF of valid `refname` values. openSUSE/umoci#234
+  ```
+  refname   ::= component ("/" component)*
+  component ::= alphanum (separator alphanum)*
+  alphanum  ::= [A-Za-z0-9]+
+  separator ::= [-._:@+] | "--"
+  ```
+
+### Fixed
 - `umoci unpack` now handles out-of-order regular whiteouts correctly (though
   this ordering is not recommended by the spec -- nor is it required). This is
   an extension of openSUSE/umoci#229 that was missed during review.

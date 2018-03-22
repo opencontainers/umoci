@@ -48,7 +48,7 @@ the tag and "<new-tag>" is the new name of the tag.`,
 		if ctx.Args().First() == "" {
 			return errors.Errorf("new tag cannot be empty")
 		}
-		if !refRegexp.MatchString(ctx.Args().First()) {
+		if !casext.IsValidReferenceName(ctx.Args().First()) {
 			return errors.Errorf("new tag is an invalid reference")
 		}
 		ctx.App.Metadata["new-tag"] = ctx.Args().First()

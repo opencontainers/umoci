@@ -18,6 +18,8 @@
 package casext
 
 import (
+	"regexp"
+
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
@@ -37,6 +39,23 @@ func isKnownMediaType(mediaType string) bool {
 		mediaType == ispec.MediaTypeImageConfig
 }
 
+// refnameRegex is a regex that only matches reference names that are valid
+// according to the OCI specification. See IsValidReferenceName for the EBNF.
+var refnameRegex = regexp.MustCompile(`^([A-Za-z0-9]+(([-._:@+]|--)[A-Za-z0-9]+)*)(/([A-Za-z0-9]+(([-._:@+]|--)[A-Za-z0-9]+)*))*$`)
+
+// IsValidReferenceName returns whether the provided annotation value for
+// "org.opencontainers.image.ref.name" is actually valid according to the
+// OCI specification. This only matches against the MUST requirement, not the
+// SHOULD requirement. The EBNF defined in the specification is:
+//
+//   refname   ::= component ("/" component)*
+//   component ::= alphanum (separator alphanum)*
+//   alphanum  ::= [A-Za-z0-9]+
+//   separator ::= [-._:@+] | "--"
+func IsValidReferenceName(refname string) bool {
+	return refnameRegex.MatchString(refname)
+}
+
 // ResolveReference will attempt to resolve all possible descriptor paths to
 // Manifests (or any unknown blobs) that match a particular reference name (if
 // descriptors are stored in non-standard blobs, Resolve will be unable to find
@@ -49,6 +68,13 @@ func isKnownMediaType(mediaType string) bool {
 // TODO: How are we meant to implement other restrictions such as the
 //       architecture and feature flags? The API will need to change.
 func (e Engine) ResolveReference(ctx context.Context, refname string) ([]DescriptorPath, error) {
+	// XXX: It should be possible to override this somehow, in case we are
+	//      dealing with an image that abuses the image specification in some
+	//      way.
+	if !IsValidReferenceName(refname) {
+		return nil, errors.Errorf("refusing to resolve invalid reference %q", refname)
+	}
+
 	index, err := e.GetIndex(ctx)
 	if err != nil {
 		return nil, errors.Wrap(err, "get top-level index")
@@ -106,6 +132,13 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 // descriptor. If there are multiple descriptors that match the refname they
 // are all replaced with the given descriptor.
 func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor ispec.Descriptor) error {
+	// XXX: It should be possible to override this somehow, in case we are
+	//      dealing with an image that abuses the image specification in some
+	//      way.
+	if !IsValidReferenceName(refname) {
+		return errors.Errorf("refusing to update invalid reference %q", refname)
+	}
+
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
@@ -142,6 +175,13 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 // DeleteReference removes all entries in the index that match the given
 // refname.
 func (e Engine) DeleteReference(ctx context.Context, refname string) error {
+	// XXX: It should be possible to override this somehow, in case we are
+	//      dealing with an image that abuses the image specification in some
+	//      way.
+	if !IsValidReferenceName(refname) {
+		return errors.Errorf("refusing to delete invalid reference %q", refname)
+	}
+
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
