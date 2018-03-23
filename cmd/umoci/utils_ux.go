@@ -19,15 +19,12 @@ package main
 
 import (
 	"fmt"
-	"regexp"
 	"strings"
 
+	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
-
-// refRegexp defines the regexp that a given OCI tag must obey.
-var refRegexp = regexp.MustCompile(`^([A-Za-z0-9._-]+)+$`)
 
 func flattenCommands(cmds []cli.Command) []*cli.Command {
 	var flatten []*cli.Command
@@ -106,7 +103,7 @@ func uxTag(cmd cli.Command) cli.Command {
 		// Verify tag value.
 		if ctx.IsSet("tag") {
 			tag := ctx.String("tag")
-			if !refRegexp.MatchString(tag) {
+			if !casext.IsValidReferenceName(tag) {
 				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --tag")
 			}
 			if tag == "" {
@@ -161,7 +158,7 @@ func uxImage(cmd cli.Command) cli.Command {
 			}
 
 			// Verify tag value.
-			if !refRegexp.MatchString(tag) {
+			if !casext.IsValidReferenceName(tag) {
 				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --image")
 			}
 			if tag == "" {
