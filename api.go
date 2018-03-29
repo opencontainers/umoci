@@ -248,3 +248,8 @@ func (l *Layout) Mutator(tag string) (*mutate.Mutator, error) {
 
 	return mutate.New(l.ext, descriptorPaths[0])
 }
+
+// DeleteTag deletes the specified tag.
+func (l *Layout) DeleteTag(tag string) error {
+	return l.ext.DeleteReference(context.Background(), tag)
+}
