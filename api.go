@@ -184,6 +184,11 @@ func (l *Layout) LookupManifestByDescriptor(tagDescriptor ispec.Descriptor) (isp
 	return manifest, nil
 }
 
+// LookupBlob looks up a blob in the OCI image.
+func (l *Layout) LookupBlob(desc ispec.Descriptor) (*casext.Blob, error) {
+	return l.ext.FromDescriptor(context.Background(), desc)
+}
+
 // LayersForTag returns the layer blobs that the particular tag references.
 func (l *Layout) LayersForTag(tag string) ([]*casext.Blob, error) {
 	manifest, err := l.LookupManifest(tag)
