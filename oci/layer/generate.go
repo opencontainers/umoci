@@ -19,8 +19,11 @@ package layer
 
 import (
 	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"sort"
+	"strings"
 
 	"github.com/apex/log"
 	"github.com/pkg/errors"
@@ -96,4 +99,45 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 	}()
 
 	return reader, nil
+}
+
+// GenerateInsertLayer generates a completely new layer from the root path to
+// be inserted into the image at "prefix".
+func GenerateInsertLayer(root string, prefix string, opt *MapOptions) io.ReadCloser {
+	root = path.Clean(root)
+	rootPrefixLen := len(root) - len(path.Base(root))
+	prefix = strings.TrimPrefix(prefix, "/")
+
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+
+	reader, writer := io.Pipe()
+
+	go func() {
+		var err error
+
+		defer func() {
+			writer.CloseWithError(errors.Wrap(err, "generate layer"))
+		}()
+
+		tg := newTarGenerator(writer, mapOptions)
+
+		err = filepath.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			pathInTar := path.Join(prefix, curPath[rootPrefixLen:])
+			return tg.AddFile(pathInTar, curPath)
+		})
+		if err != nil {
+			return
+		}
+
+		err = tg.tw.Close()
+	}()
+
+	return reader
 }

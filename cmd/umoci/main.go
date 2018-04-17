@@ -111,6 +111,7 @@ func main() {
 		tagListCommand,
 		statCommand,
 		rawSubcommand,
+		insertCommand,
 	}
 
 	app.Metadata = map[string]interface{}{}
