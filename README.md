@@ -66,7 +66,7 @@ Your `umoci` binary will be in `$HOME/bin`.
 
 umoci has a subcommand-based command-line. For more detailed information, see
 the generated man pages (which you can build with `make doc`). You can also
-read through our [quick start guide][quickstart].
+read through our [quick start guide][https://umo.ci/quick-start].
 
 ```
 % umoci --help
