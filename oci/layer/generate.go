@@ -26,6 +26,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci/pkg/unpriv"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
@@ -124,7 +125,7 @@ func GenerateInsertLayer(root string, prefix string, opt *MapOptions) io.ReadClo
 
 		tg := newTarGenerator(writer, mapOptions)
 
-		err = filepath.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+		err = unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}

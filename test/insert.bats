@@ -37,12 +37,16 @@ function teardown() {
 	umoci insert --image "${IMAGE}:${TAG}" asdf 123 456
 	[ "$status" -ne 0 ]
 
-	# do the insert
+	# do an insert
 	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test/insert.bats" /tester
+	[ "$status" -eq 0 ]
+
+	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci" /tester
 	[ "$status" -eq 0 ]
 
 	# ...and check to make sure it worked
 	BUNDLE=$(setup_tmpdir)
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ -f "$BUNDLE/rootfs/tester/insert.bats" ]
+	[ "$(stat --format=%f ${ROOT}/umoci)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci)" ]
 }
