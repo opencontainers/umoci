@@ -70,7 +70,7 @@ operations that necessitate it.
 ```
 % skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
 # umoci unpack --image image bundle
-% umoci raw runtime-generate --image image --rootfs bundle/rootfs config.json
+% umoci raw runtime-config --image image --rootfs bundle/rootfs config.json
 ```
 
 # SEE ALSO
