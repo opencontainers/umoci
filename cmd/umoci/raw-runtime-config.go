@@ -96,10 +96,10 @@ func rawConfig(ctx *cli.Context) error {
 	meta.MapOptions.Rootless = ctx.Bool("rootless")
 	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
-			ctx.Set("uid-map", fmt.Sprintf("%d:0:1", os.Geteuid()))
+			ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid()))
 		}
 		if !ctx.IsSet("gid-map") {
-			ctx.Set("gid-map", fmt.Sprintf("%d:0:1", os.Getegid()))
+			ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid()))
 		}
 	}
 	// Parse and set up the mapping options.
