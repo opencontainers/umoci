@@ -107,7 +107,7 @@ GLOBAL OPTIONS:
    --version, -v  print the version
 ```
 
-[quickstart]: /doc/quick-start.md
+[quickstart]: https://umo.ci/quick-start/
 
 ### License ###
 
