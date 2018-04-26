@@ -23,7 +23,6 @@ import (
 	"path"
 	"path/filepath"
 	"sort"
-	"strings"
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/pkg/unpriv"
@@ -107,7 +106,6 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 func GenerateInsertLayer(root string, prefix string, opt *MapOptions) io.ReadCloser {
 	root = path.Clean(root)
 	rootPrefixLen := len(root) - len(path.Base(root))
-	prefix = strings.TrimPrefix(prefix, "/")
 
 	var mapOptions MapOptions
 	if opt != nil {

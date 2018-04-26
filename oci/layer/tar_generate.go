@@ -88,6 +88,10 @@ func normalise(rawPath string, isDir bool) (string, error) {
 		return ".", nil
 	}
 
+	if filepath.IsAbs(path) {
+		path = strings.TrimPrefix(path, "/")
+	}
+
 	// Check that the path is "safe", meaning that it doesn't resolve outside
 	// of the tar archive. While this might seem paranoid, it is a legitimate
 	// concern.
