@@ -75,6 +75,11 @@ function umoci() {
 		args+=("__DEVEL--i-heard-you-like-tests")
 	fi
 
+	if [[ "$1" == "raw" ]]; then
+	    args+=("$1")
+	    shift 1
+	fi
+
 	# Set the first argument (the subcommand).
 	args+=("$1")
 

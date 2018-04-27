@@ -208,7 +208,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	}
 	defer configBlob.Close()
 	if configBlob.MediaType != ispec.MediaTypeImageConfig {
-		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
+		return errors.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
@@ -218,7 +218,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
-		return errors.Errorf("unpack manifest: config: unsupported rootfs.type: %s", config.RootFS.Type)
+		return errors.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
 	// Layer extraction.
@@ -232,7 +232,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.MediaType) {
-			return errors.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
+			return errors.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
 		}
 		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
