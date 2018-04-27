@@ -32,8 +32,10 @@ import (
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
 	"github.com/openSUSE/umoci/oci/layer"
+	"github.com/openSUSE/umoci/pkg/idtools"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
+	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
 )
@@ -277,6 +279,43 @@ func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	if _, err := dh.WriteTo(fh); err != nil {
 		return errors.Wrap(err, "write mtree")
 	}
+
+	return nil
+}
+
+// parseIdmapOptions sets up the mapping options for UmociMeta, using
+// the arguments specified on the command line
+func parseIdmapOptions(meta *UmociMeta, ctx *cli.Context) error {
+	// We need to set mappings if we're in rootless mode.
+	meta.MapOptions.Rootless = ctx.Bool("rootless")
+	if meta.MapOptions.Rootless {
+		if !ctx.IsSet("uid-map") {
+			ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid()))
+		}
+		if !ctx.IsSet("gid-map") {
+			ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid()))
+		}
+	}
+
+	for _, uidmap := range ctx.StringSlice("uid-map") {
+		idMap, err := idtools.ParseMapping(uidmap)
+		if err != nil {
+			return errors.Wrapf(err, "failure parsing --uid-map %s: %s", uidmap)
+		}
+		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
+	}
+	for _, gidmap := range ctx.StringSlice("gid-map") {
+		idMap, err := idtools.ParseMapping(gidmap)
+		if err != nil {
+			return errors.Wrapf(err, "failure parsing --gid-map %s: %s", gidmap)
+		}
+		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
+	}
+
+	log.WithFields(log.Fields{
+		"map.uid": meta.MapOptions.UIDMappings,
+		"map.gid": meta.MapOptions.GIDMappings,
+	}).Debugf("parsed mappings")
 
 	return nil
 }

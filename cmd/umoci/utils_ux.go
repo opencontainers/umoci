@@ -212,3 +212,22 @@ func uxLayout(cmd cli.Command) cli.Command {
 
 	return cmd
 }
+
+func uxRemap(cmd cli.Command) cli.Command {
+	cmd.Flags = append(cmd.Flags, []cli.Flag{
+		cli.StringSliceFlag{
+			Name:  "uid-map",
+			Usage: "specifies a uid mapping to use (container:host:size)",
+		},
+		cli.StringSliceFlag{
+			Name:  "gid-map",
+			Usage: "specifies a gid mapping to use (container:host:size)",
+		},
+		cli.BoolFlag{
+			Name:  "rootless",
+			Usage: "enable rootless command support",
+		},
+	}...)
+
+	return cmd
+}
