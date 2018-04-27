@@ -27,14 +27,13 @@ import (
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
 	"github.com/openSUSE/umoci/pkg/fseval"
-	"github.com/openSUSE/umoci/pkg/idtools"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"
 )
 
-var unpackCommand = cli.Command{
+var unpackCommand = uxRemap(cli.Command{
 	Name:  "unpack",
 	Usage: "unpacks a reference into an OCI runtime bundle",
 	ArgsUsage: `--image <image-path>[:<tag>] <bundle>
@@ -50,20 +49,7 @@ creation with umoci-repack(1).`,
 	// unpack reads manifest information.
 	Category: "image",
 
-	Flags: []cli.Flag{
-		cli.StringSliceFlag{
-			Name:  "uid-map",
-			Usage: "specifies a uid mapping to use when repacking (container:host:size)",
-		},
-		cli.StringSliceFlag{
-			Name:  "gid-map",
-			Usage: "specifies a gid mapping to use when repacking (container:host:size)",
-		},
-		cli.BoolFlag{
-			Name:  "rootless",
-			Usage: "enable rootless unpacking support",
-		},
-	},
+	Flags: []cli.Flag{},
 
 	Action: unpack,
 
@@ -77,7 +63,7 @@ creation with umoci-repack(1).`,
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
 	},
-}
+})
 
 func unpack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
@@ -87,37 +73,11 @@ func unpack(ctx *cli.Context) error {
 	var meta UmociMeta
 	meta.Version = UmociMetaVersion
 
-	// Parse map options.
-	// We need to set mappings if we're in rootless mode.
-	meta.MapOptions.Rootless = ctx.Bool("rootless")
-	if meta.MapOptions.Rootless {
-		if !ctx.IsSet("uid-map") {
-			ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid()))
-		}
-		if !ctx.IsSet("gid-map") {
-			ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid()))
-		}
-	}
 	// Parse and set up the mapping options.
-	for _, uidmap := range ctx.StringSlice("uid-map") {
-		idMap, err := idtools.ParseMapping(uidmap)
-		if err != nil {
-			return errors.Wrapf(err, "failure parsing --uid-map %s: %s", uidmap)
-		}
-		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
+	err := parseIdmapOptions(&meta, ctx)
+	if err != nil {
+		return err
 	}
-	for _, gidmap := range ctx.StringSlice("gid-map") {
-		idMap, err := idtools.ParseMapping(gidmap)
-		if err != nil {
-			return errors.Wrapf(err, "failure parsing --gid-map %s: %s", gidmap)
-		}
-		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
-	}
-
-	log.WithFields(log.Fields{
-		"map.uid": meta.MapOptions.UIDMappings,
-		"map.gid": meta.MapOptions.GIDMappings,
-	}).Debugf("parsed mappings")
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
