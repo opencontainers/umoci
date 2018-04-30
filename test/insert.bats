@@ -54,3 +54,15 @@ function teardown() {
 	[ "$(stat --format=%f ${ROOT}/umoci)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci)" ]
 	[ -f "$BUNDLE/rootfs/recursive/insert.bats" ]
 }
+
+@test "umoci insert rootless" {
+	image-verify "${IMAGE}"
+
+	BUNDLE=$(setup_tmpdir)
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+
+	mkdir -p $BUNDLE/rootfs/some/path
+	chmod 000 $BUNDLE/rootfs/some/path
+	umoci repack "${IMAGE}:${TAG}" "$BUNDLE"
+	umoci insert "${ROOT}/umoci" /some/path/umoci
+}
