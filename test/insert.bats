@@ -41,7 +41,7 @@ function teardown() {
 	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test/insert.bats" /tester/insert.bats
 	[ "$status" -eq 0 ]
 
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci" /tester/umoci
+	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci.cover" /tester/umoci.cover
 	[ "$status" -eq 0 ]
 
 	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test" /recursive
@@ -51,7 +51,7 @@ function teardown() {
 	BUNDLE=$(setup_tmpdir)
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ -f "$BUNDLE/rootfs/tester/insert.bats" ]
-	[ "$(stat --format=%f ${ROOT}/umoci)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci)" ]
+	[ "$(stat --format=%f ${ROOT}/umoci.cover)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci.cover)" ]
 	[ -f "$BUNDLE/rootfs/recursive/insert.bats" ]
 }
 
@@ -64,5 +64,5 @@ function teardown() {
 	mkdir -p $BUNDLE/rootfs/some/path
 	chmod 000 $BUNDLE/rootfs/some/path
 	umoci repack "${IMAGE}:${TAG}" "$BUNDLE"
-	umoci insert "${ROOT}/umoci" /some/path/umoci
+	umoci insert "${ROOT}/tester/insert.bats" /some/path/insert.bats
 }
