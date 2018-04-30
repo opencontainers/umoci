@@ -40,8 +40,14 @@ var insertCommand = uxHistory(cli.Command{
 
 Where "<image-path>" is the path to the OCI image, "<tag>" is the name of the
 tag that the content wil be inserted into (if not specified, defaults to
-"latest"), "<file>" is the file or folder to insert, and "<path>" is the prefix
-inside the image to insert it into.`,
+"latest"), "<file>" is the file or folder to insert, and "<path>" is the full
+name of the path to that the file should be inserted at. Insert is
+automatically recursive if the source is a directory.
+
+For example:
+	umoci insert --image oci:foo mybinary /usr/bin/mybinary
+	umoci insert --image oci:foo myconfigdir /etc/myconfigdir
+`,
 
 	Category: "image",
 
@@ -52,11 +58,15 @@ inside the image to insert it into.`,
 			return errors.Errorf("invalid number of positional arguments: expected <file> and <path>")
 		}
 		if ctx.Args()[0] == "" {
-			return errors.Errorf("path cannot be empty")
+			return errors.Errorf("<file> cannot be empty")
 		}
+		ctx.App.Metadata["insertFile"] = ctx.Args()[0]
+
 		if ctx.Args()[1] == "" {
-			return errors.Errorf("path cannot be empty")
+			return errors.Errorf("<path> cannot be empty")
 		}
+		ctx.App.Metadata["insertPath"] = ctx.Args()[1]
+
 		return nil
 	},
 })
@@ -91,8 +101,11 @@ func insert(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
+	insertFile := ctx.App.Metadata["insertFile"].(string)
+	insertPath := ctx.App.Metadata["insertPath"].(string)
+
 	// TODO: add some way to specify these from the cli
-	reader := layer.GenerateInsertLayer(ctx.Args()[0], ctx.Args()[1], nil)
+	reader := layer.GenerateInsertLayer(insertFile, insertPath, nil)
 	defer reader.Close()
 
 	created := time.Now()

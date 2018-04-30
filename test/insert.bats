@@ -37,11 +37,14 @@ function teardown() {
 	umoci insert --image "${IMAGE}:${TAG}" asdf 123 456
 	[ "$status" -ne 0 ]
 
-	# do an insert
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test/insert.bats" /tester
+	# do a few inserts
+	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test/insert.bats" /tester/insert.bats
 	[ "$status" -eq 0 ]
 
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci" /tester
+	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci" /tester/umoci
+	[ "$status" -eq 0 ]
+
+	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test" /recursive
 	[ "$status" -eq 0 ]
 
 	# ...and check to make sure it worked
@@ -49,4 +52,5 @@ function teardown() {
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ -f "$BUNDLE/rootfs/tester/insert.bats" ]
 	[ "$(stat --format=%f ${ROOT}/umoci)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci)" ]
+	[ -f "$BUNDLE/rootfs/recursive/insert.bats" ]
 }
