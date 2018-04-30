@@ -33,7 +33,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-var insertCommand = uxHistory(cli.Command{
+var insertCommand = uxRemap(uxHistory(cli.Command{
 	Name:  "insert",
 	Usage: "insert a file into an OCI image without unpacking/repacking it",
 	ArgsUsage: `--image <image-path>[:<tag>] <file> <path>
@@ -69,7 +69,7 @@ For example:
 
 		return nil
 	},
-})
+}))
 
 func insert(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
@@ -104,8 +104,16 @@ func insert(ctx *cli.Context) error {
 	insertFile := ctx.App.Metadata["insertFile"].(string)
 	insertPath := ctx.App.Metadata["insertPath"].(string)
 
-	// TODO: add some way to specify these from the cli
-	reader := layer.GenerateInsertLayer(insertFile, insertPath, nil)
+	var meta UmociMeta
+	meta.Version = UmociMetaVersion
+
+	// Parse and set up the mapping options.
+	err = parseIdmapOptions(&meta, ctx)
+	if err != nil {
+		return err
+	}
+
+	reader := layer.GenerateInsertLayer(insertFile, insertPath, &meta.MapOptions)
 	defer reader.Close()
 
 	created := time.Now()
