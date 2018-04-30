@@ -104,7 +104,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 // GenerateInsertLayer generates a completely new layer from the root path to
 // be inserted into the image at "prefix".
 func GenerateInsertLayer(root string, prefix string, opt *MapOptions) io.ReadCloser {
-	root = path.Clean(root)
+	root = CleanPath(root)
 	rootPrefixLen := len(root) - len(path.Base(root))
 
 	var mapOptions MapOptions
