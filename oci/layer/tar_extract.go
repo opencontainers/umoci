@@ -34,7 +34,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type tarExtractor struct {
+type TarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting filesystem layers.
 	mapOptions MapOptions
 
@@ -43,13 +43,13 @@ type tarExtractor struct {
 }
 
 // newTarExtractor creates a new tarExtractor.
-func newTarExtractor(opt MapOptions) *tarExtractor {
+func NewTarExtractor(opt MapOptions) *TarExtractor {
 	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
 		fsEval = fseval.RootlessFsEval
 	}
 
-	return &tarExtractor{
+	return &TarExtractor{
 		mapOptions: opt,
 		fsEval:     fsEval,
 	}
@@ -58,7 +58,7 @@ func newTarExtractor(opt MapOptions) *tarExtractor {
 // restoreMetadata applies the state described in tar.Header to the filesystem
 // at the given path. No sanity checking is done of the tar.Header's pathname
 // or other information. In addition, no mapping is done of the header.
-func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
+func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Some of the tar.Header fields don't match the OS API.
 	fi := hdr.FileInfo()
 
@@ -132,7 +132,7 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 // within the header. This should only be used with headers from a tar layer
 // (not from the filesystem). No sanity checking is done of the tar.Header's
 // pathname or other information.
-func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
+func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Modify the header.
 	if err := unmapHeader(hdr, te.mapOptions); err != nil {
 		return errors.Wrap(err, "unmap header")
@@ -146,7 +146,7 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
-func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
+func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 	// Make the paths safe.
 	hdr.Name = CleanPath(hdr.Name)
 	root = filepath.Clean(root)
