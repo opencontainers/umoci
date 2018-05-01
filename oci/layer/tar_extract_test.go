@@ -68,9 +68,9 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) func(
 			ChangeTime: time.Now(),
 		}
 
-		te := newTarExtractor(MapOptions{})
-		if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-			t.Fatalf("unexpected unpackEntry error: %s", err)
+		te := NewTarExtractor(MapOptions{})
+		if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+			t.Fatalf("unexpected UnpackEntry error: %s", err)
 		}
 
 		hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, "file"))
@@ -160,7 +160,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 	}(t)
 }
 
-// TestUnpackEntryParentDir ensures that when unpackEntry hits a path that
+// TestUnpackEntryParentDir ensures that when UnpackEntry hits a path that
 // doesn't have its leading directories, we create all of the parent
 // directories.
 func TestUnpackEntryParentDir(t *testing.T) {
@@ -191,9 +191,9 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		ChangeTime: time.Now(),
 	}
 
-	te := newTarExtractor(MapOptions{})
-	if err := te.unpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-		t.Fatalf("unexpected unpackEntry error: %s", err)
+	te := NewTarExtractor(MapOptions{})
+	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		t.Fatalf("unexpected UnpackEntry error: %s", err)
 	}
 
 	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
@@ -278,9 +278,9 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 
-			te := newTarExtractor(MapOptions{})
-			if err := te.unpackEntry(dir, hdr, nil); err != nil {
-				t.Fatalf("unexpected error in unpackEntry: %s", err)
+			te := NewTarExtractor(MapOptions{})
+			if err := te.UnpackEntry(dir, hdr, nil); err != nil {
+				t.Fatalf("unexpected error in UnpackEntry: %s", err)
 			}
 
 			// Make sure that the path is gone.
@@ -489,8 +489,8 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			// Track if we have upper entries.
 			numUpper := 0
 
-			// First we apply the non-upper files in a new tarExtractor.
-			te := newTarExtractor(mapOptions)
+			// First we apply the non-upper files in a new TarExtractor.
+			te := NewTarExtractor(mapOptions)
 			for _, ph := range test.pseudoHeaders {
 				// Skip upper.
 				if ph.upper {
@@ -499,13 +499,13 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				}
 				hdr, rdr := fromPseudoHdr(ph)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
-				if err := te.unpackEntry(dir, hdr, rdr); err != nil {
-					t.Errorf("unpackEntry %s failed: %v", hdr.Name, err)
+				if err := te.UnpackEntry(dir, hdr, rdr); err != nil {
+					t.Errorf("UnpackEntry %s failed: %v", hdr.Name, err)
 				}
 			}
 
-			// Now we apply the upper files in another tarExtractor.
-			te = newTarExtractor(mapOptions)
+			// Now we apply the upper files in another TarExtractor.
+			te = NewTarExtractor(mapOptions)
 			for _, ph := range test.pseudoHeaders {
 				// Skip non-upper.
 				if !ph.upper {
@@ -513,8 +513,8 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				}
 				hdr, rdr := fromPseudoHdr(ph)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
-				if err := te.unpackEntry(dir, hdr, rdr); err != nil {
-					t.Errorf("unpackEntry %s failed: %v", hdr.Name, err)
+				if err := te.UnpackEntry(dir, hdr, rdr); err != nil {
+					t.Errorf("UnpackEntry %s failed: %v", hdr.Name, err)
 				}
 			}
 
@@ -523,7 +523,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				Name:     filepath.Join(whiteoutDir, whOpaque),
 				Typeflag: tar.TypeReg,
 			}
-			if err := te.unpackEntry(dir, whHdr, nil); err != nil {
+			if err := te.UnpackEntry(dir, whHdr, nil); err != nil {
 				t.Errorf("unpack whiteout %s failed: %v", whiteoutRoot, err)
 				continue
 			}
@@ -597,7 +597,7 @@ func TestUnpackHardlink(t *testing.T) {
 		hardFileB = "hard link to symlink"
 	)
 
-	te := newTarExtractor(MapOptions{})
+	te := NewTarExtractor(MapOptions{})
 
 	// Regular file.
 	hdr = &tar.Header{
@@ -611,8 +611,8 @@ func TestUnpackHardlink(t *testing.T) {
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
 	}
-	if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-		t.Fatalf("regular: unexpected unpackEntry error: %s", err)
+	if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		t.Fatalf("regular: unexpected UnpackEntry error: %s", err)
 	}
 
 	// Hardlink to regFile.
@@ -624,8 +624,8 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := te.unpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("hardlinkA: unexpected unpackEntry error: %s", err)
+	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("hardlinkA: unexpected UnpackEntry error: %s", err)
 	}
 
 	// Symlink to regFile.
@@ -636,8 +636,8 @@ func TestUnpackHardlink(t *testing.T) {
 		Typeflag: tar.TypeSymlink,
 		Linkname: filepath.Join("../../../", regFile),
 	}
-	if err := te.unpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("symlink: unexpected unpackEntry error: %s", err)
+	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("symlink: unexpected UnpackEntry error: %s", err)
 	}
 
 	// Hardlink to symlink.
@@ -649,8 +649,8 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := te.unpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("hardlinkB: unexpected unpackEntry error: %s", err)
+	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
+		t.Fatalf("hardlinkB: unexpected UnpackEntry error: %s", err)
 	}
 
 	// Quickly make sure that the contents are as expected.
@@ -757,7 +757,7 @@ func TestUnpackEntryMap(t *testing.T) {
 				symDir   = "link-dir"
 			)
 
-			te := newTarExtractor(MapOptions{
+			te := NewTarExtractor(MapOptions{
 				UIDMappings: []rspec.LinuxIDMapping{test.uidMap},
 				GIDMappings: []rspec.LinuxIDMapping{test.gidMap},
 			})
@@ -775,8 +775,8 @@ func TestUnpackEntryMap(t *testing.T) {
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regfile: unexpected unpackEntry error: %s", err)
+			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regfile: unexpected UnpackEntry error: %s", err)
 			}
 
 			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
@@ -804,8 +804,8 @@ func TestUnpackEntryMap(t *testing.T) {
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
 			}
 
 			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
@@ -833,8 +833,8 @@ func TestUnpackEntryMap(t *testing.T) {
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
 			}
 
 			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
@@ -862,8 +862,8 @@ func TestUnpackEntryMap(t *testing.T) {
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.unpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected unpackEntry error: %s", err)
+			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
 			}
 
 			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
@@ -897,7 +897,7 @@ func TestIsDirlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	te := newTarExtractor(MapOptions{})
+	te := NewTarExtractor(MapOptions{})
 	dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link"))
 	if err != nil {
 		t.Fatal(err)
