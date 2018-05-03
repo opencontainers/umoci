@@ -76,7 +76,7 @@ update-deps:
 
 .PHONY: clean
 clean:
-	rm -f umoci umoci.static
+	rm -f umoci umoci.static umoci.cov*
 	rm -f $(MANPAGES)
 
 .PHONY: validate
