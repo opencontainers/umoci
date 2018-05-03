@@ -37,32 +37,50 @@ function teardown() {
 	umoci insert --image "${IMAGE}:${TAG}" asdf 123 456
 	[ "$status" -ne 0 ]
 
+	INSERTDIR=$(setup_tmpdir)
+	mkdir -p "${INSERTDIR}/test"
+	touch "${INSERTDIR}/test/a"
+	touch "${INSERTDIR}/test/b"
+	chmod +x "${INSERTDIR}/test/b"
+
 	# do a few inserts
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test/insert.bats" /tester/insert.bats
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/a" /tester/a
 	[ "$status" -eq 0 ]
 
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/umoci.cover" /tester/umoci.cover
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/b" /tester/b
 	[ "$status" -eq 0 ]
 
-	umoci insert --image "${IMAGE}:${TAG}" "${ROOT}/test" /recursive
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test" /recursive
 	[ "$status" -eq 0 ]
 
 	# ...and check to make sure it worked
 	BUNDLE=$(setup_tmpdir)
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
-	[ -f "$BUNDLE/rootfs/tester/insert.bats" ]
-	[ "$(stat --format=%f ${ROOT}/umoci.cover)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/umoci.cover)" ]
-	[ -f "$BUNDLE/rootfs/recursive/insert.bats" ]
+	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ -f "${BUNDLE}/rootfs/tester/a" ]
+	[ "$(stat --format=%f ${INSERTDIR}/test/b)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/b)" ]
+	[ -f "${BUNDLE}/rootfs/recursive/a" ]
+	[ -f "${BUNDLE}/rootfs/recursive/b" ]
 }
 
 @test "umoci insert rootless" {
 	image-verify "${IMAGE}"
 
 	BUNDLE=$(setup_tmpdir)
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
 
 	mkdir -p $BUNDLE/rootfs/some/path
 	chmod 000 $BUNDLE/rootfs/some/path
-	umoci repack "${IMAGE}:${TAG}" "$BUNDLE"
-	umoci insert "${ROOT}/tester/insert.bats" /some/path/insert.bats
+	umoci repack "${IMAGE}:${TAG}" "${BUNDLE}"
+
+	INSERTDIR=$(setup_tmpdir)
+	mkdir -p "${INSERTDIR}/test"
+	touch "${INSERTDIR}/test/a"
+
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/a" /some/path/a
+	[ "$status" -eq 0 ]
+
+	BUNDLE_B=$(setup_tmpdir)
+	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE_B}"
+
+	[ -f "${BUNDLE_B}/rootfs/some/path/a" ]
 }
