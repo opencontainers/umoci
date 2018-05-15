@@ -159,7 +159,7 @@ function teardown_tmpdirs() {
 	done < "$TESTDIR_LIST"
 
 	# Clear tmpdir list.
-	rm "$TESTDIR_LIST"
+	rm -f "$TESTDIR_LIST"
 }
 
 # _getfattr is a sane wrapper around getfattr(1) which only extracts the value
