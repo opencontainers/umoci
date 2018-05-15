@@ -131,8 +131,8 @@ function teardown() {
 
 	# Remove them.
 	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
-	chmod +w "$BUNDLE_A/rootfs/bin/." && rm "$BUNDLE_A/rootfs/bin/sh"
-	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$BUNDLE_A/rootfs/bin/." && rm -f "$BUNDLE_A/rootfs/bin/sh"
+	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm -f "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under a new tag.
 	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
@@ -198,9 +198,9 @@ function teardown() {
 	# Replace them.
 	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
 	echo "different" > "$BUNDLE_A/rootfs/etc"
-	chmod +w "$BUNDLE_A/rootfs/bin/." && rm "$BUNDLE_A/rootfs/bin/sh"
+	chmod +w "$BUNDLE_A/rootfs/bin/." && rm -f "$BUNDLE_A/rootfs/bin/sh"
 	mkdir "$BUNDLE_A/rootfs/bin/sh"
-	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm -f "$BUNDLE_A/rootfs/usr/bin/env"
 	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
 
 	# Repack the image under the same tag.
@@ -562,7 +562,7 @@ function teardown() {
 	[ -f "$BUNDLE_B/rootfs/ <-- some more weird characters --> 你好，世界" ]
 
 	# Now make some changes.
-	rm "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem"
+	rm -f "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE_B"
