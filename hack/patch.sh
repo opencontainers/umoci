@@ -27,10 +27,5 @@ patch() {
 	command patch -d "$VENDOR/$project" -p1 <"$SCRIPTDIR/$patch"
 }
 
-# This is a patch I wrote for pkg/errors#97. I'm not sure how active the
-# project is, so I'm just going to backport it here until I see that there's
-# upstream activity.
-patch github.com/pkg/errors errors-0001-errors-add-Debug-function.patch
-
 # Backport https://github.com/opencontainers/runtime-tools/pull/359.
 patch github.com/opencontainers/runtime-tools runtime-tools-0001-generate-remove-validate-dependency.patch
