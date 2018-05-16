@@ -19,10 +19,13 @@ package layer
 
 import (
 	"io"
+	"os"
+	"path"
 	"path/filepath"
 	"sort"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci/pkg/unpriv"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
@@ -96,4 +99,43 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 	}()
 
 	return reader, nil
+}
+
+// GenerateInsertLayer generates a completely new layer from the root path to
+// be inserted into the image at "target".
+func GenerateInsertLayer(root string, target string, opt *MapOptions) io.ReadCloser {
+	root = CleanPath(root)
+
+	var mapOptions MapOptions
+	if opt != nil {
+		mapOptions = *opt
+	}
+
+	reader, writer := io.Pipe()
+
+	go func() {
+		var err error
+
+		defer func() {
+			writer.CloseWithError(errors.Wrap(err, "generate layer"))
+		}()
+
+		tg := newTarGenerator(writer, mapOptions)
+
+		err = unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+			if err != nil {
+				return err
+			}
+
+			pathInTar := path.Join(target, curPath[len(root):])
+			return tg.AddFile(pathInTar, curPath)
+		})
+		if err != nil {
+			return
+		}
+
+		err = tg.tw.Close()
+	}()
+
+	return reader
 }
