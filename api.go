@@ -94,6 +94,10 @@ func (l *Layout) PutBlob(b io.Reader) (digest.Digest, int64, error) {
 	return l.ext.PutBlob(context.Background(), b)
 }
 
+func (l *Layout) PutBlobJSON(data interface{}) (digest.Digest, int64, error) {
+	return l.ext.PutBlobJSON(context.Background(), data)
+}
+
 // NewImage creates a new OCI manifest in the OCI image, and adds the specified
 // layers to it.
 func (l *Layout) NewImage(tagName string, i *ispec.Image, layers []ispec.Descriptor, platform *ispec.Platform) error {
