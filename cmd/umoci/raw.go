@@ -34,5 +34,6 @@ should be sufficient for most use-cases.`,
 
 	Subcommands: []cli.Command{
 		rawConfigCommand,
+		rawUnpackCommand,
 	},
 }

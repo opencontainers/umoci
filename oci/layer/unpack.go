@@ -89,13 +89,10 @@ func needsGunzip(mediaType string) bool {
 
 // UnpackManifest extracts all of the layers in the given manifest, as well as
 // generating a runtime bundle and configuration. The rootfs is extracted to
-// <bundle>/<layer.RootfsName>. Some verification is done during image
-// extraction.
+// <bundle>/<layer.RootfsName>.
 //
 // FIXME: This interface is ugly.
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions) (err error) {
-	engineExt := casext.NewEngine(engine)
-
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -120,19 +117,53 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		return errors.Wrap(err, "bundle path empty")
 	}
 
+	defer func() {
+		if err != nil {
+			fsEval := fseval.DefaultFsEval
+			if opt != nil && opt.Rootless {
+				fsEval = fseval.RootlessFsEval
+			}
+			// It's too late to care about errors.
+			_ = fsEval.RemoveAll(rootfsPath)
+		}
+	}()
+
+	log.Infof("unpack rootfs: %s", rootfsPath)
+	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt); err != nil {
+		return errors.Wrap(err, "unpack rootfs")
+	}
+
+	// Generate a runtime configuration file from ispec.Image.
+	configFile, err := os.Create(configPath)
+	if err != nil {
+		return errors.Wrap(err, "open config.json")
+	}
+	defer configFile.Close()
+
+	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, opt); err != nil {
+		return errors.Wrap(err, "unpack config.json")
+	}
+	return nil
+}
+
+// UnpackRootfs extracts all of the layers in the given manifest.
+// Some verification is done during image extraction.
+func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *MapOptions) (err error) {
+	engineExt := casext.NewEngine(engine)
+
 	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) {
 		if err == nil {
-			err = fmt.Errorf("%s already exists", RootfsName)
+			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
-		return errors.Wrap(err, "bundle path empty")
+		return err
 	}
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil {
 		return errors.Wrap(err, "mkdir rootfs")
 	}
 
-	// In order to avoid having a broken bundle in the case of an error, we
-	// remove the bundle. In the case of rootless this is particularly
+	// In order to avoid having a broken rootfs in the case of an error, we
+	// remove the rootfs. In the case of rootless this is particularly
 	// important (`rm -rf` won't work on most distro rootfs's).
 	defer func() {
 		if err != nil {
@@ -141,7 +172,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 				fsEval = fseval.RootlessFsEval
 			}
 			// It's too late to care about errors.
-			_ = fsEval.RemoveAll(bundle)
+			_ = fsEval.RemoveAll(rootfsPath)
 		}
 	}()
 
@@ -177,7 +208,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 	defer configBlob.Close()
 	if configBlob.MediaType != ispec.MediaTypeImageConfig {
-		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
+		return errors.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
@@ -187,7 +218,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
-		return errors.Errorf("unpack manifest: config: unsupported rootfs.type: %s", config.RootFS.Type)
+		return errors.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
 	// Layer extraction.
@@ -201,7 +232,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.MediaType) {
-			return errors.Errorf("unpack manifest: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
+			return errors.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Digest, layerBlob.MediaType)
 		}
 		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
@@ -243,17 +274,6 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}
 
-	// Generate a runtime configuration file from ispec.Image.
-	log.Infof("unpack configuration: %s", configBlob.Digest)
-	configFile, err := os.Create(configPath)
-	if err != nil {
-		return errors.Wrap(err, "open config.json")
-	}
-	defer configFile.Close()
-
-	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, opt); err != nil {
-		return errors.Wrap(err, "unpack config.json")
-	}
 	return nil
 }
 
