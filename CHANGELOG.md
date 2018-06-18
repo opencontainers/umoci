@@ -16,6 +16,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   alphanum  ::= [A-Za-z0-9]+
   separator ::= [-._:@+] | "--"
   ```
+- A new `umoci insert` subcommand which adds a given file to a path inside the
+  container. openSUSE/umoci#237
+- A new `umoci raw unpack` subcommand in order to allow users to unpack images
+  without needing a configuration or any of the manifest generation.
+  openSUSE/umoci#239
 
 ### Fixed
 - `umoci unpack` now handles out-of-order regular whiteouts correctly (though
