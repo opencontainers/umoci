@@ -280,7 +280,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			te.mapOptions.KeepDirlinks {
 		link, err := te.fsEval.Readlink(path)
 		if err != nil {
-			return errors.Wrap(err, "read old path link")
+			return errors.Wrapf(err, "read old path link: %s", path)
 		}
 
 		linkPath, err := securejoin.SecureJoinVFS(root, link, te.fsEval)
