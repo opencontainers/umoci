@@ -152,3 +152,35 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci unpack --keep-dirlinks" {
+    BUNDLE="$(setup_tmpdir)"
+
+    image-verify "${IMAGE}"
+    umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
+    mkdir "${BUNDLE}/rootfs/dir"
+    touch "${BUNDLE}/rootfs/dir/a"
+    ln -s dir "${BUNDLE}/rootfs/link"
+    umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ "$status" -eq 0 ]
+
+    rm "${BUNDLE}/rootfs/link"
+    mkdir "${BUNDLE}/rootfs/link"
+    touch "${BUNDLE}/rootfs/link/b"
+    umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ "$status" -eq 0 ]
+
+    chmod -R 0777 "${BUNDLE}"
+    rm -rf "${BUNDLE}"
+    umoci unpack --keep-dirlinks --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ "$status" -eq 0 ]
+	bundle-verify "${BUNDLE}"
+
+    ls -al "${BUNDLE}/rootfs"
+    echo "${output}"
+
+    [ -f "${BUNDLE}/rootfs/dir/a" ]
+    [ -f "${BUNDLE}/rootfs/dir/b" ]
+    [ -L "${BUNDLE}/rootfs/link" ]
+    [ "$(readlink ${BUNDLE}/rootfs/link)" = "dir" ]
+}
