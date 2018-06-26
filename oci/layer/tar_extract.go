@@ -275,6 +275,31 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		return errors.Wrap(err, "mkdir parent")
 	}
 
+	isDirlink := false
+	if fi.Mode()&os.ModeSymlink != 0 && hdr.Typeflag == tar.TypeDir &&
+			te.mapOptions.KeepDirlinks {
+		link, err := te.fsEval.Readlink(path)
+		if err != nil {
+			return errors.Wrap(err, "read old path link")
+		}
+
+		linkPath, err := securejoin.SecureJoinVFS(root, link, te.fsEval)
+		if err != nil {
+			return errors.Wrap(err, "sanitize old target")
+		}
+
+		linkInfo, err := te.fsEval.Lstat(linkPath)
+		if err != nil {
+			return errors.Wrap(err, "stat old target link")
+		}
+
+		if !linkInfo.IsDir() {
+			return errors.Errorf("%s is not a directory, but is the target of a dir link %s", linkInfo.Name(), path)
+		}
+
+		isDirlink = true
+	}
+
 	// Now create or otherwise modify the state of the path. Right now, either
 	// the type of path matches hdr or the path doesn't exist. Note that we
 	// don't care about umasks or the initial mode here, since applyMetadata
@@ -301,6 +326,10 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 	// directory
 	case tar.TypeDir:
+		if isDirlink {
+			break
+		}
+
 		// Attempt to create the directory. We do a MkdirAll here because even
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.

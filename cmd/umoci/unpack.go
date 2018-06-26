@@ -64,6 +64,10 @@ creation with umoci-repack(1).`,
 			Name:  "rootless",
 			Usage: "enable rootless unpacking support",
 		},
+		cli.BoolFlag{
+			Name: "keep-dirlinks",
+			Usage: "don't clobber underlying symlinks to directories",
+		},
 	},
 
 	Action: unpack,
@@ -119,6 +123,8 @@ func unpack(ctx *cli.Context) error {
 		"map.uid": meta.MapOptions.UIDMappings,
 		"map.gid": meta.MapOptions.GIDMappings,
 	}).Debugf("parsed mappings")
+
+	meta.MapOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
