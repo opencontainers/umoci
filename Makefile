@@ -146,9 +146,16 @@ COVERAGE := $(shell mktemp --dry-run umoci.cov.XXXXXX)
 endif
 
 .PHONY: test-unit
-test-unit: umociimage
+test-unit: test-unit-root test-unit-rootless
+
+.PHONY: test-unit-root
+test-unit-root: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
+
+.PHONY: test-unit-rootless
+test-unit-rootless: umociimage
+	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
@@ -156,9 +163,16 @@ local-test-unit:
 	GO=$(GO) COVER=1 hack/test-unit.sh
 
 .PHONY: test-integration
-test-integration: umociimage
+test-integration: test-integration-root test-integration-rootless
+
+.PHONY: test-integration-root
+test-integration-root: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+
+.PHONY: test-integration-rootless
+test-integration-rootless: umociimage
+	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
 
 .PHONY: local-test-integration
