@@ -396,6 +396,12 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// "lower" file still exists (so the hard-link would point to the old
 	// inode). It's not clear if such an archive is actually valid though.
 	if !fi.IsDir() || hdr.Typeflag != tar.TypeDir {
+		// If we are in keep dirlinks mode and the existing fs object
+		// is a symlink, just write through instead of removing it and
+		// creating a directory. (The idea being that e.g. sometimes
+		// /lib64 is a symlink, and sometimes it's a real directory,
+		// but in both cases you want all the libraries, and not just
+		// the ones that were under a real directory.)
 		if fi.Mode()&os.ModeSymlink != 0 && hdr.Typeflag == tar.TypeDir &&
 			te.mapOptions.KeepDirlinks {
 			isDirlink, err = te.isDirlink(root, path, hdr)
