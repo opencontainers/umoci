@@ -5,7 +5,7 @@ import (
 	"os"
 	"sort"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 )
 
 // DefaultUpdateKeywords is the default set of keywords that can take updates to the files on disk

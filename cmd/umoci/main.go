@@ -90,12 +90,7 @@ func main() {
 		if err != nil {
 			return errors.Wrap(err, "parsing log level")
 		}
-
 		log.SetLevel(level)
-
-		if level == log.DebugLevel {
-			errors.Debug(true)
-		}
 		return nil
 	}
 
@@ -160,5 +155,6 @@ func main() {
 			log.Info("umoci encountered a permission error: maybe --rootless will help?")
 		}
 		log.Fatalf("%v", err)
+		log.Debugf("%+v", err)
 	}
 }

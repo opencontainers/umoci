@@ -316,6 +316,8 @@ func KeywordSynonym(name string) Keyword {
 		retname = "sha384digest"
 	case "sha512":
 		retname = "sha512digest"
+	case "sha512256":
+		retname = "sha512256digest"
 	case "xattrs":
 		retname = "xattr"
 	default:
