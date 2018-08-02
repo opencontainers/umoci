@@ -70,10 +70,6 @@ install: $(GO_SRC)
 install.static: $(GO_SRC)
 	$(GO) install -v ${STATIC_BUILD_FLAGS} ${CMD}
 
-.PHONY: update-deps
-update-deps:
-	hack/vendor.sh
-
 .PHONY: clean
 clean:
 	rm -f umoci umoci.static umoci.cov*
