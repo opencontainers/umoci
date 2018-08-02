@@ -300,14 +300,14 @@ func parseIdmapOptions(meta *UmociMeta, ctx *cli.Context) error {
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
-			return errors.Wrapf(err, "failure parsing --uid-map %s: %s", uidmap)
+			return errors.Wrapf(err, "failure parsing --uid-map %s", uidmap)
 		}
 		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
 	}
 	for _, gidmap := range ctx.StringSlice("gid-map") {
 		idMap, err := idtools.ParseMapping(gidmap)
 		if err != nil {
-			return errors.Wrapf(err, "failure parsing --gid-map %s: %s", gidmap)
+			return errors.Wrapf(err, "failure parsing --gid-map %s", gidmap)
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
