@@ -325,6 +325,10 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 // missing entries and the like). A missing or extra key is treated as a
 // Modified type.
 //
+// If oldDh or newDh are empty, we assume they are a hierarchy that is
+// completely empty. This is purely for helping callers create synthetic
+// InodeDeltas.
+//
 // NB: The order of the parameters matters (old, new) because Extra and
 //     Missing are considered as different discrepancy types.
 func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
@@ -338,43 +342,47 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
 	// map to make sure we don't start comparing unrelated entries.
 	diffs := map[string]*stateT{}
 
-	// First, iterate over the old hierarchy.
-	for _, e := range oldDh.Entries {
-		if e.Type == RelativeType || e.Type == FullType {
-			path, err := e.Path()
-			if err != nil {
-				return nil, err
-			}
+	// First, iterate over the old hierarchy. If nil, pretend it's empty.
+	if oldDh != nil {
+		for _, e := range oldDh.Entries {
+			if e.Type == RelativeType || e.Type == FullType {
+				path, err := e.Path()
+				if err != nil {
+					return nil, err
+				}
 
-			// Cannot take &kv because it's the iterator.
-			copy := new(Entry)
-			*copy = e
+				// Cannot take &kv because it's the iterator.
+				copy := new(Entry)
+				*copy = e
 
-			_, ok := diffs[path]
-			if !ok {
-				diffs[path] = &stateT{}
+				_, ok := diffs[path]
+				if !ok {
+					diffs[path] = &stateT{}
+				}
+				diffs[path].Old = copy
 			}
-			diffs[path].Old = copy
 		}
 	}
 
-	// Then, iterate over the new hierarchy.
-	for _, e := range newDh.Entries {
-		if e.Type == RelativeType || e.Type == FullType {
-			path, err := e.Path()
-			if err != nil {
-				return nil, err
-			}
+	// Then, iterate over the new hierarchy. If nil, pretend it's empty.
+	if newDh != nil {
+		for _, e := range newDh.Entries {
+			if e.Type == RelativeType || e.Type == FullType {
+				path, err := e.Path()
+				if err != nil {
+					return nil, err
+				}
 
-			// Cannot take &kv because it's the iterator.
-			copy := new(Entry)
-			*copy = e
+				// Cannot take &kv because it's the iterator.
+				copy := new(Entry)
+				*copy = e
 
-			_, ok := diffs[path]
-			if !ok {
-				diffs[path] = &stateT{}
+				_, ok := diffs[path]
+				if !ok {
+					diffs[path] = &stateT{}
+				}
+				diffs[path].New = copy
 			}
-			diffs[path].New = copy
 		}
 	}
 

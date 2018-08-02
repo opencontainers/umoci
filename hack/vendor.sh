@@ -123,25 +123,27 @@ clone github.com/opencontainers/go-digest v1.0.0-rc1
 clone github.com/opencontainers/image-spec v1.0.0
 clone github.com/opencontainers/runtime-spec v1.0.0
 clone github.com/opencontainers/runtime-tools v0.7.0
-clone github.com/syndtr/gocapability 2c00daeb6c3b45114c80ac44119e7b8801fdd852
+clone github.com/syndtr/gocapability 33e07d32887e1e06b7c025f27ce52f62c7990bc0
 clone github.com/blang/semver v3.5.1
 clone github.com/hashicorp/go-multierror 3d5d8f294aa03d8e98859feac328afbdf1ae0703
 clone github.com/hashicorp/errwrap d6c0cd88035724dd42e0f335ae30161c20575ecc
 clone github.com/xeipuuv/gojsonschema b84684d0e066369f2a7a8a525f3080909ed4ea6b
 clone github.com/xeipuuv/gojsonreference bd5ef7bd5415a7ac448318e64f11a24cd21e594b
 clone github.com/xeipuuv/gojsonpointer 4e3ac2762d5f479393488629ee9370b50873b3a6
-clone golang.org/x/crypto b8a2a83acfe6e6770b75de42d5ff4c67596675c0 https://github.com/golang/crypto
-clone golang.org/x/sys 686000749eaec0b8855b8eef5336cf63899fe51d https://github.com/golang/sys
-clone github.com/docker/go-units v0.3.1
+clone golang.org/x/crypto c126467f60eb25f8f27e5a981f32a87e3965053f https://github.com/golang/crypto
+clone golang.org/x/sys 3dc4335d56c789b04b0ba99b7a37249d9b614314 https://github.com/golang/sys
+clone github.com/docker/go-units v0.3.3
 clone github.com/pkg/errors v0.8.0
-clone github.com/apex/log afb2e76037a5f36542c77e88ef8aef9f469b09f8
+clone github.com/apex/log 941dea75d3ebfbdd905a5d8b7b232965c5e5c684
+clone github.com/fatih/color v1.7.0
+clone github.com/mattn/go-colorable v0.0.9
+clone github.com/mattn/go-isatty v0.0.3
 clone github.com/urfave/cli v1.20.0
 clone github.com/cyphar/filepath-securejoin v0.2.1
-clone github.com/vbatts/go-mtree v0.4.1
-clone github.com/Sirupsen/logrus v1.0.3
-clone github.com/sirupsen/logrus v1.0.3
-clone golang.org/x/net 45e771701b814666a7eb299e6c7a57d0b1799e91 https://github.com/golang/net
-clone github.com/golang/protobuf v1.0.0
+clone github.com/vbatts/go-mtree 1bcf4de08ff771c9b288e3a25348f195d404c17b
+clone github.com/sirupsen/logrus v1.0.6
+clone golang.org/x/net f4c29de78a2a91c00474a2e689954305c350adf9 https://github.com/golang/net
+clone github.com/golang/protobuf v1.1.0
 # Used purely for testing.
 clone github.com/mohae/deepcopy 491d3605edfb866af34a48075bd4355ac1bf46ca
 

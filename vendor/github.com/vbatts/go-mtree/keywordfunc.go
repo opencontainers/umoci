@@ -26,30 +26,32 @@ type KeywordFunc func(path string, info os.FileInfo, r io.Reader) ([]KeyVal, err
 var (
 	// KeywordFuncs is the map of all keywords (and the functions to produce them)
 	KeywordFuncs = map[Keyword]KeywordFunc{
-		"size":            sizeKeywordFunc,                                     // The size, in bytes, of the file
-		"type":            typeKeywordFunc,                                     // The type of the file
-		"time":            timeKeywordFunc,                                     // The last modification time of the file
-		"link":            linkKeywordFunc,                                     // The target of the symbolic link when type=link
-		"uid":             uidKeywordFunc,                                      // The file owner as a numeric value
-		"gid":             gidKeywordFunc,                                      // The file group as a numeric value
-		"nlink":           nlinkKeywordFunc,                                    // The number of hard links the file is expected to have
-		"uname":           unameKeywordFunc,                                    // The file owner as a symbolic name
-		"gname":           gnameKeywordFunc,                                    // The file group as a symbolic name
-		"mode":            modeKeywordFunc,                                     // The current file's permissions as a numeric (octal) or symbolic value
-		"cksum":           cksumKeywordFunc,                                    // The checksum of the file using the default algorithm specified by the cksum(1) utility
-		"md5":             hasherKeywordFunc("md5digest", md5.New),             // The MD5 message digest of the file
-		"md5digest":       hasherKeywordFunc("md5digest", md5.New),             // A synonym for `md5`
-		"rmd160":          hasherKeywordFunc("ripemd160digest", ripemd160.New), // The RIPEMD160 message digest of the file
-		"rmd160digest":    hasherKeywordFunc("ripemd160digest", ripemd160.New), // A synonym for `rmd160`
-		"ripemd160digest": hasherKeywordFunc("ripemd160digest", ripemd160.New), // A synonym for `rmd160`
-		"sha1":            hasherKeywordFunc("sha1digest", sha1.New),           // The SHA1 message digest of the file
-		"sha1digest":      hasherKeywordFunc("sha1digest", sha1.New),           // A synonym for `sha1`
-		"sha256":          hasherKeywordFunc("sha256digest", sha256.New),       // The SHA256 message digest of the file
-		"sha256digest":    hasherKeywordFunc("sha256digest", sha256.New),       // A synonym for `sha256`
-		"sha384":          hasherKeywordFunc("sha384digest", sha512.New384),    // The SHA384 message digest of the file
-		"sha384digest":    hasherKeywordFunc("sha384digest", sha512.New384),    // A synonym for `sha384`
-		"sha512":          hasherKeywordFunc("sha512digest", sha512.New),       // The SHA512 message digest of the file
-		"sha512digest":    hasherKeywordFunc("sha512digest", sha512.New),       // A synonym for `sha512`
+		"size":            sizeKeywordFunc,                                      // The size, in bytes, of the file
+		"type":            typeKeywordFunc,                                      // The type of the file
+		"time":            timeKeywordFunc,                                      // The last modification time of the file
+		"link":            linkKeywordFunc,                                      // The target of the symbolic link when type=link
+		"uid":             uidKeywordFunc,                                       // The file owner as a numeric value
+		"gid":             gidKeywordFunc,                                       // The file group as a numeric value
+		"nlink":           nlinkKeywordFunc,                                     // The number of hard links the file is expected to have
+		"uname":           unameKeywordFunc,                                     // The file owner as a symbolic name
+		"gname":           gnameKeywordFunc,                                     // The file group as a symbolic name
+		"mode":            modeKeywordFunc,                                      // The current file's permissions as a numeric (octal) or symbolic value
+		"cksum":           cksumKeywordFunc,                                     // The checksum of the file using the default algorithm specified by the cksum(1) utility
+		"md5":             hasherKeywordFunc("md5digest", md5.New),              // The MD5 message digest of the file
+		"md5digest":       hasherKeywordFunc("md5digest", md5.New),              // A synonym for `md5`
+		"rmd160":          hasherKeywordFunc("ripemd160digest", ripemd160.New),  // The RIPEMD160 message digest of the file
+		"rmd160digest":    hasherKeywordFunc("ripemd160digest", ripemd160.New),  // A synonym for `rmd160`
+		"ripemd160digest": hasherKeywordFunc("ripemd160digest", ripemd160.New),  // A synonym for `rmd160`
+		"sha1":            hasherKeywordFunc("sha1digest", sha1.New),            // The SHA1 message digest of the file
+		"sha1digest":      hasherKeywordFunc("sha1digest", sha1.New),            // A synonym for `sha1`
+		"sha256":          hasherKeywordFunc("sha256digest", sha256.New),        // The SHA256 message digest of the file
+		"sha256digest":    hasherKeywordFunc("sha256digest", sha256.New),        // A synonym for `sha256`
+		"sha384":          hasherKeywordFunc("sha384digest", sha512.New384),     // The SHA384 message digest of the file
+		"sha384digest":    hasherKeywordFunc("sha384digest", sha512.New384),     // A synonym for `sha384`
+		"sha512":          hasherKeywordFunc("sha512digest", sha512.New),        // The SHA512 message digest of the file
+		"sha512digest":    hasherKeywordFunc("sha512digest", sha512.New),        // A synonym for `sha512`
+		"sha512256":       hasherKeywordFunc("sha512digest", sha512.New512_256), // The SHA512/256 message digest of the file
+		"sha512256digest": hasherKeywordFunc("sha512digest", sha512.New512_256), // A synonym for `sha512256`
 
 		"flags": flagsKeywordFunc, // NOTE: this is a noop, but here to support the presence of the "flags" keyword.
 
