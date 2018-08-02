@@ -27,6 +27,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   this ordering is not recommended by the spec -- nor is it required). This is
   an extension of openSUSE/umoci#229 that was missed during review.
   openSUSE/umoci#232
+- `umoci unpack` and `umoci repack` now make use of a far more optimised `gzip`
+  compression library. In some benchmarks this has resulted in `umoci repack`
+  speedups of up to 3x (though of course, you should do your own benchmarks).
+  `umoci unpack` unfortunately doesn't have as significant of a performance
+  improvement, due to the nature of `gzip` decompression (in future we may
+  switch to `zlib` wrappers). openSUSE/umoci#225 openSUSE/umoci#233
 
 ## [0.4.0] - 2018-03-10
 ### Added

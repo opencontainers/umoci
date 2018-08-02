@@ -23,11 +23,12 @@
 package mutate
 
 import (
-	"compress/gzip"
 	"io"
 	"reflect"
+	"runtime"
 	"time"
 
+	gzip "github.com/klauspost/pgzip"
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/opencontainers/go-digest"
@@ -231,6 +232,9 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int
 
 	gzw := gzip.NewWriter(pipeWriter)
 	defer gzw.Close()
+	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
+		return "", -1, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
+	}
 	go func() {
 		_, err := io.Copy(gzw, hashReader)
 		if err != nil {
