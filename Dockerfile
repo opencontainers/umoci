@@ -38,6 +38,7 @@ RUN zypper -n in \
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/golang/lint/golint
+RUN go get -u github.com/vbatts/git-validation && type git-validation
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed
