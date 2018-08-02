@@ -27,6 +27,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"time"
 
@@ -311,7 +312,10 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.MediaType)
 	}
 
-	g := rgen.New()
+	g, err := rgen.New(runtime.GOOS)
+	if err != nil {
+		return errors.Wrap(err, "create config.json generator")
+	}
 	if err := iconv.MutateRuntimeSpec(g, rootfs, config); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
@@ -340,7 +344,12 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 		if err != nil {
 			return errors.Wrapf(err, "inspecting mount flags of %s", resolvConf)
 		}
-		g.AddBindMount(resolvConf, resolvConf, append([]string{"bind", "ro"}, unprivOpts...))
+		g.AddMount(rspec.Mount{
+			Destination: resolvConf,
+			Source:      resolvConf,
+			Type:        "none",
+			Options:     append(unprivOpts, []string{"bind", "ro"}...),
+		})
 	}
 
 	// Save the config.json.

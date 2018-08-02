@@ -19,6 +19,7 @@ package convert
 
 import (
 	"path/filepath"
+	"runtime"
 	"strings"
 
 	"github.com/apex/log"
@@ -45,7 +46,10 @@ const (
 // configuration specified by the OCI runtime-tools. It is equivalent to
 // MutateRuntimeSpec("runtime-tools/generate".New(), image).Spec().
 func ToRuntimeSpec(rootfs string, image ispec.Image) (rspec.Spec, error) {
-	g := rgen.New()
+	g, err := rgen.New(runtime.GOOS)
+	if err != nil {
+		return rspec.Spec{}, err
+	}
 	if err := MutateRuntimeSpec(g, rootfs, image); err != nil {
 		return rspec.Spec{}, err
 	}
@@ -157,7 +161,12 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 
 	for vol := range ig.ConfigVolumes() {
 		// XXX: This is _fine_ but might cause some issues in the future.
-		g.AddTmpfsMount(vol, []string{"rw"})
+		g.AddMount(rspec.Mount{
+			Destination: vol,
+			Type:        "tmpfs",
+			Source:      "none",
+			Options:     []string{"rw", "nosuid", "nodev", "noexec", "relatime"},
+		})
 	}
 
 	// Remove all seccomp rules.
