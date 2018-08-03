@@ -19,7 +19,6 @@ package layer
 
 import (
 	"archive/tar"
-	"compress/gzip"
 	// Import is necessary for go-digest.
 	_ "crypto/sha256"
 	"fmt"
@@ -32,6 +31,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	gzip "github.com/klauspost/pgzip"
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
 	iconv "github.com/openSUSE/umoci/oci/config/convert"
