@@ -1,0 +1,38 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg width="801px" height="537px" viewBox="0 0 801 537" version="1.1" xmlns="http://www.w3.org/2000/svg" xmlns:xlink="http://www.w3.org/1999/xlink">
+    <!-- Generator: Sketch 46.2 (44496) - http://www.bohemiancoding.com/sketch -->
+    <title>umoci Logo on Dark</title>
+    <desc>Created with Sketch.</desc>
+    <defs></defs>
+    <g id="Page-1" stroke="none" stroke-width="1" fill="none" fill-rule="evenodd">
+        <g id="umoci-Logo-on-Dark">
+            <g id="Group-3" transform="translate(99.000000, 158.000000)">
+                <text id="umoci" font-family="Campton-BoldDEMO, Campton" font-size="160" font-weight="bold" letter-spacing="-12" fill="#FFFFFF">
+                    <tspan x="165" y="157">u</tspan>
+                    <tspan x="249.96" y="157" letter-spacing="-10">m</tspan>
+                    <tspan x="384.6" y="157" letter-spacing="-8">o</tspan>
+                    <tspan x="472.44" y="157" letter-spacing="-11">c</tspan>
+                    <tspan x="554.24" y="157">i</tspan>
+                </text>
+                <g id="Group-2" transform="translate(0.000000, 62.000000)" stroke="#FFFFFF">
+                    <rect id="Rectangle" stroke-width="10" x="50" y="5" width="96" height="96" rx="18"></rect>
+                    <g id="Group" transform="translate(20.000000, 25.000000)" stroke-width="8">
+                        <path d="M16.6685393,8 L53.1067416,8" id="Line" stroke-linecap="square"></path>
+                        <ellipse id="Oval" cx="7.36516854" cy="7.5" rx="7.36516854" ry="7.5"></ellipse>
+                        <ellipse id="Oval-Copy" cx="61.6348315" cy="7.5" rx="7.36516854" ry="7.5"></ellipse>
+                    </g>
+                    <g id="Group-Copy-2" transform="translate(20.000000, 69.000000)" stroke-width="8">
+                        <path d="M16.6685393,8 L53.1067416,8" id="Line" stroke-linecap="square"></path>
+                        <ellipse id="Oval" cx="7.36516854" cy="7.5" rx="7.36516854" ry="7.5"></ellipse>
+                        <ellipse id="Oval-Copy" cx="61.6348315" cy="7.5" rx="7.36516854" ry="7.5"></ellipse>
+                    </g>
+                    <g id="Group-Copy" transform="translate(0.000000, 47.000000)" stroke-width="8">
+                        <path d="M16.9437086,8 L100.086093,8" id="Line" stroke-linecap="square"></path>
+                        <ellipse id="Oval" cx="7.48675497" cy="7.5" rx="7.48675497" ry="7.5"></ellipse>
+                        <ellipse id="Oval-Copy" cx="111.513245" cy="7.5" rx="7.48675497" ry="7.5"></ellipse>
+                    </g>
+                </g>
+            </g>
+        </g>
+    </g>
+</svg>

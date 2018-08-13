@@ -1,5 +1,6 @@
-## `umoci` [![Release](https://img.shields.io/github/release/openSUSE/umoci.svg)](https://github.com/openSUSE/umoci/releases/latest) ###
+[![umoci](/contrib/logo/umoci-black.png)][umoci-site]
 
+[![Release](https://img.shields.io/github/release/openSUSE/umoci.svg)](https://github.com/openSUSE/umoci/releases/latest)
 [![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
 ![License: Apache 2.0](https://img.shields.io/github/license/openSUSE/umoci.svg)
 

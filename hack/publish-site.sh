@@ -24,6 +24,7 @@ cd "$site_root"
 # These are ignored by git.
 cp ../CHANGELOG.md content/changelog.md
 cp ../CONTRIBUTING.md content/contributing.md
+cp ../contrib/logo/umoci-{white,black}.png static/
 
 # Check out the 'gh-pages' worktree.
 rm -rf public/ && git worktree prune
