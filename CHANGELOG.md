@@ -21,6 +21,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - A new `umoci raw unpack` subcommand in order to allow users to unpack images
   without needing a configuration or any of the manifest generation.
   openSUSE/umoci#239
+- `umoci` how has a logo. Thanks to [Max Bailey][maxbailey] for contributing
+  this to the project. openSUSE/umoci#165 openSUSE/umoci#249
 
 ### Fixed
 - `umoci unpack` now handles out-of-order regular whiteouts correctly (though
@@ -33,6 +35,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   `umoci unpack` unfortunately doesn't have as significant of a performance
   improvement, due to the nature of `gzip` decompression (in future we may
   switch to `zlib` wrappers). openSUSE/umoci#225 openSUSE/umoci#233
+
+[maxbailey]: http://www.maxbailey.me/
 
 ## [0.4.0] - 2018-03-10
 ### Added
