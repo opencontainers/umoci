@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.1] - 2018-08-16
 ### Added
 - The number of possible tags that are now valid with `umoci` subcommands has
   increased significantly due to an expansion in the specification of the
@@ -334,7 +336,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.0...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.1...HEAD
+[0.4.1]: https://github.com/openSUSE/umoci/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/openSUSE/umoci/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/openSUSE/umoci/compare/v0.3.0...v0.3.1
 [0.3.0]: https://github.com/openSUSE/umoci/compare/v0.2.1...v0.3.0
