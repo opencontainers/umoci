@@ -406,7 +406,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			te.mapOptions.KeepDirlinks {
 			isDirlink, err = te.isDirlink(root, path, hdr)
 			if err != nil {
-				return err
+				return errors.Wrap(err, "check is dirlink")
 			}
 		} else if err := te.fsEval.RemoveAll(path); err != nil {
 			return errors.Wrap(err, "clobber old path")
