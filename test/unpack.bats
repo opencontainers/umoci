@@ -161,6 +161,9 @@ function teardown() {
     mkdir "${BUNDLE}/rootfs/dir"
     touch "${BUNDLE}/rootfs/dir/a"
     ln -s dir "${BUNDLE}/rootfs/link"
+    ln -s link "${BUNDLE}/rootfs/link2"
+    ln -s loop2 "${BUNDLE}/rootfs/loop1"
+    ln -s loop1 "${BUNDLE}/rootfs/loop2"
     umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "${BUNDLE}"
 	[ "$status" -eq 0 ]
 
@@ -173,8 +176,8 @@ function teardown() {
     chmod -R 0777 "${BUNDLE}"
     rm -rf "${BUNDLE}"
     umoci unpack --keep-dirlinks --image "${IMAGE}:${TAG}" "${BUNDLE}"
-	[ "$status" -eq 0 ]
-	bundle-verify "${BUNDLE}"
+    [ "$status" -eq 0 ]
+    bundle-verify "${BUNDLE}"
 
     ls -al "${BUNDLE}/rootfs"
     echo "${output}"
@@ -182,5 +185,7 @@ function teardown() {
     [ -f "${BUNDLE}/rootfs/dir/a" ]
     [ -f "${BUNDLE}/rootfs/dir/b" ]
     [ -L "${BUNDLE}/rootfs/link" ]
+    [ -L "${BUNDLE}/rootfs/link2" ]
     [ "$(readlink ${BUNDLE}/rootfs/link)" = "dir" ]
+    [ "$(readlink ${BUNDLE}/rootfs/link2)" = "link" ]
 }

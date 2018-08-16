@@ -167,29 +167,46 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	return te.restoreMetadata(path, hdr)
 }
 
-func (te *tarExtractor) isDirlink(root string, path string, hdr *tar.Header) (bool, error) {
-	link, err := te.fsEval.Readlink(path)
-	if err != nil {
-		return false, errors.Wrap(err, "read existing link")
-	}
+func (te *tarExtractor) isDirlink(root string, path string) (bool, error) {
+	previous := []string{}
 
-	linkPath, err := securejoin.SecureJoinVFS(root, link, te.fsEval)
-	if err != nil {
-		return false, errors.Wrap(err, "sanitize old target")
-	}
-
-	linkInfo, err := te.fsEval.Lstat(linkPath)
-	if err != nil {
-		// NotExist just means that it's a broken symlink,
-		// which is allowed.
-		if securejoin.IsNotExist(errors.Cause(err)) {
-			return false, nil
+	for {
+		for _, p := range previous {
+			if p == path {
+				// symlink loop, which is allowed.
+				return false, nil
+			}
 		}
 
-		return false, err
-	}
+		link, err := te.fsEval.Readlink(path)
+		if err != nil {
+			return false, errors.Wrap(err, "read existing link")
+		}
 
-	return linkInfo.IsDir(), nil
+		linkPath, err := securejoin.SecureJoinVFS(root, link, te.fsEval)
+		if err != nil {
+			return false, errors.Wrap(err, "sanitize old target")
+		}
+
+		linkInfo, err := te.fsEval.Lstat(linkPath)
+		if err != nil {
+			// NotExist just means that it's a broken symlink,
+			// which is allowed.
+			if securejoin.IsNotExist(errors.Cause(err)) {
+				return false, nil
+			}
+
+			return false, err
+		}
+
+		if linkInfo.Mode()&os.ModeSymlink != 0 {
+			previous = append(previous, link)
+			path = link
+			continue
+		}
+
+		return linkInfo.IsDir(), nil
+	}
 }
 
 // unpackEntry extracts the given tar.Header to the provided root, ensuring
@@ -404,7 +421,7 @@ func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// the ones that were under a real directory.)
 		if fi.Mode()&os.ModeSymlink != 0 && hdr.Typeflag == tar.TypeDir &&
 			te.mapOptions.KeepDirlinks {
-			isDirlink, err = te.isDirlink(root, path, hdr)
+			isDirlink, err = te.isDirlink(root, path)
 			if err != nil {
 				return errors.Wrap(err, "check is dirlink")
 			}
