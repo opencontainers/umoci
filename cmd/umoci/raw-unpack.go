@@ -42,7 +42,12 @@ is the destination to unpack the image to.`,
 	// unpack reads manifest information.
 	Category: "image",
 
-	Flags: []cli.Flag{},
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "keep-dirlinks",
+			Usage: "don't clobber underlying symlinks to directories",
+		},
+	},
 
 	Action: rawUnpack,
 
@@ -72,6 +77,8 @@ func rawUnpack(ctx *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	meta.MapOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)

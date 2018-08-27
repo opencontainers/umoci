@@ -7,6 +7,7 @@ umoci raw unpack - Unpacks an OCI image tag into a root filesystem
 # SYNOPSIS
 **umoci raw unpack**
 **--image**=*image*[:*tag*]
+**--keep-dirlinks**
 *rootfs*
 
 # DESCRIPTION
@@ -39,6 +40,11 @@ The global options are defined in **umoci**(1).
   as-close-as-possible extraction of the filesystem. Note that it is almost
   always not possible to perfectly extract an OCI image with **--rootless**,
   but it will be as close as possible.
+
+**--keep-dirlinks**
+  Instead of overwriting directories which are links to other directories when
+  higher layers have an explicit directory, just write through the symlink.
+  This option is inspired by rsync's option of the same name.
 
 # EXAMPLE
 The following downloads an image from a **docker**(1) registry using

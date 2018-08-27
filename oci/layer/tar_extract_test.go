@@ -881,3 +881,41 @@ func TestUnpackEntryMap(t *testing.T) {
 		}
 	}(t)
 }
+
+func TestIsDirlink(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-TestDirLink")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	if err = os.Mkdir(filepath.Join(dir, "test"), 0755); err != nil {
+		t.Fatal(err)
+	}
+
+	if err = os.Symlink("test", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+
+	te := newTarExtractor(MapOptions{})
+	dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !dirlink {
+		t.Fatal("dirlink test failed")
+	}
+
+	// read a non-existent link
+	_, err = te.isDirlink(dir, filepath.Join(dir, "doesnt-exist"))
+	if err == nil {
+		t.Fatalf("read non-existent dirlink")
+	}
+
+	// make the symlink broken
+	os.Remove(filepath.Join(dir, "test"))
+	dirlink, err = te.isDirlink(dir, filepath.Join(dir, "link"))
+	if err != nil {
+		t.Fatalf("broken symlink failed: %s", err)
+	}
+}
