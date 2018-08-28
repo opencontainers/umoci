@@ -5,6 +5,13 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## Added
+- umoci now has an exposed Go API. At the moment it's unclear whether it will
+  be changed significantly, but at the least now users can use
+  umoci-as-a-library in a fairly sane way. openSUSE/umoci#245
+- Added `umoci unpack --keep-dirlinks` (in the same vein as rsync's flag with
+  the same name) which allows layers that contain entries which have a symlink
+  as a path component. openSUSE/umoci#246
 
 ## [0.4.1] - 2018-08-16
 ### Added
