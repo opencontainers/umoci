@@ -15,7 +15,7 @@
  * limitations under the License.
  */
 
-package main
+package umoci
 
 import (
 	"bytes"
@@ -62,18 +62,18 @@ var MtreeKeywords = []mtree.Keyword{
 	"xattr",
 }
 
-// UmociMetaName is the name of umoci's metadata file that is stored in all
+// MetaName is the name of umoci's metadata file that is stored in all
 // bundles extracted by umoci.
-const UmociMetaName = "umoci.json"
+const MetaName = "umoci.json"
 
-// UmociMetaVersion is the version of UmociMeta supported by this code. The
+// MetaVersion is the version of Meta supported by this code. The
 // value is only bumped for updates which are not backwards compatible.
-const UmociMetaVersion = "2"
+const MetaVersion = "2"
 
-// UmociMeta represents metadata about how umoci unpacked an image to a bundle
+// Meta represents metadata about how umoci unpacked an image to a bundle
 // and other similar information. It is used to keep track of information that
 // is required when repacking an image and other similar bundle information.
-type UmociMeta struct {
+type Meta struct {
 	// Version is the version of umoci used to unpack the bundle. This is used
 	// to future-proof the umoci.json information.
 	Version string `json:"umoci_version"`
@@ -91,16 +91,16 @@ type UmociMeta struct {
 	MapOptions layer.MapOptions `json:"map_options"`
 }
 
-// WriteTo writes a JSON-serialised version of UmociMeta to the given io.Writer.
-func (m UmociMeta) WriteTo(w io.Writer) (int64, error) {
+// WriteTo writes a JSON-serialised version of Meta to the given io.Writer.
+func (m Meta) WriteTo(w io.Writer) (int64, error) {
 	buf := new(bytes.Buffer)
 	err := json.NewEncoder(io.MultiWriter(buf, w)).Encode(m)
 	return int64(buf.Len()), err
 }
 
 // WriteBundleMeta writes an umoci.json file to the given bundle path.
-func WriteBundleMeta(bundle string, meta UmociMeta) error {
-	fh, err := os.Create(filepath.Join(bundle, UmociMetaName))
+func WriteBundleMeta(bundle string, meta Meta) error {
+	fh, err := os.Create(filepath.Join(bundle, MetaName))
 	if err != nil {
 		return errors.Wrap(err, "create metadata")
 	}
@@ -111,17 +111,17 @@ func WriteBundleMeta(bundle string, meta UmociMeta) error {
 }
 
 // ReadBundleMeta reads and parses the umoci.json file from a given bundle path.
-func ReadBundleMeta(bundle string) (UmociMeta, error) {
-	var meta UmociMeta
+func ReadBundleMeta(bundle string) (Meta, error) {
+	var meta Meta
 
-	fh, err := os.Open(filepath.Join(bundle, UmociMetaName))
+	fh, err := os.Open(filepath.Join(bundle, MetaName))
 	if err != nil {
 		return meta, errors.Wrap(err, "open metadata")
 	}
 	defer fh.Close()
 
 	err = json.NewDecoder(fh).Decode(&meta)
-	if meta.Version != UmociMetaVersion {
+	if meta.Version != MetaVersion {
 		if err == nil {
 			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
 		}
@@ -249,9 +249,9 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	return stat, nil
 }
 
-// generateBundleManifest creates and writes an mtree of the rootfs in the given
+// GenerateBundleManifest creates and writes an mtree of the rootfs in the given
 // bundle path, using the supplied fsEval method
-func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
+func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -283,9 +283,9 @@ func generateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	return nil
 }
 
-// parseIdmapOptions sets up the mapping options for UmociMeta, using
+// ParseIdmapOptions sets up the mapping options for Meta, using
 // the arguments specified on the command line
-func parseIdmapOptions(meta *UmociMeta, ctx *cli.Context) error {
+func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 	// We need to set mappings if we're in rootless mode.
 	meta.MapOptions.Rootless = ctx.Bool("rootless")
 	if meta.MapOptions.Rootless {

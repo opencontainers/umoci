@@ -23,6 +23,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/mutate"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
@@ -104,11 +105,11 @@ func insert(ctx *cli.Context) error {
 	insertFile := ctx.App.Metadata["insertFile"].(string)
 	insertPath := ctx.App.Metadata["insertPath"].(string)
 
-	var meta UmociMeta
-	meta.Version = UmociMetaVersion
+	var meta umoci.Meta
+	meta.Version = umoci.MetaVersion
 
 	// Parse and set up the mapping options.
-	err = parseIdmapOptions(&meta, ctx)
+	err = umoci.ParseIdmapOptions(&meta, ctx)
 	if err != nil {
 		return err
 	}

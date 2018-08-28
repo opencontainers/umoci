@@ -56,7 +56,7 @@ func UnpackLayer(root string, layer io.Reader, opt *MapOptions) error {
 	if opt != nil {
 		mapOptions = *opt
 	}
-	te := newTarExtractor(mapOptions)
+	te := NewTarExtractor(mapOptions)
 	tr := tar.NewReader(layer)
 	for {
 		hdr, err := tr.Next()
@@ -66,7 +66,7 @@ func UnpackLayer(root string, layer io.Reader, opt *MapOptions) error {
 		if err != nil {
 			return errors.Wrap(err, "read next entry")
 		}
-		if err := te.unpackEntry(root, hdr, tr); err != nil {
+		if err := te.UnpackEntry(root, hdr, tr); err != nil {
 			return errors.Wrapf(err, "unpack entry: %s", hdr.Name)
 		}
 	}

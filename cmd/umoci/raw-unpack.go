@@ -21,6 +21,7 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/openSUSE/umoci/oci/layer"
@@ -68,12 +69,12 @@ func rawUnpack(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	rootfsPath := ctx.App.Metadata["rootfs"].(string)
 
-	var meta UmociMeta
-	meta.Version = UmociMetaVersion
+	var meta umoci.Meta
+	meta.Version = umoci.MetaVersion
 
 	// Parse map options.
 	// We need to set mappings if we're in rootless mode.
-	err := parseIdmapOptions(&meta, ctx)
+	err := umoci.ParseIdmapOptions(&meta, ctx)
 	if err != nil {
 		return err
 	}

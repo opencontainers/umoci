@@ -22,6 +22,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -86,7 +87,7 @@ func stat(ctx *cli.Context) error {
 	}
 
 	// Get stat information.
-	ms, err := Stat(context.Background(), engineExt, manifestDescriptor)
+	ms, err := umoci.Stat(context.Background(), engineExt, manifestDescriptor)
 	if err != nil {
 		return errors.Wrap(err, "stat")
 	}

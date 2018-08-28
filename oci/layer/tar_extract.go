@@ -40,7 +40,8 @@ import (
 // would hope) after we check it the first time.
 var inUserNamespace = shared.RunningInUserNS()
 
-type tarExtractor struct {
+// TarExtractor represents a tar file to be extracted.
+type TarExtractor struct {
 	// mapOptions is the set of mapping options to use when extracting
 	// filesystem layers.
 	mapOptions MapOptions
@@ -55,7 +56,7 @@ type tarExtractor struct {
 	fsEval fseval.FsEval
 
 	// upperPaths are paths that have either been extracted in the execution of
-	// this tarExtractor or are ancestors of paths extracted. The purpose of
+	// this TarExtractor or are ancestors of paths extracted. The purpose of
 	// having this stored in-memory is to be able to handle opaque whiteouts as
 	// well as some other possible ordering issues with malformed archives (the
 	// downside of this approach is that it takes up memory -- we could switch
@@ -64,14 +65,14 @@ type tarExtractor struct {
 	upperPaths map[string]struct{}
 }
 
-// newTarExtractor creates a new tarExtractor.
-func newTarExtractor(opt MapOptions) *tarExtractor {
+// NewTarExtractor creates a new TarExtractor.
+func NewTarExtractor(opt MapOptions) *TarExtractor {
 	fsEval := fseval.DefaultFsEval
 	if opt.Rootless {
 		fsEval = fseval.RootlessFsEval
 	}
 
-	return &tarExtractor{
+	return &TarExtractor{
 		mapOptions:      opt,
 		partialRootless: opt.Rootless || inUserNamespace,
 		fsEval:          fsEval,
@@ -82,7 +83,7 @@ func newTarExtractor(opt MapOptions) *tarExtractor {
 // restoreMetadata applies the state described in tar.Header to the filesystem
 // at the given path. No sanity checking is done of the tar.Header's pathname
 // or other information. In addition, no mapping is done of the header.
-func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
+func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Some of the tar.Header fields don't match the OS API.
 	fi := hdr.FileInfo()
 
@@ -153,11 +154,11 @@ func (te *tarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 }
 
 // applyMetadata applies the state described in tar.Header to the filesystem at
-// the given path, using the state of the tarExtractor to remap information
+// the given path, using the state of the TarExtractor to remap information
 // within the header. This should only be used with headers from a tar layer
 // (not from the filesystem). No sanity checking is done of the tar.Header's
 // pathname or other information.
-func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
+func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Modify the header.
 	if err := unmapHeader(hdr, te.mapOptions); err != nil {
 		return errors.Wrap(err, "unmap header")
@@ -167,7 +168,7 @@ func (te *tarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	return te.restoreMetadata(path, hdr)
 }
 
-func (te *tarExtractor) isDirlink(root string, path string) (bool, error) {
+func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	previous := []string{}
 
 	for {
@@ -209,11 +210,11 @@ func (te *tarExtractor) isDirlink(root string, path string) (bool, error) {
 	}
 }
 
-// unpackEntry extracts the given tar.Header to the provided root, ensuring
+// UnpackEntry extracts the given tar.Header to the provided root, ensuring
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
 // that represents a whiteout will result in the path being removed.
-func (te *tarExtractor) unpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
+func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (Err error) {
 	// Make the paths safe.
 	hdr.Name = CleanPath(hdr.Name)
 	root = filepath.Clean(root)
