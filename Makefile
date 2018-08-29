@@ -40,8 +40,13 @@ COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
 
 BUILD_FLAGS ?=
-DYN_BUILD_FLAGS := $(BUILD_FLAGS) -buildmode=pie -ldflags "-s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
-STATIC_BUILD_FLAGS := $(BUILD_FLAGS) -ldflags "-s -w -extldflags '-static' -X main.gitCommit=${COMMIT} -X main.version=${VERSION}" -tags "$(BUILDTAGS)"
+
+BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}"
+BASE_LDFLAGS := -s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}
+
+DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
+TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
+STATIC_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS} -extldflags '-static'"
 
 .DEFAULT: umoci
 
@@ -56,7 +61,7 @@ umoci.static: $(GO_SRC)
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.cover: $(GO_SRC)
-	$(GO) test -c -cover -covermode=count -coverpkg=./... ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+	$(GO) test -c -cover -covermode=count -coverpkg=./... ${TEST_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 .PHONY: release
 release:

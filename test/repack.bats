@@ -448,6 +448,8 @@ function teardown() {
 	chmod +w "$BUNDLE_A/rootfs/var"  && xattr -w user.3rd        halflife3confirmed "$BUNDLE_A/rootfs/var"
 	chmod +w "$BUNDLE_A/rootfs/usr"  && xattr -w user."key also" "works if you try" "$BUNDLE_A/rootfs/usr"
 	chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
+	# Forbidden xattr.
+	chmod +w "$BUNDLE_A/rootfs/opt"  && xattr -w "user.UMOCI:forbidden_xattr" "should not exist" "$BUNDLE_A/rootfs/opt"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE_A"
@@ -484,6 +486,9 @@ function teardown() {
 	# Empty-valued xattrs are disallowed by PAX.
 	sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
+	# Forbidden xattrs are ignored.
+	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$BUNDLE_B/rootfs/opt"
+	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
 
 	# Now make some changes.
 	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
@@ -523,6 +528,9 @@ function teardown() {
 	# Empty-valued xattrs are disallowed by PAX.
 	sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
+	# Forbidden xattrs are ignored.
+	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$BUNDLE_C/rootfs/opt"
+	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
 
 	image-verify "${IMAGE}"
 }

@@ -507,13 +507,16 @@ func Lgetxattr(path, name string) ([]byte, error) {
 // properly all of the internal functions were wrapped with unpriv.Wrap to make
 // it possible to create a path even if you do not currently have enough access
 // bits.
-func Lclearxattrs(path string) error {
+func Lclearxattrs(path string, except map[string]struct{}) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
 		names, err := Llistxattr(path)
 		if err != nil {
 			return err
 		}
 		for _, name := range names {
+			if _, skip := except[name]; skip {
+				continue
+			}
 			if err := Lremovexattr(path, name); err != nil {
 				// SELinux won't let you change security.selinux (for obvious
 				// security reasons), so we don't clear xattrs if attempting to

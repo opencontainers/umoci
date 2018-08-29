@@ -133,8 +133,8 @@ func (fs unprivFsEval) Lgetxattr(path string, name string) ([]byte, error) {
 }
 
 // Lclearxattrs is equivalent to unpriv.Lclearxattrs
-func (fs unprivFsEval) Lclearxattrs(path string) error {
-	return unpriv.Lclearxattrs(path)
+func (fs unprivFsEval) Lclearxattrs(path string, except map[string]struct{}) error {
+	return unpriv.Lclearxattrs(path, except)
 }
 
 // KeywordFunc returns a wrapper around the given mtree.KeywordFunc.

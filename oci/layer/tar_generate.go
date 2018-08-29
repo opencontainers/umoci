@@ -27,12 +27,14 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/pkg/fseval"
+	"github.com/openSUSE/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 )
 
 // ignoreXattrs is a list of xattr names that should be ignored when
 // creating a new image layer, because they are host-specific and/or would be a
-// bad idea to unpack.
+// bad idea to unpack. They are also excluded from Lclearxattr when extracting
+// an archive.
 // XXX: Maybe we should make this configurable so users can manually blacklist
 //      (or even whitelist) xattrs that they actually want included? Like how
 //      GNU tar's xattr setup works.
@@ -40,6 +42,18 @@ var ignoreXattrs = map[string]struct{}{
 	// SELinux doesn't allow you to set SELinux policies generically. They're
 	// also host-specific. So just ignore them during extraction.
 	"security.selinux": {},
+
+	// NFSv4 ACLs are very system-specific and shouldn't be touched by us, nor
+	// should they be included in images.
+	"system.nfs4_acl": {},
+}
+
+func init() {
+	// For test purposes we add a fake forbidden attribute that an unprivileged
+	// user can easily write to (and thus we can test it).
+	if testutils.IsTestBinary() {
+		ignoreXattrs["user.UMOCI:forbidden_xattr"] = struct{}{}
+	}
 }
 
 // tarGenerator is a helper for generating layer diff tars. It should be noted
