@@ -154,6 +154,13 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
 				continue
 			}
+			// We cannot do much if we get an ENOTSUP -- this usually means
+			// that extended attributes are simply unsupported by the
+			// underlying filesystem (such as AUFS or NFS).
+			if errors.Cause(err) == unix.ENOTSUP {
+				log.Warnf("xatt{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+				continue
+			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)
 		}
 	}
