@@ -34,7 +34,8 @@ RUN zypper -n in \
 		oci-image-tools \
 		oci-runtime-tools \
 		python-setuptools python-xattr attr \
-		skopeo
+		skopeo \
+		tar
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH

@@ -33,6 +33,7 @@ of the OCI specifications. The top-level umoci-unpack(1) and similar commands
 should be sufficient for most use-cases.`,
 
 	Subcommands: []cli.Command{
+		rawAddLayerCommand,
 		rawConfigCommand,
 		rawUnpackCommand,
 	},

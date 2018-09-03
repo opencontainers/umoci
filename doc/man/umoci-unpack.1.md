@@ -7,7 +7,10 @@ umoci unpack - Unpacks an OCI image tag into an runtime bundle
 # SYNOPSIS
 **umoci unpack**
 **--image**=*image*[:*tag*]
-**--keep-dirlinks**
+[**--rootless**]
+[**--uid-map**=*value*]
+[**--uid-map**=*value*]
+[**--keep-dirlinks**]
 *bundle*
 
 # DESCRIPTION
@@ -26,24 +29,24 @@ The global options are defined in **umoci**(1).
   path to a valid OCI image and *tag* must be a valid tag in the image. If
   *tag* is not provided it defaults to "latest".
 
-**--uid-map**=[*value*]
-  Specifies a UID mapping to use while unpacking layers. This is used in a
-  similar fashion to **user_namespaces**(7), and is of the form
-  **container:host[:size]**.
-
-**--gid-map**=[*value*]
-  Specifies a GID mapping to use while unpacking layers. This is used in a
-  similar fashion to **user_namespaces**(7), and is of the form
-  **container:host[:size]**.
-
 **--rootless**
   Enable rootless unpacking support. This allows for **umoci-unpack**(1) and
   **umoci-repack**(1) to be used as an unprivileged user. Use of this flag
   implies **--uid-map=0:$(id -u):1** and **--gid-map=0:$(id -g):1**, as well as
-  enabling several features to fake parts of the unpacking in the attempt to
+  enabling several features to fake parts of the unpacking in an attempt to
   generate an as-close-as-possible extraction of the filesystem. Note that it
   is almost always not possible to perfectly extract an OCI image with
   **--rootless**, but it will be as close as possible.
+
+**--uid-map**=*value*
+  Specifies a UID mapping to use while unpacking (and repacking) layers. This
+  is used in a similar fashion to **user_namespaces**(7), and is of the form
+  **container:host[:size]**.
+
+**--gid-map**=*value*
+  Specifies a GID mapping to use while unpacking (and repacking) layers. This
+  is used in a similar fashion to **user_namespaces**(7), and is of the form
+  **container:host[:size]**.
 
 **--keep-dirlinks**
   Instead of overwriting directories which are links to other directories when
