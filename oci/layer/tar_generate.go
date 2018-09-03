@@ -176,6 +176,9 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		if _, ignore := ignoreXattrs[name]; ignore {
 			continue
 		}
+		// TODO: We should translate all v3 capabilities into root-owned
+		//       capabilities here. But we don't have Go code for that yet
+		//       (we'd need to use libcap to parse it).
 		value, err := tg.fsEval.Lgetxattr(path, name)
 		if err != nil {
 			// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
@@ -191,7 +194,6 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
 			continue
 		}
-
 		// Note that Go strings can actually be arbitrary byte sequences, so
 		// this conversion (while it might look a bit wrong) is actually fine.
 		hdr.Xattrs[name] = string(value)

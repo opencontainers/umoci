@@ -138,6 +138,11 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
+			//
+			// TODO: We should translate all security.capability capabilites
+			//       into v3 capabilities, which allow us to write them as
+			//       unprivileged users (we also would need to translate them
+			//       back when creating archives).
 			if te.partialRootless && os.IsPermission(errors.Cause(err)) {
 				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
 				continue

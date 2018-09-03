@@ -131,9 +131,9 @@ function teardown() {
 	bundle-verify "$BUNDLE_A"
 
 	# Make some files setuid and setgid.
-	touch "$BUNDLE_A/setuid"  && chmod u+xs  "$BUNDLE_A/setuid"
-	touch "$BUNDLE_A/setgid"  && chmod g+xs  "$BUNDLE_A/setgid"
-	touch "$BUNDLE_A/setugid" && chmod ug+xs "$BUNDLE_A/setugid"
+	touch "$BUNDLE_A/rootfs/setuid"  && chmod u+xs  "$BUNDLE_A/rootfs/setuid"
+	touch "$BUNDLE_A/rootfs/setgid"  && chmod g+xs  "$BUNDLE_A/rootfs/setgid"
+	touch "$BUNDLE_A/rootfs/setugid" && chmod ug+xs "$BUNDLE_A/rootfs/setugid"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
@@ -146,9 +146,120 @@ function teardown() {
 	bundle-verify "$BUNDLE_B"
 
 	# Check that the set{uid,gid} bits were preserved.
-	[ -u "$BUNDLE_A/setuid" ]
-	[ -g "$BUNDLE_A/setgid" ]
-	[ -u "$BUNDLE_A/setugid" ] && [ -g "$BUNDLE_A/setugid" ]
+	[ -u "$BUNDLE_B/rootfs/setuid" ]
+	[ -g "$BUNDLE_B/rootfs/setgid" ]
+	[ -u "$BUNDLE_B/rootfs/setugid" ] && [ -g "$BUNDLE_B/rootfs/setugid" ]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci unpack [setcap]" {
+	# We need to setcap which requires root on quite a few kernels -- and we
+	# don't support v3 capabilities yet (which allow us as an unprivileged user
+	# to write capabilities).
+	requires root
+
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Make some files setuid and setgid.
+	touch "$BUNDLE_A/rootfs/setcap1" && setcap "cap_net_raw+eip" "$BUNDLE_A/rootfs/setcap1"
+	touch "$BUNDLE_A/rootfs/setcap2" && setcap "cap_sys_admin,cap_setfcap+eip" "$BUNDLE_A/rootfs/setcap2"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image (as root).
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Ensure that the capability bits were preserved.
+	sane_run getcap "$BUNDLE_B/rootfs/setcap1"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *" = cap_net_raw+eip"* ]]
+	sane_run getcap "$BUNDLE_B/rootfs/setcap2"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *" = cap_sys_admin,cap_setfcap"* ]]
+
+	# Unpack the image (as rootless).
+	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# TODO: Actually set capabilities as an unprivileged user and then test
+	#       that the correct v3 capabilities were set.
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci unpack [mknod]" {
+	# We need to mknod which requires root on most kernels. Since Linux 4.18 it's
+	# been possible for unprivileged users to mknod(2) but we can't use that here
+	# (it requires owning the filesystem's superblock).
+	requires root
+
+	BUNDLE_A="$(setup_tmpdir)"
+	BUNDLE_B="$(setup_tmpdir)"
+	BUNDLE_C="$(setup_tmpdir)"
+
+	image-verify "${IMAGE}"
+
+	# Unpack the image.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_A"
+
+	# Make some mknod.
+	mknod "$BUNDLE_A/rootfs/block1" b 128 42  # 80:2a 61a4
+	mknod "$BUNDLE_A/rootfs/block2" b 255 128 # ff:80 61a4
+	mknod "$BUNDLE_A/rootfs/char1"  c 133 37  # 85:25 21a4
+	mknod "$BUNDLE_A/rootfs/char2"  c 253 97  # fd:61 21a4
+	mkfifo "$BUNDLE_A/rootfs/fifo"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image (as root).
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_B"
+
+	# Check that all of the bits were preserved.
+	[ -b "$BUNDLE_B/rootfs/block1" ]
+	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/block1")" == *"80:2a"* ]]
+	[ -b "$BUNDLE_B/rootfs/block2" ]
+	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/block2")" == *"ff:80"* ]]
+	[ -c "$BUNDLE_B/rootfs/char1" ]
+	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/char1")" == *"85:25"* ]]
+	[ -c "$BUNDLE_B/rootfs/char2" ]
+	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/char2")" == *"fd:61"* ]]
+	[ -p "$BUNDLE_B/rootfs/fifo" ]
+
+	# Unpack the image (as rootless).
+	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE_C"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE_C"
+
+	# At the least, check that the files exist.
+	[ -e "$BUNDLE_C/rootfs/block1" ]
+	[ -e "$BUNDLE_C/rootfs/block2" ]
+	[ -e "$BUNDLE_C/rootfs/char1" ]
+	[ -e "$BUNDLE_C/rootfs/char2" ]
+	# But the FIFOs should be preserved.
+	[ -p "$BUNDLE_C/rootfs/fifo" ]
 
 	image-verify "${IMAGE}"
 }

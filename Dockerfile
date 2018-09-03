@@ -28,6 +28,7 @@ RUN zypper -n in \
 		golang-github-cpuguy83-go-md2man \
 		go-mtree \
 		jq \
+		libcap-progs \
 		make \
 		moreutils \
 		oci-image-tools \
