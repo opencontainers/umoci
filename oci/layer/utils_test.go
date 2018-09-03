@@ -22,8 +22,8 @@ import (
 	"testing"
 
 	"github.com/golang/protobuf/proto"
-	"github.com/openSUSE/umoci/pkg/rootlesscontainers-proto"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 )
 
 // We need to have individual tests for the rootlesscontainers-proto, because

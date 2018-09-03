@@ -130,16 +130,35 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	if err := te.fsEval.Lclearxattrs(path); err != nil {
+	if err := te.fsEval.Lclearxattrs(path, ignoreXattrs); err != nil {
 		return errors.Wrapf(err, "clear xattr metadata: %s", path)
 	}
 	for name, value := range hdr.Xattrs {
+		if _, skip := ignoreXattrs[name]; skip {
+			if te.partialRootless {
+				log.Warnf("rootless{%s} ignoring forbidden xattr: %q", hdr.Name, name)
+				continue
+			}
+			return errors.Errorf("restore xattr metadata: saw forbidden xattr %q: %s", name, hdr.Name)
+		}
 		if err := te.fsEval.Lsetxattr(path, name, []byte(value), 0); err != nil {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
+			//
+			// TODO: We should translate all security.capability capabilites
+			//       into v3 capabilities, which allow us to write them as
+			//       unprivileged users (we also would need to translate them
+			//       back when creating archives).
 			if te.partialRootless && os.IsPermission(errors.Cause(err)) {
 				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
+				continue
+			}
+			// We cannot do much if we get an ENOTSUP -- this usually means
+			// that extended attributes are simply unsupported by the
+			// underlying filesystem (such as AUFS or NFS).
+			if errors.Cause(err) == unix.ENOTSUP {
+				log.Warnf("xatt{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
 				continue
 			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)

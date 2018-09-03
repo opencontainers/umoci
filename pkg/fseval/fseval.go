@@ -92,7 +92,7 @@ type FsEval interface {
 	Lgetxattr(path string, name string) ([]byte, error)
 
 	// Lclearxattrs is equivalent to system.Lclearxattrs
-	Lclearxattrs(path string) error
+	Lclearxattrs(path string, except map[string]struct{}) error
 
 	// KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
 	KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc
