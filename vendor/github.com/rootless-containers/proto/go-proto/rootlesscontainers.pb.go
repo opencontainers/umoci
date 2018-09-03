@@ -36,7 +36,8 @@ const _ = proto.ProtoPackageIsVersion2 // please upgrade the proto package
 type Resource struct {
 	// Zero-value MUST be parsed as a literally zero-value, not "unset".
 	// To keep both uid and gid unchaged, the entire xattr value SHOULD be removed.
-	// To keep either one of uid or gid unchaged, -1 value SHOULD be set.
+	// To keep either one of uid or gid unchaged, 0xFFFFFFFF (in other words,
+	// `(uint32_t) -1`, see also chown(2)) value SHOULD be set.
 	// (Because some protobuf bindings cannot distinguish "unset" from zero-value.)
 	Uid uint32 `protobuf:"varint,1,opt,name=uid" json:"uid,omitempty"`
 	Gid uint32 `protobuf:"varint,2,opt,name=gid" json:"gid,omitempty"`
