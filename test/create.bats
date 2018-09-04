@@ -71,11 +71,8 @@ function teardown() {
 }
 
 @test "umoci new --image" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Setup up $NEWIMAGE.
-	NEWIMAGE="$(setup_tmpdir)"
-	rm -rf "$NEWIMAGE"
+	NEWIMAGE="$(setup_tmpdir)/image"
 
 	# Create a new image with no tags.
 	umoci init --layout "$NEWIMAGE"
@@ -95,12 +92,13 @@ function teardown() {
 	#image-verify "$NEWIMAGE"
 
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci unpack --image "${NEWIMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
 	# Make sure that the rootfs is empty.
-	sane_run find "$BUNDLE/rootfs"
+	sane_run find "$ROOTFS"
 	[ "$status" -eq 0 ]
 	[ "${#lines[@]}" -eq 1 ]
 

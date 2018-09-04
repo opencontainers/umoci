@@ -26,22 +26,18 @@ function teardown() {
 }
 
 @test "umoci raw unpack" {
-        # It's actually not a bundle, but it's simpler to match the format of the unpack tests.
-	BUNDLE="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci raw unpack --image "${IMAGE}:${TAG}" "$BUNDLE/rootfs"
+	new_bundle_rootfs
+	umoci raw unpack --image "${IMAGE}:${TAG}" "$ROOTFS"
 	[ "$status" -eq 0 ]
 
 	# We need to make sure these files *do not* exist.
 	! [ -f "$BUNDLE/config.json" ]
-	! [ -d "$BUNDLE/rootfs" ]
+	[ -d "$ROOTFS" ]
 
 	# Check that the image appears about right.
 	# NOTE: Since we could be using different images, this will be fairly
-	#       generic.
+	#	   generic.
 	[ -e "$BUNDLE/rootfs/bin/sh" ]
 	[ -e "$BUNDLE/rootfs/etc/passwd" ]
 	[ -e "$BUNDLE/rootfs/etc/group" ]
@@ -55,7 +51,7 @@ function teardown() {
 	umoci raw unpack --image="${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
 
-	umoci raw unpack "$BUNDLE/rootfs"
+	umoci raw unpack "$ROOTFS"
 	[ "$status" -ne 0 ]
 }
 
@@ -68,22 +64,19 @@ function teardown() {
 }
 
 @test "umoci raw unpack [cross-check with umoci unpack]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the bundle
+	BUNDLE_A="$(setup_tmpdir)"
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE_A"
 
 	# Unpack the rootfs
-	umoci raw unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B/rootfs"
+	BUNDLE_B="$(setup_tmpdir)" && ROOTFS_B="$BUNDLE_B/rootfs"
+	umoci raw unpack --image "${IMAGE}:${TAG}" "$ROOTFS_B"
 	[ "$status" -eq 0 ]
 
 	# Ensure that gomtree suceeds on the new unpacked rootfs.
-	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 

@@ -26,16 +26,13 @@ function teardown() {
 }
 
 @test "umoci raw add-layer" {
-	image-verify "${IMAGE}"
-
-	LAYERS_DIR="$(setup_tmpdir)"
-
 	# Create layer1.
 	LAYER="$(setup_tmpdir)"
 	echo "layer1" > "$LAYER/file"
 	mkdir "$LAYER/dir1"
 	echo "layer1" > "$LAYER/dir1/file"
-	tar cvfC "$LAYERS_DIR/layer1.tar" "$LAYER" .
+	sane_run tar cvfC "$BATS_TMPDIR/layer1.tar" "$LAYER" .
+	[ "$status" -eq 0 ]
 
 	# Create layer2.
 	LAYER="$(setup_tmpdir)"
@@ -43,31 +40,33 @@ function teardown() {
 	mkdir "$LAYER/dir2" "$LAYER/dir3"
 	echo "layer2" > "$LAYER/dir2/file"
 	echo "layer2" > "$LAYER/dir3/file"
-	tar cvfC "$LAYERS_DIR/layer2.tar" "$LAYER" .
+	sane_run tar cvfC "$BATS_TMPDIR/layer2.tar" "$LAYER" .
+	[ "$status" -eq 0 ]
 
 	# Create layer3.
 	LAYER="$(setup_tmpdir)"
 	echo "layer3" > "$LAYER/file"
 	mkdir "$LAYER/dir2"
 	echo "layer3" > "$LAYER/dir2/file"
-	tar cvfC "$LAYERS_DIR/layer3.tar" "$LAYER" .
+	sane_run tar cvfC "$BATS_TMPDIR/layer3.tar" "$LAYER" .
+	[ "$status" -eq 0 ]
 
 	# Add layers to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
 	#image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$LAYERS_DIR/layer1.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer1.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$LAYERS_DIR/layer2.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer2.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$LAYERS_DIR/layer3.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer3.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the created image.
-	BUNDLE="$(setup_tmpdir)" && ROOTFS="$BUNDLE/rootfs"
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
@@ -90,26 +89,23 @@ function teardown() {
 }
 
 @test "umoci raw add-layer [missing args]" {
-	DIR="$(setup_tmpdir)"
-
 	# Missing layer.
 	umoci raw add-layer --image="${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
 
 	# Missing image.
-	touch "$DIR/file"
-	umoci raw add-layer "$DIR/file"
+	touch "$BATS_TMPDIR/file"
+	umoci raw add-layer "$BATS_TMPDIR/file"
 	[ "$status" -ne 0 ]
 
 	# Using a directory as an image file.
-	umoci raw add-layer --image="${IMAGE}:${TAG}" "$DIR"
+	umoci raw add-layer --image="${IMAGE}:${TAG}" "$BATS_TMPDIR"
 	[ "$status" -ne 0 ]
 }
 
 @test "umoci raw add-layer [too many args]" {
-	DIR="$(setup_tmpdir)"
-	touch "$DIR/file"{1..3}
+	touch "$BATS_TMPDIR/file"{1..3}
 
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$DIR/file"{1..3}
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/file"{1..3}
 	[ "$status" -ne 0 ]
 }

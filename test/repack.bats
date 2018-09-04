@@ -26,49 +26,46 @@ function teardown() {
 }
 
 @test "umoci repack" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the files we're creating don't exist.
-	! [ -e "$BUNDLE_A/rootfs/newfile" ]
-	! [ -e "$BUNDLE_A/rootfs/newdir" ]
-	! [ -e "$BUNDLE_A/rootfs/newdir/anotherfile" ]
-	! [ -e "$BUNDLE_A/rootfs/newdir/link" ]
+	! [ -e "$ROOTFS/newfile" ]
+	! [ -e "$ROOTFS/newdir" ]
+	! [ -e "$ROOTFS/newdir/anotherfile" ]
+	! [ -e "$ROOTFS/newdir/link" ]
 
 	# Create them.
-	echo "first file" > "$BUNDLE_A/rootfs/newfile"
-	mkdir "$BUNDLE_A/rootfs/newdir"
-	echo "subfile" > "$BUNDLE_A/rootfs/newdir/anotherfile"
-	ln -s "this is a dummy symlink" "$BUNDLE_A/rootfs/newdir/link"
+	echo "first file" > "$ROOTFS/newfile"
+	mkdir "$ROOTFS/newdir"
+	echo "subfile" > "$ROOTFS/newdir/anotherfile"
+	ln -s "this is a dummy symlink" "$ROOTFS/newdir/link"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Ensure that gomtree succeeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
+	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Just for sanity, check that everything looks okay.
-	[ -f "$BUNDLE_B/rootfs/newfile" ]
-	[ -d "$BUNDLE_B/rootfs/newdir" ]
-	[ -f "$BUNDLE_B/rootfs/newdir/anotherfile" ]
-	[ -L "$BUNDLE_B/rootfs/newdir/link" ]
+	[ -f "$ROOTFS/newfile" ]
+	[ -d "$ROOTFS/newdir" ]
+	[ -f "$ROOTFS/newdir/anotherfile" ]
+	[ -L "$ROOTFS/newdir/link" ]
 
 	# Make sure that repack fails without a bundle path.
 	umoci repack --image "${IMAGE}:${TAG}-new2"
@@ -101,8 +98,7 @@ function teardown() {
 }
 
 @test "umoci repack [missing args]" {
-	BUNDLE="$(setup_tmpdir)"
-
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 
@@ -114,46 +110,43 @@ function teardown() {
 }
 
 @test "umoci repack [whiteout]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && ROOTFS_A="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the files we're deleting exist.
-	[ -d "$BUNDLE_A/rootfs/etc" ]
-	[ -L "$BUNDLE_A/rootfs/bin/sh" ]
-	[ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
+	[ -d "$ROOTFS/etc" ]
+	[ -L "$ROOTFS/bin/sh" ]
+	[ -e "$ROOTFS/usr/bin/env" ]
 
 	# Remove them.
-	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
-	chmod +w "$BUNDLE_A/rootfs/bin/." && rm -f "$BUNDLE_A/rootfs/bin/sh"
-	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm -f "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
+	chmod +w "$ROOTFS/bin/." && rm -f "$ROOTFS/bin/sh"
+	chmod +w "$ROOTFS/usr/bin/." && rm -f "$ROOTFS/usr/bin/env"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	new_bundle_rootfs && BUNDLE_B="$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Ensure that gomtree suceeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
+	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Just for sanity, check that everything looks okay.
-	! [ -e "$BUNDLE_B/rootfs/etc" ]
-	! [ -e "$BUNDLE_B/rootfs/bin/sh" ]
-	! [ -e "$BUNDLE_B/rootfs/usr/bin/env" ]
+	! [ -e "$ROOTFS/etc" ]
+	! [ -e "$ROOTFS/bin/sh" ]
+	! [ -e "$ROOTFS/usr/bin/env" ]
 
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}-new" --json
@@ -161,68 +154,65 @@ function teardown() {
 	[[ "$(echo "$output" | jq -SM '.history[-1].empty_layer')" == "null" ]]
 
 	# Try to create a layer containing a ".wh." file.
-	mkdir -p "$BUNDLE_B/rootfs/whiteout_test"
-	echo "some data" > "$BUNDLE_B/rootfs/whiteout_test/.wh. THIS IS A TEST "
+	mkdir -p "$ROOTFS/whiteout_test"
+	echo "some data" > "$ROOTFS/whiteout_test/.wh. THIS IS A TEST "
 
 	# Repacking a rootfs with a '.wh.' file *must* fail.
-	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_B"
+	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE"
 	[ "$status" -ne 0 ]
 	image-verify "${IMAGE}"
 
 	# Try to create a layer containing a ".wh." directory.
-	rm -rf "$BUNDLE_B/rootfs/whiteout_test"
-	mkdir -p "$BUNDLE_B/rootfs/.wh.another_whiteout"
+	rm -rf "$ROOTFS/whiteout_test"
+	mkdir -p "$ROOTFS/.wh.another_whiteout"
 
 	# Repacking a rootfs with a '.wh.' directory *must* fail.
-	umoci repack --image "${IMAGE}:${TAG}-new3" "$BUNDLE_B"
+	umoci repack --image "${IMAGE}:${TAG}-new3" "$BUNDLE"
 	[ "$status" -ne 0 ]
 	image-verify "${IMAGE}"
 }
 
 @test "umoci repack [replace]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && ROOTFS_A="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the files we're replacing exist.
-	[ -d "$BUNDLE_A/rootfs/etc" ]
-	[ -L "$BUNDLE_A/rootfs/bin/sh" ]
-	[ -e "$BUNDLE_A/rootfs/usr/bin/env" ]
+	[ -d "$ROOTFS/etc" ]
+	[ -L "$ROOTFS/bin/sh" ]
+	[ -e "$ROOTFS/usr/bin/env" ]
 
 	# Replace them.
-	chmod +w "$BUNDLE_A/rootfs/etc/." && rm -rf "$BUNDLE_A/rootfs/etc"
-	echo "different" > "$BUNDLE_A/rootfs/etc"
-	chmod +w "$BUNDLE_A/rootfs/bin/." && rm -f "$BUNDLE_A/rootfs/bin/sh"
-	mkdir "$BUNDLE_A/rootfs/bin/sh"
-	chmod +w "$BUNDLE_A/rootfs/usr/bin/." && rm -f "$BUNDLE_A/rootfs/usr/bin/env"
-	ln -s "a \\really //weird _00..:=path " "$BUNDLE_A/rootfs/usr/bin/env"
+	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
+	echo "different" > "$ROOTFS/etc"
+	chmod +w "$ROOTFS/bin/." && rm -f "$ROOTFS/bin/sh"
+	mkdir "$ROOTFS/bin/sh"
+	chmod +w "$ROOTFS/usr/bin/." && rm -f "$ROOTFS/usr/bin/env"
+	ln -s "a \\really //weird _00..:=path " "$ROOTFS/usr/bin/env"
 
 	# Repack the image under the same tag.
-	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	new_bundle_rootfs && BUNDLE_B="$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Ensure that gomtree suceeds on the old bundle, which is what this was
 	# generated from.
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
+	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Just for sanity, check that everything looks okay.
-	[ -f "$BUNDLE_B/rootfs/etc" ]
-	[ -d "$BUNDLE_B/rootfs/bin/sh" ]
-	[ -L "$BUNDLE_B/rootfs/usr/bin/env" ]
+	[ -f "$ROOTFS/etc" ]
+	[ -d "$ROOTFS/bin/sh" ]
+	[ -L "$ROOTFS/usr/bin/env" ]
 
 	# Make sure that the new layer is a non-empty_layer.
 	umoci stat --image "${IMAGE}:${TAG}" --json
@@ -233,11 +223,8 @@ function teardown() {
 }
 
 @test "umoci repack --history.*" {
-	BUNDLE="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
@@ -281,55 +268,52 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [hardlink]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Create a file and some hardlinks.
-	echo "this has some contents" >> "$BUNDLE_A/rootfs/small_change"
-	ln -f "$BUNDLE_A/rootfs/small_change" "$BUNDLE_A/rootfs/link_hard"
-	mkdir -p "$BUNDLE_A/rootfs/tmp" && ln -f "$BUNDLE_A/rootfs/small_change" "$BUNDLE_A/rootfs/tmp/link_hard"
-	mkdir -p "$BUNDLE_A/rootfs/another/link/dir" && ln -f "$BUNDLE_A/rootfs/link_hard" "$BUNDLE_A/rootfs/another/link/dir/hard"
+	echo "this has some contents" >> "$ROOTFS/small_change"
+	ln -f "$ROOTFS/small_change" "$ROOTFS/link_hard"
+	mkdir -p "$ROOTFS/tmp" && ln -f "$ROOTFS/small_change" "$ROOTFS/tmp/link_hard"
+	mkdir -p "$ROOTFS/another/link/dir" && ln -f "$ROOTFS/link_hard" "$ROOTFS/another/link/dir/hard"
 
 	# Symlink + hardlink.
-	ln -sf "/../../.././small_change" "$BUNDLE_A/rootfs/symlink"
-	ln -Pf "$BUNDLE_A/rootfs/symlink" "$BUNDLE_A/rootfs/tmp/symlink_hard"
+	ln -sf "/../../.././small_change" "$ROOTFS/symlink"
+	ln -Pf "$ROOTFS/symlink" "$ROOTFS/tmp/symlink_hard"
 
 	# Repack the image, setting history values.
-	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Now make sure that the paths all have the same inode numbers.
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/small_change"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/small_change"
 	[ "$status" -eq 0 ]
 	originalA="$output"
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/link_hard"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/link_hard"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$originalA" ]]
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/tmp/link_hard"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/tmp/link_hard"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$originalA" ]]
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/another/link/dir/hard"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/another/link/dir/hard"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$originalA" ]]
 
 	# Now make sure that the paths all have the same inode numbers.
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/symlink"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/symlink"
 	[ "$status" -eq 0 ]
 	originalB="$output"
-	sane_run stat -c 'ino=%i nlink=%h type=%f' "$BUNDLE_B/rootfs/tmp/symlink_hard"
+	sane_run stat -c 'ino=%i nlink=%h type=%f' "$ROOTFS/tmp/symlink_hard"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "$originalB" ]]
 
@@ -340,335 +324,324 @@ function teardown() {
 }
 
 @test "umoci {un,re}pack [unpriv]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Create some directories for unpriv check.
-	mkdir -p "$BUNDLE_A/rootfs/some/directory/path"
+	mkdir -p "$ROOTFS/some/directory/path"
 
 	# mkfifo and some other stuff
-	mkfifo "$BUNDLE_A/rootfs/some/directory/path/fifo"
-	echo "some contents" > "$BUNDLE_A/rootfs/some/directory/path/file"
-	mkdir "$BUNDLE_A/rootfs/some/directory/path/dir"
-	ln -s "/../././././/../../../../etc/shadow" "$BUNDLE_A/rootfs/some/directory/path/link"
+	mkfifo "$ROOTFS/some/directory/path/fifo"
+	echo "some contents" > "$ROOTFS/some/directory/path/file"
+	mkdir "$ROOTFS/some/directory/path/dir"
+	ln -s "/../././././/../../../../etc/shadow" "$ROOTFS/some/directory/path/link"
 
 	# Make sure that replacing a file we don't have write access to works.
-	echo "another file" > "$BUNDLE_A/rootfs/some/directory/NOWRITE"
-	chmod 0000 "$BUNDLE_A/rootfs/some/directory/NOWRITE"
+	echo "another file" > "$ROOTFS/some/directory/NOWRITE"
+	chmod 0000 "$ROOTFS/some/directory/NOWRITE"
 
 	# Chmod.
-	chmod 0000 "$BUNDLE_A/rootfs/some/directory/path"
-	chmod 0000 "$BUNDLE_A/rootfs/some/directory"
-	chmod 0000 "$BUNDLE_A/rootfs/some"
+	chmod 0000 "$ROOTFS/some/directory/path"
+	chmod 0000 "$ROOTFS/some/directory"
+	chmod 0000 "$ROOTFS/some"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Undo the chmodding.
-	chmod +rwx "$BUNDLE_B/rootfs/some"
-	chmod +rwx "$BUNDLE_B/rootfs/some/directory"
-	chmod +rwx "$BUNDLE_B/rootfs/some/directory/path"
-	chmod +rwx "$BUNDLE_B/rootfs/some/directory/NOWRITE"
+	chmod +rwx "$ROOTFS/some"
+	chmod +rwx "$ROOTFS/some/directory"
+	chmod +rwx "$ROOTFS/some/directory/path"
+	chmod +rwx "$ROOTFS/some/directory/NOWRITE"
 
 	# Make sure the types are right.
-	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/fifo")" == "fifo" ]]
-	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/file")" == "regular file" ]]
-	[ -f "$BUNDLE_B/rootfs/some/directory/NOWRITE" ]
-	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/dir")" == "directory" ]]
-	[[ "$(stat -c '%F' "$BUNDLE_B/rootfs/some/directory/path/link")" == "symbolic link" ]]
+	[[ "$(stat -c '%F' "$ROOTFS/some/directory/path/fifo")" == "fifo" ]]
+	[[ "$(stat -c '%F' "$ROOTFS/some/directory/path/file")" == "regular file" ]]
+	[ -f "$ROOTFS/some/directory/NOWRITE" ]
+	[[ "$(stat -c '%F' "$ROOTFS/some/directory/path/dir")" == "directory" ]]
+	[[ "$(stat -c '%F' "$ROOTFS/some/directory/path/link")" == "symbolic link" ]]
 
 	# Try to overwite the NOWRITE file.
-	echo "different data" > "$BUNDLE_B/rootfs/some/directory/NOWRITE"
-	chmod 0000 "$BUNDLE_B/rootfs/some/directory/NOWRITE"
+	echo "different data" > "$ROOTFS/some/directory/NOWRITE"
+	chmod 0000 "$ROOTFS/some/directory/NOWRITE"
 
 	# Chmod.
-	chmod 0000 "$BUNDLE_B/rootfs/some/directory/path"
-	chmod 0000 "$BUNDLE_B/rootfs/some/directory"
-	chmod 0000 "$BUNDLE_B/rootfs/some"
+	chmod 0000 "$ROOTFS/some/directory/path"
+	chmod 0000 "$ROOTFS/some/directory"
+	chmod 0000 "$ROOTFS/some"
 
 	# Repack the image again.
-	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# Undo the chmodding.
-	chmod +rwx "$BUNDLE_C/rootfs/some"
-	chmod +rwx "$BUNDLE_C/rootfs/some/directory"
-	chmod +rwx "$BUNDLE_C/rootfs/some/directory/path"
-	chmod +rwx "$BUNDLE_C/rootfs/some/directory/NOWRITE"
+	chmod +rwx "$ROOTFS/some"
+	chmod +rwx "$ROOTFS/some/directory"
+	chmod +rwx "$ROOTFS/some/directory/path"
+	chmod +rwx "$ROOTFS/some/directory/NOWRITE"
 
 	# Check NOWRITE.
-	[ -f "$BUNDLE_C/rootfs/some/directory/NOWRITE" ]
-	[[ "$(cat "$BUNDLE_C/rootfs/some/directory/NOWRITE")" == "different data" ]]
+	[ -f "$ROOTFS/some/directory/NOWRITE" ]
+	[[ "$(cat "$ROOTFS/some/directory/NOWRITE")" == "different data" ]]
 
 	image-verify "${IMAGE}"
 }
 
 @test "umoci {un,re}pack [xattrs]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make a test directory to make sure nesting works.
-	mkdir -p "$BUNDLE_A/rootfs/some/test/directory"
-	xattr -w user.toplevel.some "some directory" "$BUNDLE_A/rootfs/some"
-	xattr -w user.midlevel.test "test directory" "$BUNDLE_A/rootfs/some/test"
-	xattr -w user.lowlevel.direct "directory" "$BUNDLE_A/rootfs/some/test/directory"
+	mkdir -p "$ROOTFS/some/test/directory"
+	xattr -w user.toplevel.some "some directory" "$ROOTFS/some"
+	xattr -w user.midlevel.test "test directory" "$ROOTFS/some/test"
+	xattr -w user.lowlevel.direct "directory" "$ROOTFS/some/test/directory"
 
 	# Set user.* xattrs.
-	chmod +w "$BUNDLE_A/rootfs/root" && xattr -w user.some.value thisisacoolfile    "$BUNDLE_A/rootfs/root"
-	chmod +w "$BUNDLE_A/rootfs/etc"  && xattr -w user.another    valuegoeshere      "$BUNDLE_A/rootfs/etc"
-	chmod +w "$BUNDLE_A/rootfs/var"  && xattr -w user.3rd        halflife3confirmed "$BUNDLE_A/rootfs/var"
-	chmod +w "$BUNDLE_A/rootfs/usr"  && xattr -w user."key also" "works if you try" "$BUNDLE_A/rootfs/usr"
-	chmod +w "$BUNDLE_A/rootfs/lib"  && xattr -w user.empty_cont ""                 "$BUNDLE_A/rootfs/lib"
+	chmod +w "$ROOTFS/root" && xattr -w user.some.value thisisacoolfile	"$ROOTFS/root"
+	chmod +w "$ROOTFS/etc"  && xattr -w user.another	valuegoeshere	  "$ROOTFS/etc"
+	chmod +w "$ROOTFS/var"  && xattr -w user.3rd		halflife3confirmed "$ROOTFS/var"
+	chmod +w "$ROOTFS/usr"  && xattr -w user."key also" "works if you try" "$ROOTFS/usr"
+	chmod +w "$ROOTFS/lib"  && xattr -w user.empty_cont ""				 "$ROOTFS/lib"
 	# Forbidden xattr.
-	chmod +w "$BUNDLE_A/rootfs/opt"  && xattr -w "user.UMOCI:forbidden_xattr" "should not exist" "$BUNDLE_A/rootfs/opt"
+	chmod +w "$ROOTFS/opt"  && xattr -w "user.UMOCI:forbidden_xattr" "should not exist" "$ROOTFS/opt"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the xattrs have been set.
-	sane_run xattr -p user.toplevel.some "$BUNDLE_B/rootfs/some"
+	sane_run xattr -p user.toplevel.some "$ROOTFS/some"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "some directory" ]]
-	sane_run xattr -p user.midlevel.test "$BUNDLE_B/rootfs/some/test"
+	sane_run xattr -p user.midlevel.test "$ROOTFS/some/test"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "test directory" ]]
-	sane_run xattr -p user.lowlevel.direct "$BUNDLE_B/rootfs/some/test/directory"
+	sane_run xattr -p user.lowlevel.direct "$ROOTFS/some/test/directory"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "directory" ]]
-	sane_run xattr -p user.some.value "$BUNDLE_B/rootfs/root"
+	sane_run xattr -p user.some.value "$ROOTFS/root"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "thisisacoolfile" ]]
-	sane_run xattr -p user.another "$BUNDLE_B/rootfs/etc"
+	sane_run xattr -p user.another "$ROOTFS/etc"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "valuegoeshere" ]]
-	sane_run xattr -p user.3rd "$BUNDLE_B/rootfs/var"
+	sane_run xattr -p user.3rd "$ROOTFS/var"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "halflife3confirmed" ]]
-	sane_run xattr -p user."key also" "$BUNDLE_B/rootfs/usr"
+	sane_run xattr -p user."key also" "$ROOTFS/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
 	# Empty-valued xattrs are disallowed by PAX.
-	sane_run xattr -p user.empty_cont "$BUNDLE_B/rootfs/lib"
+	sane_run xattr -p user.empty_cont "$ROOTFS/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 	# Forbidden xattrs are ignored.
-	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$BUNDLE_B/rootfs/opt"
+	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$ROOTFS/opt"
 	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
 
 	# Now make some changes.
-	xattr -d user.some.value "$BUNDLE_B/rootfs/root"
-	xattr -d user.midlevel.test "$BUNDLE_B/rootfs/some/test"
-	xattr -w user.3rd "jk, hl3 isn't here yet" "$BUNDLE_B/rootfs/var"
+	xattr -d user.some.value "$ROOTFS/root"
+	xattr -d user.midlevel.test "$ROOTFS/some/test"
+	xattr -w user.3rd "jk, hl3 isn't here yet" "$ROOTFS/var"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the xattrs have been set.
-	sane_run xattr -p user.toplevel.some "$BUNDLE_C/rootfs/some"
+	sane_run xattr -p user.toplevel.some "$ROOTFS/some"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "some directory" ]]
-	sane_run xattr -p user.midlevel.test "$BUNDLE_C/rootfs/some/test"
+	sane_run xattr -p user.midlevel.test "$ROOTFS/some/test"
 	[[ "$output" == *"No such xattr: user.midlevel.test"* ]]
-	sane_run xattr -p user.lowlevel.direct "$BUNDLE_C/rootfs/some/test/directory"
+	sane_run xattr -p user.lowlevel.direct "$ROOTFS/some/test/directory"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "directory" ]]
-	sane_run xattr -p user.some.value "$BUNDLE_C/rootfs/root"
+	sane_run xattr -p user.some.value "$ROOTFS/root"
 	[[ "$output" == *"No such xattr: user.some.value"* ]]
-	sane_run xattr -p user.another "$BUNDLE_C/rootfs/etc"
+	sane_run xattr -p user.another "$ROOTFS/etc"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "valuegoeshere" ]]
-	sane_run xattr -p user.3rd "$BUNDLE_C/rootfs/var"
+	sane_run xattr -p user.3rd "$ROOTFS/var"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "jk, hl3 isn't here yet" ]]
-	sane_run xattr -p user."key also" "$BUNDLE_C/rootfs/usr"
+	sane_run xattr -p user."key also" "$ROOTFS/usr"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "works if you try" ]]
 	# Empty-valued xattrs are disallowed by PAX.
-	sane_run xattr -p user.empty_cont "$BUNDLE_C/rootfs/lib"
+	sane_run xattr -p user.empty_cont "$ROOTFS/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
 	# Forbidden xattrs are ignored.
-	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$BUNDLE_C/rootfs/opt"
+	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$ROOTFS/opt"
 	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
 
 	image-verify "${IMAGE}"
 }
 
 @test "umoci {un,re}pack [unicode]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Unicode is very fun.
-	mkdir "$BUNDLE_A/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3"
-	touch "$BUNDLE_A/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem"
-	touch "$BUNDLE_A/rootfs/AC_Raíz_Certicámara_S.A..pem"
-	touch "$BUNDLE_A/rootfs/ <-- some more weird characters --> 你好，世界"
+	mkdir "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3"
+	touch "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem"
+	touch "$ROOTFS/AC_Raíz_Certicámara_S.A..pem"
+	touch "$ROOTFS/ <-- some more weird characters --> 你好，世界"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the directories and files exist.
-	[ -d "$BUNDLE_B/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
-	[ -f "$BUNDLE_B/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
-	[ -f "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem" ]
-	[ -f "$BUNDLE_B/rootfs/ <-- some more weird characters --> 你好，世界" ]
+	[ -d "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
+	[ -f "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
+	[ -f "$ROOTFS/AC_Raíz_Certicámara_S.A..pem" ]
+	[ -f "$ROOTFS/ <-- some more weird characters --> 你好，世界" ]
 
 	# Now make some changes.
-	rm -f "$BUNDLE_B/rootfs/AC_Raíz_Certicámara_S.A..pem"
+	rm -f "$ROOTFS/AC_Raíz_Certicámara_S.A..pem"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}" "$BUNDLE_B"
+	umoci repack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci unpack --image "${IMAGE}" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the directories and files exist.
-	[ -d "$BUNDLE_C/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
-	[ -f "$BUNDLE_C/rootfs/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
-	! [ -f "$BUNDLE_C/rootfs/AC_Raíz_Certicámara_S.A..pem" ]
-	[ -f "$BUNDLE_C/rootfs/ <-- some more weird characters --> 你好，世界" ]
+	[ -d "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3" ]
+	[ -f "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
+	! [ -f "$ROOTFS/AC_Raíz_Certicámara_S.A..pem" ]
+	[ -f "$ROOTFS/ <-- some more weird characters --> 你好，世界" ]
 
 	image-verify "${IMAGE}"
 }
 
 @test "umoci repack [--config.volumes]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-	BUNDLE_D="$(setup_tmpdir)"
-
 	# Set some paths to be volumes.
 	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && BUNDLE_A="$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Create files in those volumes.
-	mkdir -p "$BUNDLE_A/rootfs/some nutty/path name/"
-	echo "this is a test" > "$BUNDLE_A/rootfs/some nutty/path name/ here"
-	mkdir -p "$BUNDLE_A/rootfs/volume"
-	echo "another test" > "$BUNDLE_A/rootfs/volume/test"
+	mkdir -p "$ROOTFS/some nutty/path name/"
+	echo "this is a test" > "$ROOTFS/some nutty/path name/ here"
+	mkdir -p "$ROOTFS/volume"
+	echo "another test" > "$ROOTFS/volume/test"
 	# ... and some outside.
-	echo "more tests" > "$BUNDLE_A/rootfs/some nutty/path "
-	mkdir -p "$BUNDLE_A/rootfs/some/volume"
-	echo "in a mirror directory" > "$BUNDLE_A/rootfs/some/volume/test"
-	echo "checking mirror" > "$BUNDLE_A/rootfs/volumetest"
+	echo "more tests" > "$ROOTFS/some nutty/path "
+	mkdir -p "$ROOTFS/some/volume"
+	echo "in a mirror directory" > "$ROOTFS/some/volume/test"
+	echo "checking mirror" > "$ROOTFS/volumetest"
 
 	# Repack the image under a new tag.
-	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Re-extract to verify the volume changes weren't included.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Check the files.
-	[ -f "$BUNDLE_B/rootfs/some nutty/path " ]
-	[[ "$(cat "$BUNDLE_B/rootfs/some nutty/path ")" == "more tests" ]]
-	[ -d "$BUNDLE_B/rootfs/some/volume" ]
-	[ -f "$BUNDLE_B/rootfs/some/volume/test" ]
-	[[ "$(cat "$BUNDLE_B/rootfs/some/volume/test")" == "in a mirror directory" ]]
-	[ -f "$BUNDLE_B/rootfs/volumetest" ]
-	[[ "$(cat "$BUNDLE_B/rootfs/volumetest")" == "checking mirror" ]]
+	[ -f "$ROOTFS/some nutty/path " ]
+	[[ "$(cat "$ROOTFS/some nutty/path ")" == "more tests" ]]
+	[ -d "$ROOTFS/some/volume" ]
+	[ -f "$ROOTFS/some/volume/test" ]
+	[[ "$(cat "$ROOTFS/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$ROOTFS/volumetest" ]
+	[[ "$(cat "$ROOTFS/volumetest")" == "checking mirror" ]]
 
 	# Volume paths must not be included.
-	! [ -e "$BUNDLE_B/rootfs/volume" ]
-	! [ -e "$BUNDLE_B/rootfs/volume/test" ]
-	! [ -e "$BUNDLE_B/rootfs/some nutty/path name" ]
-	! [ -e "$BUNDLE_B/rootfs/some nutty/path name/ here" ]
+	! [ -e "$ROOTFS/volume" ]
+	! [ -e "$ROOTFS/volume/test" ]
+	! [ -e "$ROOTFS/some nutty/path name" ]
+	! [ -e "$ROOTFS/some nutty/path name/ here" ]
 
-	# Repack a copy with volumes not masked.
+	# Repack a copy of the original with volumes not masked.
 	umoci repack --image "${IMAGE}:${TAG}-nomask" --no-mask-volumes "$BUNDLE_A"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Extract the no-mask variant to make sure that masked changes *were* included.
-	umoci unpack --image "${IMAGE}:${TAG}-nomask" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-nomask" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# Check the files.
-	[ -f "$BUNDLE_C/rootfs/some nutty/path " ]
-	[[ "$(cat "$BUNDLE_C/rootfs/some nutty/path ")" == "more tests" ]]
-	[ -d "$BUNDLE_C/rootfs/some/volume" ]
-	[ -f "$BUNDLE_C/rootfs/some/volume/test" ]
-	[[ "$(cat "$BUNDLE_C/rootfs/some/volume/test")" == "in a mirror directory" ]]
-	[ -f "$BUNDLE_C/rootfs/volumetest" ]
-	[[ "$(cat "$BUNDLE_C/rootfs/volumetest")" == "checking mirror" ]]
+	[ -f "$ROOTFS/some nutty/path " ]
+	[[ "$(cat "$ROOTFS/some nutty/path ")" == "more tests" ]]
+	[ -d "$ROOTFS/some/volume" ]
+	[ -f "$ROOTFS/some/volume/test" ]
+	[[ "$(cat "$ROOTFS/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$ROOTFS/volumetest" ]
+	[[ "$(cat "$ROOTFS/volumetest")" == "checking mirror" ]]
 
 	# Volume paths must be included, as well as their contents.
-	[ -e "$BUNDLE_C/rootfs/volume" ]
-	[ -f "$BUNDLE_C/rootfs/volume/test" ]
-	[[ "$(cat "$BUNDLE_C/rootfs/volume/test")" == "another test" ]]
-	[ -d "$BUNDLE_C/rootfs/some nutty/path name" ]
-	[ -f "$BUNDLE_C/rootfs/some nutty/path name/ here" ]
-	[[ "$(cat "$BUNDLE_C/rootfs/some nutty/path name/ here")" == "this is a test" ]]
+	[ -e "$ROOTFS/volume" ]
+	[ -f "$ROOTFS/volume/test" ]
+	[[ "$(cat "$ROOTFS/volume/test")" == "another test" ]]
+	[ -d "$ROOTFS/some nutty/path name" ]
+	[ -f "$ROOTFS/some nutty/path name/ here" ]
+	[[ "$(cat "$ROOTFS/some nutty/path name/ here")" == "this is a test" ]]
 
 	# Re-do everything but this time with --mask-path.
 	umoci repack --image "${IMAGE}:${TAG}-new" --mask-path /volume "$BUNDLE_A"
@@ -676,73 +649,72 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Re-extract to verify the masked path changes weren't included.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_D"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_D"
+	bundle-verify "$BUNDLE"
 
 	# Check the files.
-	[ -f "$BUNDLE_D/rootfs/some nutty/path " ]
-	[[ "$(cat "$BUNDLE_D/rootfs/some nutty/path ")" == "more tests" ]]
-	[ -d "$BUNDLE_D/rootfs/some/volume" ]
-	[ -f "$BUNDLE_D/rootfs/some/volume/test" ]
-	[[ "$(cat "$BUNDLE_D/rootfs/some/volume/test")" == "in a mirror directory" ]]
-	[ -f "$BUNDLE_D/rootfs/volumetest" ]
-	[[ "$(cat "$BUNDLE_D/rootfs/volumetest")" == "checking mirror" ]]
+	[ -f "$ROOTFS/some nutty/path " ]
+	[[ "$(cat "$ROOTFS/some nutty/path ")" == "more tests" ]]
+	[ -d "$ROOTFS/some/volume" ]
+	[ -f "$ROOTFS/some/volume/test" ]
+	[[ "$(cat "$ROOTFS/some/volume/test")" == "in a mirror directory" ]]
+	[ -f "$ROOTFS/volumetest" ]
+	[[ "$(cat "$ROOTFS/volumetest")" == "checking mirror" ]]
 
 	# Masked paths must not be included.
-	! [ -e "$BUNDLE_D/rootfs/volume" ]
-	! [ -e "$BUNDLE_D/rootfs/volume/test" ]
+	! [ -e "$ROOTFS/volume" ]
+	! [ -e "$ROOTFS/volume/test" ]
 	# And volumes will also not be included.
-	! [ -e "$BUNDLE_D/rootfs/some nutty/path name" ]
-	! [ -e "$BUNDLE_D/rootfs/some nutty/path name/ here" ]
+	! [ -e "$ROOTFS/some nutty/path name" ]
+	! [ -e "$ROOTFS/some nutty/path name/ here" ]
 }
 
 @test "umoci repack [--refresh-bundle]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
 	# Unpack the original image
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && BUNDLE_A="$BUNDLE" ROOTFS_A="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make sure the files we're creating don't exist.
-	! [ -e "$BUNDLE_A/rootfs/newfile" ]
-	! [ -e "$BUNDLE_A/rootfs/newdir" ]
-	! [ -e "$BUNDLE_A/rootfs/newdir/anotherfile" ]
+	! [ -e "$ROOTFS/newfile" ]
+	! [ -e "$ROOTFS/newdir" ]
+	! [ -e "$ROOTFS/newdir/anotherfile" ]
 
 	# Create them.
-	echo "first file" > "$BUNDLE_A/rootfs/newfile"
-	mkdir "$BUNDLE_A/rootfs/newdir"
-	echo "subfile" > "$BUNDLE_A/rootfs/newdir/anotherfile"
+	echo "first file" > "$ROOTFS/newfile"
+	mkdir "$ROOTFS/newdir"
+	echo "subfile" > "$ROOTFS/newdir/anotherfile"
 
 	# Repack the image under a new tag, refreshing the bundle metadata.
-	umoci repack --refresh-bundle --image "${IMAGE}:${TAG}-new" "$BUNDLE_A"
+	umoci repack --refresh-bundle --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Ensure the gomtree has been refreshed in the bundle
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE_B"
+	new_bundle_rootfs && BUNDLE_B="$BUNDLE" ROOTFS_B="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Ensure that gomtree succeeds across bundles - they should be the same rootfs
 	# and have the same mtree manifest
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_B"/sha256_*.mtree
+	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
-	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Make some other changes to the first bundle
-	echo "second file" > "$BUNDLE_A/rootfs/newfile2"
+	echo "second file" > "$ROOTFS_A/newfile2"
 
 	# Repack under a new tag again, without refreshing the metadata.
 	umoci repack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_A"
@@ -750,23 +722,24 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack it again into a new bundle.
-	umoci unpack --image "${IMAGE}:${TAG}-new2" "$BUNDLE_C"
+	new_bundle_rootfs && BUNDLE_C="$BUNDLE" ROOTFS_C="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}-new2" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# Ensure all changes are reflected
-	gomtree -p "$BUNDLE_A/rootfs" -f "$BUNDLE_C"/sha256_*.mtree
+	gomtree -p "$ROOTFS_A" -f "$BUNDLE_C"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
-	gomtree -p "$BUNDLE_C/rootfs" -f "$BUNDLE_C"/sha256_*.mtree
+	gomtree -p "$ROOTFS_C" -f "$BUNDLE_C"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
 	# Final bundle sanity check
-	[ -f "$BUNDLE_C/rootfs/newfile" ]
-	[ -d "$BUNDLE_C/rootfs/newdir" ]
-	[ -f "$BUNDLE_C/rootfs/newdir/anotherfile" ]
-	[ -f "$BUNDLE_C/rootfs/newfile2" ]
+	[ -f "$ROOTFS/newfile" ]
+	[ -d "$ROOTFS/newdir" ]
+	[ -f "$ROOTFS/newdir/anotherfile" ]
+	[ -f "$ROOTFS/newfile2" ]
 
 	# Now check the image.
 	# Make sure we added a new layer on both repacks.

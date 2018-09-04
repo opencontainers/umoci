@@ -26,17 +26,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_A/config.json"
+	new_bundle_rootfs && BUNDLE_A="$BUNDLE"
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# We need to make sure the config exists.
-	[ -f "$BUNDLE_A/config.json" ]
+	[ -f "$BUNDLE/config.json" ]
 
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new"
@@ -44,7 +40,8 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE_B/config.json"
+	new_bundle_rootfs && BUNDLE_B="$BUNDLE"
+	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Make sure that the config was unchanged.
@@ -62,20 +59,16 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.user 'user'" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Modify /etc/passwd and /etc/group.
-	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
-	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
-	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$ROOTFS/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$ROOTFS/etc/group"
+	echo "group:x:9001:testuser" >> "$ROOTFS/etc/group"
 
 	# Modify the user.
 	umoci config --image "${IMAGE}:${TAG}" --config.user="testuser"
@@ -83,18 +76,19 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Generate config.json.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_B/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# We *don't* want the users to be set because we don't have a rootfs.
 
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 0 ]
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 0 ]
-	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE_B/config.json"
+	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "null" ]]
 
@@ -102,24 +96,20 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.user 'user:group'" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Modify /etc/passwd and /etc/group.
-	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
-	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
-	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
-	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$ROOTFS/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$ROOTFS/etc/group"
+	echo "group:x:9001:testuser" >> "$ROOTFS/etc/group"
+	echo "emptygroup:x:2222:" >> "$ROOTFS/etc/group"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -129,18 +119,19 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Generate config.json.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_B/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# We *don't* want the users to be set because we don't have a rootfs.
 
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 0 ]
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 0 ]
-	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE_B/config.json"
+	sane_run jq -SMr '.process.user.additionalGids' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "null" ]]
 
@@ -148,22 +139,17 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.user 'user:group' --rootfs" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && OLD_ROOTFS="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Modify /etc/passwd and /etc/group.
-	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$BUNDLE_A/rootfs/etc/passwd"
-	echo "testgroup:x:2581:root,testuser" >> "$BUNDLE_A/rootfs/etc/group"
-	echo "group:x:9001:testuser" >> "$BUNDLE_A/rootfs/etc/group"
-	echo "emptygroup:x:2222:" >> "$BUNDLE_A/rootfs/etc/group"
+	echo "testuser:x:1337:8888:test user:/my home dir :/bin/sh" >> "$ROOTFS/etc/passwd"
+	echo "testgroup:x:2581:root,testuser" >> "$ROOTFS/etc/group"
+	echo "group:x:9001:testuser" >> "$ROOTFS/etc/group"
+	echo "emptygroup:x:2222:" >> "$ROOTFS/etc/group"
 
 	# Modify the user.
 	umoci config --image "${IMAGE}:${TAG}" --config.user="testuser:emptygroup"
@@ -171,45 +157,47 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Generate config.json.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" --rootfs "$BUNDLE_A/rootfs" "$BUNDLE_B/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" --rootfs "$OLD_ROOTFS" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 1337 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_B/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 2222 ]
 
 	# Check that HOME is set.
-	sane_run jq -SMr '.process.env[]' "$BUNDLE_B/config.json"
+	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	export $output
 	[[ "$HOME" == "/my home dir " ]]
 
 	# Modify /etc/passwd and /etc/group.
-	sed -i -e 's|^testuser:x:1337:8888:test user:/my home dir :|testuser:x:3333:2321:a:/another  home:|' "$BUNDLE_A/rootfs/etc/passwd"
-	sed -i -e 's|^emptygroup:x:2222:|emptygroup:x:4444:|' "$BUNDLE_A/rootfs/etc/group"
+	sed -i -e 's|^testuser:x:1337:8888:test user:/my home dir :|testuser:x:3333:2321:a:/another  home:|' "$OLD_ROOTFS/etc/passwd"
+	sed -i -e 's|^emptygroup:x:2222:|emptygroup:x:4444:|' "$OLD_ROOTFS/etc/group"
 
 	# Unpack the image.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" --rootfs "$BUNDLE_A/rootfs" "$BUNDLE_C/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" --rootfs "$OLD_ROOTFS" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.uid' "$BUNDLE_C/config.json"
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 3333 ]
 
 	# Make sure numeric config was actually set.
-	sane_run jq -SM '.process.user.gid' "$BUNDLE_C/config.json"
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[ "$output" -eq 4444 ]
 
 	# Check that HOME is set.
-	sane_run jq -SMr '.process.env[]' "$BUNDLE_C/config.json"
+	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	export $output
 	[[ "$HOME" == "/another  home" ]]
@@ -218,14 +206,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.user 'user:group' [non-existent user]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify the user.
 	umoci config --image "${IMAGE}:${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Generate config.json.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -245,14 +232,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.user [numeric]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.user="1337:8888"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -270,14 +256,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.workingdir" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.workingdir "/a/fake/directory"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -290,14 +275,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --clear=config.env" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --clear=config.env
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -318,8 +302,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.env" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify env.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.env "VARIABLE1=unused"
 	[ "$status" -eq 0 ]
@@ -331,6 +313,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -352,9 +335,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --clear=config.{entrypoint or cmd}" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
 	# Modify the entrypoint+cmd.
 	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.entrypoint "/here is some values/" --config.cmd "-c" --config.cmd "ls -la" --config.cmd="kek"
 	[ "$status" -eq 0 ]
@@ -366,11 +346,12 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}-noentry" "$BUNDLE_A/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}-noentry" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Ensure that the final args is only cmd.
-	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_A/config.json"
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "-c;ls -la;kek;" ]]
 
@@ -380,11 +361,12 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}-nocmd" "$BUNDLE_B/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}-nocmd" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Ensure that the final args is only cmd.
-	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE_B/config.json"
+	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "sh;/here is some values/;" ]]
 
@@ -392,14 +374,13 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.cmd" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -412,8 +393,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --clear=config.[entrypoint+cmd]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify the entrypoint+cmd.
 	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.entrypoint "/here is some values/" --config.cmd "-c" --config.cmd "ls -la" --config.cmd="kek"
 	[ "$status" -eq 0 ]
@@ -425,6 +404,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-nocmdentry" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -432,21 +412,20 @@ function teardown() {
 	sane_run jq -SMr 'reduce .process.args[] as $arg (""; . + $arg + ";")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	# TODO: This is almost certainly not going to be valid when config.json
-	#       conversion is part of the spec.
+	#	   conversion is part of the spec.
 	[[ "$output" == "sh;" ]]
 
 	image-verify "${IMAGE}"
 }
 
 @test "umoci raw runtime-config --config.[entrypoint+cmd]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify the entrypoint+cmd.
 	umoci config --image "${IMAGE}:${TAG}" --config.entrypoint "sh" --config.cmd "-c" --config.cmd "ls -la"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -460,21 +439,18 @@ function teardown() {
 
 # XXX: This test is somewhat dodgy (since we don't actually set anything other than the destination for a volume).
 @test "umoci raw runtime-config --config.volume" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_A/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Get set of mounts
-	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_A/config.json"
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
@@ -487,11 +463,12 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_B/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Get set of mounts
-	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_B/config.json"
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
@@ -505,11 +482,12 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
-	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_C/config.json"
+	new_bundle_rootfs
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Get set of mounts
-	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE_C/config.json"
+	sane_run jq -SMr '.mounts[] | .destination' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
@@ -522,8 +500,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --[os+architecture]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
 	umoci config --image "${IMAGE}:${TAG}" --os "linux" --architecture "mips64"
@@ -531,19 +507,20 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
 	# Check that OS was set properly.
 	# XXX: This has been removed, we need to add annotations for this.
-	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#	  See: https://github.com/opencontainers/image-spec/pull/711
 	#sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
 	#[ "$status" -eq 0 ]
 	#[[ "$output" == "linux" ]]
 
 	# Check that arch was set properly.
 	# XXX: This has been removed, we need to add annotations for this.
-	#      See: https://github.com/opencontainers/image-spec/pull/711
+	#	  See: https://github.com/opencontainers/image-spec/pull/711
 	#sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
 	#[ "$status" -eq 0 ]
 	#[[ "$output" == "mips64" ]]
@@ -552,8 +529,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.label" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
 		--clear=config.labels --clear=manifest.annotations \
@@ -562,6 +537,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 
@@ -577,8 +553,6 @@ function teardown() {
 }
 
 @test "umoci raw runtime-config --config.stopsignal" {
-	BUNDLE="$(setup_tmpdir)"
-
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
 		--config.stopsignal="SIGUSR1"
@@ -586,6 +560,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Unpack the image again.
+	new_bundle_rootfs
 	umoci raw runtime-config --image "${IMAGE}:${TAG}-new" "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 

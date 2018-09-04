@@ -26,8 +26,6 @@ function teardown() {
 }
 
 @test "umoci stat --json" {
-	image-verify "${IMAGE}"
-
 	# Make sure that stat looks about right.
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -50,8 +48,6 @@ function teardown() {
 
 # We can't really test the output for non-JSON output, but we can smoke test it.
 @test "umoci stat [smoke]" {
-	image-verify "${IMAGE}"
-
 	# Make sure that stat looks about right.
 	umoci stat --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
@@ -72,4 +68,4 @@ function teardown() {
 }
 
 # TODO: Add a test to make sure that empty_layer and layer are mutually
-#       exclusive. Unfortunately, jq doesn't provide an XOR operator...
+#	   exclusive. Unfortunately, jq doesn't provide an XOR operator...
