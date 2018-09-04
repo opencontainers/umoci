@@ -187,46 +187,48 @@ func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	return te.restoreMetadata(path, hdr)
 }
 
+// isDirlink returns whether the given path is a link to a directory (or a
+// dirlink in rsync(1) parlance) which is used by --keep-dirlink to see whether
+// we should extract through the link or clobber the link with a directory (in
+// the case where we see a directory to extract and a symlink already exists
+// there).
 func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
-	previous := []string{}
-
-	for {
-		for _, p := range previous {
-			if p == path {
-				// symlink loop, which is allowed.
-				return false, nil
-			}
-		}
-
-		link, err := te.fsEval.Readlink(path)
-		if err != nil {
-			return false, errors.Wrap(err, "read existing link")
-		}
-
-		linkPath, err := securejoin.SecureJoinVFS(root, link, te.fsEval)
-		if err != nil {
-			return false, errors.Wrap(err, "sanitize old target")
-		}
-
-		linkInfo, err := te.fsEval.Lstat(linkPath)
-		if err != nil {
-			// NotExist just means that it's a broken symlink,
-			// which is allowed.
-			if securejoin.IsNotExist(errors.Cause(err)) {
-				return false, nil
-			}
-
-			return false, err
-		}
-
-		if linkInfo.Mode()&os.ModeSymlink != 0 {
-			previous = append(previous, link)
-			path = link
-			continue
-		}
-
-		return linkInfo.IsDir(), nil
+	// Make sure it exists and is a symlink.
+	if _, err := te.fsEval.Readlink(path); err != nil {
+		return false, errors.Wrap(err, "read dirlink")
 	}
+
+	// Technically a string.TrimPrefix would also work...
+	unsafePath, err := filepath.Rel(root, path)
+	if err != nil {
+		return false, errors.Wrap(err, "get relative-to-root path")
+	}
+
+	// It should be noted that SecureJoin will evaluate all symlinks in the
+	// path, so we don't need to loop over it or anything like that. It'll just
+	// be done for us (in UnpackEntry only the dirname(3) is evaluated but here
+	// we evaluate the whole thing).
+	targetPath, err := securejoin.SecureJoinVFS(root, unsafePath, te.fsEval)
+	if err != nil {
+		// We hit a symlink loop -- which is fine but that means that this
+		// cannot be considered a dirlink.
+		if errno := InnerErrno(err); errno == unix.ELOOP {
+			err = nil
+		}
+		return false, errors.Wrap(err, "sanitize old target")
+	}
+
+	targetInfo, err := te.fsEval.Lstat(targetPath)
+	if err != nil {
+		// ENOENT or similar just means that it's a broken symlink, which
+		// means we have to overwrite it (but it's an allowed case).
+		if securejoin.IsNotExist(err) {
+			err = nil
+		}
+		return false, err
+	}
+
+	return targetInfo.IsDir(), nil
 }
 
 // UnpackEntry extracts the given tar.Header to the provided root, ensuring
@@ -345,7 +347,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		//      out here if the layer is invalid).
 		if _, err := te.fsEval.Lstat(path); err != nil {
 			// Need to use securejoin.IsNotExist to handle ENOTDIR.
-			if securejoin.IsNotExist(errors.Cause(err)) {
+			if securejoin.IsNotExist(err) {
 				err = nil
 			}
 			return errors.Wrap(err, "check whiteout target")
@@ -433,20 +435,33 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// "lower" file still exists (so the hard-link would point to the old
 	// inode). It's not clear if such an archive is actually valid though.
 	if !fi.IsDir() || hdr.Typeflag != tar.TypeDir {
-		// If we are in keep dirlinks mode and the existing fs object
-		// is a symlink, just write through instead of removing it and
-		// creating a directory. (The idea being that e.g. sometimes
-		// /lib64 is a symlink, and sometimes it's a real directory,
-		// but in both cases you want all the libraries, and not just
-		// the ones that were under a real directory.)
-		if fi.Mode()&os.ModeSymlink != 0 && hdr.Typeflag == tar.TypeDir &&
-			te.mapOptions.KeepDirlinks {
+		// If we are in --keep-dirlinks mode and the existing fs object is a
+		// symlink to a directory (with the pending object is a directory), we
+		// don't remove the symlink (and instead allow subsequent objects to be
+		// just written through the symlink into the directory). This is a very
+		// specific usecase where layers that were generated independently from
+		// each other (on different base filesystems) end up with weird things
+		// like /lib64 being a symlink only sometimes but you never want to
+		// delete libraries (not just the ones that were under the "real"
+		// directory).
+		//
+		// TODO: This code should also handle a pending symlink entry where the
+		//       existing object is a directory. I'm not sure how we could
+		//       disambiguate this from a symlink-to-a-file but I imagine that
+		//       this is something that would also be useful in the same vein
+		//       as --keep-dirlinks (which currently only prevents clobbering
+		//       in the opposite case).
+		if te.mapOptions.KeepDirlinks &&
+			fi.Mode()&os.ModeSymlink == os.ModeSymlink && hdr.Typeflag == tar.TypeDir {
 			isDirlink, err = te.isDirlink(root, path)
 			if err != nil {
 				return errors.Wrap(err, "check is dirlink")
 			}
-		} else if err := te.fsEval.RemoveAll(path); err != nil {
-			return errors.Wrap(err, "clobber old path")
+		}
+		if !(isDirlink && te.mapOptions.KeepDirlinks) {
+			if err := te.fsEval.RemoveAll(path); err != nil {
+				return errors.Wrap(err, "clobber old path")
+			}
 		}
 	}
 

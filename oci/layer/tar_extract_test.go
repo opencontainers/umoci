@@ -889,33 +889,59 @@ func TestIsDirlink(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	if err = os.Mkdir(filepath.Join(dir, "test"), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755); err != nil {
 		t.Fatal(err)
 	}
-
-	if err = os.Symlink("test", filepath.Join(dir, "link")); err != nil {
+	if file, err := os.Create(filepath.Join(dir, "test_file")); err != nil {
+		t.Fatal(err)
+	} else {
+		file.Close()
+	}
+	if err := os.Symlink("test_dir", filepath.Join(dir, "link")); err != nil {
 		t.Fatal(err)
 	}
 
 	te := NewTarExtractor(MapOptions{})
-	dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link"))
-	if err != nil {
+	// Basic symlink usage.
+	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
+		t.Errorf("symlink failed: %v", err)
+	} else if !dirlink {
+		t.Errorf("dirlink test failed")
+	}
+
+	// "Read" a non-existent link.
+	if _, err := te.isDirlink(dir, filepath.Join(dir, "doesnt-exist")); err == nil {
+		t.Errorf("read non-existent dirlink")
+	}
+	// "Read" a directory.
+	if _, err := te.isDirlink(dir, filepath.Join(dir, "test_dir")); err == nil {
+		t.Errorf("read non-link dirlink")
+	}
+	// "Read" a file.
+	if _, err := te.isDirlink(dir, filepath.Join(dir, "test_file")); err == nil {
+		t.Errorf("read non-link dirlink")
+	}
+
+	// Break the symlink.
+	if err := os.Remove(filepath.Join(dir, "test_dir")); err != nil {
 		t.Fatal(err)
 	}
-	if !dirlink {
-		t.Fatal("dirlink test failed")
+	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
+		t.Errorf("broken symlink failed: %v", err)
+	} else if dirlink {
+		t.Errorf("broken dirlink test failed")
 	}
 
-	// read a non-existent link
-	_, err = te.isDirlink(dir, filepath.Join(dir, "doesnt-exist"))
-	if err == nil {
-		t.Fatalf("read non-existent dirlink")
+	// Point the symlink to a file.
+	if err := os.Remove(filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
 	}
-
-	// make the symlink broken
-	os.Remove(filepath.Join(dir, "test"))
-	dirlink, err = te.isDirlink(dir, filepath.Join(dir, "link"))
-	if err != nil {
-		t.Fatalf("broken symlink failed: %s", err)
+	if err := os.Symlink("test_file", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
+		t.Errorf("file symlink failed: %v", err)
+	} else if dirlink {
+		t.Errorf("file dirlink test failed")
 	}
 }

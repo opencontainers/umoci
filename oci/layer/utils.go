@@ -42,7 +42,7 @@ type MapOptions struct {
 	Rootless bool `json:"rootless"`
 
 	// KeepDirlinks is essentially the same as rsync's optio
-	// --keep-dirlinks: if, on extraction, a directroy would be created
+	// --keep-dirlinks: if, on extraction, a directory would be created
 	// where a symlink to a directory previously existed, KeepDirlinks
 	// doesn't create that directory, but instead just uses the existing
 	// symlink.
@@ -213,4 +213,21 @@ func CleanPath(path string) string {
 
 	// Clean the path again for good measure.
 	return filepath.Clean(path)
+}
+
+// InnerErrno returns the "real" system error from an error that originally
+// came from the "os" package. The returned error can be compared directly with
+// unix.* (or syscall.*) errno values. If the type could not be detected we just return
+func InnerErrno(err error) error {
+	// All of the os.* cases as well as an explicit
+	errno := errors.Cause(err)
+	switch err := errno.(type) {
+	case *os.PathError:
+		errno = err.Err
+	case *os.LinkError:
+		errno = err.Err
+	case *os.SyscallError:
+		errno = err.Err
+	}
+	return errno
 }
