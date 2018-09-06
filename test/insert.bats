@@ -27,60 +27,60 @@ function teardown() {
 }
 
 @test "umoci insert" {
-	image-verify "${IMAGE}"
-
 	# fail with too few arguments
 	umoci insert --image "${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
 	# ...and too many
 	umoci insert --image "${IMAGE}:${TAG}" asdf 123 456
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
-	INSERTDIR=$(setup_tmpdir)
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
 	mkdir -p "${INSERTDIR}/test"
 	touch "${INSERTDIR}/test/a"
 	touch "${INSERTDIR}/test/b"
 	chmod +x "${INSERTDIR}/test/b"
 
-	# do a few inserts
+	# Make sure rootless mode works.
+	mkdir -p "${INSERTDIR}/some/path"
+	touch "${INSERTDIR}/some/path/hidden"
+	chmod 000 "${INSERTDIR}/some/path"
+
+	# Do a few inserts.
 	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/a" /tester/a
 	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
 	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/b" /tester/b
 	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
 	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test" /recursive
 	[ "$status" -eq 0 ]
-
-	# ...and check to make sure it worked
-	BUNDLE=$(setup_tmpdir)
-	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
-	[ -f "${BUNDLE}/rootfs/tester/a" ]
-	[ "$(stat --format=%f ${INSERTDIR}/test/b)" == "$(stat --format=%f ${BUNDLE}/rootfs/tester/b)" ]
-	[ -f "${BUNDLE}/rootfs/recursive/a" ]
-	[ -f "${BUNDLE}/rootfs/recursive/b" ]
-}
-
-@test "umoci insert rootless" {
 	image-verify "${IMAGE}"
 
-	BUNDLE=$(setup_tmpdir)
-	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
-
-	mkdir -p $BUNDLE/rootfs/some/path
-	chmod 000 $BUNDLE/rootfs/some/path
-	umoci repack "${IMAGE}:${TAG}" "${BUNDLE}"
-
-	INSERTDIR=$(setup_tmpdir)
-	mkdir -p "${INSERTDIR}/test"
-	touch "${INSERTDIR}/test/a"
-
-	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/a" /some/path/a
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/some" /rootless
 	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
-	BUNDLE_B=$(setup_tmpdir)
-	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE_B}"
+	# Unpack after the inserts.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
-	[ -f "${BUNDLE_B}/rootfs/some/path/a" ]
+	# ... and check to make sure it worked.
+	[ -f "$ROOTFS/tester/a" ]
+	[[ "$(stat -c '%f' "${INSERTDIR}/test/b")" == "$(stat -c '%f' "$ROOTFS/tester/b")" ]]
+	[ -f "$ROOTFS/recursive/a" ]
+	[ -f "$ROOTFS/recursive/b" ]
+
+	# ... as well as the rootless portion.
+	[ -d "$ROOTFS/rootless/path" ]
+	[[ "$(stat -c '%f' "${INSERTDIR}/some/path")" == "$(stat -c '%f' "$ROOTFS/rootless/path")" ]]
+	chmod a+rwx "$ROOTFS/rootless/path"
+	[ -f "$ROOTFS/rootless/path/hidden" ]
 }

@@ -76,8 +76,8 @@ function umoci() {
 	fi
 
 	if [[ "$1" == "raw" ]]; then
-	    args+=("$1")
-	    shift 1
+		args+=("$1")
+		shift 1
 	fi
 
 	# Set the first argument (the subcommand).
@@ -133,6 +133,7 @@ function setup_image() {
 	cp -r "${SOURCE_IMAGE}" "${IMAGE}"
 	df >/dev/stderr
 	du -h -d 2 "$BATS_TMPDIR" >/dev/stderr
+	image-verify "${IMAGE}"
 }
 
 function teardown_image() {
@@ -165,6 +166,12 @@ function teardown_tmpdirs() {
 
 	# Clear tmpdir list.
 	rm -f "$TESTDIR_LIST"
+}
+
+# Generate a new $BUNDLE and $ROOTFS combination.
+function new_bundle_rootfs() {
+	declare -g BUNDLE="$(setup_tmpdir)"
+	declare -g ROOTFS="$BUNDLE/rootfs"
 }
 
 # _getfattr is a sane wrapper around getfattr(1) which only extracts the value

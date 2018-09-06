@@ -31,8 +31,6 @@ function teardown() {
 }
 
 @test "umoci gc [consistent]" {
-	image-verify "${IMAGE}"
-
 	# Initial gc.
 	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -57,10 +55,6 @@ function teardown() {
 }
 
 @test "umoci gc" {
-	BUNDLE="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Initial gc.
 	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -72,13 +66,14 @@ function teardown() {
 	nblobs="${#lines[@]}"
 
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
 	# Change the rootfs. We need to chmod because of fedora.
-	chmod +w "$BUNDLE/rootfs/usr/bin/." && rm -rf "$BUNDLE/rootfs/usr/bin"
-	chmod +w "$BUNDLE/rootfs/etc/." && rm -rf "$BUNDLE/rootfs/etc"
+	chmod +w "$ROOTFS/usr/bin/." && rm -rf "$ROOTFS/usr/bin"
+	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
 
 	# Repack the image under a new tag.
 	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
@@ -120,8 +115,6 @@ function teardown() {
 }
 
 @test "umoci gc [empty]" {
-	image-verify "${IMAGE}"
-
 	# Initial gc.
 	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -158,8 +151,6 @@ function teardown() {
 }
 
 @test "umoci gc [internal]" {
-	image-verify "${IMAGE}"
-
 	# Initial gc.
 	umoci gc --layout "${IMAGE}"
 	[ "$status" -eq 0 ]

@@ -26,8 +26,6 @@ function teardown() {
 }
 
 @test "umoci list" {
-	image-verify "${IMAGE}"
-
 	# Get list of tags.
 	umoci ls --layout "${IMAGE}"
 	[ "$status" -eq 0 ]

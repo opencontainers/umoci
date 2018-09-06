@@ -26,28 +26,25 @@ function teardown() {
 }
 
 @test "umoci unpack" {
-	BUNDLE="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
 	# We need to make sure these files properly exist.
 	[ -f "$BUNDLE/config.json" ]
-	[ -d "$BUNDLE/rootfs" ]
+	[ -d "$ROOTFS" ]
 
 	# Check that the image appears about right.
 	# NOTE: Since we could be using different images, this will be fairly
-	#       generic.
-	[ -e "$BUNDLE/rootfs/bin/sh" ]
-	[ -e "$BUNDLE/rootfs/etc/passwd" ]
-	[ -e "$BUNDLE/rootfs/etc/group" ]
+	#	   generic.
+	[ -e "$ROOTFS/bin/sh" ]
+	[ -e "$ROOTFS/etc/passwd" ]
+	[ -e "$ROOTFS/etc/group" ]
 
 	# Ensure that gomtree suceeds on the unpacked bundle.
-	gomtree -p "$BUNDLE/rootfs" -f "$BUNDLE"/sha256_*.mtree
+	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -65,21 +62,17 @@ function teardown() {
 }
 
 @test "umoci unpack [missing args]" {
-	BUNDLE="$(setup_tmpdir)"
-
 	umoci unpack --image="${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
 
+	new_bundle_rootfs
 	umoci unpack "$BUNDLE"
 	[ "$status" -ne 0 ]
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {
-	BUNDLE="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
+	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
@@ -93,26 +86,26 @@ function teardown() {
 }
 
 @test "umoci unpack [consistent results]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs && BUNDLE_A="$BUNDLE" ROOTFS_A="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Wait a beat.
 	sleep 5s
 
 	# Unpack it again.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	new_bundle_rootfs && BUNDLE_B="$BUNDLE" ROOTFS_B="$ROOTFS"
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree suceeds on the new unpacked bundle.
-	gomtree -p "$BUNDLE_B/rootfs" -f "$BUNDLE_A"/sha256_*.mtree
+	# Ensure that gomtree cross-succeeds.
+	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
+	[ "$status" -eq 0 ]
+	[ -z "$output" ]
+	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -120,35 +113,32 @@ function teardown() {
 }
 
 @test "umoci unpack [setuid]" {
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make some files setuid and setgid.
-	touch "$BUNDLE_A/rootfs/setuid"  && chmod u+xs  "$BUNDLE_A/rootfs/setuid"
-	touch "$BUNDLE_A/rootfs/setgid"  && chmod g+xs  "$BUNDLE_A/rootfs/setgid"
-	touch "$BUNDLE_A/rootfs/setugid" && chmod ug+xs "$BUNDLE_A/rootfs/setugid"
+	touch "$ROOTFS/setuid"  && chmod u+xs  "$ROOTFS/setuid"
+	touch "$ROOTFS/setgid"  && chmod g+xs  "$ROOTFS/setgid"
+	touch "$ROOTFS/setugid" && chmod ug+xs "$ROOTFS/setugid"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Check that the set{uid,gid} bits were preserved.
-	[ -u "$BUNDLE_B/rootfs/setuid" ]
-	[ -g "$BUNDLE_B/rootfs/setgid" ]
-	[ -u "$BUNDLE_B/rootfs/setugid" ] && [ -g "$BUNDLE_B/rootfs/setugid" ]
+	[ -u "$ROOTFS/setuid" ]
+	[ -g "$ROOTFS/setgid" ]
+	[ -u "$ROOTFS/setugid" ] && [ -g "$ROOTFS/setugid" ]
 
 	image-verify "${IMAGE}"
 }
@@ -159,46 +149,43 @@ function teardown() {
 	# to write capabilities).
 	requires root
 
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make some files setuid and setgid.
-	touch "$BUNDLE_A/rootfs/setcap1" && setcap "cap_net_raw+eip" "$BUNDLE_A/rootfs/setcap1"
-	touch "$BUNDLE_A/rootfs/setcap2" && setcap "cap_sys_admin,cap_setfcap+eip" "$BUNDLE_A/rootfs/setcap2"
+	touch "$ROOTFS/setcap1" && setcap "cap_net_raw+eip" "$ROOTFS/setcap1"
+	touch "$ROOTFS/setcap2" && setcap "cap_sys_admin,cap_setfcap+eip" "$ROOTFS/setcap2"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image (as root).
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Ensure that the capability bits were preserved.
-	sane_run getcap "$BUNDLE_B/rootfs/setcap1"
+	sane_run getcap "$ROOTFS/setcap1"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *" = cap_net_raw+eip"* ]]
-	sane_run getcap "$BUNDLE_B/rootfs/setcap2"
+	sane_run getcap "$ROOTFS/setcap2"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *" = cap_sys_admin,cap_setfcap"* ]]
 
 	# Unpack the image (as rootless).
-	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# TODO: Actually set capabilities as an unprivileged user and then test
-	#       that the correct v3 capabilities were set.
+	#	   that the correct v3 capabilities were set.
 
 	image-verify "${IMAGE}"
 }
@@ -209,94 +196,119 @@ function teardown() {
 	# (it requires owning the filesystem's superblock).
 	requires root
 
-	BUNDLE_A="$(setup_tmpdir)"
-	BUNDLE_B="$(setup_tmpdir)"
-	BUNDLE_C="$(setup_tmpdir)"
-
-	image-verify "${IMAGE}"
-
 	# Unpack the image.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_A"
+	bundle-verify "$BUNDLE"
 
 	# Make some mknod.
-	mknod "$BUNDLE_A/rootfs/block1" b 128 42  # 80:2a 61a4
-	mknod "$BUNDLE_A/rootfs/block2" b 255 128 # ff:80 61a4
-	mknod "$BUNDLE_A/rootfs/char1"  c 133 37  # 85:25 21a4
-	mknod "$BUNDLE_A/rootfs/char2"  c 253 97  # fd:61 21a4
-	mkfifo "$BUNDLE_A/rootfs/fifo"
+	mknod "$ROOTFS/block1" b 128 42  # 80:2a 61a4
+	mknod "$ROOTFS/block2" b 255 128 # ff:80 61a4
+	mknod "$ROOTFS/char1"  c 133 37  # 85:25 21a4
+	mknod "$ROOTFS/char2"  c 253 97  # fd:61 21a4
+	mkfifo "$ROOTFS/fifo"
 
 	# Repack the image.
-	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE_A"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack the image (as root).
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE_B"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_B"
+	bundle-verify "$BUNDLE"
 
 	# Check that all of the bits were preserved.
-	[ -b "$BUNDLE_B/rootfs/block1" ]
-	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/block1")" == *"80:2a"* ]]
-	[ -b "$BUNDLE_B/rootfs/block2" ]
-	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/block2")" == *"ff:80"* ]]
-	[ -c "$BUNDLE_B/rootfs/char1" ]
-	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/char1")" == *"85:25"* ]]
-	[ -c "$BUNDLE_B/rootfs/char2" ]
-	[[ "$(stat -c '%t:%T' "$BUNDLE_B/rootfs/char2")" == *"fd:61"* ]]
-	[ -p "$BUNDLE_B/rootfs/fifo" ]
+	[ -b "$ROOTFS/block1" ]
+	[[ "$(stat -c '%t:%T' "$ROOTFS/block1")" == *"80:2a"* ]]
+	[ -b "$ROOTFS/block2" ]
+	[[ "$(stat -c '%t:%T' "$ROOTFS/block2")" == *"ff:80"* ]]
+	[ -c "$ROOTFS/char1" ]
+	[[ "$(stat -c '%t:%T' "$ROOTFS/char1")" == *"85:25"* ]]
+	[ -c "$ROOTFS/char2" ]
+	[[ "$(stat -c '%t:%T' "$ROOTFS/char2")" == *"fd:61"* ]]
+	[ -p "$ROOTFS/fifo" ]
 
 	# Unpack the image (as rootless).
-	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE_C"
+	new_bundle_rootfs
+	umoci unpack --rootless --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
-	bundle-verify "$BUNDLE_C"
+	bundle-verify "$BUNDLE"
 
 	# At the least, check that the files exist.
-	[ -e "$BUNDLE_C/rootfs/block1" ]
-	[ -e "$BUNDLE_C/rootfs/block2" ]
-	[ -e "$BUNDLE_C/rootfs/char1" ]
-	[ -e "$BUNDLE_C/rootfs/char2" ]
+	[ -e "$ROOTFS/block1" ]
+	[ -e "$ROOTFS/block2" ]
+	[ -e "$ROOTFS/char1" ]
+	[ -e "$ROOTFS/char2" ]
 	# But the FIFOs should be preserved.
-	[ -p "$BUNDLE_C/rootfs/fifo" ]
+	[ -p "$ROOTFS/fifo" ]
 
 	image-verify "${IMAGE}"
 }
 
 @test "umoci unpack --keep-dirlinks" {
-    BUNDLE="$(setup_tmpdir)"
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
-    image-verify "${IMAGE}"
-    umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
-    mkdir "${BUNDLE}/rootfs/dir"
-    touch "${BUNDLE}/rootfs/dir/a"
-    ln -s dir "${BUNDLE}/rootfs/link"
-    ln -s link "${BUNDLE}/rootfs/link2"
-    ln -s loop2 "${BUNDLE}/rootfs/loop1"
-    ln -s loop1 "${BUNDLE}/rootfs/loop2"
-    umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	# Create some links for us to play with in the next layer.
+	mkdir "$ROOTFS/dir"
+	touch "$ROOTFS/dir/a"
+	ln -s dir "$ROOTFS/link"
+	ln -s link "$ROOTFS/link2"
+	ln -s loop2 "$ROOTFS/loop1"
+	ln -s loop3 "$ROOTFS/loop2"
+	ln -s link2/loop4 "$ROOTFS/loop3"
+	ln -s ../loop1 "$ROOTFS/dir/loop4"
+	chmod 000 "$ROOTFS/dir"
+
+	# Repack the image.
+	umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "$IMAGE"
+
+	# Create a fake rootfs which contains entries inside symlinks.
+	ROOTFS="$(setup_tmpdir)"
+	mkdir "$ROOTFS/link"  # == /dir
+	touch "$ROOTFS/link/b"
+	mkdir "$ROOTFS/link2"  # == /link == /dir
+	touch "$ROOTFS/link2/c"
+	mkdir "$ROOTFS/loop1" # == /loop{1..4} ... (symlink loop)
+	touch "$ROOTFS/loop1/broken"
+	sane_run tar cvfC "$BATS_TMPDIR/layer1.tar" "$ROOTFS" .
 	[ "$status" -eq 0 ]
 
-    rm "${BUNDLE}/rootfs/link"
-    mkdir "${BUNDLE}/rootfs/link"
-    touch "${BUNDLE}/rootfs/link/b"
-    umoci repack --refresh-bundle --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	# Insert our fake layer manually.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer1.tar"
 	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
-    chmod -R 0777 "${BUNDLE}"
-    rm -rf "${BUNDLE}"
-    umoci unpack --keep-dirlinks --image "${IMAGE}:${TAG}" "${BUNDLE}"
-    [ "$status" -eq 0 ]
-    bundle-verify "${BUNDLE}"
+	# Unpack our weird image.
+	new_bundle_rootfs
+	umoci unpack --keep-dirlinks --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
-    ls -al "${BUNDLE}/rootfs"
-    echo "${output}"
-
-    [ -f "${BUNDLE}/rootfs/dir/a" ]
-    [ -f "${BUNDLE}/rootfs/dir/b" ]
-    [ -L "${BUNDLE}/rootfs/link" ]
-    [ -L "${BUNDLE}/rootfs/link2" ]
-    [ "$(readlink ${BUNDLE}/rootfs/link)" = "dir" ]
-    [ "$(readlink ${BUNDLE}/rootfs/link2)" = "link" ]
+	# Resolution of links without destroying the links themselves.
+	chmod 755 "$ROOTFS/dir"
+	[ -f "$ROOTFS/dir/a" ]
+	[ -f "$ROOTFS/dir/b" ]
+	[ -f "$ROOTFS/dir/c" ]
+	[ -L "$ROOTFS/link" ]
+	[ -L "$ROOTFS/link2" ]
+	[ "$(readlink "$ROOTFS/link")" = "dir" ]
+	[ "$(readlink "$ROOTFS/link2")" = "link" ]
+	# ... but symlink loops have to be broken.
+	[ -d "$ROOTFS/loop1" ]
+	[ -f "$ROOTFS/loop1/broken" ]
+	[ -L "$ROOTFS/loop2" ]
+	[ -L "$ROOTFS/loop3" ]
+	[ -L "$ROOTFS/dir/loop4" ]
+	[ "$(readlink "$ROOTFS/loop2")" = "loop3" ]
+	[ "$(readlink "$ROOTFS/loop3")" = "link2/loop4" ]
+	[ "$(readlink "$ROOTFS/dir/loop4")" = "../loop1" ]
 }

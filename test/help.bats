@@ -49,7 +49,6 @@ load helpers
 }
 
 @test "umoci command --help" {
-
 	umoci config --help
 	[ "$status" -eq 0 ]
 	[[ "${lines[1]}" =~ "umoci config"+ ]]
