@@ -13,6 +13,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the same name) which allows layers that contain entries which have a symlink
   as a path component. openSUSE/umoci#246
 
+## Fixed
+- Docker has changed how they handle whiteouts for non-existent files. The
+  specification is loose on this (and in umoci we've always been liberal with
+  whiteout generation -- to avoid cases where someone was confused we didn't
+  have a whiteout for every entry). But now that they have deviated from the
+  spec, in the interest of playing nice, we can just follow their new
+  restriction (even though it is not supported by the spec). This also makes
+  our layers *slightly* smaller. openSUSE/umoci#254
+
 ## [0.4.1] - 2018-08-16
 ### Added
 - The number of possible tags that are now valid with `umoci` subcommands has

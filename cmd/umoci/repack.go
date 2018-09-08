@@ -184,7 +184,9 @@ func repack(ctx *cli.Context) error {
 			maskedPaths = append(maskedPaths, v)
 		}
 	}
-	diffs = mtreefilter.FilterDeltas(diffs, mtreefilter.MaskFilter(maskedPaths))
+	diffs = mtreefilter.FilterDeltas(diffs,
+		mtreefilter.MaskFilter(maskedPaths),
+		mtreefilter.SimplifyFilter(diffs))
 
 	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
 	if err != nil {
