@@ -12,6 +12,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Added `umoci unpack --keep-dirlinks` (in the same vein as rsync's flag with
   the same name) which allows layers that contain entries which have a symlink
   as a path component. openSUSE/umoci#246
+- `umoci insert` now supports whiteouts in two significant ways. You can use
+  `--whiteout` to "insert" a deletion of a given path, while you can use
+  `--opaque` to replace a directory by adding an opaque whiteout (the default
+  behaviour causes the old and new directories to be merged).
+  openSUSE/umoci#257
 
 ## Fixed
 - Docker has changed how they handle whiteouts for non-existent files. The

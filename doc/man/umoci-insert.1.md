@@ -1,12 +1,13 @@
-% umoci-insert(1) # umoci insert - insert a file into an OCI image
+% umoci-insert(1) # umoci insert - insert content into an OCI image
 % Aleksa Sarai
 % SEPTEMBER 2018
 # NAME
-umoci insert - insert a file into an OCI image
+umoci insert - insert content into an OCI image
 
 # SYNOPSIS
 **umoci insert**
 **--image**=*image*[:*tag*]
+[**--opaque**]
 [**--rootless**]
 [**--uid-map**=*value*]
 [**--uid-map**=*value*]
@@ -14,19 +15,32 @@ umoci insert - insert a file into an OCI image
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
 [**--history-created**=*date*]
-*file*
-*path*
+*source*
+*target*
+
+**umoci insert**
+[options]
+**--whiteout**
+*target*
+
 
 # DESCRIPTION
-Creates a new OCI image layout. The new OCI image does not contain any new
-references or blobs, but those can be created through the use of
-**umoci-new**(1), **umoci-tag**(1), **umoci-repack**(1) and other similar
-commands.
+In the first form, insert the contents of *source* into the OCI image given by
+**--image** (**overwriting it** -- this is the only **umoci**(1) command which
+currently does this). This is done by creating a new layer containing just the
+contents of *source* with a name of *target*. *source* can be either a file or
+directory, and in the latter case it will be recursed. If **--opaque** is
+specified then any paths below *target* in the previous image layers (assuming
+*target* is a directory) will be removed.
 
-Inserts *file* into the OCI image given by **--image** (overwriting it),
-creating a new layer containing just the contents of *file* at *path*. *file*
-can be a file or a directory to insert (in the latter case the directory is
-always recursed), and *path* is the full path where *file* will be inserted.
+In the second form, inserts a "deletion entry" into the OCI image for *target*
+inside the image. This is done by inserting a layer containing just a whiteout
+entry for the given path.
+
+Note that this command works by creating a new layer, so this should not be
+used to remove (or replace) secrets from an already-built image. See
+**umoci-config**(1) and **--config.volume** for how to achieve this correctly
+by not creating image layers with secrets in the first place.
 
 # OPTIONS
 The global options are defined in **umoci**(1).
@@ -36,6 +50,17 @@ The global options are defined in **umoci**(1).
   the container image. *image* must be a path to a valid OCI image and *tag*
   must be a valid tag in the image. If *tag* is not provided it defaults to
   "latest".
+
+**--opaque**
+  (Assuming *target* is a directory.) Add an opaque whiteout entry for *target*
+  so that any child path of *target* in previous layers is masked by the new
+  entry for *target*, which will just contain the contents of *source*. This
+  allows for the complete replacement of a directory, as opposed to the merging
+  of directory entries.
+
+**--whiteout**
+  Add a deletion entry for *target*, so that it is not present in future
+  extractions of the image.
 
 **--rootless**
   Enable rootless insertion support. This allows for **umoci-insert**(1) to be
@@ -83,6 +108,15 @@ directories are merged (with the newer layer taking precedence).
 ```
 % umoci insert --image oci:foo mybinary /usr/bin/mybinary
 % umoci insert --image oci:foo myconfigdir /etc/myconfigdir
+```
+
+And in these examples we delete `/usr/bin/mybinary` and replace the entirety of
+`/etc` with `myetcdir` (such that none of the old `/etc` entries will be
+present on **umoci-unpack**(1)).
+
+```
+% umoci insert --image oci:foo --whiteout /usr/bin/mybinary
+% umoci insert --image oci:foo --opaque myetcdir /etc
 ```
 
 # SEE ALSO
