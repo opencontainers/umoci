@@ -19,6 +19,7 @@ package layer
 
 import (
 	"archive/tar"
+	"bytes"
 	"fmt"
 	"io"
 	"os"
@@ -134,14 +135,31 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		return errors.Wrapf(err, "clear xattr metadata: %s", path)
 	}
 	for name, value := range hdr.Xattrs {
+		value := []byte(value)
+
+		// Forbidden xattrs should never be touched.
 		if _, skip := ignoreXattrs[name]; skip {
+			// If the xattr is already set to the requested value, don't bail.
+			// The reason for this logic is kinda convoluted, but effectively
+			// because restoreMetadata is called with the *on-disk* metadata we
+			// run the risk of things like "security.selinux" being included in
+			// that metadata (and thus tripping the forbidden xattr error). By
+			// only touching xattrs that have a different value we are somewhat
+			// more efficient and we don't have to special case parent restore.
+			// Of course this will only ever impact ignoreXattrs.
+			if oldValue, err := te.fsEval.Lgetxattr(path, name); err == nil {
+				if bytes.Equal(value, oldValue) {
+					log.Debugf("restore xattr metadata: skipping already-set xattr %q: %s", name, hdr.Name)
+					continue
+				}
+			}
 			if te.partialRootless {
 				log.Warnf("rootless{%s} ignoring forbidden xattr: %q", hdr.Name, name)
 				continue
 			}
 			return errors.Errorf("restore xattr metadata: saw forbidden xattr %q: %s", name, hdr.Name)
 		}
-		if err := te.fsEval.Lsetxattr(path, name, []byte(value), 0); err != nil {
+		if err := te.fsEval.Lsetxattr(path, name, value, 0); err != nil {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
