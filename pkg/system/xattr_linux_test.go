@@ -22,6 +22,7 @@ import (
 	"os"
 	"testing"
 
+	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -57,6 +58,9 @@ func TestClearxattrFilter(t *testing.T) {
 		}
 
 		if err := unix.Lsetxattr(path, xattr.name, []byte(xattr.value), 0); err != nil {
+			if errors.Cause(err) == unix.ENOTSUP {
+				t.Skip("xattrs unsupported on backing filesystem")
+			}
 			t.Fatalf("unexpected error setting %v=%v on %v: %v", xattr.name, xattr.value, path, err)
 		}
 	}
