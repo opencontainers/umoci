@@ -101,9 +101,10 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 	return reader, nil
 }
 
-// GenerateInsertLayer generates a completely new layer from the root path to
-// be inserted into the image at "target".
-func GenerateInsertLayer(root string, target string, opt *MapOptions) io.ReadCloser {
+// GenerateInsertLayer generates a completely new layer from "root"to be
+// inserted into the image at "target". If "root" is an empty string then the
+// "target" will be removed via a whiteout.
+func GenerateInsertLayer(root string, target string, opaque bool, opt *MapOptions) io.ReadCloser {
 	root = CleanPath(root)
 
 	var mapOptions MapOptions
@@ -113,16 +114,22 @@ func GenerateInsertLayer(root string, target string, opt *MapOptions) io.ReadClo
 
 	reader, writer := io.Pipe()
 
-	go func() {
-		var err error
-
+	go func() (Err error) {
 		defer func() {
-			writer.CloseWithError(errors.Wrap(err, "generate layer"))
+			writer.CloseWithError(errors.Wrap(Err, "generate layer"))
 		}()
 
 		tg := newTarGenerator(writer, mapOptions)
 
-		err = unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+		if opaque {
+			if err := tg.AddOpaqueWhiteout(target); err != nil {
+				return err
+			}
+		}
+		if root == "" {
+			return tg.AddWhiteout(target)
+		}
+		return unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
@@ -130,12 +137,6 @@ func GenerateInsertLayer(root string, target string, opt *MapOptions) io.ReadClo
 			pathInTar := path.Join(target, curPath[len(root):])
 			return tg.AddFile(pathInTar, curPath)
 		})
-		if err != nil {
-			return
-		}
-
-		err = tg.tw.Close()
 	}()
-
 	return reader
 }

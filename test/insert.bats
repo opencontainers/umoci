@@ -83,4 +83,111 @@ function teardown() {
 	[[ "$(stat -c '%f' "${INSERTDIR}/some/path")" == "$(stat -c '%f' "$ROOTFS/rootless/path")" ]]
 	chmod a+rwx "$ROOTFS/rootless/path"
 	[ -f "$ROOTFS/rootless/path/hidden" ]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci insert --opaque" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# Insert our /etc.
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure that the /etc/foo is there.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that it's merged!
+	[ -f "$ROOTFS/etc/shadow" ]
+	[ -f "$ROOTFS/etc/foo" ]
+
+	# Now make it opaque to make sure it isn't included.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/bar"
+	touch "${INSERTDIR}/should_be_fine"
+
+	# Insert our /etc.
+	umoci insert --image "${IMAGE}:${TAG}" --opaque "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+	# And try to make a file opaque just to see what happens (should be nothing).
+	umoci insert --image "${IMAGE}:${TAG}" --opaque "${INSERTDIR}/should_be_fine" /should_be_fine
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure that now only /etc/bar is around.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that it's _not_ merged!
+	! [ -f "$ROOTFS/etc/shadow" ]
+	! [ -f "$ROOTFS/etc/foo" ]
+	# And that bar is there.
+	[ -f "$ROOTFS/etc/bar" ]
+	# And that should_be_fine is around.
+	[ -f "$ROOTFS/should_be_fine" ]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci insert --whiteout" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	touch "${INSERTDIR}/rm_file"
+	mkdir "${INSERTDIR}/rm_dir"
+
+	# Add our things.
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/rm_file" /rm_file
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/rm_dir" /rm_dir
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack after the inserts.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	[ -d "$ROOTFS/etc" ]
+	[ -d "$ROOTFS/rm_dir" ]
+	[ -f "$ROOTFS/rm_file" ]
+
+	# Directory whiteout.
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout /rm_dir
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# (Another) directory whiteout.
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# File whiteout.
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout /rm_file
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack after the inserts.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	! [ -d "$ROOTFS/etc" ]
+	! [ -d "$ROOTFS/rm_dir" ]
+	! [ -f "$ROOTFS/rm_file" ]
+
+	image-verify "${IMAGE}"
 }

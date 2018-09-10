@@ -23,7 +23,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"time"
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/pkg/fseval"
@@ -262,34 +261,41 @@ const whPrefix = ".wh."
 // siblings in a directory are to be dropped in the "lower" layer.
 const whOpaque = whPrefix + whPrefix + ".opq"
 
-// AddWhiteout adds a whiteout file for the given name inside the tar archive.
-// It's not recommended to add a file with AddFile and then white it out.
-func (tg *tarGenerator) AddWhiteout(name string) error {
+// addWhiteout adds a whiteout file for the given name inside the tar archive.
+// It's not recommended to add a file with AddFile and then white it out. If
+// you specify opaque, then the whiteout created is an opaque whiteout *for the
+// directory path* given.
+func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	name, err := normalise(name, false)
 	if err != nil {
 		return errors.Wrap(err, "normalise path")
 	}
 
-	// Create the explicit whiteout for the file.
-	dir, file := filepath.Split(name)
-	whiteout := filepath.Join(dir, whPrefix+file)
-	timestamp := time.Now()
-
 	// Disallow having a whiteout of a whiteout, purely for our own sanity.
+	dir, file := filepath.Split(name)
 	if strings.HasPrefix(file, whPrefix) {
 		return errors.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
 	}
 
-	// Add a dummy header for the whiteout file.
-	if err := tg.tw.WriteHeader(&tar.Header{
-		Name:       whiteout,
-		Size:       0,
-		ModTime:    timestamp,
-		AccessTime: timestamp,
-		ChangeTime: timestamp,
-	}); err != nil {
-		return errors.Wrap(err, "write whiteout header")
+	// Figure out the whiteout name.
+	whiteout := filepath.Join(dir, whPrefix+file)
+	if opaque {
+		whiteout = filepath.Join(name, whOpaque)
 	}
 
-	return nil
+	// Add a dummy header for the whiteout file.
+	return errors.Wrap(tg.tw.WriteHeader(&tar.Header{
+		Name: whiteout,
+		Size: 0,
+	}), "write whiteout header")
+}
+
+// AddWhiteout creates a whiteout for the provided path.
+func (tg *tarGenerator) AddWhiteout(name string) error {
+	return tg.addWhiteout(name, false)
+}
+
+// AddOpaqueWhiteout creates a whiteout for the provided path.
+func (tg *tarGenerator) AddOpaqueWhiteout(name string) error {
+	return tg.addWhiteout(name, true)
 }

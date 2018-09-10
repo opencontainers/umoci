@@ -26,33 +26,14 @@ import (
 	"github.com/vbatts/go-mtree"
 )
 
-func TestIsParent(t *testing.T) {
-	for _, test := range []struct {
-		parent, path string
-		expected     bool
-	}{
-		{"/", "/a", true},
-		{"/", "/a/b/c", true},
-		{"/", "/", true},
-		{"/a path/", "/a path", true},
-		{"/a nother path", "/a nother path/test", true},
-		{"/a nother path", "/a nother path/test/1   2/  33 /", true},
-		{"/path1", "/path2", false},
-		{"/pathA", "/PATHA", false},
-		{"/pathC", "/path", false},
-		{"/path9", "/", false},
-		// Make sure it's not the same as filepath.HasPrefix.
-		{"/a/b/c", "/a/b/c/d", true},
-		{"/a/b/c", "/a/b/cd", false},
-		{"/a/b/c", "/a/bcd", false},
-		{"/a/bc", "/a/bcd", false},
-		{"/abc", "/abcd", false},
-	} {
-		got := isParent(test.parent, test.path)
-		if got != test.expected {
-			t.Errorf("isParent(%q, %q) got %v expected %v", test.parent, test.path, got, test.expected)
-		}
+func isParent(a, b string) bool {
+	a = filepath.Clean(a)
+	b = filepath.Clean(b)
+
+	for a != b && b != filepath.Dir(b) {
+		b = filepath.Dir(b)
 	}
+	return a == b
 }
 
 func TestMaskDeltas(t *testing.T) {
@@ -122,11 +103,11 @@ func TestMaskDeltas(t *testing.T) {
 		{[]string{"/", "file2"}},
 		{[]string{"file2", filepath.Join("dir", "child2")}},
 	} {
-		newDiff := FilterDeltas(diff, MaskFilter(test.paths))
-		for _, delta := range newDiff {
+		simpleDiff := FilterDeltas(diff, MaskFilter(test.paths))
+		for _, delta := range simpleDiff {
 			if len(test.paths) == 0 {
-				if len(newDiff) != len(diff) {
-					t.Errorf("expected diff={} to give %d got %d", len(diff), len(newDiff))
+				if len(simpleDiff) != len(diff) {
+					t.Errorf("expected diff={} to give %d got %d", len(diff), len(simpleDiff))
 				}
 			} else {
 				found := false
@@ -140,5 +121,70 @@ func TestMaskDeltas(t *testing.T) {
 				}
 			}
 		}
+	}
+}
+
+func TestSimplifyFilter(t *testing.T) {
+	dir, err := ioutil.TempDir("", "TestSimplifyFilter-")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
+
+	// Create some nested directories we can remove.
+	if err != os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0755) {
+		t.Fatal(err)
+	}
+	if err != ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0644) {
+		t.Fatal(err)
+	}
+
+	// Generate a diff.
+	originalDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Modify the root.
+	if err := os.RemoveAll(filepath.Join(dir, "some")); err != nil {
+		t.Fatal(err)
+	}
+
+	// Generate the set of diffs.
+	newDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	diff, err := mtree.Compare(originalDh, newDh, mtreeKeywords)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// We expect to see a deletion for each entry.
+	var sawDeletions int
+	for _, delta := range diff {
+		if delta.Type() == mtree.Missing {
+			sawDeletions++
+		}
+	}
+	if sawDeletions != 5 {
+		t.Errorf("expected to see 5 deletions with stock Compare, saw %v", sawDeletions)
+	}
+
+	// Simplify the diffs.
+	simpleDiff := FilterDeltas(diff, SimplifyFilter(diff))
+	if len(simpleDiff) >= len(diff) {
+		t.Errorf("expected simplified diff to be shorter (%v >= %v)", len(simpleDiff), len(diff))
+	}
+	var sawSimpleDeletions int
+	for _, delta := range simpleDiff {
+		if delta.Type() == mtree.Missing {
+			sawSimpleDeletions++
+		}
+	}
+	if sawSimpleDeletions != 1 {
+		t.Errorf("expected to see 1 deletion with simplified filter, saw %v", sawSimpleDeletions)
 	}
 }

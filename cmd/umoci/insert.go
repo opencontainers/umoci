@@ -36,38 +36,75 @@ import (
 
 var insertCommand = uxRemap(uxHistory(cli.Command{
 	Name:  "insert",
-	Usage: "insert a file into an OCI image",
-	ArgsUsage: `--image <image-path>[:<tag>] <file> <path>
+	Usage: "insert content into an OCI image",
+	ArgsUsage: `--image <image-path>[:<tag>] [--opaque] <source> <target>
+                                  --image <image-path>[:<tag>] [--whiteout] <target>
 
-Where "<image-path>" is the path to the OCI image, "<tag>" is the name of the
-tag that the content wil be inserted into (if not specified, defaults to
-"latest"), "<file>" is the file or folder to insert, and "<path>" is the full
-name of the path to that the file should be inserted at. Insert is
-automatically recursive if the source is a directory.
+Where "<image-path>" is the path to the OCI image, and "<tag>" is the name of
+the tag that the content wil be inserted into (if not specified, defaults to
+"latest").
 
-For example:
+The path at "<source>" is added to the image with the given "<target>" name.
+If "--whiteout" is specified, rather than inserting content into the image, a
+removal entry for "<target>" is inserted instead.
+
+If "--opaque" is specified then any paths below "<target>" (assuming it is a
+directory) from previous layers will no longer be present. Only the contents
+inserted by this command will be visible. This can be used to replace an entire
+directory, while the default behaviour merges the old contents with the new.
+
+Note that this command works by creating a new layer, so this should not be
+used to remove (or replace) secrets from an already-built image. See
+umoci-config(1) and --config.volume for how to achieve this correctly.
+
+Some examples:
 	umoci insert --image oci:foo mybinary /usr/bin/mybinary
 	umoci insert --image oci:foo myconfigdir /etc/myconfigdir
+	umoci insert --image oci:foo --opaque myoptdir /opt
+	umoci insert --image oci:foo --whiteout /some/old/dir
 `,
 
 	Category: "image",
 
 	Action: insert,
 
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "whiteout",
+			Usage: "insert a 'removal entry' for the given path",
+		},
+		cli.BoolFlag{
+			Name:  "opaque",
+			Usage: "mask any previous entries in the target directory",
+		},
+	},
+
 	Before: func(ctx *cli.Context) error {
-		if ctx.NArg() != 2 {
-			return errors.Errorf("invalid number of positional arguments: expected <file> and <path>")
+		// This command is quite weird because we need to support two different
+		// positional-argument numbers. Awesome.
+		numArgs := 2
+		if ctx.IsSet("whiteout") {
+			numArgs = 1
 		}
-		if ctx.Args()[0] == "" {
-			return errors.Errorf("<file> cannot be empty")
+		if ctx.NArg() != numArgs {
+			return errors.Errorf("invalid number of positional arguments: expected %d", numArgs)
 		}
-		ctx.App.Metadata["insertFile"] = ctx.Args()[0]
+		for idx, args := range ctx.Args() {
+			if args == "" {
+				return errors.Errorf("invalid positional argument %d: arguments cannot be empty", idx)
+			}
+		}
 
-		if ctx.Args()[1] == "" {
-			return errors.Errorf("<path> cannot be empty")
+		// Figure out the arguments.
+		var sourcePath, targetPath string
+		targetPath = ctx.Args()[0]
+		if !ctx.IsSet("whiteout") {
+			sourcePath = targetPath
+			targetPath = ctx.Args()[1]
 		}
-		ctx.App.Metadata["insertPath"] = ctx.Args()[1]
 
+		ctx.App.Metadata["--source-path"] = sourcePath
+		ctx.App.Metadata["--target-path"] = targetPath
 		return nil
 	},
 }))
@@ -75,6 +112,8 @@ For example:
 func insert(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
+	sourcePath := ctx.App.Metadata["--source-path"].(string)
+	targetPath := ctx.App.Metadata["--target-path"].(string)
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
@@ -102,9 +141,6 @@ func insert(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for base image")
 	}
 
-	insertFile := ctx.App.Metadata["insertFile"].(string)
-	insertPath := ctx.App.Metadata["insertPath"].(string)
-
 	var meta umoci.Meta
 	meta.Version = umoci.MetaVersion
 
@@ -114,7 +150,7 @@ func insert(ctx *cli.Context) error {
 		return err
 	}
 
-	reader := layer.GenerateInsertLayer(insertFile, insertPath, &meta.MapOptions)
+	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &meta.MapOptions)
 	defer reader.Close()
 
 	created := time.Now()
