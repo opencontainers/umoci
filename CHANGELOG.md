@@ -26,6 +26,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   spec, in the interest of playing nice, we can just follow their new
   restriction (even though it is not supported by the spec). This also makes
   our layers *slightly* smaller. openSUSE/umoci#254
+- `umoci unpack` now no longer erases `system.nfs4_acl` and also has some more
+  sophisticated handling of forbidden xattrs. openSUSE/umoci#252
+  openSUSE/umoci#248
+- `umoci unpack` now appears to work correctly on SELinux-enabled systems
+  (previously we had various issues where `umoci` wouldn't like it when it was
+  trying to ensure the filesystem was reproducibly generated and SELinux xattrs
+  would act strangely). To fix this, now `umoci unpack` will only cause errors
+  if it has been asked to change a forbidden xattr to a value different than
+  it's current on-disk value. openSUSE/umoci#235 openSUSE/umoci#259
 
 ## [0.4.1] - 2018-08-16
 ### Added
