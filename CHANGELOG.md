@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.2] - 2018-09-11
 ## Added
 - umoci now has an exposed Go API. At the moment it's unclear whether it will
   be changed significantly, but at the least now users can use
@@ -366,7 +368,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.1...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.2...HEAD
+[0.4.2]: https://github.com/openSUSE/umoci/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/openSUSE/umoci/compare/v0.4.0...v0.4.1
 [0.4.0]: https://github.com/openSUSE/umoci/compare/v0.3.1...v0.4.0
 [0.3.1]: https://github.com/openSUSE/umoci/compare/v0.3.0...v0.3.1
