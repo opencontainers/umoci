@@ -152,7 +152,7 @@ func main() {
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
 		if os.IsPermission(errors.Cause(err)) {
-			log.Info("umoci encountered a permission error: maybe --rootless will help?")
+			log.Warn("umoci encountered a permission error: maybe --rootless will help?")
 		}
 		log.Fatalf("%v", err)
 		log.Debugf("%+v", err)
