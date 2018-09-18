@@ -1,6 +1,6 @@
 % umoci-stat(1) # umoci stat - Display status information about an image tag
 % Aleksa Sarai
-% DECEMBER 2016
+% SEPTEMBER 2018
 # NAME
 umoci stat - Display status information about an image tag
 
@@ -13,10 +13,9 @@ umoci stat - Display status information about an image tag
 Generates various pieces of status information about an image tag, including
 the history of the image.
 
-**WARNING**: Do not depend on the output of this tool unless you are using the
-**--json** flag. The intention of the default formatting of this tool is to
-make it human-readable, and might change in future versions. For parseable
-and stable output, use **--json**.
+**WARNING**: Do not depend on the output of this tool. Previously we
+recommended the use of **--json** as the "stable" interface but this interface
+will be reworked in future.
 
 # OPTIONS
 The global options are defined in **umoci**(1).

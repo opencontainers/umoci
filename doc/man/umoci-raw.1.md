@@ -1,6 +1,6 @@
 % umoci-raw(1) # umoci raw - Advanced internal image tooling
 % Aleksa Sarai
-% APRIL 2017
+% SEPTEMBER 2018
 # NAME
 umoci raw - Advanced internal image tooling
 
@@ -23,4 +23,6 @@ tools (**umoci-unpack**(1) and so on) should be sufficient for most use-cases.
 
 # SEE ALSO
 **umoci**(1),
-**umoci-raw-runtime-config**(1)
+**umoci-raw-add-layer**(1),
+**umoci-raw-runtime-config**(1),
+**umoci-raw-unpack**(1)

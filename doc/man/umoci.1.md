@@ -1,14 +1,15 @@
 % umoci(1) # umoci - umoci modifies Open Container images
 % Aleksa Sarai
-% DECEMBER 2016
+% SEPTEMBER 2018
 # NAME
 umoci - umoci modifies Open Container images
 
 # SYNOPSIS
 **umoci**
-[**--debug**]
 [**--help**|**-h**]
 [**--version**|**-v**]
+[**--log**={*debug*|*info*|*warn*|*error*|*fatal*}]
+[**--verbose**]
 *command* [*args*]
 
 # DESCRIPTION
@@ -30,8 +31,11 @@ doing a high-level operation such as **umoci-repack**(1)).
 **--version, -v**
   Print the version.
 
-**--debug**
-  Output debugging information.
+**--log**={*debug*|*info*|*warn*|*error*|*fatal*}
+  Set the logging level. The default is "warn".
+
+**--verbose**
+  Alias for **--log=info**.
 
 # COMMANDS
 
