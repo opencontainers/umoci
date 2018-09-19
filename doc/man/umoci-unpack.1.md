@@ -1,6 +1,6 @@
 % umoci-unpack(1) # umoci unpack - Unpacks an OCI image tag into an runtime bundle
 % Aleksa Sarai
-% DECEMBER 2016
+% SEPTEMBER 2018
 # NAME
 umoci unpack - Unpacks an OCI image tag into an runtime bundle
 
