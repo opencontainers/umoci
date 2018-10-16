@@ -12,7 +12,7 @@ before_install:
   - sudo sh -c "apt-get -qq update && apt-get install -y gcc-multilib"
   - go get -u github.com/cpuguy83/go-md2man
   - go get -u github.com/vbatts/git-validation
-  - go get -u github.com/golang/lint/golint
+  - go get -u golang.org/x/lint/golint
 
 env:
   - DOCKER_IMAGE="opensuse/amd64:42.3"
