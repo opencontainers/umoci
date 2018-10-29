@@ -140,7 +140,7 @@ func uxImage(cmd cli.Command) cli.Command {
 			image := ctx.String("image")
 
 			var dir, tag string
-			sep := strings.LastIndex(image, ":")
+			sep := strings.Index(image, ":")
 			if sep == -1 {
 				dir = image
 				tag = "latest"
@@ -150,9 +150,6 @@ func uxImage(cmd cli.Command) cli.Command {
 			}
 
 			// Verify directory value.
-			if strings.Contains(dir, ":") {
-				return errors.Wrap(fmt.Errorf("path contains ':' character: '%s'", dir), "invalid --image")
-			}
 			if dir == "" {
 				return errors.Wrap(fmt.Errorf("path is empty"), "invalid --image")
 			}
