@@ -11,6 +11,7 @@ umoci insert - insert content into an OCI image
 [**--rootless**]
 [**--uid-map**=*value*]
 [**--uid-map**=*value*]
+[**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
@@ -41,6 +42,10 @@ Note that this command works by creating a new layer, so this should not be
 used to remove (or replace) secrets from an already-built image. See
 **umoci-config**(1) and **--config.volume** for how to achieve this correctly
 by not creating image layers with secrets in the first place.
+
+If **--no-history** was not specified, a history entry is appended to the
+tagged OCI image for this change (with the various **--history.** flags
+controlling the values used). To view the history, see **umoci-stat**(1).
 
 # OPTIONS
 The global options are defined in **umoci**(1).
@@ -78,6 +83,12 @@ The global options are defined in **umoci**(1).
   Specifies a GID mapping to use when inserting files. This is used in a
   similar fashion to **user_namespaces**(7), and is of the form
   **container:host[:size]**.
+
+**--no-history**
+  Causes no history entry to be added for this operation. **This is not
+  recommended for use with umoci-insert(1), since it results in the history not
+  including all of the image layers -- and thus will cause confusion with tools
+  that look at image history.**
 
 **--history.comment**=*comment*
   Comment for the history entry corresponding to this modification of the image

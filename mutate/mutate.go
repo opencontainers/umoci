@@ -28,6 +28,7 @@ import (
 	"runtime"
 	"time"
 
+	"github.com/apex/log"
 	gzip "github.com/klauspost/pgzip"
 	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/openSUSE/umoci/oci/casext"
@@ -192,7 +193,7 @@ func (m *Mutator) Annotations(ctx context.Context) (map[string]string, error) {
 // Set sets the image configuration and metadata to the given values. The
 // provided ispec.History entry is appended to the image's history and should
 // correspond to what operations were made to the configuration.
-func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, annotations map[string]string, history ispec.History) error {
+func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, annotations map[string]string, history *ispec.History) error {
 	if err := m.cache(ctx); err != nil {
 		return errors.Wrap(err, "getting cache failed")
 	}
@@ -210,16 +211,17 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 	m.config.OS = meta.OS
 
 	// Append history.
-	history.EmptyLayer = true
-	m.config.History = append(m.config.History, history)
-
+	if history != nil {
+		history.EmptyLayer = true
+		m.config.History = append(m.config.History, *history)
+	}
 	return nil
 }
 
 // add adds the given layer to the CAS, and mutates the configuration to
 // include the diffID. The returned string is the digest of the *compressed*
 // layer (which is compressed by us).
-func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
+func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History) (digest.Digest, int64, error) {
 	if err := m.cache(ctx); err != nil {
 		return "", -1, errors.Wrap(err, "getting cache failed")
 	}
@@ -254,6 +256,17 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int
 	layerDiffID := diffidDigester.Digest()
 	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID)
 
+	// Append history.
+	if history != nil {
+		history.EmptyLayer = false
+		m.config.History = append(m.config.History, *history)
+	} else {
+		// Some tools get confused if there are layers with no history entry.
+		// Especially if you have later layers have history entries (which will
+		// result in the history entries not matching up and everyone getting
+		// quite confused).
+		log.Warnf("new layer has no history entry -- this will confuse many tools!")
+	}
 	return layerDigest, layerSize, nil
 }
 
@@ -262,12 +275,12 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader) (digest.Digest, int
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, r io.Reader, history ispec.History) error {
+func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) error {
 	if err := m.cache(ctx); err != nil {
 		return errors.Wrap(err, "getting cache failed")
 	}
 
-	digest, size, err := m.add(ctx, r)
+	digest, size, err := m.add(ctx, r, history)
 	if err != nil {
 		return errors.Wrap(err, "add layer")
 	}
@@ -279,21 +292,17 @@ func (m *Mutator) Add(ctx context.Context, r io.Reader, history ispec.History) e
 		Digest:    digest,
 		Size:      size,
 	})
-
-	// Append history.
-	history.EmptyLayer = false
-	m.config.History = append(m.config.History, history)
 	return nil
 }
 
 // AddNonDistributable is the same as Add, except it adds a non-distributable
 // layer to the image.
-func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history ispec.History) error {
+func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) error {
 	if err := m.cache(ctx); err != nil {
 		return errors.Wrap(err, "getting cache failed")
 	}
 
-	digest, size, err := m.add(ctx, r)
+	digest, size, err := m.add(ctx, r, history)
 	if err != nil {
 		return errors.Wrap(err, "add non-distributable layer")
 	}
@@ -305,10 +314,6 @@ func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history 
 		Digest:    digest,
 		Size:      size,
 	})
-
-	// Append history.
-	history.EmptyLayer = false
-	m.config.History = append(m.config.History, history)
 	return nil
 }
 

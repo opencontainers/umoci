@@ -267,6 +267,36 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci repack --no-history" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Create some file.
+	echo "foo" > "$ROOTFS/foobar"
+
+	# Repack the image under a new tag, but with no history change.
+	umoci repack --no-history --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure we *did not* add a new history entry.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	hashA="$(sha256sum <<<"$output")"
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	hashB="$(sha256sum <<<"$output")"
+
+	# umoci-stat output should be identical.
+	[[ "$hashA" == "$hashB" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci {un,re}pack [hardlink]" {
 	# Unpack the image.
 	new_bundle_rootfs
@@ -566,7 +596,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci repack [--config.volumes]" {
+@test "umoci repack [volumes]" {
 	# Set some paths to be volumes.
 	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
@@ -671,7 +701,7 @@ function teardown() {
 	! [ -e "$ROOTFS/some nutty/path name/ here" ]
 }
 
-@test "umoci repack [--refresh-bundle]" {
+@test "umoci repack --refresh-bundle" {
 	# Unpack the original image
 	new_bundle_rootfs && BUNDLE_A="$BUNDLE" ROOTFS_A="$ROOTFS"
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"

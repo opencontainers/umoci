@@ -41,7 +41,11 @@ func flattenCommands(cmds []cli.Command) []*cli.Command {
 // "--history.created", "--history.created_by", "--history.comment", with
 // string values. If they are not set the value will be nil.
 func uxHistory(cmd cli.Command) cli.Command {
-	cmd.Flags = append(cmd.Flags, []cli.Flag{
+	historyFlags := []cli.Flag{
+		cli.BoolFlag{
+			Name:  "no-history",
+			Usage: "do not create a history entry",
+		},
 		cli.StringFlag{
 			Name:  "history.author",
 			Usage: "author value for the history entry",
@@ -58,25 +62,20 @@ func uxHistory(cmd cli.Command) cli.Command {
 			Name:  "history.created_by",
 			Usage: "created_by value for the history entry",
 		},
-	}...)
+	}
+	cmd.Flags = append(cmd.Flags, historyFlags...)
 
 	oldBefore := cmd.Before
 	cmd.Before = func(ctx *cli.Context) error {
-		// Verify --history.author.
-		if ctx.IsSet("history.author") {
-			ctx.App.Metadata["--history.author"] = ctx.String("history.author")
-		}
-		// Verify --history.comment.
-		if ctx.IsSet("history.comment") {
-			ctx.App.Metadata["--history.comment"] = ctx.String("history.comment")
-		}
-		// Verify --history.created.
-		if ctx.IsSet("history.created") {
-			ctx.App.Metadata["--history.created"] = ctx.String("history.created")
-		}
-		// Verify --history.created_by.
-		if ctx.IsSet("history.created_by") {
-			ctx.App.Metadata["--history.created_by"] = ctx.String("history.created_by")
+		// --no-history is incompatible with other --history.* options.
+		if ctx.Bool("no-history") {
+			for _, flag := range historyFlags {
+				if name := flag.GetName(); name == "no-history" {
+					continue
+				} else if ctx.IsSet(name) {
+					return errors.Errorf("--no-history and --%s may not be specified together", name)
+				}
+			}
 		}
 
 		// Include any old befores set.

@@ -671,6 +671,28 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --no-history" {
+	# Modify something and don't add a history entry.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --no-history \
+		--author="Aleksa Sarai <asarai@suse.com>"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure that the history was modified.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	hashA="$(sha256sum <<<"$output")"
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	hashB="$(sha256sum <<<"$output")"
+
+	# umoci-stat output should be identical.
+	[[ "$hashA" == "$hashB" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --config.label" {
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \

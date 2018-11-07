@@ -192,3 +192,78 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+@test "umoci insert --history.*" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# umoci-insert will overwrite the tag.
+	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-new"
+	[ "$status" -eq 0 ]
+
+	# Insert something into the image, setting history values.
+	now="$(date --iso-8601=seconds --utc)"
+	umoci insert --image "${IMAGE}:${TAG}-new" \
+		--history.author="Some Author <jane@blogg.com>" \
+		--history.comment="Made a_small_change." \
+		--history.created_by="insert ${INSERTDIR}" \
+		--history.created="$now" "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure that the history was modified.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	numLinesA="$(echo "$output" | jq -SMr '.history | length')"
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	numLinesB="$(echo "$output" | jq -SMr '.history | length')"
+
+	# Number of lines should be greater.
+	[ "$numLinesB" -gt "$numLinesA" ]
+	# The final layer should not be an empty_layer now.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "null" ]]
+	# The author should've changed to --history.author.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Some Author <jane@blogg.com>" ]]
+	# The comment should be added.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].comment')" == "Made a_small_change." ]]
+	# The created_by should be set.
+	[[ "$(echo "$output" | jq -SMr '.history[-1].created_by')" == "insert ${INSERTDIR}" ]]
+	# The created should be set.
+	[[ "$(date --iso-8601=seconds --utc --date="$(echo "$output" | jq -SMr '.history[-1].created')")" == "$now" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci insert --no-history" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# umoci-insert will overwrite the tag.
+	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-new"
+	[ "$status" -eq 0 ]
+
+	# Insert something into the image, but with no history change.
+	umoci insert --no-history --image "${IMAGE}:${TAG}-new" "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Make sure we *did not* add a new history entry.
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	hashA="$(sha256sum <<<"$output")"
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	hashB="$(sha256sum <<<"$output")"
+
+	# umoci-stat output should be identical.
+	[[ "$hashA" == "$hashB" ]]
+
+	image-verify "${IMAGE}"
+}
