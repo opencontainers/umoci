@@ -7,6 +7,7 @@ umoci repack - Repacks an OCI runtime bundle into an image tag
 # SYNOPSIS
 **umoci repack**
 **--image**=*image*[:*tag*]
+[**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
@@ -27,9 +28,9 @@ All **--uid-map** and **--gid-map** settings are implied from the saved values
 specified in **umoci-unpack**(1), so they are not available for
 **umoci-repack**(1).
 
-In addition, a history entry is appended to the tagged OCI image for this
-change (with the various **--history.** flags controlling the values used). To
-view the history, see **umoci-stat**(1).
+If **--no-history** was not specified, a history entry is appended to the
+tagged OCI image for this change (with the various **--history.** flags
+controlling the values used). To view the history, see **umoci-stat**(1).
 
 Note that the original image tag (used with **umoci-unpack**(1)) will **not**
 be modified unless the target of **umoci-repack**(1) is the original image tag.
@@ -43,6 +44,12 @@ The global options are defined in **umoci**(1).
   the *bundle*) and *tag* must be a valid tag name. If another tag already has
   the same name as *tag* it will be overwritten. If *tag* is not provided it
   defaults to "latest".
+
+**--no-history**
+  Causes no history entry to be added for this operation. **This is not
+  recommended for use with umoci-repack(1), since it results in the history not
+  including all of the image layers -- and thus will cause confusion with tools
+  that look at image history.**
 
 **--history.comment**=*comment*
   Comment for the history entry corresponding to this modification of the image

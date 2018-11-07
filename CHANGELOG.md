@@ -5,6 +5,14 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## Added
+- All umoci commands that had `--history.*` options can now decide to omit a
+  history entry with `--no-history`. Note that while this is supported for
+  commands that create layers (`umoci repack`, `umoci insert`, and `umoci raw
+  add-layer`) it is not recommended to use it for those commands since it can
+  cause other tools to become confused when inspecting the image history. The
+  primary usecase is to allow `umoci config --no-history` to leave no traces in
+  the history. See SUSE/kiwi#871. openSUSE/umoci#270
 
 ## [0.4.2] - 2018-09-11
 ## Added

@@ -199,30 +199,33 @@ func repack(ctx *cli.Context) error {
 		return errors.Wrap(err, "get image metadata")
 	}
 
-	created := time.Now()
-	history := ispec.History{
-		Author:     imageMeta.Author,
-		Comment:    "",
-		Created:    &created,
-		CreatedBy:  "umoci config", // XXX: Should we append argv to this?
-		EmptyLayer: false,
-	}
-
-	if val, ok := ctx.App.Metadata["--history.author"]; ok {
-		history.Author = val.(string)
-	}
-	if val, ok := ctx.App.Metadata["--history.comment"]; ok {
-		history.Comment = val.(string)
-	}
-	if val, ok := ctx.App.Metadata["--history.created"]; ok {
-		created, err := time.Parse(igen.ISO8601, val.(string))
-		if err != nil {
-			return errors.Wrap(err, "parsing --history.created")
+	var history *ispec.History
+	if !ctx.Bool("no-history") {
+		created := time.Now()
+		history = &ispec.History{
+			Author:     imageMeta.Author,
+			Comment:    "",
+			Created:    &created,
+			CreatedBy:  "umoci repack", // XXX: Should we append argv to this?
+			EmptyLayer: false,
 		}
-		history.Created = &created
-	}
-	if val, ok := ctx.App.Metadata["--history.created_by"]; ok {
-		history.CreatedBy = val.(string)
+
+		if ctx.IsSet("history.author") {
+			history.Author = ctx.String("history.author")
+		}
+		if ctx.IsSet("history.comment") {
+			history.Comment = ctx.String("history.comment")
+		}
+		if ctx.IsSet("history.created") {
+			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
+			if err != nil {
+				return errors.Wrap(err, "parsing --history.created")
+			}
+			history.Created = &created
+		}
+		if ctx.IsSet("history.created_by") {
+			history.CreatedBy = ctx.String("history.created_by")
+		}
 	}
 
 	// TODO: We should add a flag to allow for a new layer to be made

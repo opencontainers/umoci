@@ -8,6 +8,7 @@ umoci raw add-layer - add a layer archive verbatim to an image
 **umoci raw add-layer**
 **--image**=*image*
 [**--tag**=*tag*]
+[**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
@@ -37,6 +38,12 @@ The global options are defined in **umoci**(1).
   The destination tag to use for the newly created image. *tag* must be a valid
   tag in the image. If *tag* is not provided it defaults to the *tag* specified
   in **--image** (overwriting it).
+
+**--no-history**
+  Causes no history entry to be added for this operation. **This is not
+  recommended for use with umoci-raw-add-layer(1), since it results in the
+  history not including all of the image layers -- and thus will cause
+  confusion with tools that look at image history.**
 
 **--history.comment**=*comment*
   Comment for the history entry corresponding to this modification of the image

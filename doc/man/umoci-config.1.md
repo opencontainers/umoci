@@ -8,6 +8,7 @@ umoci config - Modifies the configuration of an OCI image
 **umoci config**
 **--image**=*image*[:*tag*]
 [**--tag**=*new-tag*]
+[**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
 [**--history.author**=*author*]
@@ -29,9 +30,9 @@ umoci config - Modifies the configuration of an OCI image
 
 # DESCRIPTION
 Modify the configuration and manifest data for a particular tagged OCI image.
-In addition, a history entry is appended to the tagged OCI image for this
-change (with the various **--history.** flags controlling the values used). To
-view the history, see **umoci-stat**(1).
+If **--no-history** was not specified, a history entry is appended to the
+tagged OCI image for this change (with the various **--history.** flags
+controlling the values used). To view the history, see **umoci-stat**(1).
 
 Note that the original image tag (the argument to **--image**) will **not** be
 modified unless the target of **umoci-config**(1) is the original image tag.
@@ -47,6 +48,9 @@ The global options are defined in **umoci**(1).
 **--tag**=*new-tag*
   Tag name for the repacked image, if unspecified then the original tag
   provided to **--image** will be clobbered.
+
+**--no-history**
+  Causes no history entry to be added for this operation.
 
 **--history.comment**=*comment*
   Comment for the history entry corresponding to this modification of the image

@@ -215,7 +215,7 @@ func TestMutateAdd(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	if err := mutator.Add(context.Background(), buffer, ispec.History{
+	if err := mutator.Add(context.Background(), buffer, &ispec.History{
 		Comment: "new layer",
 	}); err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
@@ -295,7 +295,7 @@ func TestMutateAddNonDistributable(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	if err := mutator.AddNonDistributable(context.Background(), buffer, ispec.History{
+	if err := mutator.AddNonDistributable(context.Background(), buffer, &ispec.History{
 		Comment: "new layer",
 	}); err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
@@ -374,7 +374,7 @@ func TestMutateSet(t *testing.T) {
 	// Change the config
 	if err := mutator.Set(context.Background(), ispec.ImageConfig{
 		User: "changed:user",
-	}, Meta{}, nil, ispec.History{
+	}, Meta{}, nil, &ispec.History{
 		Comment: "another layer",
 	}); err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
@@ -426,6 +426,71 @@ func TestMutateSet(t *testing.T) {
 	}
 	if mutator.config.History[1].Comment != "another layer" {
 		t.Errorf("config.History[1].Comment was not set")
+	}
+}
+
+func TestMutateSetNoHistory(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-TestMutateSetNoHistory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	engine, fromDescriptor := setup(t, dir)
+	defer engine.Close()
+
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Change the config
+	if err := mutator.Set(context.Background(), ispec.ImageConfig{
+		User: "changed:user",
+	}, Meta{}, nil, nil); err != nil {
+		t.Fatalf("unexpected error adding layer: %+v", err)
+	}
+
+	newDescriptor, err := mutator.Commit(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error committing changes: %+v", err)
+	}
+
+	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
+		t.Fatalf("new and old descriptors are the same!")
+	}
+
+	mutator, err = New(engine, newDescriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Cache the data to check it.
+	if err := mutator.cache(context.Background()); err != nil {
+		t.Fatalf("unexpected error getting cache: %+v", err)
+	}
+
+	// Check digests are different.
+	if mutator.manifest.Config.Digest == expectedConfigDigest {
+		t.Errorf("manifest.Config.Digest is the same!")
+	}
+
+	// Check layer was not added.
+	if len(mutator.manifest.Layers) != 1 {
+		t.Errorf("manifest.Layers was updated")
+	}
+
+	// Check config was also modified.
+	if len(mutator.config.RootFS.DiffIDs) != 1 {
+		t.Errorf("config.RootFS.DiffIDs was updated")
+	}
+	if mutator.config.Config.User != "changed:user" {
+		t.Errorf("config.Config.USer was not updated! expected changed:user, got %s", mutator.config.Config.User)
+	}
+
+	// Check history.
+	if len(mutator.config.History) == 2 {
+		t.Errorf("config.History was changed")
 	}
 }
 
@@ -515,7 +580,7 @@ func TestMutatePath(t *testing.T) {
 		config.Labels["org.opensuse.testidx"] = label
 
 		// Update it.
-		if err := mutator.Set(context.Background(), config, meta, nil, ispec.History{
+		if err := mutator.Set(context.Background(), config, meta, nil, &ispec.History{
 			Comment: "change label " + label,
 		}); err != nil {
 			t.Fatalf("%d: unexpected error modifying config: %+v", idx, err)
