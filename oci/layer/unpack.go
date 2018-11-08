@@ -129,6 +129,13 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}()
 
+	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) {
+		if err == nil {
+			err = fmt.Errorf("%s already exists", rootfsPath)
+		}
+		return err
+	}
+
 	log.Infof("unpack rootfs: %s", rootfsPath)
 	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt); err != nil {
 		return errors.Wrap(err, "unpack rootfs")
@@ -152,14 +159,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *MapOptions) (err error) {
 	engineExt := casext.NewEngine(engine)
 
-	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) {
-		if err == nil {
-			err = fmt.Errorf("%s already exists", rootfsPath)
-		}
-		return err
-	}
-
-	if err := os.Mkdir(rootfsPath, 0755); err != nil {
+	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
 		return errors.Wrap(err, "mkdir rootfs")
 	}
 
