@@ -40,9 +40,9 @@ import (
 // These come from just running the code.
 // TODO: Auto-generate these in a much more sane way.
 const (
-	expectedLayerDigest    = "sha256:9a98de6b2015d531559791e60518fd376ddc62d3062ee4f691b223c06175dbef"
-	expectedConfigDigest   = "sha256:1d043a5807e0ca5bcde233f14a79928f9aa5ccecdd4a8e4bf4cdd0b557090f91"
-	expectedManifestDigest = "sha256:8b8f01aa9da2942d5dde5032b501004957f060b027c27162346972cff9220200"
+	expectedLayerDigest    = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
+	expectedConfigDigest   = "sha256:ddcc2a93d5b0bcdcb571431c3607d84abe3752406f7c631a898340e6e7e61ed0"
+	expectedManifestDigest = "sha256:0e8b342d2b01241b3f0197d0210ed5c0012d01817881defc1464e000f5b08f4d"
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
@@ -62,9 +62,9 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	tw := tar.NewWriter(&buffer)
 	data := []byte("some contents")
 	tw.WriteHeader(&tar.Header{
+		Typeflag: tar.TypeReg,
 		Name:     "test",
 		Mode:     0644,
-		Typeflag: tar.TypeRegA,
 		Size:     int64(len(data)),
 	})
 	tw.Write(data)
