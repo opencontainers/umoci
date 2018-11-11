@@ -19,6 +19,7 @@ SHELL = /bin/bash
 # Go tools.
 GO ?= go
 GO_MD2MAN ?= go-md2man
+export GO111MODULE=off
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/openSUSE/umoci
