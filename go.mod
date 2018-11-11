@@ -6,7 +6,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/go-units v0.3.3
 	github.com/fatih/color v1.7.0 // indirect
-	github.com/golang/protobuf v1.1.0
+	github.com/golang/protobuf v1.2.0
 	github.com/hashicorp/errwrap v0.0.0-20180715044906-d6c0cd880357 // indirect
 	github.com/hashicorp/go-multierror v0.0.0-20180717150148-3d5d8f294aa0 // indirect
 	github.com/klauspost/compress v1.4.0 // indirect
@@ -25,7 +25,7 @@ require (
 	github.com/sirupsen/logrus v1.0.6 // indirect
 	github.com/syndtr/gocapability v0.0.0-20180223013746-33e07d32887e // indirect
 	github.com/urfave/cli v1.20.0
-	github.com/vbatts/go-mtree v0.0.0-20180531193039-1bcf4de08ff7
+	github.com/vbatts/go-mtree v0.4.3
 	github.com/xeipuuv/gojsonpointer v0.0.0-20180127040702-4e3ac2762d5f // indirect
 	github.com/xeipuuv/gojsonreference v0.0.0-20180127040603-bd5ef7bd5415 // indirect
 	github.com/xeipuuv/gojsonschema v0.0.0-20180719132039-b84684d0e066 // indirect

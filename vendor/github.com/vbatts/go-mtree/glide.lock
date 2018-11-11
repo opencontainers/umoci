@@ -1,8 +1,10 @@
-hash: 72477bc1ec8c50d432740cbf3940cae19387d596c02f1046c7e989458462e536
-updated: 2017-10-20T11:31:42.730083725+02:00
+hash: 8b0df7f603e6b580aa2640d99d3fa7430198f7db89321ff2abf76efa969d14c2
+updated: 2018-08-20T07:56:40.333174254-04:00
 imports:
+- name: github.com/fatih/color
+  version: 5b77d2a35fb0ede96d138fc9a99f5c9b6aef11b4
 - name: github.com/sirupsen/logrus
-  version: f006c2ac4710855cf0f916dd6b77acf6b048dc6e
+  version: 3e01752db0189b9157070a0e1668a620f9a85da2
 - name: golang.org/x/crypto
   version: 1351f936d976c60a0a48d728281922cf63eafb8d
   subpackages:
@@ -12,4 +14,8 @@ imports:
   version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
   subpackages:
   - unix
-testImports: []
+testImports:
+- name: github.com/davecgh/go-spew
+  version: 8991bc29aa16c548c550c7ff78260e27b9ab7c73
+  subpackages:
+  - spew

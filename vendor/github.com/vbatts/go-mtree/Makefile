@@ -62,6 +62,10 @@ build: $(BUILD)
 $(BUILD): $(SOURCE_FILES)
 	go build -o $(BUILD) $(BUILDPATH)
 
+install.tools:
+	go get -u -v github.com/Masterminds/glide
+	go get -u -v golang.org/x/lint/golint
+
 ./bin:
 	mkdir -p $@
 

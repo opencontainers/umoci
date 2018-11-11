@@ -12,3 +12,5 @@ import:
   version: 8dbc5d05d6edcc104950cc299a1ce6641235bc86
   subpackages:
   - unix
+- package: github.com/fatih/color
+  version: ^1.6.0

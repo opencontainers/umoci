@@ -350,16 +350,17 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
 				if err != nil {
 					return nil, err
 				}
+				//fmt.Printf("new: %q\n", path)
 
 				// Cannot take &kv because it's the iterator.
-				copy := new(Entry)
-				*copy = e
+				cEntry := new(Entry)
+				*cEntry = e
 
 				_, ok := diffs[path]
 				if !ok {
 					diffs[path] = &stateT{}
 				}
-				diffs[path].Old = copy
+				diffs[path].Old = cEntry
 			}
 		}
 	}
@@ -372,16 +373,17 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
 				if err != nil {
 					return nil, err
 				}
+				//fmt.Printf("old: %q\n", path)
 
 				// Cannot take &kv because it's the iterator.
-				copy := new(Entry)
-				*copy = e
+				cEntry := new(Entry)
+				*cEntry = e
 
 				_, ok := diffs[path]
 				if !ok {
 					diffs[path] = &stateT{}
 				}
-				diffs[path].New = copy
+				diffs[path].New = cEntry
 			}
 		}
 	}
