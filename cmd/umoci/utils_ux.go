@@ -94,7 +94,7 @@ func uxHistory(cmd cli.Command) cli.Command {
 func uxTag(cmd cli.Command) cli.Command {
 	cmd.Flags = append(cmd.Flags, cli.StringFlag{
 		Name:  "tag",
-		Usage: "tag name",
+		Usage: "new tag name (if empty, overwrite --image tag)",
 	})
 
 	oldBefore := cmd.Before

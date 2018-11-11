@@ -34,7 +34,7 @@ import (
 	"github.com/urfave/cli"
 )
 
-var insertCommand = uxRemap(uxHistory(cli.Command{
+var insertCommand = uxRemap(uxHistory(uxTag(cli.Command{
 	Name:  "insert",
 	Usage: "insert content into an OCI image",
 	ArgsUsage: `--image <image-path>[:<tag>] [--opaque] <source> <target>
@@ -107,13 +107,19 @@ Some examples:
 		ctx.App.Metadata["--target-path"] = targetPath
 		return nil
 	},
-}))
+})))
 
 func insert(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
-	tagName := ctx.App.Metadata["--image-tag"].(string)
+	fromName := ctx.App.Metadata["--image-tag"].(string)
 	sourcePath := ctx.App.Metadata["--source-path"].(string)
 	targetPath := ctx.App.Metadata["--target-path"].(string)
+
+	// By default we clobber the old tag.
+	tagName := fromName
+	if val, ok := ctx.App.Metadata["--tag"]; ok {
+		tagName = val.(string)
+	}
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
@@ -123,16 +129,16 @@ func insert(ctx *cli.Context) error {
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
-	descriptorPaths, err := engineExt.ResolveReference(context.Background(), tagName)
+	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
 		return errors.Wrap(err, "get descriptor")
 	}
 	if len(descriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", tagName)
+		return errors.Errorf("tag not found: %s", fromName)
 	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", tagName)
+		return errors.Errorf("tag is ambiguous: %s", fromName)
 	}
 
 	// Create the mutator.
