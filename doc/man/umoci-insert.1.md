@@ -7,6 +7,7 @@ umoci insert - insert content into an OCI image
 # SYNOPSIS
 **umoci insert**
 **--image**=*image*[:*tag*]
+[**--tag**=*new-tag*]
 [**--opaque**]
 [**--rootless**]
 [**--uid-map**=*value*]
@@ -27,12 +28,11 @@ umoci insert - insert content into an OCI image
 
 # DESCRIPTION
 In the first form, insert the contents of *source* into the OCI image given by
-**--image** (**overwriting it** -- this is the only **umoci**(1) command which
-currently does this). This is done by creating a new layer containing just the
-contents of *source* with a name of *target*. *source* can be either a file or
-directory, and in the latter case it will be recursed. If **--opaque** is
-specified then any paths below *target* in the previous image layers (assuming
-*target* is a directory) will be removed.
+**--image** -- **overwriting it unless you specify --tag**. This is done by
+creating a new layer containing just the contents of *source* with a name of
+*target*. *source* can be either a file or directory, and in the latter case it
+will be recursed. If **--opaque** is specified then any paths below *target* in
+the previous image layers (assuming *target* is a directory) will be removed.
 
 In the second form, inserts a "deletion entry" into the OCI image for *target*
 inside the image. This is done by inserting a layer containing just a whiteout
@@ -55,6 +55,10 @@ The global options are defined in **umoci**(1).
   the container image. *image* must be a path to a valid OCI image and *tag*
   must be a valid tag in the image. If *tag* is not provided it defaults to
   "latest".
+
+**--tag**=*new-tag*
+  Tag name for the modified image, if unspecified then the original tag
+  provided to **--image** will be clobbered.
 
 **--opaque**
   (Assuming *target* is a directory.) Add an opaque whiteout entry for *target*

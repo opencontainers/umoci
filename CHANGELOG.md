@@ -13,6 +13,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   cause other tools to become confused when inspecting the image history. The
   primary usecase is to allow `umoci config --no-history` to leave no traces in
   the history. See SUSE/kiwi#871. openSUSE/umoci#270
+- `umoci insert` now has a `--tag` option that allows you to non-destructively
+  insert files into an image. The semantics match `umoci config --tag`.
+  openSUSE/umoci#273
 
 ## [0.4.2] - 2018-09-11
 ## Added

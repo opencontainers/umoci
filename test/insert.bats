@@ -63,13 +63,13 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/some" /rootless
+	umoci insert --image "${IMAGE}:${TAG}" --tag "${TAG}-new" "${INSERTDIR}/some" /rootless
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Unpack after the inserts.
 	new_bundle_rootfs
-	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
