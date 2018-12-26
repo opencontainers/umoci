@@ -99,6 +99,7 @@ local-validate-go:
 	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/|/third_party/') 2>&1 | tee /dev/stderr)"
 	@type gosec     >/dev/null 2>/dev/null || (echo "ERROR: gosec not found." && false)
 	test -z "$$(gosec -quiet -exclude=G301,G302,G304 $$GOPATH/$(PROJECT)/... | tee /dev/stderr)"
+	./hack/test-vendor.sh
 
 EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
 .PHONY: local-validate-git
