@@ -125,6 +125,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 				fsEval = fseval.RootlessFsEval
 			}
 			// It's too late to care about errors.
+			// #nosec G104
 			_ = fsEval.RemoveAll(rootfsPath)
 		}
 	}()
@@ -173,6 +174,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 				fsEval = fseval.RootlessFsEval
 			}
 			// It's too late to care about errors.
+			// #nosec G104
 			_ = fsEval.RemoveAll(rootfsPath)
 		}
 	}()
@@ -265,9 +267,12 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// in the later diff_id check failing because the digester didn't get
 		// the whole uncompressed stream). Just blindly consume anything left
 		// in the layer.
-		_, _ = io.Copy(ioutil.Discard, layer)
-		// XXX: Is it possible this breaks in the error path?
-		layerData.Close()
+		if _, err = io.Copy(ioutil.Discard, layer); err != nil {
+			return errors.Wrap(err, "discard trailing archive bits")
+		}
+		if err := layerData.Close(); err != nil {
+			return errors.Wrap(err, "close layer data")
+		}
 
 		layerDigest := layerDigester.Digest()
 		if layerDigest != layerDiffID {
@@ -322,7 +327,8 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 
 	// Add UIDMapping / GIDMapping options.
 	if len(mapOptions.UIDMappings) > 0 || len(mapOptions.GIDMappings) > 0 {
-		g.AddOrReplaceLinuxNamespace("user", "")
+		// #nosec G104
+		_ = g.AddOrReplaceLinuxNamespace("user", "")
 	}
 	g.ClearLinuxUIDMappings()
 	for _, m := range mapOptions.UIDMappings {

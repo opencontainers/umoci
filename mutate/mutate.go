@@ -238,13 +238,18 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 		return "", -1, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
 	}
 	go func() {
-		_, err := io.Copy(gzw, hashReader)
-		if err != nil {
-			pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
-			return
+		if _, err := io.Copy(gzw, hashReader); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
 		}
-		gzw.Close()
-		pipeWriter.Close()
+		if err := gzw.Close(); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
+		}
+		if err := pipeWriter.Close(); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close pipe writer"))
+		}
 	}()
 
 	layerDigest, layerSize, err := m.engine.PutBlob(ctx, pipeReader)

@@ -165,11 +165,9 @@ func (ms ManifestStat) Format(w io.Writer) error {
 		}
 
 		// TODO: We need to truncate some of the fields.
-
 		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", layerID, created, createdBy, size, comment)
 	}
-	tw.Flush()
-	return nil
+	return tw.Flush()
 }
 
 // historyStat contains information about a single entry in the history of a
@@ -290,10 +288,16 @@ func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 	meta.MapOptions.Rootless = ctx.Bool("rootless")
 	if meta.MapOptions.Rootless {
 		if !ctx.IsSet("uid-map") {
-			ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid()))
+			if err := ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid())); err != nil {
+				// Should _never_ be reached.
+				return errors.Wrap(err, "[internal error] failure auto-setting rootless --uid-map")
+			}
 		}
 		if !ctx.IsSet("gid-map") {
-			ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid()))
+			if err := ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid())); err != nil {
+				// Should _never_ be reached.
+				return errors.Wrap(err, "[internal error] failure auto-setting rootless --gid-map")
+			}
 		}
 	}
 

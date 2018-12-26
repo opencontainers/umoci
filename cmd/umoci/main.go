@@ -83,7 +83,10 @@ func main() {
 			if ctx.GlobalIsSet("log") {
 				return errors.New("--log=* and --verbose are mutually exclusive")
 			}
-			ctx.GlobalSet("log", "info")
+			if err := ctx.GlobalSet("log", "info"); err != nil {
+				// Should _never_ be reached.
+				return errors.Wrap(err, "[internal error] failure auto-setting --log=info")
+			}
 		}
 
 		level, err := log.ParseLevel(ctx.GlobalString("log"))
