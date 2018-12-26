@@ -13,12 +13,13 @@ before_install:
   - go get -u github.com/cpuguy83/go-md2man
   - go get -u github.com/vbatts/git-validation
   - go get -u golang.org/x/lint/golint
+  - go get -u github.com/securego/gosec/cmd/gosec
 
 env:
-  - DOCKER_IMAGE="opensuse/amd64:42.3"
+  - DOCKER_IMAGE="opensuse/leap:latest"
   - DOCKER_IMAGE="fedora:latest"
-  - DOCKER_IMAGE="debian:jessie"
-  - DOCKER_IMAGE="ubuntu:16.04"
+  - DOCKER_IMAGE="debian:latest"
+  - DOCKER_IMAGE="ubuntu:latest"
 
 notifications:
     email: false

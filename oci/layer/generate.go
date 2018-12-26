@@ -54,7 +54,8 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 	go func() (Err error) {
 		// Close with the returned error.
 		defer func() {
-			writer.CloseWithError(errors.Wrap(Err, "generate layer"))
+			// #nosec G104
+			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
 		}()
 
 		// We can't just dump all of the file contents into a tar file. We need
@@ -116,7 +117,8 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *MapOption
 
 	go func() (Err error) {
 		defer func() {
-			writer.CloseWithError(errors.Wrap(Err, "generate layer"))
+			// #nosec G104
+			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
 		}()
 
 		tg := newTarGenerator(writer, mapOptions)

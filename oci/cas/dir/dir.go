@@ -170,7 +170,9 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	if err != nil {
 		return "", -1, errors.Wrap(err, "copy to temporary blob")
 	}
-	fh.Close()
+	if err := fh.Close(); err != nil {
+		return "", -1, errors.Wrap(err, "close temporary blob")
+	}
 
 	// Get the digest.
 	path, err := blobPath(digester.Digest())
@@ -220,7 +222,9 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 	if err := json.NewEncoder(fh).Encode(index); err != nil {
 		return errors.Wrap(err, "write temporary index")
 	}
-	fh.Close()
+	if err := fh.Close(); err != nil {
+		return errors.Wrap(err, "close temporary index")
+	}
 
 	// Move the blob to its correct path.
 	path := filepath.Join(e.path, indexFile)

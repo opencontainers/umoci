@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM opensuse/amd64:42.3
+FROM opensuse/leap:latest
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
@@ -24,7 +24,7 @@ RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 RUN zypper -n in \
 		bats \
 		git \
-		go \
+		"go>=1.11" \
 		golang-github-cpuguy83-go-md2man \
 		go-mtree \
 		jq \

@@ -122,14 +122,15 @@ func (b *Blob) load(ctx context.Context, engine cas.Engine) error {
 }
 
 // Close cleans up all of the resources for the opened blob.
-func (b *Blob) Close() {
+func (b *Blob) Close() error {
 	switch b.MediaType {
 	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable,
 		ispec.MediaTypeImageLayerGzip, ispec.MediaTypeImageLayerNonDistributableGzip:
 		if b.Data != nil {
-			b.Data.(io.Closer).Close()
+			return b.Data.(io.Closer).Close()
 		}
 	}
+	return nil
 }
 
 // FromDescriptor parses the blob referenced by the given descriptor.

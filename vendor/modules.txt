@@ -40,9 +40,9 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/runtime-tools/generate
 github.com/opencontainers/runtime-tools/generate/seccomp
 github.com/opencontainers/runtime-tools/validate
+github.com/opencontainers/runtime-tools/error
 github.com/opencontainers/runtime-tools/filepath
 github.com/opencontainers/runtime-tools/specerror
-github.com/opencontainers/runtime-tools/error
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
 # github.com/rootless-containers/proto v0.1.0
@@ -64,8 +64,8 @@ github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v0.0.0-20180719132039-b84684d0e066
 github.com/xeipuuv/gojsonschema
 # golang.org/x/crypto v0.0.0-20180723164146-c126467f60eb
-golang.org/x/crypto/ripemd160
 golang.org/x/crypto/ssh/terminal
+golang.org/x/crypto/ripemd160
 # golang.org/x/net v0.0.0-20180801234040-f4c29de78a2a
 golang.org/x/net/context
 # golang.org/x/sys v0.0.0-20180801221139-3dc4335d56c7
