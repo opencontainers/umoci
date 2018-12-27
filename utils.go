@@ -205,7 +205,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+		return stat, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Now get the config.
@@ -216,7 +216,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, errors.Errorf("[internal error] unknown config blob type: %s", configBlob.MediaType)
+		return stat, errors.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	// TODO: This should probably be moved into separate functions.

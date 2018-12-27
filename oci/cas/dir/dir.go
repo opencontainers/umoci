@@ -198,7 +198,11 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 		return nil, errors.Wrap(err, "compute blob path")
 	}
 	fh, err := os.Open(filepath.Join(e.path, path))
-	return &hardening.VerifiedReadCloser{Reader: fh, ExpectedDigest: digest}, errors.Wrap(err, "open blob")
+	return &hardening.VerifiedReadCloser{
+		Reader:         fh,
+		ExpectedDigest: digest,
+		ExpectedSize:   int64(-1), // We don't know the expected size.
+	}, errors.Wrap(err, "open blob")
 }
 
 // PutIndex sets the index of the OCI image to the given index, replacing the

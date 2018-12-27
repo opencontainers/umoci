@@ -103,7 +103,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 		manifest, ok := blob.Data.(ispec.Manifest)
 		if !ok {
 			// Should _never_ be reached.
-			return errors.Errorf("[internal error] unknown manifest blob type: %s", blob.MediaType)
+			return errors.Errorf("[internal error] unknown manifest blob type: %s", blob.Descriptor.MediaType)
 		}
 
 		// Make a copy of the manifest.
@@ -120,7 +120,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 		config, ok := blob.Data.(ispec.Image)
 		if !ok {
 			// Should _never_ be reached.
-			return errors.Errorf("[internal error] unknown config blob type: %s", blob.MediaType)
+			return errors.Errorf("[internal error] unknown config blob type: %s", blob.Descriptor.MediaType)
 		}
 
 		// Make a copy of the config and configDescriptor.

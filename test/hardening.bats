@@ -35,8 +35,9 @@ function teardown() {
 
 		blobHash="$(basename "$blob")" # sha256
 
-		# Corrupt our blob in a way that won't affect any other verification
-		# (such as gzip header validation).
+		# Corrupt our blob such that the digest is changed within the expected
+		# lengths (this takes priority over length issues) while also not
+		# causing other verification to fail.
 		case "$(file -bi "$NEW_IMAGE/$blob")" in
 		*gzip*)
 			# Re-compress it with a worse compression ratio. This, combined
@@ -49,9 +50,9 @@ function teardown() {
 			[ "$(sha256sum "$NEW_IMAGE/$blob" | grep -o "$blobHash" | wc -l)" -eq 1 ]
 			;;
 		*)
-			# Add a single NUL byte at the end of the file.
-			sane_run dd if=/dev/zero of="$NEW_IMAGE/$blob" count=1 oflag=append conv=notrunc
-			[ "$status" -eq 0 ]
+			# Add a single whitespace byte at the *start* of the file which
+			# will invalidate the prefix hash.
+			( printf ' ' ; cat "$NEW_IMAGE/$blob" ) | sponge "$NEW_IMAGE/$blob"
 			;;
 		esac
 
@@ -60,6 +61,46 @@ function teardown() {
 		umoci unpack --image "${NEW_IMAGE}:${TAG}" "$BUNDLE"
 		[ "$status" -ne 0 ]
 		echo "$output" | grep "verified reader digest mismatch"
+
+		# TODO: When "umoci stat" grows recursive information output, use that.
+		# TODO: Add more operations to check (repack might be complicated).
+	done
+}
+
+@test "umoci unpack [descriptor size hardening]" {
+	readarray -t allBlobs < <( cd "$IMAGE" && find "./blobs" -type f )
+	for blob in "${allBlobs[@]}"
+	do
+		# Get a clean image.
+		NEW_IMAGE="$(setup_tmpdir)"
+		cp -rT "$IMAGE" "$NEW_IMAGE"
+
+		blobHash="$(basename "$blob")" # sha256
+
+		# Corrupt our blob such that the length is changed, and the length
+		# issue will be triggered (this means the prefix-digest or whole-file
+		# digest should be correct).
+		case "$(file -bi "$NEW_IMAGE/$blob")" in
+		*gzip*)
+			# TODO: Figure out how to do this with gzip.
+			continue
+			;;
+		*)
+			# Add a single NUL byte at the *end* of the file which won't
+			# invalidate the prefix hash.
+			( cat "$NEW_IMAGE/$blob"; printf '\0x00' ) | sponge "$NEW_IMAGE/$blob"
+			;;
+		esac
+
+		# TODO: Add more variants of this attack, such as modifying the length
+		#       of descriptors. Though this might be quite hard to do in a
+		#       comprehensive way with jq.
+
+		# Now let's try to extract it.
+		new_bundle_rootfs
+		umoci unpack --image "${NEW_IMAGE}:${TAG}" "$BUNDLE"
+		[ "$status" -ne 0 ]
+		echo "$output" | grep "verified reader size mismatch"
 
 		# TODO: When "umoci stat" grows recursive information output, use that.
 		# TODO: Add more operations to check (repack might be complicated).

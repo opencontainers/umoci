@@ -22,7 +22,6 @@ import (
 	"io"
 	"io/ioutil"
 
-	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
@@ -31,12 +30,9 @@ import (
 // Blob represents a "parsed" blob in an OCI image's blob store. MediaType
 // offers a type-safe way of checking what the type of Data is.
 type Blob struct {
-	// MediaType is the OCI media type of Data.
-	MediaType string
-
-	// Digest is the digest of the parsed image. Note that this does not update
-	// if Data is changed (it is the digest that this blob was parsed *from*).
-	Digest digest.Digest
+	// Descriptor is the {mediatype,digest,length} 3-tuple. Note that this
+	// isn't updated if the Data is modified.
+	Descriptor ispec.Descriptor
 
 	// Data is the "parsed" blob taken from the OCI image's blob store, and is
 	// typed according to the media type. The mapping from MIME => type is as
@@ -55,14 +51,14 @@ type Blob struct {
 }
 
 func (b *Blob) isParseable() bool {
-	return b.MediaType == ispec.MediaTypeDescriptor ||
-		b.MediaType == ispec.MediaTypeImageManifest ||
-		b.MediaType == ispec.MediaTypeImageIndex ||
-		b.MediaType == ispec.MediaTypeImageConfig
+	return b.Descriptor.MediaType == ispec.MediaTypeDescriptor ||
+		b.Descriptor.MediaType == ispec.MediaTypeImageManifest ||
+		b.Descriptor.MediaType == ispec.MediaTypeImageIndex ||
+		b.Descriptor.MediaType == ispec.MediaTypeImageConfig
 }
 
 func (b *Blob) load(ctx context.Context, engine Engine) (Err error) {
-	reader, err := engine.GetVerifiedBlob(ctx, b.Digest)
+	reader, err := engine.GetVerifiedBlob(ctx, b.Descriptor)
 	if err != nil {
 		return errors.Wrap(err, "get blob")
 	}
@@ -70,15 +66,15 @@ func (b *Blob) load(ctx context.Context, engine Engine) (Err error) {
 	if b.isParseable() {
 		defer func() {
 			if _, err := io.Copy(ioutil.Discard, reader); Err == nil {
-				Err = errors.Wrapf(err, "discard trailing %q blob", b.MediaType)
+				Err = errors.Wrapf(err, "discard trailing %q blob", b.Descriptor.MediaType)
 			}
 			if err := reader.Close(); Err == nil {
-				Err = errors.Wrapf(err, "close %q blob", b.MediaType)
+				Err = errors.Wrapf(err, "close %q blob", b.Descriptor.MediaType)
 			}
 		}()
 	}
 
-	switch b.MediaType {
+	switch b.Descriptor.MediaType {
 	// ispec.MediaTypeDescriptor => ispec.Descriptor
 	case ispec.MediaTypeDescriptor:
 		parsed := ispec.Descriptor{}
@@ -132,7 +128,7 @@ func (b *Blob) load(ctx context.Context, engine Engine) (Err error) {
 
 // Close cleans up all of the resources for the opened blob.
 func (b *Blob) Close() error {
-	switch b.MediaType {
+	switch b.Descriptor.MediaType {
 	case ispec.MediaTypeImageLayer, ispec.MediaTypeImageLayerNonDistributable,
 		ispec.MediaTypeImageLayerGzip, ispec.MediaTypeImageLayerNonDistributableGzip:
 		if b.Data != nil {
@@ -145,9 +141,8 @@ func (b *Blob) Close() error {
 // FromDescriptor parses the blob referenced by the given descriptor.
 func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (*Blob, error) {
 	blob := &Blob{
-		MediaType: descriptor.MediaType,
-		Digest:    descriptor.Digest,
-		Data:      nil,
+		Descriptor: descriptor,
+		Data:       nil,
 	}
 
 	if err := blob.load(ctx, e); err != nil {
