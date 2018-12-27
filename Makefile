@@ -40,14 +40,21 @@ VERSION := $(shell cat ./VERSION)
 COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
 COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
 
+# Basic build flags.
 BUILD_FLAGS ?=
-
 BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}"
 BASE_LDFLAGS := -s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}
 
+# Specific build flags for build type.
 DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
 TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
 STATIC_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS} -extldflags '-static'"
+
+# Installation directories.
+DESTDIR ?=
+PREFIX ?=/usr
+BINDIR ?=$(PREFIX)/bin
+MANDIR ?=$(PREFIX)/share/man
 
 .DEFAULT: umoci
 
@@ -69,12 +76,19 @@ release:
 	hack/release.sh -S "$(GPG_KEYID)" -r release/$(VERSION) -v $(VERSION)
 
 .PHONY: install
-install: $(GO_SRC)
-	$(GO) install -v ${DYN_BUILD_FLAGS} ${CMD}
+install: umoci doc
+	install -D -m0755 umoci $(DESTDIR)/$(BINDIR)/umoci
+	-for man in $(MANPAGES); do \
+		filename="$$(basename -- "$$man")"; \
+		target="$(DESTDIR)/$(MANDIR)/man$${filename##*.}/$$filename"; \
+		install -D -m0644 "$$man" "$$target"; \
+		gzip -9f "$$target"; \
+	 done
 
-.PHONY: install.static
-install.static: $(GO_SRC)
-	$(GO) install -v ${STATIC_BUILD_FLAGS} ${CMD}
+.PHONY: uninstall
+uninstall:
+	rm -f $(DESTDIR)/$(BINDIR)/umoci
+	-rm -f $(DESTDIR)/$(MANDIR)/man*/umoci*
 
 .PHONY: clean
 clean:
