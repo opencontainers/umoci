@@ -69,6 +69,16 @@ should work on most machines. The [changelog][changelog] is also available.
 [source]: https://github.com/openSUSE/umoci
 [changelog]: /changelog
 
+### Community ###
+
+umoci is an openSUSE project, and thus is part of the [openSUSE
+community][openSUSE]. In addition, we have a [Code of Conduct][umoci-coc] as
+well as [a slightly-modified BDFL governance model][umoci-governance].
+
+[openSUSE]: https://www.opensuse.org/
+[umoci-coc]: /code-of-conduct
+[umoci-governance]: /governance
+
 ### License ###
 
 umoci is licensed under the terms of the Apache 2.0 license.

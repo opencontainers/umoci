@@ -3,3 +3,5 @@
 # hardlinks, and using symlinks breaks no matter which way it's done.
 /changelog.md
 /contributing.md
+/code-of-conduct.md
+/governance.md

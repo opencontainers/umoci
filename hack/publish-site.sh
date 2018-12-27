@@ -15,7 +15,6 @@
 
 set -e
 
-
 # Change to site root.
 site_root="$(readlink -f "$(dirname "${BASH_SOURCE}")/../.site")"
 cd "$site_root"
@@ -24,7 +23,12 @@ cd "$site_root"
 # These are ignored by git.
 cp ../CHANGELOG.md content/changelog.md
 cp ../CONTRIBUTING.md content/contributing.md
+cp ../CODE_OF_CONDUCT.md content/code-of-conduct.md
+cp ../GOVERNANCE.md content/governance.md
 cp ../contrib/logo/umoci-{white,black}.png static/
+
+# Make sure that we've checked out submodules.
+git submodule update --init --recursive || :
 
 # Check out the 'gh-pages' worktree.
 rm -rf public/ && git worktree prune
