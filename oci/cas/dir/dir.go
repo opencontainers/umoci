@@ -26,6 +26,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/openSUSE/umoci/pkg/hardening"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -197,7 +198,7 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 		return nil, errors.Wrap(err, "compute blob path")
 	}
 	fh, err := os.Open(filepath.Join(e.path, path))
-	return fh, errors.Wrap(err, "open blob")
+	return &hardening.VerifiedReadCloser{Reader: fh, ExpectedDigest: digest}, errors.Wrap(err, "open blob")
 }
 
 // PutIndex sets the index of the OCI image to the given index, replacing the
