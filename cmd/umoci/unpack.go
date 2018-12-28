@@ -114,8 +114,8 @@ func unpack(ctx *cli.Context) error {
 	}
 	defer manifestBlob.Close()
 
-	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
+	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType), "invalid --image tag")
 	}
 
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
@@ -130,7 +130,7 @@ func unpack(ctx *cli.Context) error {
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Unpack the runtime bundle.

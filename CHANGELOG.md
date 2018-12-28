@@ -5,6 +5,11 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## Added
+- Full-stack verification of blob hashes and descriptor sizes is now done on
+  all operations, improving our hardening against bad blobs (we already did
+  some verification of layer DiffIDs but this is far more thorough).
+  openSUSE/umoci#278 openSUSE/umoci#280 openSUSE/umoci#282
 
 ## [v0.4.3] - 2018-11-11
 ## Added

@@ -108,8 +108,8 @@ func rawUnpack(ctx *cli.Context) error {
 	}
 	defer manifestBlob.Close()
 
-	if manifestBlob.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.MediaType), "invalid --image tag")
+	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
+		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType), "invalid --image tag")
 	}
 
 	log.WithFields(log.Fields{
@@ -122,7 +122,7 @@ func rawUnpack(ctx *cli.Context) error {
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.MediaType)
+		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// FIXME: Currently we only support OCI layouts, not tar archives. This
