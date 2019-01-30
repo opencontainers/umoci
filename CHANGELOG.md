@@ -11,7 +11,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   some verification of layer DiffIDs but this is far more thorough).
   openSUSE/umoci#278 openSUSE/umoci#280 openSUSE/umoci#282
 
-## [v0.4.3] - 2018-11-11
+## [0.4.3] - 2018-11-11
 ## Added
 - All umoci commands that had `--history.*` options can now decide to omit a
   history entry with `--no-history`. Note that while this is supported for
