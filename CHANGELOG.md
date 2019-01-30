@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+
+## [0.4.4] - 2019-01-30
 ## Added
 - Full-stack verification of blob hashes and descriptor sizes is now done on
   all operations, improving our hardening against bad blobs (we already did
@@ -386,7 +388,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.3...HEAD
+[Unreleased]: https://github.com/openSUSE/umoci/compare/v0.4.4...HEAD
+[0.4.4]: https://github.com/openSUSE/umoci/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/openSUSE/umoci/compare/v0.4.2...v0.4.3
 [0.4.2]: https://github.com/openSUSE/umoci/compare/v0.4.1...v0.4.2
 [0.4.1]: https://github.com/openSUSE/umoci/compare/v0.4.0...v0.4.1
