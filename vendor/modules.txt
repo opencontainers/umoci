@@ -11,18 +11,18 @@ github.com/docker/go-units
 github.com/fatih/color
 # github.com/golang/protobuf v1.2.0
 github.com/golang/protobuf/proto
-# github.com/hashicorp/errwrap v0.0.0-20180715044906-d6c0cd880357
+# github.com/hashicorp/errwrap v1.0.0
 github.com/hashicorp/errwrap
-# github.com/hashicorp/go-multierror v0.0.0-20180717150148-3d5d8f294aa0
+# github.com/hashicorp/go-multierror v1.0.0
 github.com/hashicorp/go-multierror
 # github.com/klauspost/compress v1.4.0
 github.com/klauspost/compress/flate
-# github.com/klauspost/cpuid v0.0.0-20170728055534-ae7887de9fa5
+# github.com/klauspost/cpuid v1.2.0
 github.com/klauspost/cpuid
-# github.com/klauspost/crc32 v0.0.0-20161016154125-cb6bfca970f6
-github.com/klauspost/crc32
-# github.com/klauspost/pgzip v0.0.0-20170402124221-0bf5dcad4ada
+# github.com/klauspost/pgzip v1.2.1
 github.com/klauspost/pgzip
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/mattn/go-colorable v0.0.9
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.3
@@ -40,20 +40,20 @@ github.com/opencontainers/runtime-spec/specs-go
 github.com/opencontainers/runtime-tools/generate
 github.com/opencontainers/runtime-tools/generate/seccomp
 github.com/opencontainers/runtime-tools/validate
-github.com/opencontainers/runtime-tools/error
 github.com/opencontainers/runtime-tools/filepath
 github.com/opencontainers/runtime-tools/specerror
+github.com/opencontainers/runtime-tools/error
 # github.com/pkg/errors v0.8.0
 github.com/pkg/errors
 # github.com/rootless-containers/proto v0.1.0
 github.com/rootless-containers/proto/go-proto
-# github.com/sirupsen/logrus v1.0.6
+# github.com/sirupsen/logrus v1.3.0
 github.com/sirupsen/logrus
-# github.com/syndtr/gocapability v0.0.0-20180223013746-33e07d32887e
+# github.com/syndtr/gocapability v0.0.0-20180916011248-d98352740cb2
 github.com/syndtr/gocapability/capability
 # github.com/urfave/cli v1.20.0
 github.com/urfave/cli
-# github.com/vbatts/go-mtree v0.4.3
+# github.com/vbatts/go-mtree v0.4.4
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
@@ -63,11 +63,11 @@ github.com/xeipuuv/gojsonpointer
 github.com/xeipuuv/gojsonreference
 # github.com/xeipuuv/gojsonschema v0.0.0-20180719132039-b84684d0e066
 github.com/xeipuuv/gojsonschema
-# golang.org/x/crypto v0.0.0-20180723164146-c126467f60eb
-golang.org/x/crypto/ssh/terminal
+# golang.org/x/crypto v0.0.0-20190131182504-b8fe1690c613
 golang.org/x/crypto/ripemd160
-# golang.org/x/net v0.0.0-20180801234040-f4c29de78a2a
+golang.org/x/crypto/ssh/terminal
+# golang.org/x/net v0.0.0-20190125091013-d26f9f9a57f3
 golang.org/x/net/context
-# golang.org/x/sys v0.0.0-20180801221139-3dc4335d56c7
+# golang.org/x/sys v0.0.0-20190204203706-41f3e6584952
 golang.org/x/sys/unix
 golang.org/x/sys/windows
