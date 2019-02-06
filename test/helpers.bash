@@ -23,15 +23,48 @@ GOMTREE="/usr/bin/gomtree" # For some reason $(whence ...) and $(where ...) are 
 SOURCE_IMAGE="${SOURCE_IMAGE:-/image}"
 SOURCE_TAG="${SOURCE_TAG:-latest}"
 
-# Where we're going to copy the images and bundle to.
-IMAGE="${BATS_TMPDIR}/image"
-TAG="${SOURCE_TAG}"
-
 # We need to store the coverage outputs somewhere.
 COVERAGE_DIR="${COVERAGE_DIR:-}"
 
 # Are we rootless?
 ROOTLESS="$(id -u)"
+
+# Stores the set of tmpdirs that still have to be cleaned up. Calling
+# teardown_tmpdirs will set this to an empty array (and all the tmpdirs
+# contained within are removed).
+export TESTDIR_LIST="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
+
+# setup_tmpdir creates a new temporary directory and returns its name.  Note
+# that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
+# expected -- so tests should not really attempt to clean up tmpdirs.
+function setup_tmpdir() {
+	mktemp -d --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
+}
+
+# setup_tmpdirs just sets up the "built-in" tmpdirs.
+function setup_tmpdirs() {
+	export UMOCI_TMPDIR="$(setup_tmpdir)"
+}
+
+# teardown_tmpdirs removes all tmpdirs created with setup_tmpdir.
+function teardown_tmpdirs() {
+	# Do nothing if TESTDIR_LIST doesn't exist.
+	[ -e "$TESTDIR_LIST" ] || return
+
+	# Remove all of the tmpdirs.
+	while IFS= read tmpdir; do
+		[ -e "$tmpdir" ] || continue
+		chmod -R 0777 "$tmpdir"
+		rm -rf "$tmpdir"
+	done < "$TESTDIR_LIST"
+
+	# Clear tmpdir list.
+	rm -f "$TESTDIR_LIST"
+}
+
+# Where we're going to copy the images and bundle to.
+IMAGE="$(setup_tmpdir)/image"
+TAG="${SOURCE_TAG}"
 
 # Allows a test to specify what things it requires. If the environment can't
 # support it, the test is skipped with a message.
@@ -106,11 +139,7 @@ function umoci() {
 function gomtree() {
 	local args=("$@")
 
-	# We're rootless. Note that this is _not_ available in the upstream
-	# version of go-mtree and is unlikely to be accepted there (see
-	# https://github.com/vbatts/go-mtree/pull/96).
-	# It's maintained instead as an openSUSE extension:
-	# https://build.opensuse.org/package/view_file/Virtualization:containers/go-mtree/0001-gomtree-add-rootless-flag.patch?expand=1
+	# We're rootless.
 	if [[ "$ROOTLESS" != 0 ]]; then
 		args+=("-rootless")
 	fi
@@ -138,34 +167,6 @@ function setup_image() {
 
 function teardown_image() {
 	rm -rf "${IMAGE}"
-}
-
-# Stores the set of tmpdirs that still have to be cleaned up. Calling
-# teardown_tmpdirs will set this to an empty array (and all the tmpdirs
-# contained within are removed).
-export TESTDIR_LIST="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
-
-# setup_tmpdir creates a new temporary directory and returns its name.  Note
-# that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
-# expected -- so tests should not really attempt to clean up tmpdirs.
-function setup_tmpdir() {
-	mktemp -d --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
-}
-
-# teardown_tmpdirs removes all tmpdirs created with setup_tmpdir.
-function teardown_tmpdirs() {
-	# Do nothing if TESTDIR_LIST doesn't exist.
-	[ -e "$TESTDIR_LIST" ] || return
-
-	# Remove all of the tmpdirs.
-	while read tmpdir; do
-		[ -e "$tmpdir" ] || continue
-		chmod -R 0777 "$tmpdir"
-		rm -rf "$tmpdir"
-	done < "$TESTDIR_LIST"
-
-	# Clear tmpdir list.
-	rm -f "$TESTDIR_LIST"
 }
 
 # Generate a new $BUNDLE and $ROOTFS combination.

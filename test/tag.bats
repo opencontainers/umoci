@@ -17,6 +17,7 @@
 load helpers
 
 function setup() {
+	setup_tmpdirs
 	setup_image
 }
 
@@ -153,7 +154,7 @@ function teardown() {
 	done
 
 	# Make sure it's truly gone.
-	umoci unpack --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/notused"
+	umoci unpack --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/notused"
 	[ "$status" -ne 0 ]
 
 	# ... like, really gone.

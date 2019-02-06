@@ -17,6 +17,7 @@
 load helpers
 
 function setup() {
+	setup_tmpdirs
 	setup_image
 }
 
@@ -279,11 +280,11 @@ function teardown() {
 	touch "$ROOTFS/link2/c"
 	mkdir "$ROOTFS/loop1" # == /loop{1..4} ... (symlink loop)
 	touch "$ROOTFS/loop1/broken"
-	sane_run tar cvfC "$BATS_TMPDIR/layer1.tar" "$ROOTFS" .
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer1.tar" "$ROOTFS" .
 	[ "$status" -eq 0 ]
 
 	# Insert our fake layer manually.
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer1.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer1.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 

@@ -17,6 +17,7 @@
 load helpers
 
 function setup() {
+	setup_tmpdirs
 	setup_image
 }
 
@@ -46,9 +47,9 @@ function teardown() {
 
 	# Make sure that the config was unchanged.
 	# First clean the config.
-	jq -SM '.' "$BUNDLE_A/config.json" >"$BATS_TMPDIR/a-config.json"
-	jq -SM '.' "$BUNDLE_B/config.json" >"$BATS_TMPDIR/b-config.json"
-	sane_run diff -u "$BATS_TMPDIR/a-config.json" "$BATS_TMPDIR/b-config.json"
+	jq -SM '.' "$BUNDLE_A/config.json" >"$UMOCI_TMPDIR/a-config.json"
+	jq -SM '.' "$BUNDLE_B/config.json" >"$UMOCI_TMPDIR/b-config.json"
+	sane_run diff -u "$UMOCI_TMPDIR/a-config.json" "$UMOCI_TMPDIR/b-config.json"
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 }

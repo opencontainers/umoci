@@ -17,6 +17,7 @@
 load helpers
 
 function setup() {
+	setup_tmpdirs
 	setup_image
 }
 
@@ -31,7 +32,7 @@ function teardown() {
 	echo "layer1" > "$LAYER/file"
 	mkdir "$LAYER/dir1"
 	echo "layer1" > "$LAYER/dir1/file"
-	sane_run tar cvfC "$BATS_TMPDIR/layer1.tar" "$LAYER" .
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer1.tar" "$LAYER" .
 	[ "$status" -eq 0 ]
 
 	# Create layer2.
@@ -40,7 +41,7 @@ function teardown() {
 	mkdir "$LAYER/dir2" "$LAYER/dir3"
 	echo "layer2" > "$LAYER/dir2/file"
 	echo "layer2" > "$LAYER/dir3/file"
-	sane_run tar cvfC "$BATS_TMPDIR/layer2.tar" "$LAYER" .
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer2.tar" "$LAYER" .
 	[ "$status" -eq 0 ]
 
 	# Create layer3.
@@ -48,20 +49,20 @@ function teardown() {
 	echo "layer3" > "$LAYER/file"
 	mkdir "$LAYER/dir2"
 	echo "layer3" > "$LAYER/dir2/file"
-	sane_run tar cvfC "$BATS_TMPDIR/layer3.tar" "$LAYER" .
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer3.tar" "$LAYER" .
 	[ "$status" -eq 0 ]
 
 	# Add layers to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
 	#image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer1.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer1.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer2.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer2.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/layer3.tar"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer3.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -94,18 +95,18 @@ function teardown() {
 	[ "$status" -ne 0 ]
 
 	# Missing image.
-	touch "$BATS_TMPDIR/file"
-	umoci raw add-layer "$BATS_TMPDIR/file"
+	touch "$UMOCI_TMPDIR/file"
+	umoci raw add-layer "$UMOCI_TMPDIR/file"
 	[ "$status" -ne 0 ]
 
 	# Using a directory as an image file.
-	umoci raw add-layer --image="${IMAGE}:${TAG}" "$BATS_TMPDIR"
+	umoci raw add-layer --image="${IMAGE}:${TAG}" "$UMOCI_TMPDIR"
 	[ "$status" -ne 0 ]
 }
 
 @test "umoci raw add-layer [too many args]" {
-	touch "$BATS_TMPDIR/file"{1..3}
+	touch "$UMOCI_TMPDIR/file"{1..3}
 
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$BATS_TMPDIR/file"{1..3}
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/file"{1..3}
 	[ "$status" -ne 0 ]
 }
