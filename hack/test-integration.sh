@@ -41,7 +41,7 @@ else
 		tests+=("$ROOT/test/$f.bats")
 	done
 fi
-bats -t ${tests[*]}
+bats --jobs "+1" --tap "${tests[@]}"
 if [ "$COVER" -eq 1 ]; then
 	[ "$COVERAGE" ] && "$ROOT/hack/collate.awk" "$COVERAGE_DIR/"* "$COVERAGE" | sponge "$COVERAGE"
 fi
