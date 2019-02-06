@@ -17,6 +17,7 @@
 load helpers
 
 function setup() {
+	setup_tmpdirs
 	setup_image
 }
 
