@@ -29,21 +29,26 @@ COVERAGE_DIR="${COVERAGE_DIR:-}"
 # Are we rootless?
 ROOTLESS="$(id -u)"
 
+# Let's not store everything in /tmp -- that would just be messy.
+TESTDIR_TMPDIR="$BATS_TMPDIR/umoci-integration"
+mkdir -p "$TESTDIR_TMPDIR"
+
 # Stores the set of tmpdirs that still have to be cleaned up. Calling
 # teardown_tmpdirs will set this to an empty array (and all the tmpdirs
 # contained within are removed).
-export TESTDIR_LIST="$(mktemp --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
+export TESTDIR_LIST="$(mktemp --tmpdir="$TESTDIR_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
 
 # setup_tmpdir creates a new temporary directory and returns its name.  Note
 # that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
 # expected -- so tests should not really attempt to clean up tmpdirs.
 function setup_tmpdir() {
-	mktemp -d --tmpdir="$BATS_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
+	[[ -n "$UMOCI_TMPDIR" ]] || UMOCI_TMPDIR="$TESTDIR_TMPDIR"
+	mktemp -d --tmpdir="$UMOCI_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
 }
 
 # setup_tmpdirs just sets up the "built-in" tmpdirs.
 function setup_tmpdirs() {
-	export UMOCI_TMPDIR="$(setup_tmpdir)"
+	declare -g UMOCI_TMPDIR="$(setup_tmpdir)"
 }
 
 # teardown_tmpdirs removes all tmpdirs created with setup_tmpdir.
@@ -139,7 +144,9 @@ function umoci() {
 function gomtree() {
 	local args=("$@")
 
-	# We're rootless.
+	# We're rootless. Note that the "-rootless" flag is actually an out-of-tree
+	# patch applied by openSUSE here:
+	#   <https://build.opensuse.org/package/show/Virtualization:containers/go-mtree>.
 	if [[ "$ROOTLESS" != 0 ]]; then
 		args+=("-rootless")
 	fi
@@ -160,9 +167,11 @@ function sane_run() {
 
 function setup_image() {
 	cp -r "${SOURCE_IMAGE}" "${IMAGE}"
-	df >/dev/stderr
-	du -h -d 2 "$BATS_TMPDIR" >/dev/stderr
 	image-verify "${IMAGE}"
+
+	# These are just used for diagnostics, so we ignore the status.
+	sane_run df
+	sane_run du -h -d 2 "$UMOCI_TMPDIR"
 }
 
 function teardown_image() {

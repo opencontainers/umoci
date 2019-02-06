@@ -35,7 +35,7 @@ fi
 # Run the tests and collate the results.
 tests=()
 if [[ -z "$TESTS" ]]; then
-	tests=($ROOT/test/*.bats)
+	tests=("$ROOT/test/"*.bats)
 else
 	for f in $TESTS; do
 		tests+=("$ROOT/test/$f.bats")
@@ -43,7 +43,7 @@ else
 fi
 bats -t ${tests[*]}
 if [ "$COVER" -eq 1 ]; then
-	[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
+	[ "$COVERAGE" ] && "$ROOT/hack/collate.awk" "$COVERAGE_DIR/"* "$COVERAGE" | sponge "$COVERAGE"
 fi
 
 # Clean up the coverage directory.
