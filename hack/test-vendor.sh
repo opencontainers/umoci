@@ -1,6 +1,6 @@
 #!/bin/bash
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2018 SUSE LLC.
+# Copyright (C) 2016-2019 SUSE LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -14,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -ex
+set -Eeuxo pipefail
 
 # Generate a hash-of-hashes for the entire vendor/ tree.
 function gethash() {
@@ -25,17 +25,19 @@ function gethash() {
 }
 
 # Figure out root directory.
-export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
+ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
+STASHED_ROOT="$(mktemp --tmpdir -d umoci-vendor.XXXXXX)"
 
 # Stash away old vendor tree, and restore it on-exit.
-mv "$ROOT"/{,old_}vendor
-trap 'rm -rf "$ROOT"/vendor ; mv "$ROOT"/{old_,}vendor' EXIT
+mv "$ROOT/vendor" "$STASHED_ROOT/vendor"
+trap 'rm -rf "$ROOT/vendor" ; mv "$STASHED_ROOT/vendor" "$ROOT/vendor" ; rm -rf "$STASHED_ROOT"' ERR EXIT
 
 # Try to re-generate vendor/ and see whether something has changed.
-oldhash="$(gethash "$ROOT/old_vendor")"
+oldhash="$(gethash "$STASHED_ROOT/vendor")"
 go clean -modcache
 GO111MODULE=on go mod vendor
 newhash="$(gethash "$ROOT/vendor")"
 
 # Verify the hashes match.
+diff -qr "$STASHED_ROOT/vendor" "$ROOT/vendor" || :
 [[ "$oldhash" == "$newhash" ]] || ( echo "ERROR: vendor/ does not match go.mod -- run 'go mod vendor'" ; exit 1 )

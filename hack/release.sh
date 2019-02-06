@@ -1,5 +1,6 @@
 #!/bin/bash
-# Copyright (C) 2017, 2018 SUSE LLC.
+# umoci: Umoci Modifies Open Containers' Images
+# Copyright (C) 2016-2019 SUSE LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -13,7 +14,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -e
+set -Eeuo pipefail
 
 ## --->
 # Project-specific options and functions. In *theory* you shouldn't need to
