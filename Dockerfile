@@ -19,6 +19,7 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE:Factory yet.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
+	zypper ar -f -p 10 -g obs://home:cyphar:bats obs-bats && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \

@@ -175,7 +175,7 @@ function teardown() {
 	# Check that HOME is set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	export $output
+	export "${lines[@]}"
 	[[ "$HOME" == "/my home dir " ]]
 
 	# Modify /etc/passwd and /etc/group.
@@ -200,7 +200,7 @@ function teardown() {
 	# Check that HOME is set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	export $output
+	export "${lines[@]}"
 	[[ "$HOME" == "/another  home" ]]
 
 	image-verify "${IMAGE}"
@@ -293,11 +293,11 @@ function teardown() {
 
 	sane_run jq -SMr '.process.env[] | startswith("PATH=")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	[[ "${lines[*]}" == *"true"* ]]
+	[[ "${lines[@]}" == *"true"* ]]
 
 	sane_run jq -SMr '.process.env[] | startswith("TERM=")' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	[[ "${lines[*]}" == *"true"* ]]
+	[[ "${lines[@]}" == *"true"* ]]
 
 	image-verify "${IMAGE}"
 }
@@ -328,7 +328,7 @@ function teardown() {
 	[ "$numDefs" -eq "$numVars" ]
 
 	# Set the variables.
-	export $output
+	export "${lines[@]}"
 	[[ "$VARIABLE1" == "test" ]]
 	[[ "$VARIABLE2" == "what" ]]
 
@@ -455,8 +455,8 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
-	printf -- '%s\n' "${lines[*]}" | grep '^/volume$'
-	printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$'
+	printf -- '%s\n' "${lines[@]}" | grep '^/volume$'
+	printf -- '%s\n' "${lines[@]}" | grep '^/some nutty/path name/ here$'
 
 	# Make sure we're appending.
 	umoci config --image "${IMAGE}:${TAG}" --config.volume "/another volume"
@@ -473,9 +473,9 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
-	printf -- '%s\n' "${lines[*]}" | grep '^/volume$'
-	printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$'
-	printf -- '%s\n' "${lines[*]}" | grep '^/another volume$'
+	printf -- '%s\n' "${lines[@]}" | grep '^/volume$'
+	printf -- '%s\n' "${lines[@]}" | grep '^/some nutty/path name/ here$'
+	printf -- '%s\n' "${lines[@]}" | grep '^/another volume$'
 
 	# Now clear the volumes
 	umoci config --image "${IMAGE}:${TAG}" --clear=config.volume --config.volume "/..final_volume"
@@ -492,10 +492,10 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# Check mounts.
-	! ( printf -- '%s\n' "${lines[*]}" | grep '^/volume$' )
-	! ( printf -- '%s\n' "${lines[*]}" | grep '^/some nutty/path name/ here$' )
-	! ( printf -- '%s\n' "${lines[*]}" | grep '^/another volume$' )
-	printf -- '%s\n' "${lines[*]}" | grep '^/\.\.final_volume$'
+	! ( printf -- '%s\n' "${lines[@]}" | grep '^/volume$' )
+	! ( printf -- '%s\n' "${lines[@]}" | grep '^/some nutty/path name/ here$' )
+	! ( printf -- '%s\n' "${lines[@]}" | grep '^/another volume$' )
+	printf -- '%s\n' "${lines[@]}" | grep '^/\.\.final_volume$'
 
 	image-verify "${IMAGE}"
 }

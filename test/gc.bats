@@ -132,7 +132,7 @@ function teardown() {
 	[ "${#lines[@]}" -gt 0 ]
 	image-verify "${IMAGE}"
 
-	for line in "${lines[*]}"; do
+	for line in "${lines[@]}"; do
 		umoci rm --image "${IMAGE}:${line}"
 		[ "$status" -eq 0 ]
 		image-verify "${IMAGE}"
