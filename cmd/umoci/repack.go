@@ -19,9 +19,6 @@ package main
 
 import (
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -30,13 +27,9 @@ import (
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
-	"github.com/openSUSE/umoci/oci/layer"
-	"github.com/openSUSE/umoci/pkg/fseval"
-	"github.com/openSUSE/umoci/pkg/mtreefilter"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"github.com/vbatts/go-mtree"
 	"golang.org/x/net/context"
 )
 
@@ -126,73 +119,23 @@ func repack(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Create the mutator.
-	mutator, err := mutate.New(engine, meta.From)
+	mutator, err := mutate.New(engineExt, meta.From)
 	if err != nil {
 		return errors.Wrap(err, "create mutator for base image")
 	}
-
-	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
-	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
-	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
-
-	log.WithFields(log.Fields{
-		"image":  imagePath,
-		"bundle": bundlePath,
-		"rootfs": layer.RootfsName,
-		"mtree":  mtreePath,
-	}).Debugf("umoci: repacking OCI image")
-
-	mfh, err := os.Open(mtreePath)
-	if err != nil {
-		return errors.Wrap(err, "open mtree")
-	}
-	defer mfh.Close()
-
-	spec, err := mtree.ParseSpec(mfh)
-	if err != nil {
-		return errors.Wrap(err, "parse mtree")
-	}
-
-	log.WithFields(log.Fields{
-		"keywords": umoci.MtreeKeywords,
-	}).Debugf("umoci: parsed mtree spec")
-
-	fsEval := fseval.DefaultFsEval
-	if meta.MapOptions.Rootless {
-		fsEval = fseval.RootlessFsEval
-	}
-
-	log.Info("computing filesystem diff ...")
-	diffs, err := mtree.Check(fullRootfsPath, spec, umoci.MtreeKeywords, fsEval)
-	if err != nil {
-		return errors.Wrap(err, "check mtree")
-	}
-	log.Info("... done")
-
-	log.WithFields(log.Fields{
-		"ndiff": len(diffs),
-	}).Debugf("umoci: checked mtree spec")
 
 	// We need to mask config.Volumes.
 	config, err := mutator.Config(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "get config")
 	}
+
 	maskedPaths := ctx.StringSlice("mask-path")
 	if !ctx.Bool("no-mask-volumes") {
 		for v := range config.Volumes {
 			maskedPaths = append(maskedPaths, v)
 		}
 	}
-	diffs = mtreefilter.FilterDeltas(diffs,
-		mtreefilter.MaskFilter(maskedPaths),
-		mtreefilter.SimplifyFilter(diffs))
-
-	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
-	if err != nil {
-		return errors.Wrap(err, "generate diff layer")
-	}
-	defer reader.Close()
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
@@ -228,38 +171,5 @@ func repack(ctx *cli.Context) error {
 		}
 	}
 
-	// TODO: We should add a flag to allow for a new layer to be made
-	//       non-distributable.
-	if err := mutator.Add(context.Background(), reader, history); err != nil {
-		return errors.Wrap(err, "add diff layer")
-	}
-
-	newDescriptorPath, err := mutator.Commit(context.Background())
-	if err != nil {
-		return errors.Wrap(err, "commit mutated image")
-	}
-
-	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
-
-	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return errors.Wrap(err, "add new tag")
-	}
-
-	log.Infof("created new tag for image manifest: %s", tagName)
-
-	if ctx.Bool("refresh-bundle") {
-		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
-		if err := umoci.GenerateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
-			return errors.Wrap(err, "write mtree metadata")
-		}
-		if err := os.Remove(mtreePath); err != nil {
-			return errors.Wrap(err, "remove old mtree metadata")
-		}
-		meta.From = newDescriptorPath
-		if err := umoci.WriteBundleMeta(bundlePath, meta); err != nil {
-			return errors.Wrap(err, "write umoci.json metadata")
-		}
-	}
-
-	return nil
+	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, maskedPaths, ctx.Bool("refresh-bundle"), mutator)
 }
