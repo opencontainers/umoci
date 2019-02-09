@@ -20,7 +20,8 @@ set -Eeuxo pipefail
 function gethash() {
 	(
 		cd "$1"
-		find . -type f | xargs sha256sum | sort -k2 | sha256sum | awk '{ print $1 }'
+		find . -type f -not -path "./modules.txt" | \
+			xargs sha256sum | sort -k2 | sha256sum | awk '{ print $1 }'
 	)
 }
 
@@ -32,10 +33,12 @@ STASHED_ROOT="$(mktemp --tmpdir -d umoci-vendor.XXXXXX)"
 mv "$ROOT/vendor" "$STASHED_ROOT/vendor"
 trap 'rm -rf "$ROOT/vendor" ; mv "$STASHED_ROOT/vendor" "$ROOT/vendor" ; rm -rf "$STASHED_ROOT"' ERR EXIT
 
-# Try to re-generate vendor/ and see whether something has changed.
-oldhash="$(gethash "$STASHED_ROOT/vendor")"
+# Try to re-generate vendor/.
 go clean -modcache
 GO111MODULE=on go mod vendor
+
+# See whether something has changed.
+oldhash="$(gethash "$STASHED_ROOT/vendor")"
 newhash="$(gethash "$ROOT/vendor")"
 
 # Verify the hashes match.
