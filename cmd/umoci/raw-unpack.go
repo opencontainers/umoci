@@ -125,9 +125,6 @@ func rawUnpack(ctx *cli.Context) error {
 		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
-	// FIXME: Currently we only support OCI layouts, not tar archives. This
-	//        should be fixed once the CAS engine PR is merged into
-	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
 	log.Warnf("unpacking rootfs ...")
 	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create rootfs")

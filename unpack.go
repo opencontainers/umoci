@@ -63,9 +63,6 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, mapOpti
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
-	// FIXME: Currently we only support OCI layouts, not tar archives. This
-	//        should be fixed once the CAS engine PR is merged into
-	//        image-tools. https://github.com/opencontainers/image-tools/pull/5
 	log.Info("unpacking bundle ...")
 	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &meta.MapOptions); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
