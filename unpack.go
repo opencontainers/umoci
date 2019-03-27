@@ -32,7 +32,7 @@ import (
 )
 
 // Unpack unpacks an image to the specified bundle path.
-func Unpack(engineExt casext.Engine, fromName string, bundlePath string, mapOptions layer.MapOptions) error {
+func Unpack(engineExt casext.Engine, fromName string, bundlePath string, mapOptions layer.MapOptions, callback layer.AfterLayerUnpackCallback) error {
 	var meta Meta
 	meta.Version = MetaVersion
 	meta.MapOptions = mapOptions
@@ -81,7 +81,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, mapOpti
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
 	log.Info("unpacking bundle ...")
-	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &meta.MapOptions); err != nil {
+	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &meta.MapOptions, callback); err != nil {
 		return errors.Wrap(err, "create runtime bundle")
 	}
 	log.Info("... done")

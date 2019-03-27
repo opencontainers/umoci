@@ -85,5 +85,5 @@ func unpack(ctx *cli.Context) error {
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
-	return umoci.Unpack(engineExt, fromName, bundlePath, meta.MapOptions)
+	return umoci.Unpack(engineExt, fromName, bundlePath, meta.MapOptions, nil)
 }

@@ -165,7 +165,15 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		},
 		Rootless: os.Geteuid() != 0,
 	}
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, mapOptions); err != nil {
+	called := false
+	callback := func(m ispec.Manifest, d ispec.Descriptor) error {
+		called = true
+		return nil
+	}
+	if err := UnpackManifest(ctx, engineExt, bundle, manifest, mapOptions, callback); err != nil {
 		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
+	}
+	if !called {
+		t.Errorf("callback not called")
 	}
 }

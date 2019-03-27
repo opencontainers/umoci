@@ -126,7 +126,7 @@ func rawUnpack(ctx *cli.Context) error {
 	}
 
 	log.Warnf("unpacking rootfs ...")
-	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &meta.MapOptions); err != nil {
+	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &meta.MapOptions, nil); err != nil {
 		return errors.Wrap(err, "create rootfs")
 	}
 	log.Warnf("... done")
