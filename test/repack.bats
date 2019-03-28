@@ -790,3 +790,24 @@ function teardown() {
 	[ "$numLinesB" -gt "$numLinesA" ]
 	[ "$numLinesC" -gt "$numLinesB" ]
 }
+
+@test "umoci repack (empty diff)" {
+	# Unpack the original image
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Repack the image under a new tag.
+	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# The two manifests should have the same number of layers.
+	manifest0=$(cat "${IMAGE}/oci/index.json" | jq -r .manifests[0].digest | cut -f2 -d:)
+	manifest1=$(cat "${IMAGE}/oci/index.json" | jq -r .manifests[1].digest | cut -f2 -d:)
+
+	layers0=$(cat "${IMAGE}/oci/blobs/sha256/$manifest0" | jq -r .layers)
+	layers1=$(cat "${IMAGE}/oci/blobs/sha256/$manifest1" | jq -r .layers)
+	[ "$layers0" == "$layers1" ]
+}
