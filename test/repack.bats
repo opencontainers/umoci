@@ -231,7 +231,7 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Make some small change.
-	touch "$BUNDLE/a_small_change"
+	touch "$ROOTFS/a_small_change"
 	now="$(date --iso-8601=seconds --utc)"
 
 	# Repack the image, setting history values.
