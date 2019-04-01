@@ -34,6 +34,7 @@ func TestLutimesFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.RemoveAll(dir)
 
 	path := filepath.Join(dir, "some file")
 
@@ -82,6 +83,7 @@ func TestLutimesDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.RemoveAll(dir)
 
 	path := filepath.Join(dir, " a directory  ")
 
@@ -130,6 +132,7 @@ func TestLutimesSymlink(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer os.RemoveAll(dir)
 
 	path := filepath.Join(dir, " !! symlink here")
 
