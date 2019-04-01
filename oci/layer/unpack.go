@@ -93,7 +93,7 @@ func needsGunzip(mediaType string) bool {
 // <bundle>/<layer.RootfsName>.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback) (err error) {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback, startFrom ispec.Descriptor) (err error) {
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -130,7 +130,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}()
 
-	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) {
+	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) && startFrom.MediaType == "" {
 		if err == nil {
 			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
@@ -138,7 +138,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
-	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt, callback); err != nil {
+	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt, callback, startFrom); err != nil {
 		return errors.Wrap(err, "unpack rootfs")
 	}
 
@@ -157,7 +157,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 // UnpackRootfs extracts all of the layers in the given manifest.
 // Some verification is done during image extraction.
-func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback) (err error) {
+func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback, startFrom ispec.Descriptor) (err error) {
 	engineExt := casext.NewEngine(engine)
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
@@ -225,7 +225,13 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	}
 
 	// Layer extraction.
+	found := false
 	for idx, layerDescriptor := range manifest.Layers {
+		if !found && startFrom.MediaType != "" && layerDescriptor.Digest.String() != startFrom.Digest.String() {
+			continue
+		}
+		found = true
+
 		layerDiffID := config.RootFS.DiffIDs[idx]
 		log.Infof("unpack layer: %s", layerDescriptor.Digest)
 

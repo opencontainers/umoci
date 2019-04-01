@@ -21,6 +21,7 @@ import (
 	"github.com/openSUSE/umoci"
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -85,5 +86,5 @@ func unpack(ctx *cli.Context) error {
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
-	return umoci.Unpack(engineExt, fromName, bundlePath, meta.MapOptions, nil)
+	return umoci.Unpack(engineExt, fromName, bundlePath, meta.MapOptions, nil, ispec.Descriptor{})
 }
