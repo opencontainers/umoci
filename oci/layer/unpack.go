@@ -134,7 +134,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if err == nil {
 			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
-		return err
+		return errors.Wrapf(err, "detecting rootfs")
 	}
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
