@@ -73,7 +73,7 @@ umoci.cover: $(GO_SRC)
 
 .PHONY: release
 release:
-	hack/release.sh -S "$(GPG_KEYID)" -r release/$(VERSION) -v $(VERSION)
+	hack/release.sh -v $(VERSION) -S "$(GPG_KEYID)"
 
 .PHONY: install
 install: umoci doc
