@@ -19,7 +19,9 @@ source "$(dirname "$BASH_SOURCE")/../hack/readlinkf.sh"
 # Root directory of integration tests.
 INTEGRATION_ROOT=$(dirname "$(readlinkf_posix "$BASH_SOURCE")")
 UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
-GOMTREE="/usr/bin/gomtree" # For some reason $(whence ...) and $(where ...) are broken.
+# For some reason $(whence ...) and $(where ...) are broken.
+RUNC="/usr/bin/runc"
+GOMTREE="/usr/bin/gomtree"
 
 # The source OCI image path, which we will make a copy of for each test.
 SOURCE_IMAGE="${SOURCE_IMAGE:-/image}"
@@ -156,6 +158,10 @@ function gomtree() {
 	sane_run "$GOMTREE" -K sha256digest "${args[@]}"
 }
 
+function runc() {
+	sane_run "$RUNC" --root "$RUNC_ROOT" "$@"
+}
+
 function sane_run() {
 	local cmd="$1"
 	shift
@@ -178,6 +184,24 @@ function setup_image() {
 
 function teardown_image() {
 	rm -rf "${IMAGE}"
+}
+
+function setup_runc() {
+	declare -g RUNC_ROOT="$(setup_tmpdir)"
+}
+
+function is_container_dead() {
+	runc state "$1"
+	[ "$status" -ne 0 ] || [ "$output" =~ *stopped* ]
+}
+
+function teardown_runc() {
+	for ctr in $(ls "$RUNC_ROOT" 2>/dev/null)
+	do
+		runc kill "$ctr" KILL
+		retry 10 1 eval "is_container_dead '$ctr'"
+		runc delete -f "$ctr"
+	done
 }
 
 # Generate a new $BUNDLE and $ROOTFS combination.
