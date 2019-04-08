@@ -351,9 +351,10 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 			return errors.Wrapf(err, "inspecting mount flags of %s", resolvConf)
 		}
 		g.AddMount(rspec.Mount{
+			// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
+			Type:        "bind",
 			Destination: resolvConf,
 			Source:      resolvConf,
-			Type:        "none",
 			Options:     append(unprivOpts, []string{"bind", "ro"}...),
 		})
 	}
@@ -410,9 +411,10 @@ func ToRootless(spec *rspec.Spec) {
 	}
 	// Add the sysfs mount as an rbind.
 	mounts = append(mounts, rspec.Mount{
+		// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
+		Type:        "bind",
 		Source:      "/sys",
 		Destination: "/sys",
-		Type:        "none",
 		Options:     []string{"rbind", "nosuid", "noexec", "nodev", "ro"},
 	})
 	spec.Mounts = mounts
