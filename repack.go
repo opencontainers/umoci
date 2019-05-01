@@ -65,16 +65,38 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		mtreefilter.MaskFilter(maskedPaths),
 		mtreefilter.SimplifyFilter(diffs))
 
-	reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
-	if err != nil {
-		return errors.Wrap(err, "generate diff layer")
-	}
-	defer reader.Close()
+	if len(diffs) == 0 {
+		config, err := mutator.Config(context.Background())
+		if err != nil {
+			return err
+		}
 
-	// TODO: We should add a flag to allow for a new layer to be made
-	//       non-distributable.
-	if err := mutator.Add(context.Background(), reader, history); err != nil {
-		return errors.Wrap(err, "add diff layer")
+		imageMeta, err := mutator.Meta(context.Background())
+		if err != nil {
+			return err
+		}
+
+		annotations, err := mutator.Annotations(context.Background())
+		if err != nil {
+			return err
+		}
+
+		err = mutator.Set(context.Background(), config, imageMeta, annotations, history)
+		if err != nil {
+			return err
+		}
+	} else {
+		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &meta.MapOptions)
+		if err != nil {
+			return errors.Wrap(err, "generate diff layer")
+		}
+		defer reader.Close()
+
+		// TODO: We should add a flag to allow for a new layer to be made
+		//       non-distributable.
+		if err := mutator.Add(context.Background(), reader, history); err != nil {
+			return errors.Wrap(err, "add diff layer")
+		}
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
