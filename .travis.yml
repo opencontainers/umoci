@@ -32,5 +32,5 @@ notifications:
 
 script:
   - chmod a+rwx . # Necessary to make Travis co-operate with Docker.
-  - make GO111MODULE=auto GOARCH=386 local-validate-build # Make sure 32-bit builds work.
-  - make GO111MODULE=auto DOCKER_IMAGE=$DOCKER_IMAGE ci
+  - make GO111MODULE=off GOARCH=386 local-validate-build # Make sure 32-bit builds work.
+  - make GO111MODULE=off DOCKER_IMAGE=$DOCKER_IMAGE ci
