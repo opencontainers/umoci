@@ -100,7 +100,7 @@ validate: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-validate
 
 .PHONY: local-validate
-local-validate: local-validate-git local-validate-go local-validate-reproducible local-validate-build
+local-validate: local-validate-go local-validate-reproducible local-validate-build
 
 # TODO: Remove the special-case ignored system/* warnings.
 .PHONY: local-validate-go
@@ -114,16 +114,6 @@ local-validate-go:
 	@type gosec     >/dev/null 2>/dev/null || (echo "ERROR: gosec not found." && false)
 	test -z "$$(gosec -quiet -exclude=G301,G302,G304 $$GOPATH/$(PROJECT)/... | tee /dev/stderr)"
 	./hack/test-vendor.sh
-
-EPOCH_COMMIT ?= 97ecdbd53dcb72b7a0d62196df281f131dc9eb2f
-.PHONY: local-validate-git
-local-validate-git:
-	@type git-validation > /dev/null 2>/dev/null || (echo "ERROR: git-validation not found." && false)
-ifdef TRAVIS_COMMIT_RANGE
-	git-validation -q -run DCO,short-subject
-else
-	git-validation -q -run DCO,short-subject -range $(EPOCH_COMMIT)..HEAD
-endif
 
 # Make sure that our builds are reproducible even if you wait between them and
 # the modified time of the files is different.
@@ -144,14 +134,18 @@ local-validate-build:
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o /dev/null ${CMD}
 	$(GO) test -run nothing ${DYN_BUILD_FLAGS} $(PROJECT)/...
 
+.PHONY: doc
+doc: umociimage
+	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-doc
+
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
 
 doc/man/%.1: doc/man/%.1.md
 	$(GO_MD2MAN) -in $< -out $@
 
-.PHONY: doc
-doc: $(MANPAGES)
+.PHONY: local-doc
+local-doc: $(MANPAGES)
 
 # Used for tests.
 DOCKER_IMAGE :=opensuse/amd64:tumbleweed
@@ -188,5 +182,5 @@ shell: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover doc local-validate test-unit test-integration
+ci: umoci umoci.cover doc validate test-unit test-integration
 	hack/ci-coverage.sh $(COVERAGE)
