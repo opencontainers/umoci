@@ -21,13 +21,12 @@ import (
 	"archive/tar"
 	// Import is necessary for go-digest.
 	_ "crypto/sha256"
+	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
-	"strings"
 	"time"
 
 	"github.com/apex/log"
@@ -41,10 +40,8 @@ import (
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
-	"golang.org/x/sys/unix"
 )
 
 // UnpackLayer unpacks the tar stream representing an OCI layer at the given
@@ -317,142 +314,34 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
-	g, err := rgen.New(runtime.GOOS)
+	spec, err := iconv.ToRuntimeSpec(rootfs, config)
 	if err != nil {
-		return errors.Wrap(err, "create config.json generator")
-	}
-	if err := iconv.MutateRuntimeSpec(g, rootfs, config); err != nil {
 		return errors.Wrap(err, "generate config.json")
 	}
 
 	// Add UIDMapping / GIDMapping options.
 	if len(mapOptions.UIDMappings) > 0 || len(mapOptions.GIDMappings) > 0 {
-		// #nosec G104
-		_ = g.AddOrReplaceLinuxNamespace("user", "")
-	}
-	g.ClearLinuxUIDMappings()
-	for _, m := range mapOptions.UIDMappings {
-		g.AddLinuxUIDMapping(m.HostID, m.ContainerID, m.Size)
-	}
-	g.ClearLinuxGIDMappings()
-	for _, m := range mapOptions.GIDMappings {
-		g.AddLinuxGIDMapping(m.HostID, m.ContainerID, m.Size)
-	}
-	if mapOptions.Rootless {
-		ToRootless(g.Spec())
-		const resolvConf = "/etc/resolv.conf"
-		// If we are using user namespaces, then we must make sure that we
-		// don't drop any of the CL_UNPRIVILEGED "locked" flags of the source
-		// "mount" when we bind-mount. The reason for this is that at the point
-		// when runc sets up the root filesystem, it is already inside a user
-		// namespace, and thus cannot change any flags that are locked.
-		unprivOpts, err := getUnprivilegedMountFlags(resolvConf)
-		if err != nil {
-			return errors.Wrapf(err, "inspecting mount flags of %s", resolvConf)
+		var namespaces []rspec.LinuxNamespace
+		for _, ns := range spec.Linux.Namespaces {
+			if ns.Type == "user" {
+				continue
+			}
+			namespaces = append(namespaces, ns)
 		}
-		g.AddMount(rspec.Mount{
-			// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
-			Type:        "bind",
-			Destination: resolvConf,
-			Source:      resolvConf,
-			Options:     append(unprivOpts, []string{"bind", "ro"}...),
+		spec.Linux.Namespaces = append(namespaces, rspec.LinuxNamespace{
+			Type: "user",
 		})
+	}
+	spec.Linux.UIDMappings = mapOptions.UIDMappings
+	spec.Linux.GIDMappings = mapOptions.GIDMappings
+	if mapOptions.Rootless {
+		if err := iconv.ToRootless(&spec); err != nil {
+			return errors.Wrap(err, "convert spec to rootless")
+		}
 	}
 
 	// Save the config.json.
-	if err := g.Save(configFile, rgen.ExportOptions{}); err != nil {
-		return errors.Wrap(err, "write config.json")
-	}
-	return nil
-}
-
-// ToRootless converts a specification to a version that works with rootless
-// containers. This is done by removing options and other settings that clash
-// with unprivileged user namespaces.
-func ToRootless(spec *rspec.Spec) {
-	var namespaces []rspec.LinuxNamespace
-
-	// Remove additional groups.
-	spec.Process.User.AdditionalGids = nil
-
-	// Remove networkns from the spec.
-	for _, ns := range spec.Linux.Namespaces {
-		switch ns.Type {
-		case rspec.NetworkNamespace, rspec.UserNamespace:
-			// Do nothing.
-		default:
-			namespaces = append(namespaces, ns)
-		}
-	}
-	// Add userns to the spec.
-	namespaces = append(namespaces, rspec.LinuxNamespace{
-		Type: rspec.UserNamespace,
-	})
-	spec.Linux.Namespaces = namespaces
-
-	// Fix up mounts.
-	var mounts []rspec.Mount
-	for _, mount := range spec.Mounts {
-		// Ignore all mounts that are under /sys.
-		if strings.HasPrefix(mount.Destination, "/sys") {
-			continue
-		}
-
-		// Remove all gid= and uid= mappings.
-		var options []string
-		for _, option := range mount.Options {
-			if !strings.HasPrefix(option, "gid=") && !strings.HasPrefix(option, "uid=") {
-				options = append(options, option)
-			}
-		}
-
-		mount.Options = options
-		mounts = append(mounts, mount)
-	}
-	// Add the sysfs mount as an rbind.
-	mounts = append(mounts, rspec.Mount{
-		// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
-		Type:        "bind",
-		Source:      "/sys",
-		Destination: "/sys",
-		Options:     []string{"rbind", "nosuid", "noexec", "nodev", "ro"},
-	})
-	spec.Mounts = mounts
-
-	// Remove cgroup settings.
-	spec.Linux.Resources = nil
-}
-
-// Get the set of mount flags that are set on the mount that contains the given
-// path and are locked by CL_UNPRIVILEGED. This is necessary to ensure that
-// bind-mounting "with options" will not fail with user namespaces, due to
-// kernel restrictions that require user namespace mounts to preserve
-// CL_UNPRIVILEGED locked flags.
-//
-// Ported from https://github.com/moby/moby/pull/35205
-func getUnprivilegedMountFlags(path string) ([]string, error) {
-	var statfs unix.Statfs_t
-	if err := unix.Statfs(path, &statfs); err != nil {
-		return nil, err
-	}
-
-	// The set of keys come from https://github.com/torvalds/linux/blob/v4.13/fs/namespace.c#L1034-L1048.
-	unprivilegedFlags := map[uint64]string{
-		unix.MS_RDONLY:     "ro",
-		unix.MS_NODEV:      "nodev",
-		unix.MS_NOEXEC:     "noexec",
-		unix.MS_NOSUID:     "nosuid",
-		unix.MS_NOATIME:    "noatime",
-		unix.MS_RELATIME:   "relatime",
-		unix.MS_NODIRATIME: "nodiratime",
-	}
-
-	var flags []string
-	for mask, flag := range unprivilegedFlags {
-		if uint64(statfs.Flags)&mask == mask {
-			flags = append(flags, flag)
-		}
-	}
-
-	return flags, nil
+	enc := json.NewEncoder(configFile)
+	enc.SetIndent("", "\t")
+	return errors.Wrap(enc.Encode(spec), "write config.json")
 }
