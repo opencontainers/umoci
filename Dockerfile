@@ -1,5 +1,5 @@
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016, 2017, 2018 SUSE LLC.
+# Copyright (C) 2016-2019 SUSE LLC.
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -26,7 +26,6 @@ RUN zypper -n in \
 		bats \
 		git \
 		"go>=1.11" \
-		golang-github-cpuguy83-go-md2man \
 		go-mtree \
 		jq \
 		libcap-progs \
@@ -40,8 +39,8 @@ RUN zypper -n in \
 
 ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
-RUN go get -u golang.org/x/lint/golint && \
-    go get -u github.com/vbatts/git-validation && \
+RUN go get -u github.com/cpuguy83/go-md2man && \
+    go get -u golang.org/x/lint/golint && \
     go get -u github.com/securego/gosec/cmd/gosec
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest

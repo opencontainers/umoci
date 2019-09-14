@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016, 2017, 2018 SUSE LLC.
+ * Copyright (C) 2016-2019 SUSE LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package convert
 
 import (
 	"path/filepath"
-	"runtime"
 	"strings"
 
 	"github.com/apex/log"
@@ -27,7 +26,6 @@ import (
 	"github.com/openSUSE/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	rgen "github.com/opencontainers/runtime-tools/generate"
 	"github.com/pkg/errors"
 )
 
@@ -35,6 +33,8 @@ import (
 // in an image configuration that do not have a native representation in the
 // runtime-spec).
 const (
+	osAnnotation           = "org.opencontainers.image.os"
+	archAnnotation         = "org.opencontainers.image.architecture"
 	authorAnnotation       = "org.opencontainers.image.author"
 	createdAnnotation      = "org.opencontainers.image.created"
 	stopSignalAnnotation   = "org.opencontainers.image.stopSignal"
@@ -46,14 +46,11 @@ const (
 // configuration specified by the OCI runtime-tools. It is equivalent to
 // MutateRuntimeSpec("runtime-tools/generate".New(), image).Spec().
 func ToRuntimeSpec(rootfs string, image ispec.Image) (rspec.Spec, error) {
-	g, err := rgen.New(runtime.GOOS)
-	if err != nil {
+	spec := Example()
+	if err := MutateRuntimeSpec(&spec, rootfs, image); err != nil {
 		return rspec.Spec{}, err
 	}
-	if err := MutateRuntimeSpec(g, rootfs, image); err != nil {
-		return rspec.Spec{}, err
-	}
-	return *g.Spec(), nil
+	return spec, nil
 }
 
 // parseEnv splits a given environment variable (of the form name=value) into
@@ -72,10 +69,42 @@ func parseEnv(env string) (string, string, error) {
 	return name, value, nil
 }
 
-// MutateRuntimeSpec mutates a given runtime specification generator with the
-// image configuration provided. It returns the original generator, and does
-// not modify any fields directly (to allow for chaining).
-func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error {
+// appendEnv takes a (name, value) pair and inserts it into the given
+// environment list (overwriting an existing environment if already set).
+func appendEnv(env *[]string, name, value string) {
+	val := name + "=" + value
+	for idx, oldVal := range *env {
+		if strings.HasPrefix(oldVal, name+"=") {
+			(*env)[idx] = val
+			return
+		}
+	}
+	*env = append(*env, val)
+}
+
+// allocateNilStruct recursively enumerates all pointers in the given type and
+// replaces them with the zero-value of their associated type. It's a shame
+// that this is necessary.
+//
+// TODO: Switch to doing this recursively with reflect.
+func allocateNilStruct(spec *rspec.Spec) {
+	if spec.Process == nil {
+		spec.Process = &rspec.Process{}
+	}
+	if spec.Root == nil {
+		spec.Root = &rspec.Root{}
+	}
+	if spec.Linux == nil {
+		spec.Linux = &rspec.Linux{}
+	}
+	if spec.Annotations == nil {
+		spec.Annotations = map[string]string{}
+	}
+}
+
+// MutateRuntimeSpec mutates a given runtime configuration with the image
+// configuration provided.
+func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error {
 	ig, err := igen.NewFromImage(image)
 	if err != nil {
 		return errors.Wrap(err, "creating image generator")
@@ -85,20 +114,20 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 		return errors.Errorf("unsupported OS: %s", image.OS)
 	}
 
+	allocateNilStruct(spec)
+
 	// FIXME: We need to figure out if we're modifying an incompatible runtime spec.
-	//g.SetVersion(rspec.Version)
-	// TODO: We stopped including the OS and Architecture information in the runtime-spec.
-	//       Make sure we fix that once https://github.com/opencontainers/image-spec/pull/711
-	//       is resolved.
+	//spec.Version = rspec.Version
+	spec.Version = "1.0.0"
 
 	// Set verbatim fields
-	g.SetProcessTerminal(true)
-	g.SetRootPath(filepath.Base(rootfs))
-	g.SetRootReadonly(false)
+	spec.Process.Terminal = true
+	spec.Root.Path = filepath.Base(rootfs)
+	spec.Root.Readonly = false
 
-	g.SetProcessCwd("/")
+	spec.Process.Cwd = "/"
 	if ig.ConfigWorkingDir() != "" {
-		g.SetProcessCwd(ig.ConfigWorkingDir())
+		spec.Process.Cwd = ig.ConfigWorkingDir()
 	}
 
 	for _, env := range ig.ConfigEnv() {
@@ -106,23 +135,25 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 		if err != nil {
 			return errors.Wrap(err, "parsing image.Config.Env")
 		}
-		g.AddProcessEnv(name, value)
+		appendEnv(&spec.Process.Env, name, value)
 	}
 
 	args := []string{}
 	args = append(args, ig.ConfigEntrypoint()...)
 	args = append(args, ig.ConfigCmd()...)
 	if len(args) > 0 {
-		g.SetProcessArgs(args)
+		spec.Process.Args = args
 	}
 
 	// Set annotations fields
 	for key, value := range ig.ConfigLabels() {
-		g.AddAnnotation(key, value)
+		spec.Annotations[key] = value
 	}
-	g.AddAnnotation(authorAnnotation, ig.Author())
-	g.AddAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
-	g.AddAnnotation(stopSignalAnnotation, image.Config.StopSignal)
+	spec.Annotations[osAnnotation] = ig.OS()
+	spec.Annotations[archAnnotation] = ig.Architecture()
+	spec.Annotations[authorAnnotation] = ig.Author()
+	spec.Annotations[createdAnnotation] = ig.Created().Format(igen.ISO8601)
+	spec.Annotations[stopSignalAnnotation] = image.Config.StopSignal
 
 	// Set parsed fields
 	// Get the *actual* uid and gid of the user. If the image doesn't contain
@@ -144,24 +175,25 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 		execUser = new(user.ExecUser)
 	}
 
-	g.SetProcessUID(uint32(execUser.Uid))
-	g.SetProcessGID(uint32(execUser.Gid))
-	g.ClearProcessAdditionalGids()
+	spec.Process.User.UID = uint32(execUser.Uid)
+	spec.Process.User.GID = uint32(execUser.Gid)
 
-	for _, gid := range execUser.Sgids {
-		g.AddProcessAdditionalGid(uint32(gid))
+	spec.Process.User.AdditionalGids = []uint32{}
+	for _, sgid := range execUser.Sgids {
+		spec.Process.User.AdditionalGids = append(spec.Process.User.AdditionalGids, uint32(sgid))
 	}
+
 	if execUser.Home != "" {
-		g.AddProcessEnv("HOME", execUser.Home)
+		appendEnv(&spec.Process.Env, "HOME", execUser.Home)
 	}
 
 	// Set optional fields
 	ports := ig.ConfigExposedPortsArray()
-	g.AddAnnotation(exposedPortsAnnotation, strings.Join(ports, ","))
+	spec.Annotations[exposedPortsAnnotation] = strings.Join(ports, ",")
 
 	for vol := range ig.ConfigVolumes() {
 		// XXX: This is _fine_ but might cause some issues in the future.
-		g.AddMount(rspec.Mount{
+		spec.Mounts = append(spec.Mounts, rspec.Mount{
 			Destination: vol,
 			Type:        "tmpfs",
 			Source:      "none",
@@ -170,7 +202,6 @@ func MutateRuntimeSpec(g rgen.Generator, rootfs string, image ispec.Image) error
 	}
 
 	// Remove all seccomp rules.
-	g.Spec().Linux.Seccomp = nil
-
+	spec.Linux.Seccomp = nil
 	return nil
 }
