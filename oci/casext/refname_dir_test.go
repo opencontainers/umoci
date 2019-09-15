@@ -33,11 +33,31 @@ import (
 	"time"
 
 	"github.com/openSUSE/umoci/oci/cas/dir"
+	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/go-digest"
 	ispecs "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"golang.org/x/net/context"
 )
+
+const (
+	customMediaType       = "org.opensuse.our-new-type"
+	customTargetMediaType = "org.opensuse.our-new-TARGET-type"
+	unknownMediaType      = "org.opensuse.fake-manifest"
+)
+
+type fakeManifest struct {
+	Descriptor ispec.Descriptor `json:"descriptor"`
+	Data       []byte           `json:"data"`
+}
+
+func init() {
+	fakeManifestParser := mediatype.CustomJSONParser(fakeManifest{})
+
+	mediatype.RegisterParser(customMediaType, fakeManifestParser)
+	mediatype.RegisterTarget(customTargetMediaType)
+	mediatype.RegisterParser(customTargetMediaType, fakeManifestParser)
+}
 
 type descriptorMap struct {
 	index  ispec.Descriptor
@@ -80,7 +100,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 	// XXX: In future we'll have to make tests for platform matching.
 	for k := 0; k < 5; k++ {
 		n := 3
-		name := fmt.Sprintf("img_%d", k)
+		name := fmt.Sprintf("normal_img_%d", k)
 
 		layerData := make([]bytes.Buffer, n)
 
@@ -177,19 +197,113 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		})
 	}
 
+	// Add some blobs that have custom mediaTypes. This is loosely based on
+	// the previous section.
+	for k := 0; k < 5; k++ {
+		name := fmt.Sprintf("custom_img_%d", k)
+
+		// Create a fake customTargetMediaType (will be masked by a different
+		// target media-type above).
+		notTargetDigest, notTargetSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+			Data: []byte("Hello, world!"),
+		})
+		if err != nil {
+			t.Fatalf("%s: error putting custom-manifest blob: %+v", name, err)
+		}
+		notTargetDescriptor := ispec.Descriptor{
+			MediaType: customTargetMediaType,
+			Digest:    notTargetDigest,
+			Size:      notTargetSize,
+			Annotations: map[string]string{
+				"name": name,
+			},
+		}
+
+		// Add extra custom non-target layers.
+		currentDescriptor := notTargetDescriptor
+		for i := 0; i < k; i++ {
+			newDigest, newSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+				Descriptor: currentDescriptor,
+				Data:       []byte("intermediate non-target"),
+			})
+			if err != nil {
+				t.Fatalf("%s: error putting custom-(non)target-%d blob: %+v", name, i, err)
+			}
+			currentDescriptor = ispec.Descriptor{
+				MediaType: customMediaType,
+				Digest:    newDigest,
+				Size:      newSize,
+			}
+		}
+
+		// Add the *real* customTargetMediaType.
+		targetDigest, targetSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+			Descriptor: currentDescriptor,
+			Data:       []byte("I am the real target!"),
+		})
+		if err != nil {
+			t.Fatalf("%s: error putting custom-manifest blob: %+v", name, err)
+		}
+		targetDescriptor := ispec.Descriptor{
+			MediaType: customTargetMediaType,
+			Digest:    targetDigest,
+			Size:      targetSize,
+			Annotations: map[string]string{
+				"name": name,
+			},
+		}
+
+		// Add extra custom non-target layers.
+		currentDescriptor = targetDescriptor
+		for i := 0; i < k; i++ {
+			newDigest, newSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+				Descriptor: currentDescriptor,
+				Data:       []byte("intermediate non-target"),
+			})
+			if err != nil {
+				t.Fatalf("%s: error putting custom-(non)target-%d blob: %+v", name, i, err)
+			}
+			currentDescriptor = ispec.Descriptor{
+				MediaType: customMediaType,
+				Digest:    newDigest,
+				Size:      newSize,
+			}
+		}
+
+		// Add extra index layers.
+		indexDescriptor := currentDescriptor
+		for i := 0; i < k; i++ {
+			newIndex := ispec.Index{
+				Versioned: ispecs.Versioned{
+					SchemaVersion: 2,
+				},
+				Manifests: []ispec.Descriptor{indexDescriptor},
+			}
+			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
+			if err != nil {
+				t.Fatalf("%s: error putting index-%d blob: %+v", name, i, err)
+			}
+			indexDescriptor = ispec.Descriptor{
+				MediaType: ispec.MediaTypeImageIndex,
+				Digest:    indexDigest,
+				Size:      indexSize,
+			}
+		}
+
+		mapping = append(mapping, descriptorMap{
+			index:  indexDescriptor,
+			result: targetDescriptor,
+		})
+	}
+
 	// Add some blobs that have unknown mediaTypes. This is loosely based on
 	// the previous section.
 	for k := 0; k < 5; k++ {
-		name := fmt.Sprintf("img_%d", k)
-
-		type fakeManifest struct {
-			Descriptor ispec.Descriptor `json:"descriptor"`
-			Data       []byte           `json:"data"`
-		}
+		name := fmt.Sprintf("unknown_img_%d", k)
 
 		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
 			Descriptor: ispec.Descriptor{
-				MediaType: "org.opensuse.fake.data",
+				MediaType: "org.opensuse.fake-data",
 				Digest:    digest.SHA256.FromString("Hello, world!"),
 				Size:      0,
 			},
@@ -199,7 +313,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			t.Fatalf("%s: error putting manifest blob: %+v", name, err)
 		}
 		manifestDescriptor := ispec.Descriptor{
-			MediaType: "org.opensuse.fake.manifest",
+			MediaType: unknownMediaType,
 			Digest:    manifestDigest,
 			Size:      manifestSize,
 			Annotations: map[string]string{
