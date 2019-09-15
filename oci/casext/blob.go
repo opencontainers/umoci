@@ -18,69 +18,14 @@
 package casext
 
 import (
-	"encoding/json"
 	"io"
 	"io/ioutil"
-	"sync"
 
+	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
-
-// BlobParseFunc is a callback that is registered for a given mediatype and
-// called to parse a blob if it is encountered. If possible, the blob should be
-// represented as a native Go object (with all Descriptors represented as
-// ispec.Descriptor objects) -- this will allow umoci to recursively discover
-// blob dependencies.
-type BlobParseFunc func(io.Reader) (interface{}, error)
-
-var registered = struct {
-	lock      sync.RWMutex
-	callbacks map[string]BlobParseFunc
-}{
-	callbacks: map[string]BlobParseFunc{
-		ispec.MediaTypeDescriptor: func(reader io.Reader) (interface{}, error) {
-			var ret ispec.Descriptor
-			err := json.NewDecoder(reader).Decode(&ret)
-			return ret, err
-		},
-
-		ispec.MediaTypeImageManifest: func(reader io.Reader) (interface{}, error) {
-			var ret ispec.Manifest
-			err := json.NewDecoder(reader).Decode(&ret)
-			return ret, err
-		},
-
-		ispec.MediaTypeImageIndex: func(reader io.Reader) (interface{}, error) {
-			var ret ispec.Index
-			err := json.NewDecoder(reader).Decode(&ret)
-			return ret, err
-		},
-
-		ispec.MediaTypeImageConfig: func(reader io.Reader) (interface{}, error) {
-			var ret ispec.Image
-			err := json.NewDecoder(reader).Decode(&ret)
-			return ret, err
-		},
-	},
-}
-
-func getParser(mediaType string) BlobParseFunc {
-	registered.lock.RLock()
-	fn := registered.callbacks[mediaType]
-	registered.lock.RUnlock()
-	return fn
-}
-
-// RegisterBlobParser registers a new BlobParseFunc to be used when the given
-// mediatype is encountered during parsing or recursive walks of blobs. See the
-// documentation of BlobParseFunc for more detail.
-func RegisterBlobParser(mediaType string, callback BlobParseFunc) {
-	registered.lock.Lock()
-	registered.callbacks[mediaType] = callback
-	registered.lock.Unlock()
-}
 
 // Blob represents a "parsed" blob in an OCI image's blob store. MediaType
 // offers a type-safe way of checking what the type of Data is.
@@ -125,7 +70,7 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 		Data:       reader,
 	}
 
-	if fn := getParser(descriptor.MediaType); fn != nil {
+	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
 		defer func() {
 			if _, err := io.Copy(ioutil.Discard, reader); Err == nil {
 				Err = errors.Wrapf(err, "discard trailing %q blob", descriptor.MediaType)
