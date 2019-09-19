@@ -386,8 +386,9 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 		}
 
 		// Re-commit the blob.
-		// TODO: This won't handle foreign blobs correctly, we need to make it
-		//       possible to write a modified blob through the blob API.
+		// TODO: This won't handle foreign (non-JSON) blobs correctly, we need
+		//       to make it possible to write a modified blob through the blob
+		//       API -- effectively a complement to mediatype.RegisterParser.
 		blobDigest, blobSize, err := m.engine.PutBlobJSON(ctx, parentBlob.Data)
 		if err != nil {
 			return casext.DescriptorPath{}, errors.Wrapf(err, "put json parent-%d blob", idx)
