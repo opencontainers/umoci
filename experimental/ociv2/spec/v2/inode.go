@@ -19,21 +19,13 @@ package v2
 
 import (
 	"github.com/openSUSE/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/restic/chunker"
 )
 
 // OCIv2 media-types.
 const (
-	MediaTypeInodeFile      = "application/x-umoci/ociv2.snapshot.inode/unix-file.v0+json"
-	MediaTypeInodeDirectory = "application/x-umoci/ociv2.snapshot.inode/unix-directory.v0+json"
-	MediaTypeInodeSymlink   = "application/x-umoci/ociv2.snapshot.inode/unix-symlink.v0+json"
-	MediaTypeInodeDevice    = "application/x-umoci/ociv2.snapshot.inode/unix-device.v0+json"
-	MediaTypeInodeNamedPipe = "application/x-umoci/ociv2.snapshot.inode/unix-fifo.v0+json"
-	MediaTypeInodeSocket    = "application/x-umoci/ociv2.snapshot.inode/unix-socket.v0+json"
-	//MediaTypeInodeHardlink  = "application/x-umoci/ociv2.snapshot.inode/unix-hardlink.v0+json"
-
+	MediaTypeRoot  = "application/x-umoci/ociv2.snapshot.root+json"
 	MediaTypeChunk = "application/x-umoci/ociv2.snapshot.chunk.v0+raw"
 )
 
@@ -63,83 +55,49 @@ type InodeMeta struct {
 	// TODO: xattrs
 }
 
-// BasicInode is the core inode structure that is embedded in all other inode
-// types. All inodes have this metadata.
-type BasicInode struct {
-	// Meta is a the
-	Meta InodeMeta `json:"meta,omitempty"`
-}
+// InodeType ...
+type InodeType string
 
-// FileInode represents the inode of an ordinary file. The contents of the file
-// are represented by the Chunks list (which are a set of CDC-chunked .
-type FileInode struct {
-	BasicInode
-	// Digest is the complete digest of all of the chunk data. This allows for
-	// verification of the final file's contents, and for file-store
-	// deduplication to be conducted even if two image generators have
-	// different chunking algorithms (even though this shouldn't happen).
-	Digest digest.Digest
-	// Chunks is the list of (in-order) chunks that make up the file.
-	Chunks []v1.Descriptor `json:"chunks,omitempty"`
-}
-
-// DirectoryInode represents a directory, with Children being a list of
-// Descriptors to inodes inside the given directory.
-type DirectoryInode struct {
-	BasicInode
-	// Children is the map of child entries to inode descriptors.
-	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-	// OUTPUT CONSISTENT MAPS.
-	// TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO TODO
-	Children map[string]v1.Descriptor `json:"children"`
-}
-
-// SymlinkInode represents a symlink with the given string content as the
-// target. The Mode of this inode *must* be set to nil in order to be a valid
-// SymlinkInode.
-type SymlinkInode struct {
-	BasicInode
-	// Target is the symlink target string.
-	Target string `json:"target"`
-}
-
-// DeviceType is used to represent the type of DeviceInode.
-type DeviceType string
-
+// InodeType media-types.
+// TODO: Document the meaning of InlineData and IndirectData for each type.
 const (
-	// CharDevice represents a character device DeviceInode.
-	CharDevice DeviceType = "char"
-	// BlockDevice represents a block device DeviceInode.
-	BlockDevice DeviceType = "block"
+	InodeTypeFile        InodeType = "unix/file.v0"
+	InodeTypeDirectory   InodeType = "unix/directory.v0"
+	InodeTypeSymlink     InodeType = "unix/symlink.v0"
+	InodeTypeCharDevice  InodeType = "unix/char-device.v0"
+	InodeTypeBlockDevice InodeType = "unix/block-device.v0"
+	InodeTypeNamedPipe   InodeType = "unix/fifo.v0"
+	InodeTypeSocket      InodeType = "unix/socket.v0"
 )
 
-// DeviceInode represents a character or block device inode (with the given
-// major and minor numbers).
-type DeviceInode struct {
-	BasicInode
-	// Type is what kind of device this is.
-	Type DeviceType `json:"type"`
-	// Major is the major number of the device.
-	Major uint32 `json:"major"`
-	// Major is the minor number of the device.
-	Minor uint32 `json:"minor"`
+// Inode is a representation of a generic inode of a given InodeType. The
+// meaning of InlineData and IndirectData is incredibly dependent on the
+// InodeType.
+type Inode struct {
+	// What is the type of the
+	Type InodeType
+
+	// Meta is used for all inode types, so is inlined.
+	Meta InodeMeta `json:"meta,omitempty"`
+
+	// InlineData is for data which can be trivially inlined as a string. The
+	// meaning of keys and values is very dependent on Type (and is
+	// unfortunately required because of Go not having a typed-union or
+	// Rust-like enum concept).
+	// XXX: Needs to be made consistent output.
+	InlineData map[string]string `json:"inline,omitempty"`
+
+	// IndirectData is for data which is stored as separate blobs. The meaning
+	// of this field is very dpeendent on Type.
+	IndirectData []v1.Descriptor `json:"indirect,omitempty"`
 }
 
-// NamedPipeInode repesents a named pipe (or FIFO).
-type NamedPipeInode struct {
-	BasicInode
-}
-
-// SocketInode represents a unix socket.
-type SocketInode struct {
-	BasicInode
+type Root struct {
+	// Inodes is the set of all paths and their types in the image.
+	// XXX: Needs to be made consistent output.
+	Inodes map[string]Inode `json:"content"`
 }
 
 func init() {
-	mediatype.RegisterParser(MediaTypeInodeFile, mediatype.CustomJSONParser(FileInode{}))
-	mediatype.RegisterParser(MediaTypeInodeDirectory, mediatype.CustomJSONParser(DirectoryInode{}))
-	mediatype.RegisterParser(MediaTypeInodeSymlink, mediatype.CustomJSONParser(SymlinkInode{}))
-	mediatype.RegisterParser(MediaTypeInodeDevice, mediatype.CustomJSONParser(DeviceInode{}))
-	mediatype.RegisterParser(MediaTypeInodeNamedPipe, mediatype.CustomJSONParser(NamedPipeInode{}))
-	mediatype.RegisterParser(MediaTypeInodeSocket, mediatype.CustomJSONParser(SocketInode{}))
+	mediatype.RegisterParser(MediaTypeRoot, mediatype.CustomJSONParser(Root{}))
 }

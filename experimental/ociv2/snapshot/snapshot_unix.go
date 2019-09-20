@@ -41,35 +41,40 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-type snapshotter struct {
-	fsEval fseval.FsEval
-	engine casext.Engine
-}
-
-func Snapshot(ctx context.Context, engine casext.Engine, root string) (*v1.Descriptor, error) {
-	s := &snapshotter{
-		engine: engine,
-		fsEval: fseval.DefaultFsEval,
+func toBaseInode(st unix.Stat_t) (v2.Inode, error) {
+	var inodeType v2.InodeType
+	switch st.Mode & unix.S_IFMT {
+	case unix.S_IFREG:
+		inodeType = v2.InodeTypeFile
+	case unix.S_IFDIR:
+		inodeType = v2.InodeTypeDirectory
+	case unix.S_IFLNK:
+		inodeType = v2.InodeTypeSymlink
+	case unix.S_IFBLK:
+		inodeType = v2.InodeTypeBlockDevice
+	case unix.S_IFCHR:
+		inodeType = v2.InodeTypeCharDevice
+	case unix.S_IFIFO:
+		inodeType = v2.InodeTypeNamedPipe
+	case unix.S_IFSOCK:
+		inodeType = v2.InodeTypeSocket
+	default:
+		return v2.Inode{}, errors.Errorf("unknown st.Mode: 0x%x", st.Mode&unix.S_IFMT)
 	}
 
-	fi, err := s.fsEval.Lstat(root)
-	if err != nil {
-		return nil, errors.Wrap(err, "snapshot: lstat root")
-	}
-	if !fi.IsDir() {
-		return nil, errors.Errorf("snapshot: root is not a directory")
+	// Handle mode for symlinks.
+	mode := st.Mode &^ unix.S_IFMT
+	modePtr := &mode
+	if st.Mode&unix.S_IFMT == unix.S_IFLNK {
+		modePtr = nil
 	}
 
-	return s.directory(ctx, root)
-}
-
-func toBasic(st unix.Stat_t) v2.BasicInode {
-	mode := st.Mode
-	basic := v2.BasicInode{
+	return v2.Inode{
+		Type: inodeType,
 		Meta: v2.InodeMeta{
 			UID:  st.Uid,
 			GID:  st.Gid,
-			Mode: &mode,
+			Mode: modePtr,
 			/*
 				AccessTime: v2.Timespec{
 					Sec:  st.Atim.Sec,
@@ -85,25 +90,97 @@ func toBasic(st unix.Stat_t) v2.BasicInode {
 				},
 			*/
 		},
+	}, nil
+}
+
+func Snapshot(ctx context.Context, engine casext.Engine, rootPath string) (*v1.Descriptor, error) {
+	fsEval := fseval.DefaultFsEval
+
+	fi, err := fsEval.Lstat(rootPath)
+	if err != nil {
+		return nil, errors.Wrap(err, "snapshot: lstat root")
 	}
-	if os.FileMode(mode)&os.ModeSymlink == os.ModeSymlink {
-		basic.Meta.Mode = nil
+	if !fi.IsDir() {
+		return nil, errors.Errorf("snapshot: root is not a directory")
 	}
-	return basic
+
+	root := v2.Root{
+		Inodes: map[string]v2.Inode{},
+	}
+
+	err = filepath.Walk(rootPath, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return errors.Wrapf(err, "walking into %s", path)
+		}
+		relPath, err := filepath.Rel(rootPath, path)
+		if err != nil {
+			return errors.Wrapf(err, "finding relpath of %s (root is %s)", path, rootPath)
+		}
+
+		st, err := fsEval.Lstatx(path)
+		if err != nil {
+			return errors.Wrapf(err, "snapshot path")
+		}
+
+		ino, err := toBaseInode(st)
+		if err != nil {
+			return errors.Wrap(err, "convert stat to base-inode")
+		}
+
+		switch ino.Type {
+		case v2.InodeTypeFile:
+			wholeDigest, chunks, err := chunkFile(ctx, engine, path)
+			if err != nil {
+				return errors.Wrapf(err, "snap-file: chunks")
+			}
+			ino.InlineData = map[string]string{
+				"digest": wholeDigest.Encoded(),
+			}
+			ino.IndirectData = chunks
+		case v2.InodeTypeCharDevice, v2.InodeTypeBlockDevice:
+			ino.InlineData = map[string]string{
+				"major": string(unix.Major(st.Rdev)),
+				"minor": string(unix.Minor(st.Rdev)),
+			}
+		case v2.InodeTypeSymlink:
+			target, err := fsEval.Readlink(path)
+			if err != nil {
+				return errors.Wrapf(err, "snap-symlink: readlink")
+			}
+			ino.InlineData = map[string]string{
+				"target": target,
+			}
+		}
+
+		if _, ok := root.Inodes[relPath]; ok {
+			return errors.Errorf("snapshot: hit duplicate path in walk: %s", relPath)
+		}
+		root.Inodes[relPath] = ino
+		return nil
+	})
+	if err != nil {
+		return nil, errors.Wrap(err, "snapshot: walk root")
+	}
+
+	digest, size, err := engine.PutBlobJSON(ctx, root)
+	if err != nil {
+		return nil, errors.Wrapf(err, "snapshot: put root blob")
+	}
+
+	return &v1.Descriptor{
+		MediaType: v2.MediaTypeRoot,
+		Digest:    digest,
+		Size:      size,
+	}, nil
 }
 
 // TODO: Switch this to be stored somewhere else.
 const wholeChunkAlgorithm = digest.SHA256
 
-func (s *snapshotter) file(ctx context.Context, path string) (*v1.Descriptor, error) {
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "snap-file: lstat")
-	}
-
+func chunkFile(ctx context.Context, engine casext.Engine, path string) (digest.Digest, []v1.Descriptor, error) {
 	fh, err := os.Open(path)
 	if err != nil {
-		return nil, errors.Wrap(err, "snap-file: open")
+		return "", nil, errors.Wrap(err, "snap-file: open")
 	}
 	defer fh.Close()
 
@@ -119,16 +196,16 @@ func (s *snapshotter) file(ctx context.Context, path string) (*v1.Descriptor, er
 			break
 		}
 		if err != nil {
-			return nil, errors.Wrap(err, "snap-file: next chunk")
+			return "", nil, errors.Wrap(err, "snap-file: next chunk")
 		}
 		buffer := bytes.NewBuffer(chunk.Data)
 
-		digest, size, err := s.engine.PutBlob(ctx, buffer)
+		digest, size, err := engine.PutBlob(ctx, buffer)
 		if err != nil {
-			return nil, errors.Wrap(err, "snap-file: put chunk blob")
+			return "", nil, errors.Wrap(err, "snap-file: put chunk blob")
 		}
 		if size != int64(chunk.Length) {
-			return nil, errors.Errorf("chunk size doesn't match stored size")
+			return "", nil, errors.Errorf("chunk size doesn't match stored size")
 		}
 
 		chunks = append(chunks, v1.Descriptor{
@@ -137,173 +214,5 @@ func (s *snapshotter) file(ctx context.Context, path string) (*v1.Descriptor, er
 			Digest:    digest,
 		})
 	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.FileInode{
-		BasicInode: toBasic(st),
-		Digest:     wholeDigester.Digest(),
-		Chunks:     chunks,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-file: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeFile,
-		Digest:    digest,
-		Size:      size,
-	}, nil
-}
-
-func (s *snapshotter) directory(ctx context.Context, path string) (*v1.Descriptor, error) {
-	fis, err := s.fsEval.Readdir(path)
-	if err != nil {
-		return nil, errors.Wrap(err, "snap-dir: readdir")
-	}
-
-	childMap := map[string]v1.Descriptor{}
-	for _, fi := range fis {
-		name := fi.Name()
-		full := filepath.Join(path, name)
-
-		if name == "." || name == ".." {
-			continue
-		}
-
-		var childDesc *v1.Descriptor
-		fimode := fi.Mode() & os.ModeType
-		switch {
-		case fimode&os.ModeDir == os.ModeDir:
-			childDesc, err = s.directory(ctx, full)
-		case fimode&os.ModeSymlink == os.ModeSymlink:
-			childDesc, err = s.symlink(ctx, full)
-		case fimode&os.ModeDevice == os.ModeDevice:
-			childDesc, err = s.device(ctx, full)
-		case fimode&os.ModeNamedPipe == os.ModeNamedPipe:
-			childDesc, err = s.fifo(ctx, full)
-		case fimode&os.ModeSocket == os.ModeSocket:
-			childDesc, err = s.socket(ctx, full)
-		case fimode == 0:
-			childDesc, err = s.file(ctx, full)
-		default:
-			err = errors.Errorf("unknown file mode: %x", fi.Mode()&os.ModeType)
-		}
-		if err != nil {
-			return nil, errors.Wrapf(err, "snap-dir: %q", fi.Name())
-		}
-		childMap[name] = *childDesc
-	}
-
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-dir: lstat")
-	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.DirectoryInode{
-		BasicInode: toBasic(st),
-		Children:   childMap,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-dir: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeDirectory,
-		Digest:    digest,
-		Size:      size,
-	}, nil
-}
-
-func (s *snapshotter) symlink(ctx context.Context, path string) (*v1.Descriptor, error) {
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-symlink: lstat")
-	}
-
-	target, err := s.fsEval.Readlink(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-symlink: readlink")
-	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.SymlinkInode{
-		BasicInode: toBasic(st),
-		Target:     target,
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-symlink: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeSymlink,
-		Digest:    digest,
-		Size:      size,
-	}, nil
-	return nil, nil
-}
-
-func (s *snapshotter) device(ctx context.Context, path string) (*v1.Descriptor, error) {
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-fifo: lstat")
-	}
-
-	deviceType := v2.BlockDevice
-	if os.FileMode(st.Mode)&os.ModeCharDevice == os.ModeCharDevice {
-		deviceType = v2.CharDevice
-	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.DeviceInode{
-		BasicInode: toBasic(st),
-		Type:       deviceType,
-		Major:      unix.Major(st.Rdev),
-		Minor:      unix.Minor(st.Rdev),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-fifo: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeDevice,
-		Digest:    digest,
-		Size:      size,
-	}, nil
-}
-
-func (s *snapshotter) fifo(ctx context.Context, path string) (*v1.Descriptor, error) {
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-fifo: lstat")
-	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.NamedPipeInode{
-		BasicInode: toBasic(st),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-fifo: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeNamedPipe,
-		Digest:    digest,
-		Size:      size,
-	}, nil
-}
-
-func (s *snapshotter) socket(ctx context.Context, path string) (*v1.Descriptor, error) {
-	st, err := s.fsEval.Lstatx(path)
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-socket: lstat")
-	}
-
-	digest, size, err := s.engine.PutBlobJSON(ctx, v2.SocketInode{
-		BasicInode: toBasic(st),
-	})
-	if err != nil {
-		return nil, errors.Wrapf(err, "snap-socket: put blob")
-	}
-
-	return &v1.Descriptor{
-		MediaType: v2.MediaTypeInodeSocket,
-		Digest:    digest,
-		Size:      size,
-	}, nil
+	return wholeDigester.Digest(), chunks, nil
 }
