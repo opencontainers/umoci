@@ -134,7 +134,7 @@ func Snapshot(ctx context.Context, engine casext.Engine, rootPath string) (*v1.D
 				return errors.Wrapf(err, "snap-file: chunks")
 			}
 			ino.InlineData = map[string]string{
-				"digest": wholeDigest.Encoded(),
+				"digest": wholeDigest.String(),
 			}
 			ino.IndirectData = chunks
 		case v2.InodeTypeCharDevice, v2.InodeTypeBlockDevice:

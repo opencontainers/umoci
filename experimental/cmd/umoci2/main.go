@@ -137,6 +137,7 @@ func main() {
 
 	app.Commands = []cli.Command{
 		snapshotCommand,
+		restoreCommand,
 	}
 
 	app.Metadata = map[string]interface{}{}
