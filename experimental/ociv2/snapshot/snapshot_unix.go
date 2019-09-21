@@ -75,20 +75,14 @@ func toBaseInode(st unix.Stat_t) (v2.Inode, error) {
 			UID:  st.Uid,
 			GID:  st.Gid,
 			Mode: modePtr,
-			/*
-				AccessTime: v2.Timespec{
-					Sec:  st.Atim.Sec,
-					Nsec: uint32(st.Atim.Nsec),
-				},
-				ChangeTime: v2.Timespec{
-					Sec:  st.Ctim.Sec,
-					Nsec: uint32(st.Ctim.Nsec),
-				},
-				ModifyTime: v2.Timespec{
-					Sec:  st.Mtim.Sec,
-					Nsec: uint32(st.Mtim.Nsec),
-				},
-			*/
+			AccessTime: v2.Timespec{
+				Sec:  st.Atim.Sec,
+				Nsec: uint32(st.Atim.Nsec),
+			},
+			ModifyTime: v2.Timespec{
+				Sec:  st.Mtim.Sec,
+				Nsec: uint32(st.Mtim.Nsec),
+			},
 		},
 	}, nil
 }

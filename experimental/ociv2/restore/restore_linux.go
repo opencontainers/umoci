@@ -57,7 +57,7 @@ func (r *stitchedReader) Read(p []byte) (int, error) {
 		if err := part.Close(); err != nil {
 			return -1, err
 		}
-		r.idx += 1
+		r.idx++
 		if r.idx < len(r.parts) {
 			err = nil
 		}
@@ -90,10 +90,9 @@ func (r *Restorer) stitch(ctx context.Context, chunks []v1.Descriptor) (io.ReadC
 	return stitched, totalSize, nil
 }
 
-const _FICLONE = 0x40049409
-
 func (r *Restorer) reflinkFile(dst *os.File, src *os.File) error {
-	err := unix.IoctlSetInt(int(dst.Fd()), _FICLONE, int(src.Fd()))
+	const FiClone = 0x40049409
+	err := unix.IoctlSetInt(int(dst.Fd()), FiClone, int(src.Fd()))
 	return errors.Wrapf(err, "ioctl FICLONE")
 }
 
@@ -104,12 +103,19 @@ func (r *Restorer) copyFile(dst io.Writer, src io.Reader) error {
 
 func applyMetadata(path string, meta v2.InodeMeta) error {
 	if err := unix.Lchown(path, int(meta.UID), int(meta.GID)); err != nil {
-		return err
+		return &os.PathError{Op: "lchown", Path: path, Err: err}
 	}
 	if meta.Mode != nil {
 		if err := unix.Chmod(path, *meta.Mode); err != nil {
-			return err
+			return &os.PathError{Op: "chmod", Path: path, Err: err}
 		}
+	}
+	utimes := []unix.Timespec{
+		{Sec: meta.AccessTime.Sec, Nsec: int64(meta.AccessTime.Nsec)},
+		{Sec: meta.ModifyTime.Sec, Nsec: int64(meta.ModifyTime.Nsec)},
+	}
+	if err := unix.UtimesNanoAt(unix.AT_FDCWD, path, utimes, unix.AT_SYMLINK_NOFOLLOW); err != nil {
+		return &os.PathError{Op: "utimensat", Path: path, Err: err}
 	}
 	// TODO: the rest
 	return nil

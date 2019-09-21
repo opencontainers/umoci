@@ -40,7 +40,7 @@ const ChunkMax = 16 * 1024 * 1024
 // Timespec ...
 type Timespec struct {
 	Sec  int64  `json:"s"`
-	Nsec uint32 `json:"ns"`
+	Nsec uint32 `json:"ns,omitempty"`
 }
 
 // InodeMeta ...
@@ -50,7 +50,6 @@ type InodeMeta struct {
 	Mode       *uint32  `json:"mode,omitempty"`
 	AccessTime Timespec `json:"atime"`
 	ModifyTime Timespec `json:"mtime"`
-	ChangeTime Timespec `json:"ctime"`
 	// TODO: attrs
 	// TODO: xattrs
 }
