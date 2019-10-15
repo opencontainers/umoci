@@ -501,7 +501,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// We need to make sure that we copy all of the bytes.
 		n, err := io.Copy(fh, r)
 		if int64(n) != hdr.Size {
-			err = io.ErrShortWrite
+			err = errors.Wrapf(io.ErrShortWrite, "didn't write all the bytes to the new file (%s)", err)
 		}
 		if err != nil {
 			return errors.Wrap(err, "unpack to regular file")
