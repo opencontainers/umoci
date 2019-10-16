@@ -153,11 +153,8 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 					continue
 				}
 			}
-			if te.partialRootless {
-				log.Warnf("rootless{%s} ignoring forbidden xattr: %q", hdr.Name, name)
-				continue
-			}
-			return errors.Errorf("restore xattr metadata: saw forbidden xattr %q: %s", name, hdr.Name)
+			log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, name)
+			continue
 		}
 		if err := te.fsEval.Lsetxattr(path, name, value, 0); err != nil {
 			// In rootless mode, some xattrs will fail (security.capability).
