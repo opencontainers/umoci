@@ -131,9 +131,14 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	if err := te.fsEval.Lclearxattrs(path, ignoreXattrs); err != nil {
-		return errors.Wrapf(err, "clear xattr metadata: %s", path)
+	err := te.fsEval.Lclearxattrs(path, ignoreXattrs)
+	if err != nil {
+		if errors.Cause(err) != unix.ENOTSUP {
+			return errors.Wrapf(err, "clear xattr metadata: %s", path)
+		}
+		log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
 	}
+
 	for name, value := range hdr.Xattrs {
 		value := []byte(value)
 
@@ -176,7 +181,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// that extended attributes are simply unsupported by the
 			// underlying filesystem (such as AUFS or NFS).
 			if errors.Cause(err) == unix.ENOTSUP {
-				log.Warnf("xatt{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+				log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
 				continue
 			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)
@@ -306,7 +311,10 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		//       tar_generate.go.
 		xattrs, err := te.fsEval.Llistxattr(dir)
 		if err != nil {
-			return errors.Wrap(err, "get dirHdr.Xattrs")
+			if errors.Cause(err) != unix.ENOTSUP {
+				return errors.Wrap(err, "get dirHdr.Xattrs")
+			}
+			log.Warnf("xattr{%s} ignoring ENOTSUP on llistxattr", dir)
 		}
 		if len(xattrs) > 0 {
 			dirHdr.Xattrs = map[string]string{}
