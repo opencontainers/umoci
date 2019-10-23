@@ -64,6 +64,13 @@ type TarExtractor struct {
 	// to a trie if necessary). These paths are relative to the tar root but
 	// are fully symlink-expanded so no need to worry about that line noise.
 	upperPaths map[string]struct{}
+
+	// enotsupWarned is a flag set when we encounter the first ENOTSUP error
+	// dealing with xattrs. This is used to ensure extraction to a destination
+	// file system that does not support xattrs raises a single warning, rather
+	// than a warning for every file, which can amount to 1000s of messages that
+	// scroll a terminal, and may obscure other more important warnings.
+	enotsupWarned bool
 }
 
 // NewTarExtractor creates a new TarExtractor.
@@ -78,6 +85,7 @@ func NewTarExtractor(opt MapOptions) *TarExtractor {
 		partialRootless: opt.Rootless || inUserNamespace,
 		fsEval:          fsEval,
 		upperPaths:      make(map[string]struct{}),
+		enotsupWarned:   false,
 	}
 }
 
@@ -136,7 +144,13 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		if errors.Cause(err) != unix.ENOTSUP {
 			return errors.Wrapf(err, "clear xattr metadata: %s", path)
 		}
-		log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+		if !te.enotsupWarned {
+			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+			log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
+			te.enotsupWarned = true
+		} else {
+			log.Debugf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+		}
 	}
 
 	for name, value := range hdr.Xattrs {
@@ -178,7 +192,13 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// that extended attributes are simply unsupported by the
 			// underlying filesystem (such as AUFS or NFS).
 			if errors.Cause(err) == unix.ENOTSUP {
-				log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+				if !te.enotsupWarned {
+					log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+					log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
+					te.enotsupWarned = true
+				} else {
+					log.Debugf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+				}
 				continue
 			}
 			return errors.Wrapf(err, "restore xattr metadata: %s", path)
@@ -311,7 +331,13 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			if errors.Cause(err) != unix.ENOTSUP {
 				return errors.Wrap(err, "get dirHdr.Xattrs")
 			}
-			log.Warnf("xattr{%s} ignoring ENOTSUP on llistxattr", dir)
+			if !te.enotsupWarned {
+				log.Warnf("xattr{%s} ignoring ENOTSUP on llistxattr", dir)
+				log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
+				te.enotsupWarned = true
+			} else {
+				log.Debugf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+			}
 		}
 		if len(xattrs) > 0 {
 			dirHdr.Xattrs = map[string]string{}

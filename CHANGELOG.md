@@ -5,6 +5,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+- Suppress repeated xattr warnings on destination filesystems that do not
+  support xattrs.
 
 ## [0.4.5] - 2019-12-04
 ## Added
