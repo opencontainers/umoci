@@ -21,6 +21,7 @@ import (
 	"reflect"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 )
@@ -87,13 +88,12 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 		return nil
 
 	case reflect.Struct:
-		// We are only ever going to be interested in ispec.* types.
-		// XXX: This is something we might want to revisit in the future.
-		if V.Type().PkgPath() != descriptorType.PkgPath() {
+		// We are only ever going to be interested in registered types.
+		if !mediatype.IsRegisteredPackage(V.Type().PkgPath()) {
 			log.WithFields(log.Fields{
 				"name":   V.Type().PkgPath() + "::" + V.Type().Name(),
 				"v1path": descriptorType.PkgPath(),
-			}).Debugf("detected escape to outside ispec.* namespace")
+			}).Debugf("detected jump outside permitted packages")
 			return nil
 		}
 

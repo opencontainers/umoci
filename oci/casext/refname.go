@@ -21,23 +21,11 @@ import (
 	"regexp"
 
 	"github.com/apex/log"
+	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
-
-// isKnownMediaType returns whether a media type is known by the spec. This
-// probably should be moved somewhere else to avoid going out of date.
-func isKnownMediaType(mediaType string) bool {
-	return mediaType == ispec.MediaTypeDescriptor ||
-		mediaType == ispec.MediaTypeImageManifest ||
-		mediaType == ispec.MediaTypeImageIndex ||
-		mediaType == ispec.MediaTypeImageLayer ||
-		mediaType == ispec.MediaTypeImageLayerGzip ||
-		mediaType == ispec.MediaTypeImageLayerNonDistributable ||
-		mediaType == ispec.MediaTypeImageLayerNonDistributableGzip ||
-		mediaType == ispec.MediaTypeImageConfig
-}
 
 // refnameRegex is a regex that only matches reference names that are valid
 // according to the OCI specification. See IsValidReferenceName for the EBNF.
@@ -102,16 +90,14 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 		if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
 			descriptor := descriptorPath.Descriptor()
 
-			// It is very important that we do not ignore unknown media types
-			// here. We only recurse into mediaTypes that are *known* and are
-			// also not ispec.MediaTypeImageManifest.
-			if isKnownMediaType(descriptor.MediaType) && descriptor.MediaType != ispec.MediaTypeImageManifest {
-				return nil
+			// If the media-type should be treated as a "target media-type" for
+			// reference resolution, we stop resolution here and add it to the
+			// set of resolved paths.
+			if mediatype.IsTarget(descriptor.MediaType) {
+				resolutions = append(resolutions, descriptorPath)
+				return ErrSkipDescriptor
 			}
-
-			// Add the resolution and do not recurse any deeper.
-			resolutions = append(resolutions, descriptorPath)
-			return ErrSkipDescriptor
+			return nil
 		}); err != nil {
 			return nil, errors.Wrapf(err, "walk %s", root.Digest)
 		}
