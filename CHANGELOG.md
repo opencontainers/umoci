@@ -5,12 +5,24 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased]
+## Added
+- Expose umoci subcommands as part of the API, so they can be used by other Go
+  projects. openSUSE/umoci#289
+- Add extensible hooking to the core libraries in umoci, to allow for
+  third-party media-types to be treated just like first-party ones (the key
+  difference is the introspection and parsing logic). openSUSE/umoci#299
+  openSUSE/umoci#307
+
 ## Fixed
 - Use `type: bind` for generated `config.json` bind-mounts. While this doesn't
   make too much sense (see opencontainers/runc#2035), it does mean that
   rootless containers work properly with newer `runc` releases (which appear to
   have regressed when handling file-based bind-mounts with a "bad" `type`).
   openSUSE/umoci#294 openSUSE/umoci#295
+- Don't insert a new layer if there is no diff. openSUSE/umoci#293
+- Only output a warning if forbidden extended attributes are present inside the
+  tar archive -- otherwise we fail on certain (completely broken) Docker
+  images. openSUSE/umoci#304
 
 ## [0.4.4] - 2019-01-30
 ## Added
