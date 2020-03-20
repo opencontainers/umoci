@@ -39,27 +39,13 @@ func (e Engine) GC(ctx context.Context) error {
 	// Generate the root set of descriptors.
 	var root []ispec.Descriptor
 
-	names, err := e.ListReferences(ctx)
+	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return errors.Wrap(err, "get roots")
+		return errors.Wrap(err, "get top-level index")
 	}
 
-	for _, name := range names {
-		// TODO: This code is no longer necessary once we have index.json.
-		descriptorPaths, err := e.ResolveReference(ctx, name)
-		if err != nil {
-			return errors.Wrapf(err, "get root %s", name)
-		}
-		if len(descriptorPaths) == 0 {
-			return errors.Errorf("tag not found: %s", name)
-		}
-		if len(descriptorPaths) != 1 {
-			// TODO: Handle this more nicely.
-			return errors.Errorf("tag is ambiguous: %s", name)
-		}
-		descriptor := descriptorPaths[0].Descriptor()
+	for _, descriptor := range index.Manifests {
 		log.WithFields(log.Fields{
-			"name":   name,
 			"digest": descriptor.Digest,
 		}).Debugf("GC: got reference")
 		root = append(root, descriptor)
