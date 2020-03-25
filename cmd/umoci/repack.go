@@ -27,6 +27,7 @@ import (
 	"github.com/openSUSE/umoci/oci/cas/dir"
 	"github.com/openSUSE/umoci/oci/casext"
 	igen "github.com/openSUSE/umoci/oci/config/generate"
+	"github.com/openSUSE/umoci/pkg/mtreefilter"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
@@ -171,5 +172,9 @@ func repack(ctx *cli.Context) error {
 		}
 	}
 
-	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, maskedPaths, ctx.Bool("refresh-bundle"), mutator)
+	filters := []mtreefilter.FilterFunc{
+		mtreefilter.MaskFilter(maskedPaths),
+	}
+
+	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator)
 }
