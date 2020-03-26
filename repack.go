@@ -36,7 +36,7 @@ import (
 
 // Repack repacks a bundle into an image adding a new layer for the changed
 // data in the bundle.
-func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Meta, history *ispec.History, maskedPaths []string, refreshBundle bool, mutator *mutate.Mutator) error {
+func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Meta, history *ispec.History, filters []mtreefilter.FilterFunc, refreshBundle bool, mutator *mutate.Mutator) error {
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
@@ -78,9 +78,8 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		"ndiff": len(diffs),
 	}).Debugf("umoci: checked mtree spec")
 
-	diffs = mtreefilter.FilterDeltas(diffs,
-		mtreefilter.MaskFilter(maskedPaths),
-		mtreefilter.SimplifyFilter(diffs))
+	allFilters := append(filters, mtreefilter.SimplifyFilter(diffs))
+	diffs = mtreefilter.FilterDeltas(diffs, allFilters...)
 
 	if len(diffs) == 0 {
 		config, err := mutator.Config(context.Background())
