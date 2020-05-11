@@ -113,9 +113,9 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if _, err := os.Lstat(configPath); !os.IsNotExist(err) {
 		if err == nil {
-			err = fmt.Errorf("config.json already exists")
+			return errors.Errorf("config.json already exists in %s", bundle)
 		}
-		return errors.Wrap(err, "bundle path empty")
+		return errors.Wrap(err, "problem accessing bundle config")
 	}
 
 	defer func() {
