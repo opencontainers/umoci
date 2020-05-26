@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -298,5 +299,216 @@ func TestEngineValidate(t *testing.T) {
 	if err == nil {
 		t.Errorf("expected to get an error")
 		engine.Close()
+	}
+}
+
+// Make sure that opencontainers/umoci#63 doesn't have a regression. We
+// shouldn't GC any blobs which are currently locked.
+func TestEngineGCLocking(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestEngineGCLocking")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+	if err := Create(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	content := []byte("here's some sample content")
+
+	// Open a reference to the CAS, and make sure that it has a .temp set up.
+	engine, err := Open(image)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+
+	digester := cas.BlobAlgorithm.Digester()
+	if _, err := io.Copy(digester.Hash(), bytes.NewReader(content)); err != nil {
+		t.Fatalf("could not hash bytes: %+v", err)
+	}
+	expectedDigest := digester.Digest()
+
+	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
+	if err != nil {
+		t.Errorf("PutBlob: unexpected error: %+v", err)
+	}
+
+	if digest != expectedDigest {
+		t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
+	}
+	if size != int64(len(content)) {
+		t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(content), size)
+	}
+
+	if engine.(*dirEngine).temp == "" {
+		t.Errorf("engine doesn't have a tempdir after putting a blob!")
+	}
+
+	// Create umoci and other directories and files to make sure things work.
+	umociTestDir, err := ioutil.TempDir(image, ".umoci-dead-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	otherTestDir, err := ioutil.TempDir(image, "other-")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Open a new reference and GC it.
+	gcEngine, err := Open(image)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+
+	// TODO: This should be done with casext.GC...
+	if err := gcEngine.Clean(ctx); err != nil {
+		t.Fatalf("unexpected error while GCing image: %+v", err)
+	}
+
+	for _, path := range []string{
+		engine.(*dirEngine).temp,
+		otherTestDir,
+	} {
+		if _, err := os.Lstat(path); err != nil {
+			t.Errorf("expected %s to still exist after GC: %+v", path, err)
+		}
+	}
+
+	for _, path := range []string{
+		umociTestDir,
+	} {
+		if _, err := os.Lstat(path); err == nil {
+			t.Errorf("expected %s to not exist after GC", path)
+		} else if !os.IsNotExist(errors.Cause(err)) {
+			t.Errorf("expected IsNotExist for %s after GC: %+v", path, err)
+		}
+	}
+}
+
+func TestCreateLayoutReadonly(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestCreateLayoutReadonly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+	if err := Create(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	// make it readonly
+	testutils.MakeReadOnly(t, image)
+	defer testutils.MakeReadWrite(t, image)
+
+	engine, err := Open(image)
+	if err != nil {
+		t.Fatalf("unexpected error opening image: %+v", err)
+	}
+	defer engine.Close()
+
+	// We should have an empty index and no blobs.
+	if index, err := engine.GetIndex(ctx); err != nil {
+		t.Errorf("unexpected error getting top-level index: %+v", err)
+	} else if len(index.Manifests) > 0 {
+		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
+	}
+	if blobs, err := engine.ListBlobs(ctx); err != nil {
+		t.Errorf("unexpected error getting list of blobs: %+v", err)
+	} else if len(blobs) > 0 {
+		t.Errorf("got blobs in a newly created image: %v", blobs)
+	}
+}
+
+func TestEngineBlobReadonly(t *testing.T) {
+	ctx := context.Background()
+
+	root, err := ioutil.TempDir("", "umoci-TestEngineBlobReadonly")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(root)
+
+	image := filepath.Join(root, "image")
+	if err := Create(image); err != nil {
+		t.Fatalf("unexpected error creating image: %+v", err)
+	}
+
+	for _, test := range []struct {
+		bytes []byte
+	}{
+		{[]byte("")},
+		{[]byte("some blob")},
+		{[]byte("another blob")},
+	} {
+		engine, err := Open(image)
+		if err != nil {
+			t.Fatalf("unexpected error opening image: %+v", err)
+		}
+
+		digester := cas.BlobAlgorithm.Digester()
+		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
+			t.Fatalf("could not hash bytes: %+v", err)
+		}
+		expectedDigest := digester.Digest()
+
+		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
+		if err != nil {
+			t.Errorf("PutBlob: unexpected error: %+v", err)
+		}
+
+		if digest != expectedDigest {
+			t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
+		}
+		if size != int64(len(test.bytes)) {
+			t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(test.bytes), size)
+		}
+
+		if err := engine.Close(); err != nil {
+			t.Errorf("Close: unexpected error encountered: %+v", err)
+		}
+
+		// make it readonly
+		testutils.MakeReadOnly(t, image)
+
+		newEngine, err := Open(image)
+		if err != nil {
+			t.Errorf("unexpected error opening ro image: %+v", err)
+		}
+
+		blobReader, err := newEngine.GetBlob(ctx, digest)
+		if err != nil {
+			t.Errorf("GetBlob: unexpected error: %+v", err)
+		}
+		defer blobReader.Close()
+
+		gotBytes, err := ioutil.ReadAll(blobReader)
+		if err != nil {
+			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
+		}
+		if !bytes.Equal(test.bytes, gotBytes) {
+			t.Errorf("GetBlob: bytes did not match: expected=%s got=%s", string(test.bytes), string(gotBytes))
+		}
+
+		// Make sure that writing again will FAIL.
+		_, _, err = newEngine.PutBlob(ctx, bytes.NewReader(test.bytes))
+		if err == nil {
+			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
+			t.Errorf("PutBlob: expected error on ro image!")
+		}
+
+		if err := newEngine.Close(); err != nil {
+			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
+		}
+
+		// make it readwrite again.
+		testutils.MakeReadWrite(t, image)
 	}
 }

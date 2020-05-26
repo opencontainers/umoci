@@ -27,7 +27,7 @@ function gethash() {
 
 # Figure out root directory.
 ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
-STASHED_ROOT="$(mktemp --tmpdir -d umoci-vendor.XXXXXX)"
+STASHED_ROOT="$(mktemp -dt umoci-vendor.XXXXXX)"
 
 # Stash away old vendor tree, and restore it on-exit.
 mv "$ROOT/vendor" "$STASHED_ROOT/vendor"

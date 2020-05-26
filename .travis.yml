@@ -1,3 +1,19 @@
+# umoci: Umoci Modifies Open Containers' Images
+# Copyright (C) 2016-2020 SUSE LLC
+#
+# Licensed under the Apache License, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#   http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+version: ~> 1.0
 os: linux
 dist: bionic
 
@@ -8,8 +24,17 @@ go:
 services:
   - docker
 
+notifications:
+  email: false
+
 before_install:
-  - sudo sh -c "apt-get -qq update && apt-get install -y gcc-multilib"
+  - |-
+      case "$TRAVIS_OS_NAME" in
+        linux)
+          sudo apt-get -qq update
+          sudo apt-get install -y gcc-multilib
+          ;;
+      esac
   # Need to set GO111MODULE=off here because Travis runs inside our source repo
   # (which is a Go module) and thus 'go get' will actually add dependencies to
   # our go.mod file. Annoyingly this means we cannot require v2 of go-md2man
@@ -23,18 +48,6 @@ env:
   - DOCKER_IMAGE="ubuntu:latest"
   - DOCKER_IMAGE="fedora:latest"
 
-matrix:
-  fast_finish: true
-  allow_failures:
-    # The Fedora image has caused us plenty of pain in the past, so don't let
-    # it kill PRs. This is made more annoying by the fact that the Fedora
-    # image's size makes this test stage take much longer than any other image
-    # (~40 minutes on some days).
-    - env: DOCKER_IMAGE="fedora:latest"
-
-notifications:
-  email: false
-
 script:
   # Necessary to make Travis co-operate with Docker.
   - chmod a+rwx .
@@ -43,3 +56,21 @@ script:
   - make GO111MODULE=off GOARCH=386 local-validate-build
   # Run the actual CI.
   - make DOCKER_IMAGE=$DOCKER_IMAGE ci
+
+matrix:
+  fast_finish: true
+  allow_failures:
+    # The Fedora image has caused us plenty of pain in the past, so don't let
+    # it kill PRs. This is made more annoying by the fact that the Fedora
+    # image's size makes this test stage take much longer than any other image
+    # (~40 minutes on some days).
+    - env: DOCKER_IMAGE="fedora:latest"
+  include:
+    - os: osx
+      env:
+        # Clear DOCKER_IMAGE since we don't use it.
+        - DOCKER_IMAGE=""
+      script:
+        # TODO: Run the integration and unit tests, so we don't need to
+        #       special-case MacOS here.
+        - make local-validate-build

@@ -21,13 +21,13 @@ export COVER="${COVER:-0}"
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
 if [ "$COVER" -eq 1 ]; then
-	export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
+	export COVERAGE_DIR=$(mktemp -dt umoci-coverage.XXXXXX)
 fi
 
 if [ "$COVER" -eq 1 ]; then
 	# Create a temporary symlink for umoci, since the --help tests require the
 	# binary have the name "umoci". This is all just to make the Makefile nicer.
-	UMOCI_DIR="$(mktemp --tmpdir -d umoci.XXXXXX)"
+	UMOCI_DIR="$(mktemp -dt umoci.XXXXXX)"
 	export UMOCI="$UMOCI_DIR/umoci"
 	ln -s "$ROOT/umoci.cover" "$UMOCI"
 fi

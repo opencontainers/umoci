@@ -156,7 +156,7 @@ umociimage:
 	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
 
 ifndef COVERAGE
-COVERAGE := $(shell mktemp --dry-run umoci.cov.XXXXXX)
+COVERAGE := $(basename $(shell mktemp -u umoci.cov.XXXXXX))
 endif
 
 .PHONY: test-unit

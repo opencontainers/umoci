@@ -24,7 +24,7 @@ function setup_project() { true ; }
 # This function takes an output path as an argument, where the built
 # (preferably static) binary should be placed.
 function build_project() {
-	tmprootfs="$(mktemp -d --tmpdir "$project-build.XXXXXX")"
+	tmprootfs="$(mktemp -dt "$project-build.XXXXXX")"
 
 	make -C "$root" BUILD_DIR="$tmprootfs" COMMIT_NO= "$project.static"
 	mv "$tmprootfs/$project.static" "$1"
