@@ -78,14 +78,14 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.3.1
+   0.4.5
 
-AUTHOR(S):
+AUTHOR:
    Aleksa Sarai <asarai@suse.com>
 
 COMMANDS:
-     raw      advanced internal image tooling
-     help, h  Shows a list of commands or help for one command
+   raw      advanced internal image tooling
+   help, h  Shows a list of commands or help for one command
 
    image:
      config      modifies the image configuration of an OCI image
@@ -95,11 +95,12 @@ COMMANDS:
      tag         creates a new tag in an OCI image
      remove, rm  removes a tag from an OCI image
      stat        displays status information of an image manifest
+     insert      insert content into an OCI image
 
    layout:
      gc        garbage-collects an OCI image's blobs
      init      create a new OCI layout
-     list, ls  lists the set of tags in an OCI image
+     list, ls  lists the set of tags in an OCI layout
 
 GLOBAL OPTIONS:
    --verbose      alias for --log=info
@@ -116,7 +117,7 @@ umoci is licensed under the terms of the Apache 2.0 license.
 
 ```
 umoci: Umoci Modifies Open Containers' Images
-Copyright (C) 2016-2019 SUSE LLC.
+Copyright (C) 2016-2020 SUSE LLC
 Copyright (C) 2018 Cisco Systems
 
 Licensed under the Apache License, Version 2.0 (the "License");

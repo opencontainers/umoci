@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2019 SUSE LLC.
+ * Copyright (C) 2016-2020 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -219,7 +219,7 @@ func Lstatx(path string) (unix.Stat_t, error) {
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
 // unpriv.Wrap to make it possible to get the linkname of a symlink even if you
-// do not currently have teh required mode bits set to resolve the path. Note
+// do not currently have the required mode bits set to resolve the path. Note
 // that you may not have resolve access after this function returns because all
 // of this trickery is reverted by unpriv.Wrap.
 func Readlink(path string) (string, error) {

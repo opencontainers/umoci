@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2019 SUSE LLC.
+ * Copyright (C) 2016-2020 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,7 +67,7 @@ func (g *Generator) init() {
 	}
 }
 
-// New creates a new Generator with the inital template set to a default. It is
+// New creates a new Generator with the initial template set to a default. It is
 // not recommended to leave any of the options as their default values (they
 // may change in the future without warning and may be invalid images).
 func New() *Generator {

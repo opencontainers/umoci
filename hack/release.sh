@@ -1,6 +1,6 @@
 #!/bin/bash
 # release.sh: configurable signed-artefact release script
-# Copyright (C) 2016-2019 SUSE LLC.
+# Copyright (C) 2016-2020 SUSE LLC
 #
 # This Source Code Form is subject to the terms of the Mozilla Public
 # License, v2.0. If a copy of the MPL was not distributed with this

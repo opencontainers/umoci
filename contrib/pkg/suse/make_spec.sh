@@ -1,6 +1,6 @@
 #!/bin/bash
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2019 SUSE LLC.
+# Copyright (C) 2016-2020 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -38,7 +38,7 @@ cat <<EOF > ${NAME}.spec
 #
 # spec file for package $NAME
 #
-# Copyright (c) $YEAR SUSE LINUX GmbH, Nuernberg, Germany.
+# Copyright (C) $YEAR SUSE LLC
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed

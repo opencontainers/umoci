@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2019 SUSE LLC.
+ * Copyright (C) 2016-2020 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -71,7 +71,7 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
-	// XXX: Should we add a saftey check to make sure we don't generate two of
+	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 

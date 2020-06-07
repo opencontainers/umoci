@@ -1,6 +1,6 @@
 #!/usr/bin/env bats -t
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2019 SUSE LLC.
+# Copyright (C) 2016-2020 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -44,7 +44,7 @@ function teardown() {
 	[ -e "$ROOTFS/etc/passwd" ]
 	[ -e "$ROOTFS/etc/group" ]
 
-	# Ensure that gomtree suceeds on the unpacked bundle.
+	# Ensure that gomtree succeeds on the unpacked bundle.
 	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]

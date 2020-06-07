@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2019 SUSE LLC.
+ * Copyright (C) 2016-2020 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -54,7 +54,7 @@ func timePtr(t time.Time) *time.Time               { return &t }
 // Mutator is a wrapper around a cas.Engine instance, and is used to mutate a
 // given image (described by a manifest) in a high-level fashion. It handles
 // creating all necessary blobs and modfying other blobs. In order for changes
-// to be comitted you must call .Commit().
+// to be committed you must call .Commit().
 //
 // TODO: Implement manifest list support.
 type Mutator struct {

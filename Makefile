@@ -1,5 +1,5 @@
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2019 SUSE LLC.
+# Copyright (C) 2016-2020 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -58,7 +58,7 @@ MANDIR ?=$(PREFIX)/share/man
 
 .DEFAULT: umoci
 
-GO_SRC = $(shell find . -name \*.go)
+GO_SRC = $(shell find . -type f -name '*.go')
 
 # NOTE: If you change these make sure you also update local-validate-build.
 
@@ -100,9 +100,8 @@ validate: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-validate
 
 .PHONY: local-validate
-local-validate: local-validate-go local-validate-reproducible local-validate-build
+local-validate: local-validate-go local-validate-spell local-validate-reproducible local-validate-build
 
-# TODO: Remove the special-case ignored system/* warnings.
 .PHONY: local-validate-go
 local-validate-go:
 	@type gofmt     >/dev/null 2>/dev/null || (echo "ERROR: gofmt not found." && false)
@@ -114,6 +113,12 @@ local-validate-go:
 	@type gosec     >/dev/null 2>/dev/null || (echo "ERROR: gosec not found." && false)
 	test -z "$$(gosec -quiet -exclude=G301,G302,G304 $$GOPATH/$(PROJECT)/... | tee /dev/stderr)"
 	./hack/test-vendor.sh
+
+# TODO: This currently fails if you run it right after 'make docs'.
+.PHONY: local-validate-spell
+local-validate-spell:
+	@type misspell  >/dev/null 2>/dev/null || (echo "ERROR: misspell not found." && false)
+	test -z "$$(find . -type f -print0 | xargs -0 misspell | grep -vE '/(vendor|third_party|\.site)/' | tee /dev/stderr)"
 
 # Make sure that our builds are reproducible even if you wait between them and
 # the modified time of the files is different.
@@ -178,5 +183,5 @@ shell: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover docs validate test-unit test-integration
+ci: umoci umoci.cover validate docs test-unit test-integration
 	hack/ci-coverage.sh $(COVERAGE)

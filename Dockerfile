@@ -1,5 +1,5 @@
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2019 SUSE LLC.
+# Copyright (C) 2016-2020 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -41,7 +41,8 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/cpuguy83/go-md2man && \
     go get -u golang.org/x/lint/golint && \
-    go get -u github.com/securego/gosec/cmd/gosec
+    go get -u github.com/securego/gosec/cmd/gosec && \
+    go get -u github.com/client9/misspell/cmd/misspell
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed

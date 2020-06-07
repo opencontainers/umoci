@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2019 SUSE LLC.
+ * Copyright (C) 2016-2020 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -180,7 +180,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
 			//
-			// TODO: We should translate all security.capability capabilites
+			// TODO: We should translate all security.capability capabilities
 			//       into v3 capabilities, which allow us to write them as
 			//       unprivileged users (we also would need to translate them
 			//       back when creating archives).
