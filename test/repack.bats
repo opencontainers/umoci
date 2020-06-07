@@ -138,7 +138,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree suceeds on the old bundle, which is what this was
+	# Ensure that gomtree succeeds on the old bundle, which is what this was
 	# generated from.
 	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
@@ -204,7 +204,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree suceeds on the old bundle, which is what this was
+	# Ensure that gomtree succeeds on the old bundle, which is what this was
 	# generated from.
 	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]

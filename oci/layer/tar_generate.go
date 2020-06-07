@@ -71,7 +71,7 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
-	// XXX: Should we add a saftey check to make sure we don't generate two of
+	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 

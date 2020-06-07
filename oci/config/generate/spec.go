@@ -67,7 +67,7 @@ func (g *Generator) init() {
 	}
 }
 
-// New creates a new Generator with the inital template set to a default. It is
+// New creates a new Generator with the initial template set to a default. It is
 // not recommended to leave any of the options as their default values (they
 // may change in the future without warning and may be invalid images).
 func New() *Generator {

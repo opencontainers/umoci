@@ -120,7 +120,7 @@ is already known, because `umoci unpack` saves that information).
 
 This behaviour may change in the future, but it's not clear what would be an
 obvious interface for this change (older versions of `umoci` had separate
-`--src` and `--dst` flags, but they were unweildly and so were removed in
+`--src` and `--dst` flags, but they were unwieldy and so were removed in
 favour of the `--image` style).
 
 Also note that each `umoci insert` creates a separate layer.

@@ -76,7 +76,7 @@ function teardown() {
 	umoci raw unpack --image "${IMAGE}:${TAG}" "$ROOTFS_B"
 	[ "$status" -eq 0 ]
 
-	# Ensure that gomtree suceeds on the new unpacked rootfs.
+	# Ensure that gomtree succeeds on the new unpacked rootfs.
 	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]

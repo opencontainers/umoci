@@ -41,7 +41,8 @@ ENV GOPATH /go
 ENV PATH $GOPATH/bin:$PATH
 RUN go get -u github.com/cpuguy83/go-md2man && \
     go get -u golang.org/x/lint/golint && \
-    go get -u github.com/securego/gosec/cmd/gosec
+    go get -u github.com/securego/gosec/cmd/gosec && \
+    go get -u github.com/client9/misspell/cmd/misspell
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=opensuse/amd64:tumbleweed

@@ -44,7 +44,7 @@ function teardown() {
 	[ -e "$ROOTFS/etc/passwd" ]
 	[ -e "$ROOTFS/etc/group" ]
 
-	# Ensure that gomtree suceeds on the unpacked bundle.
+	# Ensure that gomtree succeeds on the unpacked bundle.
 	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
