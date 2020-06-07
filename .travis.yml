@@ -10,6 +10,7 @@ go:
 
 before_install:
   - sudo sh -c "apt-get -qq update && apt-get install -y gcc-multilib"
+  - go get -u -v github.com/cpuguy83/go-md2man
 
 env:
   - DOCKER_IMAGE="opensuse/leap:latest"

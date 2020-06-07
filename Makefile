@@ -76,7 +76,7 @@ release:
 	hack/release.sh -v $(VERSION) -S "$(GPG_KEYID)"
 
 .PHONY: install
-install: umoci doc
+install: umoci docs
 	install -D -m0755 umoci $(DESTDIR)/$(BINDIR)/umoci
 	-for man in $(MANPAGES); do \
 		filename="$$(basename -- "$$man")"; \
@@ -134,18 +134,14 @@ local-validate-build:
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o /dev/null ${CMD}
 	$(GO) test -run nothing ${DYN_BUILD_FLAGS} $(PROJECT)/...
 
-.PHONY: doc
-doc: umociimage
-	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-doc
-
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
 
 doc/man/%.1: doc/man/%.1.md
 	$(GO_MD2MAN) -in $< -out $@
 
-.PHONY: local-doc
-local-doc: $(MANPAGES)
+.PHONY: docs
+docs: $(MANPAGES)
 
 # Used for tests.
 DOCKER_IMAGE :=opensuse/amd64:tumbleweed
@@ -171,7 +167,7 @@ local-test-unit:
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE)                             $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
 	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
 
 .PHONY: local-test-integration
@@ -182,5 +178,5 @@ shell: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover doc validate test-unit test-integration
+ci: umoci umoci.cover docs validate test-unit test-integration
 	hack/ci-coverage.sh $(COVERAGE)
