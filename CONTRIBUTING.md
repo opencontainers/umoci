@@ -6,16 +6,16 @@ requirements and rules-of-thumb for contributions.
 
 ### Security Issues ###
 
-If you are reporting a security issue, do not create an issue or file a pull
-request on GitHub. Instead, disclose the issue responsibly by sending an email
-to <mailto:cyphar@cyphar.com>. If you feel it is necessary you may also encrypt
-your email with [Pretty Good Privacy (PGP)][pgp] using the PGP key
-[`6FA1B3E3F9A18CDCBE6A2CF54A7BE7BF70DE9B9F`][pgp-key]. *In future, the above
-email will be replaced with a mailing list as part of our ongoing effort to
-reduce the bus factor of this project.*
+If you are reporting a security issue, please do not create an issue or file a
+pull request on GitHub. Instead, disclose the issue by sending an email to
+<mailto:security@opencontainers.org>. If you feel it is necessary you may also
+encrypt your email with [Pretty Good Privacy (PGP)][pgp] using the set of PGP
+keys listed in the [umoci keyring][umoci-keyring].
+<!-- TODO: We really shouldn't be using the release keys for encryption. -->
 
 [pgp]: https://en.wikipedia.org/wiki/Pretty_Good_Privacy
-[pgp-key]: http://pgp.mit.edu/pks/lookup?op=vindex&search=0x6FA1B3E3F9A18CDCBE6A2CF54A7BE7BF70DE9B9F
+<!-- TODO: Point this to the actual keyring file. -->
+[umoci-keyring]: https://umo.ci/umoci.keyring
 
 ### Issues ###
 
@@ -47,15 +47,15 @@ of your ability) so we can debug your issue far more easily:
 
 ### Submitting Changes ###
 
-In order to submit a change, you may [create a pull request][pr-new].  If you
-do not wish to use proprietary software to submit an pull request, you may send
-an email to <mailto:cyphar@cyphar.com> and I will submit a pull request on your
+In order to submit a change, you may [create a pull request][pr-new]. If you do
+not wish to use proprietary software to submit an pull request, you may send an
+email to <mailto:cyphar@cyphar.com> and I will submit a pull request on your
 behalf.
 
-All changes should be based off the latest commit of the master branch of this
-project. In order for a change to be merged into this project, it must fulfil
-all of the following requirements (note that many of these only apply for major
-changes):
+All changes should be based off the latest commit of the `master` branch of
+this project. In order for a change to be merged into this project, it must
+fulfil all of the following requirements (note that many of these only apply
+for major changes):
 
 * All changes must pass the automated testing and continuous integration. This
   means they must build successfully without errors, must not produce errors
@@ -84,10 +84,8 @@ If you miss any of the above things, don't worry we'll remind you and provide
 help if you need any. In addition to the above requirements, your code will be
 reviewed by the maintainer(s) of this project, using the looks-good-to-me
 system (LGTM). All patches must have the approval of at least two maintainers
-that did not author a change before they are merged (the only exception to this
-is related to the approval of security patches -- which must be approved in
-private instead -- and cases where there are not enough maintainers to fulfil
-this requirement).
+before they are merged (the only exception to this is related to the approval
+of security patches -- which must be approved in private instead).
 
 Each commit should be self-contained and minimal (and should build and pass the
 tests individually), and commit messages should follow the Linux kernel style
