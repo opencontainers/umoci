@@ -113,12 +113,3 @@ Vincent Batts (the author of `gomtree`) has expressed interest in this sort of
 functionality, but I'm not entirely convinced that it will work as well as
 expected (especially given the enormous amount of special casing in `go-mtree`
 that already exists in order to implement `tar` archive support).
-
-### Bus Factor ###
-
-At the moment this project was effectively entirely written and maintained by
-one person. This is obviously an unsustainable development model, and also
-raises several other issues. In addition, currently there is no public mailing
-list for the development of umoci (nor is there a security mailing list)
-which makes it difficult to on-board new maintainers or significant
-contributors.

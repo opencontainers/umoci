@@ -17,6 +17,7 @@ baseURL = "https://umo.ci/"
 languageCode = "en-us"
 title = "umoci"
 theme = "hugo-theme-learn"
+disablePathToLower = true
 
 [params]
 author = "Aleksa Sarai"
@@ -27,6 +28,9 @@ disableInlineCopyToClipBoard = true
 
 [output]
 home = ["HTML", "RSS", "JSON"]
+
+[markup.goldmark.renderer]
+unsafe = true
 
 [[menu.shortcuts]]
 name = "<i class='fa fa-git'></i> Source Code"

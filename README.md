@@ -1,4 +1,10 @@
-[![umoci](/contrib/logo/umoci-black.png)][umoci-site]
+[![umoci](https://umo.ci/umoci-black.png)][umoci-site]
+
+<!--
+  This hack is necessary to work around the fact we cannot conditionally hide
+  these images in Hugo (see <https://github.com/gohugoio/hugo/issues/7398>).
+-->
+<div style="display: none">
 
 [![Release](https://img.shields.io/github/release/openSUSE/umoci.svg)](https://github.com/openSUSE/umoci/releases/latest)
 [![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
@@ -7,6 +13,8 @@
 [![Go Report Card](https://goreportcard.com/badge/github.com/openSUSE/umoci)](https://goreportcard.com/report/github.com/openSUSE/umoci)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1084/badge)](https://bestpractices.coreinfrastructure.org/projects/1084)
 [![DOI](https://zenodo.org/badge/72283469.svg)](https://zenodo.org/badge/latestdoi/72283469)
+
+</div>
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages.
 

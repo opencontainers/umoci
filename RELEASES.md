@@ -1,3 +1,11 @@
+<!--
++++
+# Hugo Front-matter
+title = "Release Procedure"
+aliases = ["/RELEASES.md"]
++++
+-->
+
 ## Release Procedure ##
 
 This document describes the procedure for preparing and publishing an umoci
@@ -96,8 +104,7 @@ notes which will be used on releases page. This can be done with `git tag -as`.
 The set of valid keys to sign releases and artefacts is maintained [as part of
 this repository in the `gpg-offline` format][umoci-keyring].
 
-<!-- TODO: Point this to the actual keyring file. -->
-[umoci-keyring]: https://umo.ci/umoci.keyring
+[umoci-keyring]: /umoci.keyring
 
 ### Artefacts ###
 

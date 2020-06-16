@@ -1,3 +1,11 @@
+<!--
++++
+# Hugo Front-matter
+title = "Governance"
+aliases = ["/GOVERNANCE.md"]
++++
+-->
+
 ## Governance Model ##
 
 umoci is an OCI project, and is thus governed under the [OCI

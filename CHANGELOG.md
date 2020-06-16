@@ -1,15 +1,23 @@
-# Change Log
+<!--
++++
+# Hugo Front-matter
+title = "Changelog"
+aliases = ["/CHANGELOG.md"]
++++
+-->
+
+# Changelog #
 All notable changes to this project will be documented in this file.
 
 The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
-## [Unreleased]
+## [Unreleased] ##
 - Suppress repeated xattr warnings on destination filesystems that do not
   support xattrs.
 
-## [0.4.5] - 2019-12-04
-## Added
+## [0.4.5] - 2019-12-04 ##
+### Added ###
 - Expose umoci subcommands as part of the API, so they can be used by other Go
   projects. openSUSE/umoci#289
 - Add extensible hooking to the core libraries in umoci, to allow for
@@ -17,7 +25,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   difference is the introspection and parsing logic). openSUSE/umoci#299
   openSUSE/umoci#307
 
-## Fixed
+### Fixed ###
 - Use `type: bind` for generated `config.json` bind-mounts. While this doesn't
   make too much sense (see opencontainers/runc#2035), it does mean that
   rootless containers work properly with newer `runc` releases (which appear to
@@ -28,15 +36,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   tar archive -- otherwise we fail on certain (completely broken) Docker
   images. openSUSE/umoci#304
 
-## [0.4.4] - 2019-01-30
-## Added
+## [0.4.4] - 2019-01-30 ##
+### Added ###
 - Full-stack verification of blob hashes and descriptor sizes is now done on
   all operations, improving our hardening against bad blobs (we already did
   some verification of layer DiffIDs but this is far more thorough).
   openSUSE/umoci#278 openSUSE/umoci#280 openSUSE/umoci#282
 
-## [0.4.3] - 2018-11-11
-## Added
+## [0.4.3] - 2018-11-11 ##
+### Added ###
 - All umoci commands that had `--history.*` options can now decide to omit a
   history entry with `--no-history`. Note that while this is supported for
   commands that create layers (`umoci repack`, `umoci insert`, and `umoci raw
@@ -48,8 +56,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   insert files into an image. The semantics match `umoci config --tag`.
   openSUSE/umoci#273
 
-## [0.4.2] - 2018-09-11
-## Added
+## [0.4.2] - 2018-09-11 ##
+### Added ###
 - umoci now has an exposed Go API. At the moment it's unclear whether it will
   be changed significantly, but at the least now users can use
   umoci-as-a-library in a fairly sane way. openSUSE/umoci#245
@@ -62,7 +70,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   behaviour causes the old and new directories to be merged).
   openSUSE/umoci#257
 
-## Fixed
+### Fixed ###
 - Docker has changed how they handle whiteouts for non-existent files. The
   specification is loose on this (and in umoci we've always been liberal with
   whiteout generation -- to avoid cases where someone was confused we didn't
@@ -80,8 +88,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   if it has been asked to change a forbidden xattr to a value different than
   it's current on-disk value. openSUSE/umoci#235 openSUSE/umoci#259
 
-## [0.4.1] - 2018-08-16
-### Added
+## [0.4.1] - 2018-08-16 ##
+### Added ###
 - The number of possible tags that are now valid with `umoci` subcommands has
   increased significantly due to an expansion in the specification of the
   format of the `ref.name` annotation. To quote the specification, the
@@ -100,7 +108,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - `umoci` how has a logo. Thanks to [Max Bailey][maxbailey] for contributing
   this to the project. openSUSE/umoci#165 openSUSE/umoci#249
 
-### Fixed
+### Fixed ###
 - `umoci unpack` now handles out-of-order regular whiteouts correctly (though
   this ordering is not recommended by the spec -- nor is it required). This is
   an extension of openSUSE/umoci#229 that was missed during review.
@@ -114,8 +122,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [maxbailey]: http://www.maxbailey.me/
 
-## [0.4.0] - 2018-03-10
-### Added
+## [0.4.0] - 2018-03-10 ##
+### Added ###
 - `umoci repack` now supports `--refresh-bundle` which will update the
   OCI bundle's metadata (mtree and umoci-specific manifests) after packing the
   image tag. This means that the bundle can be used as a base layer for
@@ -140,7 +148,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   user namespaces, but you would need to be trying to break it on purpose.
   openSUSE/umoci#171 openSUSE/umoci#230
 
-### Fixed
+### Fixed ###
 - Fix a bug in our "parent directory restore" code, which is responsible for
   ensuring that the mtime and other similar properties of a directory are not
   modified by extraction inside said directory. The bug would manifest as
@@ -165,8 +173,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [rootlesscontainers-proto]: https://rootlesscontaine.rs/proto/rootlesscontainers.proto
 [umo.ci]: https://umo.ci/
 
-## [0.3.1] - 2017-10-04
-### Fixed
+## [0.3.1] - 2017-10-04 ##
+### Fixed ###
 - Fix several minor bugs in `hack/release.sh` that caused the release artefacts
   to not match the intended style, as well as making it more generic so other
   projects can use it. openSUSE/umoci#155 openSUSE/umoci#163
@@ -190,14 +198,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   issues for GNU gzip and other such tools. openSUSE/umoci#178
   openSUSE/umoci#179
 
-### Changed
+### Changed ###
 - `umoci unpack`'s mapping options (`--uid-map` and `--gid-map`) have had an
   interface change, to better match the [`user_namespaces(7)`][user_namespaces]
   interfaces. Note that this is a **breaking change**, but the workaround is to
   switch to the trivially different (but now more consistent) format.
   openSUSE/umoci#167
 
-### Security
+### Security ###
 - `umoci unpack` used to create the bundle and rootfs with world
   read-and-execute permissions by default. This could potentially result in an
   unsafe rootfs (containing dangerous setuid binaries for instance) being
@@ -211,8 +219,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [gomtree-v0.4.1]: https://github.com/vbatts/go-mtree/releases/tag/v0.4.1
 [user_namespaces]: http://man7.org/linux/man-pages/man7/user_namespaces.7.html
 
-## [0.3.0] - 2017-07-20
-### Added
+## [0.3.0] - 2017-07-20 ##
+### Added ###
 - `umoci` now passes all of the requirements for the [CII best practices bading
   program][cii]. openSUSE/umoci#134
 - `umoci` also now has more extensive architecture, quick-start and roadmap
@@ -235,7 +243,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   that are in a child of at least one of the provided masks when generating new
   layers. openSUSE/umoci#127
 
-### Changed
+### Changed ###
 - Error messages from `github.com/openSUSE/umoci/oci/cas/drivers/dir` actually
   make sense now. openSUSE/umoci#121
 - `umoci unpack` now generates `config.json` blobs according to the [still
@@ -261,13 +269,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 [ispec-pr694]: https://github.com/opencontainers/image-spec/pull/694
 [securejoin]: https://github.com/cyphar/filepath-securejoin
 
-## [0.2.1] - 2017-04-12
-### Added
+## [0.2.1] - 2017-04-12 ##
+### Added ###
 - `hack/release.sh` automates the process of generating all of the published
   artefacts for releases. The new script also generates signed source code
   archives. openSUSE/umoci#116
 
-### Changed
+### Changed ###
 - `umoci` now outputs configurations that are compliant with [`v1.0.0-rc5` of
   the OCI runtime-spec][rspec-v1.0.0-rc5]. This means that now you can use runc
   v1.0.0-rc3 with `umoci` (and rootless containers should work out of the box
@@ -277,8 +285,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 [rspec-v1.0.0-rc5]: https://github.com/opencontainers/runtime-spec/releases/tag/v1.0.0-rc5
 
-## [0.2.0] - 2017-04-11
-### Added
+## [0.2.0] - 2017-04-11 ##
+### Added ###
 - `umoci` now has some automated scripts for generated RPMs that are used in
   openSUSE to automatically submit packages to OBS. openSUSE/umoci#101
 - `--clear=config.{cmd,entrypoint}` is now supported. While this interface is a
@@ -294,7 +302,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   why this command is hidden under the `umoci-raw(1)` subcommand (to make sure
   only users that understand what they're doing use it). openSUSE/umoci#110
 
-### Changed
+### Changed ###
 - `umoci`'s `oci/cas` and `oci/config` libraries have been massively refactored
   and rewritten, to allow for third-parties to use the OCI libraries. The plan
   is for these to eventually become part of an OCI project. openSUSE/umoci#90
@@ -302,7 +310,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   to `ispec.Descriptor`. This is a breaking, but fairly insignificant, change.
   openSUSE/umoci#89
 
-### Fixed
+### Fixed ###
 - `umoci` now uses an updated version of `go-mtree`, which has a complete
   rewrite of `Vis` and `Unvis`. The rewrite ensures that unicode handling is
   handled in a far more consistent and sane way. openSUSE/umoci#88
@@ -310,11 +318,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   unpacking an image in rootless mode, causing issues when trying to actually
   run said bundle with runC. openSUSE/umoci#109
 
-## [0.1.0] - 2017-02-11
-### Added
+## [0.1.0] - 2017-02-11 ##
+### Added ###
 - `CHANGELOG.md` has now been added. openSUSE/umoci#76
 
-### Changed
+### Changed ###
 - `umoci` now supports `v1.0.0-rc4` images, which has made fairly minimal
   changes to the schema (mainly related to `mediaType`s). While this change
   **is** backwards compatible (several fields were removed from the schema, but
@@ -322,7 +330,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   of the specification may fail to operate on newer OCI images. There was no UX
   change associated with this update.
 
-### Fixed
+### Fixed ###
 - `umoci tag` would fail to clobber existing tags, which was in contrast to how
   the rest of the tag clobbering commands operated. This has been fixed and is
   now consistent with the other commands. openSUSE/umoci#78
@@ -330,27 +338,27 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the creation of containers that have oddly named files. This required fixes
   to go-mtree (where the issue was). openSUSE/umoci#80
 
-## [0.0.0] - 2017-02-07
-### Added
+## [0.0.0] - 2017-02-07 ##
+### Added ###
 - Unit tests are massively expanded, as well as the integration tests.
   openSUSE/umoci#68 openSUSE/umoci#69
 - Full coverage profiles (unit+integration) are generated to get all
   information about how much code is tested. openSUSE/umoci#68
   openSUSE/umoci#69
 
-### Fixed
+### Fixed ###
 - Static compilation now works properly. openSUSE/umoci#64
 - 32-bit architecture builds are fixed. openSUSE/umoci#70
 
-### Changed
+### Changed ###
 - Unit tests can now be run inside `%check` of an `rpmbuild` script, allowing
   for proper testing. openSUSE/umoci#65.
 - The logging output has been cleaned up to be much nicer for end-users to
   read. openSUSE/umoci#73
 - Project has been moved to an openSUSE project. openSUSE/umoci#75
 
-## [0.0.0-rc3] - 2016-12-19
-### Added
+## [0.0.0-rc3] - 2016-12-19 ##
+### Added ###
 - `unpack`, `repack`: `xattr` support which also handles `security.selinux.*`
   difficulties. openSUSE/umoci#49 openSUSE/umoci#52
 - `config`, `unpack`: Ensure that environment variables are not duplicated in
@@ -361,14 +369,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Enable stack traces with errors if the `--debug` flag was given to `umoci`.
   This requires a patch to `pkg/errors`.
 
-### Changed
+### Changed ###
 - `gc`: Garbage collection now also garbage collects temporary directories.
   openSUSE/umoci#17
 - Clean-ups to vendoring of `go-mtree` so that it's much more
   upstream-friendly.
 
-## [0.0.0-rc2] - 2016-12-12
-### Added
+## [0.0.0-rc2] - 2016-12-12 ##
+### Added ###
 - `unpack`, `repack`: Support for rootless unpacking and repacking.
   openSUSE/umoci#26
 - `unpack`, `repack`: UID and GID mapping when unpacking and repacking.
@@ -383,7 +391,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - Full integration and unit testing, with OCI validation to ensure that we
   always create valid images. openSUSE/umoci#12
 
-### Changed
+### Changed ###
 - `unpack`, `repack`: Create history entries automatically (with options to
   modify the entries). openSUSE/umoci#36
 - `unpack`: Store information about its source to ensure consistency when doing
@@ -394,17 +402,17 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   some discussions happening upstream about the correct way of doing this.
   openSUSE/umoci#43
 
-### Fixed
+### Fixed ###
 - `repack`: Errors encountered during generation of delta layers are now
   correctly propagated. openSUSE/umoci#33
 - `unpack`: Hardlinks are now extracted as real hardlinks. openSUSE/umoci#25
 
-### Security
+### Security ###
 - `unpack`, `repack`: Symlinks are now correctly resolved inside the unpacked
   rootfs. openSUSE/umoci#27
 
-## 0.0.0-rc1 - 2016-11-10
-### Added
+## 0.0.0-rc1 - 2016-11-10 ##
+### Added ###
 - Proof of concept with major functionality implemented.
   + `unpack`
   + `repack`

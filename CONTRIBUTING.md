@@ -1,3 +1,11 @@
+<!--
++++
+# Hugo Front-matter
+title = "Contribution Guidelines"
+aliases = ["/CONTRIBUTING.md"]
++++
+-->
+
 ## Contribution Guidelines ##
 
 If you're reading this, you're likely interested in contributing to this
@@ -14,8 +22,7 @@ keys listed in the [umoci keyring][umoci-keyring].
 <!-- TODO: We really shouldn't be using the release keys for encryption. -->
 
 [pgp]: https://en.wikipedia.org/wiki/Pretty_Good_Privacy
-<!-- TODO: Point this to the actual keyring file. -->
-[umoci-keyring]: https://umo.ci/umoci.keyring
+[umoci-keyring]: /umoci.keyring
 
 ### Issues ###
 
