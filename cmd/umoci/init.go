@@ -22,7 +22,7 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )

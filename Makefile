@@ -22,7 +22,7 @@ GO_MD2MAN ?= go-md2man
 export GO111MODULE=off
 
 # Set up the ... lovely ... GOPATH hacks.
-PROJECT := github.com/openSUSE/umoci
+PROJECT := github.com/opencontainers/umoci
 CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.

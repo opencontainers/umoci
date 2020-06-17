@@ -29,9 +29,9 @@ import (
 
 	"github.com/apex/log"
 	"github.com/cyphar/filepath-securejoin"
-	"github.com/openSUSE/umoci/pkg/fseval"
-	"github.com/openSUSE/umoci/pkg/system"
-	"github.com/openSUSE/umoci/third_party/shared"
+	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/system"
+	"github.com/opencontainers/umoci/third_party/shared"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )

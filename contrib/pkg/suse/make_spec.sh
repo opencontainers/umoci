@@ -60,7 +60,7 @@ cat <<EOF > ${NAME}.spec
 %define __arch_install_post export NO_BRP_STRIP_DEBUG=true
 
 # Project name when using go tooling.
-%define project github.com/openSUSE/umoci
+%define project github.com/opencontainers/umoci
 
 Name:           $NAME
 Version:        $VERSION
@@ -68,7 +68,7 @@ Release:        0
 Summary:        Open Container Image manipulation tool
 License:        Apache-2.0
 Group:          System/Management
-Url:            https://github.com/openSUSE/umoci
+Url:            https://github.com/opencontainers/umoci
 Source:         ${SAFE_BRANCH}.tar.gz
 %ifarch %{go_arches}
 BuildRequires:  go >= 1.6

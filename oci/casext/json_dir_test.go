@@ -25,7 +25,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/openSUSE/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

@@ -22,10 +22,10 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/casext"
-	igen "github.com/openSUSE/umoci/oci/config/generate"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/casext"
+	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

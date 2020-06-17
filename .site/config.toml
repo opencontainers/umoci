@@ -34,5 +34,5 @@ unsafe = true
 
 [[menu.shortcuts]]
 name = "<i class='fa fa-git'></i> Source Code"
-url = "https://github.com/openSUSE/umoci"
+url = "https://github.com/opencontainers/umoci"
 weight = 0

@@ -23,7 +23,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openSUSE/umoci/pkg/unpriv"
+	"github.com/opencontainers/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 )

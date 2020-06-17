@@ -32,11 +32,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/openSUSE/umoci/oci/cas/dir"
-	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/go-digest"
 	ispecs "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"golang.org/x/net/context"
 )
 

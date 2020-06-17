@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

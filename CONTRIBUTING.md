@@ -49,7 +49,7 @@ of your ability) so we can debug your issue far more easily:
 * A minimal example of the bug with a contrast between what you expect to
   happen versus what actually happened.
 
-[issue-new]: https://github.com/openSUSE/umoci/issues/new
+[issue-new]: https://github.com/opencontainers/umoci/issues/new
 [xy-problem]: http://xyproblem.info/
 
 ### Submitting Changes ###
@@ -144,7 +144,7 @@ By making a contribution to this project, I certify that:
     this project or the open source license(s) involved.
 ```
 
-[pr-new]: https://github.com/openSUSE/umoci/compare
+[pr-new]: https://github.com/opencontainers/umoci/compare
 [changelog]: /CHANGELOG.md
 [lk-commit]: https://www.kernel.org/doc/Documentation/process/submitting-patches.rst
 [dco]: https://developercertificate.org/

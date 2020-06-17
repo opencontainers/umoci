@@ -6,11 +6,11 @@
 -->
 <div style="display: none">
 
-[![Release](https://img.shields.io/github/release/openSUSE/umoci.svg)](https://github.com/openSUSE/umoci/releases/latest)
-[![Build Status](https://img.shields.io/travis/openSUSE/umoci/master.svg)](https://travis-ci.org/openSUSE/umoci)
-![License: Apache 2.0](https://img.shields.io/github/license/openSUSE/umoci.svg)
+[![Release](https://img.shields.io/github/release/opencontainers/umoci.svg)](https://github.com/opencontainers/umoci/releases/latest)
+[![Build Status](https://img.shields.io/travis/opencontainers/umoci/master.svg)](https://travis-ci.org/opencontainers/umoci)
+![License: Apache 2.0](https://img.shields.io/github/license/opencontainers/umoci.svg)
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/openSUSE/umoci)](https://goreportcard.com/report/github.com/openSUSE/umoci)
+[![Go Report Card](https://goreportcard.com/badge/github.com/opencontainers/umoci)](https://goreportcard.com/report/github.com/opencontainers/umoci)
 [![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1084/badge)](https://bestpractices.coreinfrastructure.org/projects/1084)
 [![DOI](https://zenodo.org/badge/72283469.svg)](https://zenodo.org/badge/latestdoi/72283469)
 
@@ -108,9 +108,9 @@ umoci is also available from several distributions' repositories:
 To build umoci from the [source code][source], a simple `make` should work on
 most machines, as should `make install`.
 
-[releases]: https://github.com/openSUSE/umoci/releases
+[releases]: https://github.com/opencontainers/umoci/releases
 [umoci-keyring]: /umoci.keyring
-[source]: https://github.com/openSUSE/umoci
+[source]: https://github.com/opencontainers/umoci
 [go]: https://golang.org/
 
 ### Usage ###
@@ -176,7 +176,7 @@ several users of the Go APIs), the API is explicitly considered **unstable**
 until umoci `1.0` is released. However, the umoci CLI API is considered to be
 stable despite umoci not being a `1.0` project.
 
-[releases]: https://github.com/openSUSE/umoci/releases
+[releases]: https://github.com/opencontainers/umoci/releases
 [semver]: http://semver.org/
 [changelog]: /CHANGELOG.md
 

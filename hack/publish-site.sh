@@ -25,7 +25,7 @@ git submodule update --init --recursive || :
 
 # Check out the 'gh-pages' worktree.
 rm -rf public/ && git worktree prune
-git fetch -f https://github.com/openSUSE/umoci.git gh-pages:gh-pages
+git fetch -f https://github.com/opencontainers/umoci.git gh-pages:gh-pages
 git worktree add -B gh-pages 'public' gh-pages
 
 # Build the source.

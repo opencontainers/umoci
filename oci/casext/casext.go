@@ -20,7 +20,7 @@
 // of cas.Engine.
 package casext
 
-import "github.com/openSUSE/umoci/oci/cas"
+import "github.com/opencontainers/umoci/oci/cas"
 
 // TODO: Convert this to an interface and make Engine private.
 

@@ -32,9 +32,9 @@ reference updated. These links just show the set of commits added between
 successive versions:
 
 ```markdown
-[Unreleased]: https://github.com/openSUSE/umoci/compare/vX.Y.Z...HEAD
-[X.Y.Z]: https://github.com/openSUSE/umoci/compare/vX.Y.W...vX.Y.Z
-[X.Y.W]: https://github.com/openSUSE/umoci/compare/vX.Y.V...vX.Y.W
+[Unreleased]: https://github.com/opencontainers/umoci/compare/vX.Y.Z...HEAD
+[X.Y.Z]: https://github.com/opencontainers/umoci/compare/vX.Y.W...vX.Y.Z
+[X.Y.W]: https://github.com/opencontainers/umoci/compare/vX.Y.V...vX.Y.W
 ```
 
 The changes to `CHANGELOG.md` will be committed in the next section.

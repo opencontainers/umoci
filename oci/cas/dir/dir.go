@@ -25,11 +25,11 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
-	"github.com/openSUSE/umoci/pkg/hardening"
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"

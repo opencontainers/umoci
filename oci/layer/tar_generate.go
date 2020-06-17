@@ -25,8 +25,8 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/pkg/fseval"
-	"github.com/openSUSE/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 )
 
