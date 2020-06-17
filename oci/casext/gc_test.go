@@ -9,9 +9,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/openSUSE/umoci/oci/cas/dir"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/cas/dir"
 	"golang.org/x/net/context"
 )
 

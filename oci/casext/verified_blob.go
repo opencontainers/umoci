@@ -21,8 +21,8 @@ import (
 	"context"
 	"io"
 
-	"github.com/openSUSE/umoci/pkg/hardening"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
 // GetVerifiedBlob returns a VerifiedReadCloser for retrieving a blob from the

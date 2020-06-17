@@ -17,7 +17,7 @@
 set -Eeuxo pipefail
 
 GO="${GO:-go}"
-PROJECT="${PROJECT:-github.com/openSUSE/umoci}"
+PROJECT="${PROJECT:-github.com/opencontainers/umoci}"
 
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"

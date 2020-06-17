@@ -25,7 +25,7 @@ import (
 	"sort"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/pkg/unpriv"
+	"github.com/opencontainers/umoci/pkg/unpriv"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )

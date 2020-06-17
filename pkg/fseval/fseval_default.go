@@ -22,7 +22,7 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 )

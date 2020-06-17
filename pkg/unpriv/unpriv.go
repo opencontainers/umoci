@@ -26,7 +26,7 @@ import (
 	"time"
 
 	"github.com/cyphar/filepath-securejoin"
-	"github.com/openSUSE/umoci/pkg/system"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )

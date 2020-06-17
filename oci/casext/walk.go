@@ -21,9 +21,9 @@ import (
 	"errors"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/cas"
 	"golang.org/x/net/context"
 )
 
@@ -53,7 +53,7 @@ type walkState struct {
 
 // DescriptorPath is used to describe the path of descriptors (from a top-level
 // index) that were traversed when resolving a particular reference name. The
-// purpose of this is to allow libraries like github.com/openSUSE/umoci/mutate
+// purpose of this is to allow libraries like github.com/opencontainers/umoci/mutate
 // to handle generic manifest updates given an arbitrary descriptor walk. Users
 // of ResolveReference that don't care about the descriptor path can just use
 // .Descriptor.

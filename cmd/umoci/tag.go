@@ -21,8 +21,8 @@ import (
 	"fmt"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/cas/dir"
-	"github.com/openSUSE/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"golang.org/x/net/context"

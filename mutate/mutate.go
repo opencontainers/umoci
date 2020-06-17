@@ -17,8 +17,8 @@
 
 // Package mutate implements various functionality to allow for the
 // modification of container images in a much higher-level fashion than
-// available from github.com/openSUSE/umoci/oci/cas. In particular, this library
-// should be viewed as a wrapper around github.com/openSUSE/umoci/oci/cas that
+// available from github.com/opencontainers/umoci/oci/cas. In particular, this library
+// should be viewed as a wrapper around github.com/opencontainers/umoci/oci/cas that
 // provides many convenience functions.
 package mutate
 
@@ -30,10 +30,10 @@ import (
 
 	"github.com/apex/log"
 	gzip "github.com/klauspost/pgzip"
-	"github.com/openSUSE/umoci/oci/cas"
-	"github.com/openSUSE/umoci/oci/casext"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

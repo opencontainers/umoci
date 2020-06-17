@@ -24,8 +24,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/golang/protobuf/proto"
-	"github.com/openSUSE/umoci/pkg/idtools"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/pkg/errors"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 )

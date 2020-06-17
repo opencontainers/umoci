@@ -22,10 +22,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	igen "github.com/openSUSE/umoci/oci/config/generate"
-	"github.com/openSUSE/umoci/third_party/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	igen "github.com/opencontainers/umoci/oci/config/generate"
+	"github.com/opencontainers/umoci/third_party/user"
 	"github.com/pkg/errors"
 )
 

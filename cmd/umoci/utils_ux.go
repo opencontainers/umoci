@@ -21,7 +21,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/openSUSE/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )

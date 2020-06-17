@@ -23,10 +23,10 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/casext"
-	"github.com/openSUSE/umoci/oci/layer"
-	"github.com/openSUSE/umoci/pkg/fseval"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )

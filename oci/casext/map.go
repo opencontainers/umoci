@@ -21,8 +21,8 @@ import (
 	"reflect"
 
 	"github.com/apex/log"
-	"github.com/openSUSE/umoci/oci/casext/mediatype"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/pkg/errors"
 )
 

@@ -25,7 +25,7 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/openSUSE/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
@@ -190,7 +190,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 	}
 }
 
-// Make sure that openSUSE/umoci#63 doesn't have a regression where we start
+// Make sure that opencontainers/umoci#63 doesn't have a regression where we start
 // deleting files and directories that other people are using.
 func TestEngineGCLocking(t *testing.T) {
 	ctx := context.Background()

@@ -1,4 +1,6 @@
-module github.com/openSUSE/umoci
+module github.com/opencontainers/umoci
+
+go 1.14
 
 require (
 	github.com/apex/log v1.1.1
