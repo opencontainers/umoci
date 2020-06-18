@@ -1,56 +1,83 @@
 # github.com/apex/log v1.1.1
+## explicit
 github.com/apex/log
 github.com/apex/log/handlers/cli
 # github.com/cpuguy83/go-md2man/v2 v2.0.0-20190314233015-f79a8a8ca69d
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.2
+## explicit
 github.com/cyphar/filepath-securejoin
 # github.com/docker/go-units v0.4.0
+## explicit
 github.com/docker/go-units
 # github.com/fatih/color v1.7.0
 github.com/fatih/color
 # github.com/golang/protobuf v1.3.2
+## explicit
 github.com/golang/protobuf/proto
 # github.com/klauspost/compress v1.8.3
+## explicit
 github.com/klauspost/compress/flate
 # github.com/klauspost/cpuid v1.2.1
+## explicit
 github.com/klauspost/cpuid
 # github.com/klauspost/pgzip v1.2.1
+## explicit
 github.com/klauspost/pgzip
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
+## explicit
 github.com/konsorten/go-windows-terminal-sequences
+# github.com/kr/pretty v0.1.0
+## explicit
 # github.com/mattn/go-colorable v0.1.2
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.9
+## explicit
 github.com/mattn/go-isatty
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
+## explicit
 github.com/mohae/deepcopy
 # github.com/opencontainers/go-digest v1.0.0-rc1
+## explicit
 github.com/opencontainers/go-digest
 # github.com/opencontainers/image-spec v1.0.1
+## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runtime-spec v1.0.1
+## explicit
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/pkg/errors v0.8.1
+## explicit
 github.com/pkg/errors
 # github.com/rootless-containers/proto v0.1.0
+## explicit
 github.com/rootless-containers/proto/go-proto
 # github.com/russross/blackfriday/v2 v2.0.1
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.4.2
+## explicit
 github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.4.0
+## explicit
 # github.com/urfave/cli v1.22.1
+## explicit
 github.com/urfave/cli
 # github.com/vbatts/go-mtree v0.4.4
+## explicit
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
 # golang.org/x/crypto v0.0.0-20190911031432-227b76d455e7
+## explicit
 golang.org/x/crypto/ripemd160
 # golang.org/x/net v0.0.0-20190912160710-24e19bdeb0f2
+## explicit
 golang.org/x/net/context
 # golang.org/x/sys v0.0.0-20190913121621-c3b328c6e5a7
+## explicit
 golang.org/x/sys/unix
+# gopkg.in/check.v1 v1.0.0-20190902080502-41f04d3bba15
+## explicit

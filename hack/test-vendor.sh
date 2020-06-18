@@ -35,7 +35,15 @@ trap 'rm -rf "$ROOT/vendor" ; mv "$STASHED_ROOT/vendor" "$ROOT/vendor" ; rm -rf 
 
 # Try to re-generate vendor/.
 go clean -modcache
-GO111MODULE=on go mod vendor
+go mod verify
+go mod vendor
+
+# Make sure that none of the packages we have listed are unused.
+if (go mod tidy -v 2>&1 | grep '^unused')
+then
+	echo "Unused modules found in go.mod."
+	exit 1
+fi
 
 # See whether something has changed.
 oldhash="$(gethash "$STASHED_ROOT/vendor")"
