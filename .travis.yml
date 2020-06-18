@@ -1,16 +1,20 @@
+os: linux
+dist: bionic
+
 language: go
-
-# `make ci` uses Docker.
-sudo: required
-services:
-  - docker
-
 go:
   - 1.x
 
+services:
+  - docker
+
 before_install:
   - sudo sh -c "apt-get -qq update && apt-get install -y gcc-multilib"
-  - go get -u -v github.com/cpuguy83/go-md2man
+  # Need to set GO111MODULE=off here because Travis runs inside our source repo
+  # (which is a Go module) and thus 'go get' will actually add dependencies to
+  # our go.mod file. Annoyingly this means we cannot require v2 of go-md2man
+  # because that requires Go module support.
+  - GO111MODULE=off go get -u -v github.com/cpuguy83/go-md2man
 
 env:
   - DOCKER_IMAGE="opensuse/leap:latest"
@@ -22,12 +26,20 @@ env:
 matrix:
   fast_finish: true
   allow_failures:
+    # The Fedora image has caused us plenty of pain in the past, so don't let
+    # it kill PRs. This is made more annoying by the fact that the Fedora
+    # image's size makes this test stage take much longer than any other image
+    # (~40 minutes on some days).
     - env: DOCKER_IMAGE="fedora:latest"
 
 notifications:
   email: false
 
 script:
-  - chmod a+rwx . # Necessary to make Travis co-operate with Docker.
-  - make GO111MODULE=off GOARCH=386 local-validate-build # Make sure 32-bit builds work.
+  # Necessary to make Travis co-operate with Docker.
+  - chmod a+rwx .
+  # Make sure 32-bit builds work. I'm not sure why GO111MODULE breaks here, but
+  # disable it since we just care about whether you get compiler errors.
+  - make GO111MODULE=off GOARCH=386 local-validate-build
+  # Run the actual CI.
   - make DOCKER_IMAGE=$DOCKER_IMAGE ci
