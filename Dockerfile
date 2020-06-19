@@ -17,15 +17,16 @@ FROM opensuse/leap:latest
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
-# into openSUSE:Factory yet.
+# into openSUSE Leap yet, or are out of date in Leap.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 	zypper ar -f -p 10 -g obs://home:cyphar:bats obs-bats && \
+	zypper ar -f -p 10 -g obs://devel:languages:go obs-go && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
 		bats \
 		git \
-		"go>=1.11" \
+		go1.14 \
 		go-mtree \
 		jq \
 		libcap-progs \
@@ -36,9 +37,9 @@ RUN zypper -n in \
 		python-setuptools python-xattr attr \
 		skopeo \
 		tar
+RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
-ENV GOPATH /go
-ENV PATH $GOPATH/bin:$PATH
+ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go get -u github.com/cpuguy83/go-md2man && \
     go get -u golang.org/x/lint/golint && \
     go get -u github.com/securego/gosec/cmd/gosec && \

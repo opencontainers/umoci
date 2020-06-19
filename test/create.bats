@@ -136,6 +136,13 @@ function teardown() {
 # behaviour and thus non-deterministic archives. Do you ever get the feeling
 # that sometimes you have to cut your losses and actually do something better
 # than to sit and suffer? Well, this is how it feels.
+#
+# Oh and it turns out that this issue can be triggered by more than just
+# archive/tar. It turns out that pgzip has changed their output in the past
+# <https://github.com/klauspost/compress/pull/105> which means that our
+# dependencies can also trigger this issue. And the best part is that you have
+# to decide whether you want better compression or consistent output between
+# versions.
 @test "umoci [archive/tar regressions]" {
 	# Setup up $IMAGE.
 	IMAGE="$(setup_tmpdir)/image"
@@ -195,13 +202,16 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "$IMAGE"
 
+	# To allow us to debug issues with the checksums, output them to the log.
+	find "$IMAGE" -type f -print0 | xargs -0 sha256sum
+
 	# Verify that the hashes of the blobs and index match (blobs are
 	# content-addressable so using hashes is a bit silly, but whatever).
 	known_hashes=(
-		"d6cbf1632c7d81ac353cf59e469d9dc76e246ff80c048c057e9dd8f380339cae  $IMAGE/blobs/sha256/d6cbf1632c7d81ac353cf59e469d9dc76e246ff80c048c057e9dd8f380339cae"
+		"4e15e3699a98dddc67cb2e9aa5a6135cdf8ffcbdc7963daf959395f73dd52849  $IMAGE/index.json"
+		"54d5cbf998d9b1185628128d83af76ca18425f037ef9f79e6900f7e26985c169  $IMAGE/blobs/sha256/54d5cbf998d9b1185628128d83af76ca18425f037ef9f79e6900f7e26985c169"
+		"e7013826daf8b5d68f82c5b790ca5e9de222a834f2cb3fe3532030161bd72083  $IMAGE/blobs/sha256/e7013826daf8b5d68f82c5b790ca5e9de222a834f2cb3fe3532030161bd72083"
 		"f4a39a97d97aa834da7ad2d92940f9636a57e3d9b3cc7c53242451b02a6cea89  $IMAGE/blobs/sha256/f4a39a97d97aa834da7ad2d92940f9636a57e3d9b3cc7c53242451b02a6cea89"
-		"9ebaf9a7943bde8602a4bc50d772528cc3ba7b386df28a42158f863a857f7ade  $IMAGE/blobs/sha256/9ebaf9a7943bde8602a4bc50d772528cc3ba7b386df28a42158f863a857f7ade"
-		"0e40f6c0d484307d9cb9bda59a86432b4fc802934b2fcf250214ab7169ab4e7f  $IMAGE/index.json"
 	)
 	sha256sum -c <(printf '%s\n' "${known_hashes[@]}")
 

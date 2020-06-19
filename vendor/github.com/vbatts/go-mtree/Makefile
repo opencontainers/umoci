@@ -6,6 +6,7 @@ SOURCE_FILES := $(shell find . -type f -name "*.go")
 CLEAN_FILES := *~
 TAGS :=
 ARCHES := linux,386 linux,amd64 linux,arm linux,arm64 openbsd,amd64 windows,amd64 darwin,amd64
+GO_VER := go1.14
 
 default: build validation
 
@@ -19,12 +20,13 @@ validation.tags: .test.tags .vet.tags .cli.test
 test: .test
 
 CLEAN_FILES += .test .test.tags
+NO_VENDOR_DIR := $(shell find . -type f -name '*.go' ! -path './vendor*' ! -path './.git*' ! -path './.vscode*' -exec dirname "{}" \; | sort -u)
 
 .test: $(SOURCE_FILES)
-	go test -v $$(glide novendor) && touch $@
+	go test -v $(NO_VENDOR_DIR) && touch $@
 
 .test.tags: $(SOURCE_FILES)
-	set -e ; for tag in $(TAGS) ; do go test -tags $$tag -v $$(glide novendor) ; done && touch $@
+	set -e ; for tag in $(TAGS) ; do go test -tags $$tag -v $(NO_VENDOR_DIR) ; done && touch $@
 
 .PHONY: lint
 lint: .lint
@@ -32,10 +34,10 @@ lint: .lint
 CLEAN_FILES += .lint
 
 .lint: $(SOURCE_FILES)
-	if [[ "$(go version |awk '{ print $3 }')" =~ ^go1\.11\. ]] ; then \
-	set -e ; for dir in $$(glide novendor) ; do golint -set_exit_status $$dir ; done && touch $@ \
+	@if [[ "$(findstring $(GO_VER),$(shell go version))" != "" ]] ; then \
+		set -e ; for dir in $(NO_VENDOR_DIR) ; do golint -set_exit_status $$dir ; done && touch $@ \
 	else \
-	touch $@ ; \
+		touch $@ ; \
 	fi
 
 .PHONY: vet
@@ -44,10 +46,10 @@ vet: .vet .vet.tags
 CLEAN_FILES += .vet .vet.tags
 
 .vet: $(SOURCE_FILES)
-	go vet $$(glide novendor) && touch $@
+	go vet $(NO_VENDOR_DIR) && touch $@
 
 .vet.tags: $(SOURCE_FILES)
-	set -e ; for tag in $(TAGS) ; do go vet -tags $$tag -v $$(glide novendor) ; done && touch $@
+	set -e ; for tag in $(TAGS) ; do go vet -tags $$tag -v $(NO_VENDOR_DIR) ; done && touch $@
 
 .PHONY: cli.test
 cli.test: .cli.test
@@ -67,8 +69,10 @@ $(BUILD): $(SOURCE_FILES)
 	go build -o $(BUILD) $(BUILDPATH)
 
 install.tools:
-	go get -u -v github.com/Masterminds/glide
-	if [[ "$(go version |awk '{ print $3 }')" =~ ^go1\.11\. ]] ; then go get -u golang.org/x/lint/golint ; fi
+	@go get -u github.com/fatih/color ; \
+	if [[ "$(findstring $(GO_VER),$(shell go version))" != "" ]] ; then \
+		go get -u golang.org/x/lint/golint ;\
+	fi
 
 ./bin:
 	mkdir -p $@

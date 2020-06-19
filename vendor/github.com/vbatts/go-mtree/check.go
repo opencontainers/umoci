@@ -18,13 +18,3 @@ func Check(root string, dh *DirectoryHierarchy, keywords []Keyword, fs FsEval) (
 
 	return Compare(dh, newDh, keywords)
 }
-
-// TarCheck is the tar equivalent of checking a file hierarchy spec against a
-// tar stream to determine if files have been changed. This is precisely
-// equivalent to Compare(dh, tarDH, keywords).
-func TarCheck(tarDH, dh *DirectoryHierarchy, keywords []Keyword) ([]InodeDelta, error) {
-	if keywords == nil {
-		return Compare(dh, tarDH, dh.UsedKeywords())
-	}
-	return Compare(dh, tarDH, keywords)
-}

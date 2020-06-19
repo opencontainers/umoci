@@ -30,6 +30,10 @@ const (
 	// manifests).
 	Modified DifferenceType = "modified"
 
+	// Same represents the case where two files are the same. These are
+	// only generated from CompareSame().
+	Same DifferenceType = "same"
+
 	// ErrorDifference represents an attempted update to the values of
 	// a keyword that failed
 	ErrorDifference DifferenceType = "errored"
@@ -157,10 +161,10 @@ func (k KeyDelta) Old() *string {
 
 // New returns the value of the KeyDeltaVal entry in the "new" DirectoryHierarchy
 // (as determined by the ordering of parameters to Compare). Returns nil if
-// there was no entry in the "old" DirectoryHierarchy.
+// there was no entry in the "new" DirectoryHierarchy.
 func (k KeyDelta) New() *string {
 	if k.diff == Modified || k.diff == Extra {
-		return sPtr(k.old)
+		return sPtr(k.new)
 	}
 	return nil
 }
@@ -313,25 +317,8 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 	return results, nil
 }
 
-// Compare compares two directory hierarchy manifests, and returns the
-// list of discrepancies between the two. All of the entries in the
-// manifest are considered, with differences being generated for
-// RelativeType and FullType entries. Differences in structure (such as
-// the way /set and /unset are written) are not considered to be
-// discrepancies. The list of differences are all filesystem objects.
-//
-// keys controls which keys will be compared, but if keys is nil then all
-// possible keys will be compared between the two manifests (allowing for
-// missing entries and the like). A missing or extra key is treated as a
-// Modified type.
-//
-// If oldDh or newDh are empty, we assume they are a hierarchy that is
-// completely empty. This is purely for helping callers create synthetic
-// InodeDeltas.
-//
-// NB: The order of the parameters matters (old, new) because Extra and
-//     Missing are considered as different discrepancy types.
-func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
+// compare is the actual workhorse for Compare() and CompareSame()
+func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]InodeDelta, error) {
 	// Represents the new and old states for an entry.
 	type stateT struct {
 		Old *Entry
@@ -438,9 +425,47 @@ func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, er
 					new:  *diff.New,
 					keys: changed,
 				})
+			} else if same {
+				// this means that nothing changed, i.e. that
+				// the files are the same.
+				results = append(results, InodeDelta{
+					diff: Same,
+					path:  path,
+					old:   *diff.Old,
+					new:   *diff.New,
+					keys:  changed,
+				})
 			}
 		}
 	}
 
 	return results, nil
+}
+
+// Compare compares two directory hierarchy manifests, and returns the
+// list of discrepancies between the two. All of the entries in the
+// manifest are considered, with differences being generated for
+// RelativeType and FullType entries. Differences in structure (such as
+// the way /set and /unset are written) are not considered to be
+// discrepancies. The list of differences are all filesystem objects.
+//
+// keys controls which keys will be compared, but if keys is nil then all
+// possible keys will be compared between the two manifests (allowing for
+// missing entries and the like). A missing or extra key is treated as a
+// Modified type.
+//
+// If oldDh or newDh are empty, we assume they are a hierarchy that is
+// completely empty. This is purely for helping callers create synthetic
+// InodeDeltas.
+//
+// NB: The order of the parameters matters (old, new) because Extra and
+//     Missing are considered as different discrepancy types.
+func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
+	return compare(oldDh, newDh, keys, false)
+}
+
+// CompareSame is the same as Compare, except it also includes the entries
+// that are the same with a Same DifferenceType.
+func CompareSame(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
+	return compare(oldDh, newDh, keys, true)
 }

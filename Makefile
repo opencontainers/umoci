@@ -19,7 +19,7 @@ SHELL = /bin/bash
 # Go tools.
 GO ?= go
 GO_MD2MAN ?= go-md2man
-export GO111MODULE=off
+export GO111MODULE=on
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/opencontainers/umoci
@@ -114,9 +114,9 @@ local-validate-go:
 	test -z "$$(gosec -quiet -exclude=G301,G302,G304 $$GOPATH/$(PROJECT)/... | tee /dev/stderr)"
 	./hack/test-vendor.sh
 
-# TODO: This currently fails if you run it right after 'make docs'.
 .PHONY: local-validate-spell
 local-validate-spell:
+	make clean
 	@type misspell  >/dev/null 2>/dev/null || (echo "ERROR: misspell not found." && false)
 	test -z "$$(find . -type f -print0 | xargs -0 misspell | grep -vE '/(vendor|third_party|\.site)/' | tee /dev/stderr)"
 
