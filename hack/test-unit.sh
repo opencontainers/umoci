@@ -21,13 +21,13 @@ PROJECT="${PROJECT:-github.com/opencontainers/umoci}"
 
 # Set up the root and coverage directories.
 export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
-export COVERAGE_DIR=$(mktemp --tmpdir -d umoci-coverage.XXXXXX)
 
-# Run the tests and collate the results.
-for pkg in $(go list $PROJECT/...); do
-	$GO test -v -cover -covermode=count -coverprofile="$(mktemp --tmpdir=$COVERAGE_DIR cov.XXXXX)" -coverpkg=$PROJECT/... $pkg 2>/dev/null
-done
-[ "$COVERAGE" ] && $ROOT/hack/collate.awk $COVERAGE_DIR/* $COVERAGE | sponge $COVERAGE
-
-# Clean up the coverage directory.
-rm -rf "$COVERAGE_DIR"
+# Run the tests.
+extra_args=()
+if [ -n "$COVERAGE" ]
+then
+	# If we have to generate a coverage file, make sure the coverage covers the
+	# entire project and not just the package being tested.
+	extra_args+=("-covermode=count" "-coverprofile=$COVERAGE" "-coverpkg=$PROJECT/...")
+fi
+"$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." 2>/dev/null
