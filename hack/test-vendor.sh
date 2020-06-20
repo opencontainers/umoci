@@ -15,6 +15,7 @@
 # limitations under the License.
 
 set -Eeuxo pipefail
+source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 
 # Generate a hash-of-hashes for the entire vendor/ tree.
 function gethash() {
@@ -26,7 +27,7 @@ function gethash() {
 }
 
 # Figure out root directory.
-ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
+ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
 STASHED_ROOT="$(mktemp -dt umoci-vendor.XXXXXX)"
 
 # Stash away old vendor tree, and restore it on-exit.

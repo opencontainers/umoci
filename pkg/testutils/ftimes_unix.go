@@ -1,4 +1,4 @@
-// +build !linux
+// +build !darwin
 
 /*
  * umoci: Umoci Modifies Open Containers' Images
@@ -20,14 +20,13 @@
 package testutils
 
 import (
-	"runtime"
-	"testing"
+	"time"
 )
 
-func MakeReadOnly(t *testing.T, path string) {
-	t.Skipf("readonly tests not supported on GOOS=%s", runtime.GOOS)
-}
-
-func MakeReadWrite(t *testing.T, path string) {
-	t.Skipf("readonly tests not supported on GOOS=%s", runtime.GOOS)
+// FtimeGranularity is the filesystem timestamp granularity for this system.
+// TODO: We should probably make this dependent on the path since some
+//       filesystems can have different granularities...
+func FtimeGranularity() time.Duration {
+	// On Linux, most filesystems have nano-second-level granularity.
+	return time.Nanosecond
 }

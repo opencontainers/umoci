@@ -71,6 +71,7 @@ matrix:
         # Clear DOCKER_IMAGE since we don't use it.
         - DOCKER_IMAGE=""
       script:
-        # TODO: Run the integration and unit tests, so we don't need to
-        #       special-case MacOS here.
+        # TODO: Run the integration tests and rest of the CI, so we don't need
+        #       to special-case MacOS here.
         - make local-validate-build
+        - make local-test-unit

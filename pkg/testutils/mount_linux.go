@@ -33,8 +33,7 @@ import (
 //       CAS interface.
 func MakeReadOnly(t *testing.T, path string) {
 	if os.Geteuid() != 0 {
-		t.Log("readonly tests only work with root privileges")
-		t.Skip()
+		t.Skip("readonly tests only work with root privileges")
 	}
 
 	t.Logf("mounting %s as readonly", path)
@@ -50,8 +49,7 @@ func MakeReadOnly(t *testing.T, path string) {
 // MakeReadWrite undos the effect of MakeReadOnly.
 func MakeReadWrite(t *testing.T, path string) {
 	if os.Geteuid() != 0 {
-		t.Log("readonly tests only work with root privileges")
-		t.Skip()
+		t.Skip("readonly tests only work with root privileges")
 	}
 
 	if err := unix.Unmount(path, unix.MNT_DETACH); err != nil {

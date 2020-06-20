@@ -15,9 +15,10 @@
 # limitations under the License.
 
 set -Eeuo pipefail
+source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 
 # Change to site root.
-site_root="$(readlink -f "$(dirname "${BASH_SOURCE}")/../.site")"
+site_root="$(readlinkf_posix "$(dirname "${BASH_SOURCE}")/../.site")"
 cd "$site_root"
 
 # Make sure that we've checked out submodules.

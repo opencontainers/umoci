@@ -15,11 +15,13 @@
 # limitations under the License.
 
 set -Eeuxo pipefail
+source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 
+export ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
+
+# Set up the coverage directory.
+COVERAGE="${COVERAGE:-}"
 export COVER="${COVER:-0}"
-
-# Set up the root and coverage directories.
-export ROOT="$(readlink -f "$(dirname "$(readlink -f "$BASH_SOURCE")")/..")"
 if [ "$COVER" -eq 1 ]; then
 	export COVERAGE_DIR=$(mktemp -dt umoci-coverage.XXXXXX)
 fi

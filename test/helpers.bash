@@ -14,8 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source "$(dirname "$BASH_SOURCE")/../hack/readlinkf.sh"
+
 # Root directory of integration tests.
-INTEGRATION_ROOT=$(dirname "$(readlink -f "$BASH_SOURCE")")
+INTEGRATION_ROOT=$(dirname "$(readlinkf_posix "$BASH_SOURCE")")
 UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 GOMTREE="/usr/bin/gomtree" # For some reason $(whence ...) and $(where ...) are broken.
 

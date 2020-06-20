@@ -1,5 +1,3 @@
-// +build !linux
-
 /*
  * umoci: Umoci Modifies Open Containers' Images
  * Copyright (C) 2016-2020 SUSE LLC
@@ -20,14 +18,11 @@
 package testutils
 
 import (
-	"runtime"
-	"testing"
+	"time"
 )
 
-func MakeReadOnly(t *testing.T, path string) {
-	t.Skipf("readonly tests not supported on GOOS=%s", runtime.GOOS)
-}
-
-func MakeReadWrite(t *testing.T, path string) {
-	t.Skipf("readonly tests not supported on GOOS=%s", runtime.GOOS)
+// Unix returns the local Time corresponding to the given Unix time, rounded to
+// the timestamp granularity for this system.
+func Unix(sec, nsec int64) time.Time {
+	return time.Unix(sec, nsec).Round(FtimeGranularity())
 }
