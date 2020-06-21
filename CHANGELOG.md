@@ -13,8 +13,12 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
+### Fixed ###
 - Suppress repeated xattr warnings on destination filesystems that do not
-  support xattrs.
+  support xattrs. opencontainers/umoci#311
+- Work around a long-standing issue in our command-line parsing library (see
+  urfave/cli#1152) by disabling argument re-ordering for `umoci config`, which
+  often takes `-`-prefixed flag arguments. opencontainers/umoci#328
 
 ## [0.4.5] - 2019-12-04 ##
 ### Added ###

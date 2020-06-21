@@ -16,6 +16,8 @@ github.com/fatih/color
 # github.com/golang/protobuf v1.4.2
 ## explicit
 github.com/golang/protobuf/proto
+# github.com/google/go-cmp v0.5.0
+## explicit
 # github.com/klauspost/compress v1.10.9
 ## explicit
 github.com/klauspost/compress/flate
@@ -24,13 +26,18 @@ github.com/klauspost/compress/flate
 github.com/klauspost/pgzip
 # github.com/konsorten/go-windows-terminal-sequences v1.0.3
 github.com/konsorten/go-windows-terminal-sequences
-# github.com/mattn/go-colorable v0.1.4
+# github.com/kr/text v0.2.0
+## explicit
+# github.com/mattn/go-colorable v0.1.6
+## explicit
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.11
+# github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 ## explicit
 github.com/mohae/deepcopy
+# github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e
+## explicit
 # github.com/opencontainers/go-digest v1.0.0
 ## explicit
 github.com/opencontainers/go-digest
@@ -54,7 +61,9 @@ github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
-# github.com/urfave/cli v1.22.1
+# github.com/tj/assert v0.0.3
+## explicit
+# github.com/urfave/cli v1.22.4
 ## explicit
 github.com/urfave/cli
 # github.com/vbatts/go-mtree v0.5.0
@@ -101,3 +110,7 @@ google.golang.org/protobuf/reflect/protoreflect
 google.golang.org/protobuf/reflect/protoregistry
 google.golang.org/protobuf/runtime/protoiface
 google.golang.org/protobuf/runtime/protoimpl
+# gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f
+## explicit
+# gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
+## explicit

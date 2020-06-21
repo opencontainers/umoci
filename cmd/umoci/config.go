@@ -59,6 +59,18 @@ image.`,
 		return nil
 	},
 
+	// Do not re-order arguments.
+	//
+	// It turns out that urfave/cli incorrectly handles cases like
+	// [--config.cmd -c] during argument re-ordering for subcommands, causing
+	// us a fair number of issues when users are trying to pass a flag an
+	// argument that starts with a dash. Luckily 'umoci config' doesn't take
+	// positional arguments, so disabling argument re-ordering has no other
+	// real effect.
+	//
+	// See <https://github.com/urfave/cli/issues/1152> for more details.
+	SkipArgReorder: true,
+
 	Flags: []cli.Flag{
 		cli.StringFlag{Name: "config.user"},
 		cli.StringSliceFlag{Name: "config.exposedports"},
