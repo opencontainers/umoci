@@ -68,13 +68,13 @@ func (fs unprivFsEval) Readlink(path string) (string, error) {
 }
 
 // Symlink is equivalent to unpriv.Symlink.
-func (fs unprivFsEval) Symlink(linkname, path string) error {
-	return unpriv.Symlink(linkname, path)
+func (fs unprivFsEval) Symlink(target, linkname string) error {
+	return unpriv.Symlink(target, linkname)
 }
 
 // Link is equivalent to unpriv.Link.
-func (fs unprivFsEval) Link(linkname, path string) error {
-	return unpriv.Link(linkname, path)
+func (fs unprivFsEval) Link(target, linkname string) error {
+	return unpriv.Link(target, linkname)
 }
 
 // Chmod is equivalent to unpriv.Chmod.

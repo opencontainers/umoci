@@ -24,6 +24,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"golang.org/x/sys/unix"
 )
 
@@ -42,8 +43,8 @@ func TestLutimesFile(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atime := time.Unix(125812851, 128518257)
-	mtime := time.Unix(257172893, 995216512)
+	atime := testutils.Unix(125812851, 128518257)
+	mtime := testutils.Unix(257172893, 995216512)
 
 	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
@@ -91,8 +92,8 @@ func TestLutimesDirectory(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atime := time.Unix(128551231, 273285257)
-	mtime := time.Unix(185726393, 752135712)
+	atime := testutils.Unix(128551231, 273285257)
+	mtime := testutils.Unix(185726393, 752135712)
 
 	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
@@ -140,8 +141,8 @@ func TestLutimesSymlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atime := time.Unix(128551231, 273285257)
-	mtime := time.Unix(185726393, 752135712)
+	atime := testutils.Unix(128551231, 273285257)
+	mtime := testutils.Unix(185726393, 752135712)
 
 	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)
@@ -218,8 +219,8 @@ func TestLutimesRelative(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	atime := time.Unix(134858232, 258921237)
-	mtime := time.Unix(171257291, 425815288)
+	atime := testutils.Unix(134858232, 258921237)
+	mtime := testutils.Unix(171257291, 425815288)
 
 	if err := unix.Lstat(path, &fiOld); err != nil {
 		t.Fatal(err)

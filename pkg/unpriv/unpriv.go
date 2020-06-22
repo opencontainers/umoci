@@ -218,19 +218,19 @@ func Lstatx(path string) (unix.Stat_t, error) {
 }
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
-// unpriv.Wrap to make it possible to get the linkname of a symlink even if you
+// unpriv.Wrap to make it possible to get the target of a symlink even if you
 // do not currently have the required mode bits set to resolve the path. Note
 // that you may not have resolve access after this function returns because all
 // of this trickery is reverted by unpriv.Wrap.
 func Readlink(path string) (string, error) {
-	var linkname string
+	var target string
 	err := Wrap(path, func(path string) error {
 		// Fairly simple.
 		var err error
-		linkname, err = os.Readlink(path)
+		target, err = os.Readlink(path)
 		return err
 	})
-	return linkname, errors.Wrap(err, "unpriv.readlink")
+	return target, errors.Wrap(err, "unpriv.readlink")
 }
 
 // Symlink is a wrapper around os.Symlink which has been wrapped with
@@ -238,25 +238,30 @@ func Readlink(path string) (string, error) {
 // currently have the required access bits to create the symlink. Note that you
 // may not have resolve access after this function returns because all of the
 // trickery is reverted by unpriv.Wrap.
-func Symlink(linkname, path string) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return os.Symlink(linkname, path)
+func Symlink(target, linkname string) error {
+	return errors.Wrap(Wrap(linkname, func(linkname string) error {
+		return os.Symlink(target, linkname)
 	}), "unpriv.symlink")
 }
 
-// Link is a wrapper around os.Link which has been wrapped with unpriv.Wrap to
-// make it possible to create a hard link even if you do not currently have the
-// required access bits to create the hard link. Note that you may not have
-// resolve access after this function returns because all of the trickery is
-// reverted by unpriv.Wrap.
-func Link(linkname, path string) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
+// Link is a wrapper around unix.Link(..., 0) which has been wrapped with
+// unpriv.Wrap to make it possible to create a hard link even if you do not
+// currently have the required access bits to create the hard link. Note that
+// you may not have resolve access after this function returns because all of
+// the trickery is reverted by unpriv.Wrap.
+func Link(target, linkname string) error {
+	return errors.Wrap(Wrap(linkname, func(linkname string) error {
 		// We have to double-wrap this, because you need search access to the
 		// linkname. This is safe because any common ancestors will be reverted
 		// in reverse call stack order.
-		return errors.Wrap(Wrap(linkname, func(linkname string) error {
-			return os.Link(linkname, path)
-		}), "unpriv.wrap linkname")
+		return errors.Wrap(Wrap(target, func(target string) error {
+			// We need to explicitly pass 0 as a flag because POSIX allows the
+			// default behaviour of link(2) when it comes to target being a
+			// symlink to be implementation-defined. Only linkat(2) allows us
+			// to guarantee the right behaviour.
+			//  <https://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html>
+			return unix.Linkat(unix.AT_FDCWD, target, unix.AT_FDCWD, linkname, 0)
+		}), "unpriv.wrap target")
 	}), "unpriv.link")
 }
 

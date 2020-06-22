@@ -25,8 +25,8 @@ import (
 	"path/filepath"
 	"reflect"
 	"testing"
-	"time"
 
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 )
 
@@ -891,8 +891,8 @@ func TestChtimes(t *testing.T) {
 	hdrOld, _ := tar.FileInfoHeader(fi, "")
 
 	// Modify the times.
-	atime := time.Unix(12345678, 12421512)
-	mtime := time.Unix(11245631, 13373321)
+	atime := testutils.Unix(12345678, 12421512)
+	mtime := testutils.Unix(11245631, 13373321)
 	if err := Chtimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime); err != nil {
 		t.Errorf("unexpected error from unpriv.chtimes: %s", err)
 	}
@@ -1008,8 +1008,8 @@ func TestLutimes(t *testing.T) {
 	hdrDirOld, _ := tar.FileInfoHeader(fi, "")
 
 	// Modify the times.
-	atime := time.Unix(12345678, 12421512)
-	mtime := time.Unix(11245631, 13373321)
+	atime := testutils.Unix(12345678, 12421512)
+	mtime := testutils.Unix(11245631, 13373321)
 	if err := Lutimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime); err != nil {
 		t.Errorf("unexpected error from unpriv.lutimes: %s", err)
 	}
@@ -1035,8 +1035,8 @@ func TestLutimes(t *testing.T) {
 	}
 
 	// Do the same for a symlink.
-	atime = time.Unix(18127518, 12421122)
-	mtime = time.Unix(15245123, 19912991)
+	atime = testutils.Unix(18127518, 12421122)
+	mtime = testutils.Unix(15245123, 19912991)
 
 	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
 	if err != nil {

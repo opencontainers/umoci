@@ -25,11 +25,13 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
@@ -226,8 +228,8 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			{"HiddenDirInSubdir", "another/path/.hiddendir", true},
 		} {
 			t.Logf("running Test%s", test.name)
-			testMtime := time.Unix(123, 456)
-			testAtime := time.Unix(789, 111)
+			testMtime := testutils.Unix(123, 456)
+			testAtime := testutils.Unix(789, 111)
 
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryWhiteout")
 			if err != nil {
@@ -344,9 +346,9 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			Typeflag:   ph.typeflag,
 			Mode:       int64(mode),
 			Size:       size,
-			ModTime:    time.Unix(1210393, 4528036),
-			AccessTime: time.Unix(7892829, 2341211),
-			ChangeTime: time.Unix(8731293, 8218947),
+			ModTime:    testutils.Unix(1210393, 4528036),
+			AccessTime: testutils.Unix(7892829, 2341211),
+			ChangeTime: testutils.Unix(8731293, 8218947),
 		}, r
 	}
 
@@ -590,6 +592,9 @@ func TestUnpackHardlink(t *testing.T) {
 	var (
 		hdr *tar.Header
 
+		// On MacOS, this might not work.
+		hardlinkToSymlinkSupported = true
+
 		ctrValue  = []byte("some content we won't check")
 		regFile   = "regular"
 		symFile   = "link"
@@ -650,10 +655,17 @@ func TestUnpackHardlink(t *testing.T) {
 		Gid: os.Getgid() + 2020,
 	}
 	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("hardlinkB: unexpected UnpackEntry error: %s", err)
+		// On Travis' setup, hardlinks to symlinks are not permitted under
+		// MacOS. That's fine.
+		if runtime.GOOS == "darwin" && errors.Is(err, unix.ENOTSUP) {
+			hardlinkToSymlinkSupported = false
+			t.Logf("hardlinks to symlinks unsupported -- skipping that part of the test")
+		} else {
+			t.Fatalf("hardlinkB: unexpected UnpackEntry error: %s", err)
+		}
 	}
 
-	// Quickly make sure that the contents are as expected.
+	// Make sure that the contents are as expected.
 	ctrValueGot, err := ioutil.ReadFile(filepath.Join(dir, regFile))
 	if err != nil {
 		t.Fatalf("regular file was not created: %s", err)
@@ -663,7 +675,7 @@ func TestUnpackHardlink(t *testing.T) {
 	}
 
 	// Now we have to check the inode numbers.
-	var regFi, symFi, hardAFi, hardBFi unix.Stat_t
+	var regFi, symFi, hardAFi unix.Stat_t
 
 	if err := unix.Lstat(filepath.Join(dir, regFile), &regFi); err != nil {
 		t.Fatalf("could not stat regular file: %s", err)
@@ -674,36 +686,41 @@ func TestUnpackHardlink(t *testing.T) {
 	if err := unix.Lstat(filepath.Join(dir, hardFileA), &hardAFi); err != nil {
 		t.Fatalf("could not stat hardlinkA: %s", err)
 	}
-	if err := unix.Lstat(filepath.Join(dir, hardFileB), &hardBFi); err != nil {
-		t.Fatalf("could not stat hardlinkB: %s", err)
-	}
-
-	// This test only runs on Linux anyway.
 
 	if regFi.Ino == symFi.Ino {
 		t.Errorf("regular and symlink have the same inode! ino=%d", regFi.Ino)
 	}
-	if hardAFi.Ino == hardBFi.Ino {
-		t.Errorf("both hardlinks have the same inode! ino=%d", hardAFi.Ino)
-	}
 	if hardAFi.Ino != regFi.Ino {
 		t.Errorf("hardlink to regular has a different inode: reg=%d hard=%d", regFi.Ino, hardAFi.Ino)
 	}
-	if hardBFi.Ino != symFi.Ino {
-		t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symFi.Ino, hardBFi.Ino)
-	}
 
-	// Double-check readlink.
-	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
-	if err != nil {
-		t.Errorf("unexpected error reading symlink: %s", err)
-	}
-	linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
-	if err != nil {
-		t.Errorf("unexpected error reading hardlink to symlink: %s", err)
-	}
-	if linknameA != linknameB {
-		t.Errorf("hardlink to symlink doesn't match linkname: link=%s hard=%s", linknameA, linknameB)
+	if hardlinkToSymlinkSupported {
+		var hardBFi unix.Stat_t
+
+		if err := unix.Lstat(filepath.Join(dir, hardFileB), &hardBFi); err != nil {
+			t.Fatalf("could not stat hardlinkB: %s", err)
+		}
+
+		// Check inode numbers of hardlink-to-symlink.
+		if hardAFi.Ino == hardBFi.Ino {
+			t.Errorf("both hardlinks have the same inode! ino=%d", hardAFi.Ino)
+		}
+		if hardBFi.Ino != symFi.Ino {
+			t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symFi.Ino, hardBFi.Ino)
+		}
+
+		// Double-check readlink.
+		linknameA, err := os.Readlink(filepath.Join(dir, symFile))
+		if err != nil {
+			t.Errorf("unexpected error reading symlink: %s", err)
+		}
+		linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
+		if err != nil {
+			t.Errorf("unexpected error reading hardlink to symlink: %s", err)
+		}
+		if linknameA != linknameB {
+			t.Errorf("hardlink to symlink doesn't match linkname: link=%s hard=%s", linknameA, linknameB)
+		}
 	}
 
 	// Make sure that uid and gid don't apply to hardlinks.

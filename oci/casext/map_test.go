@@ -27,6 +27,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 func descriptorPtr(d ispec.Descriptor) *ispec.Descriptor { return &d }
@@ -44,7 +45,7 @@ func randomDescriptor(t *testing.T) ispec.Descriptor {
 	descriptor.Annotations = map[string]string{}
 	n := rand.Intn(32)
 	for i := 0; i < n; i++ {
-		descriptor.Annotations[randomString(32)] = randomString(32)
+		descriptor.Annotations[testutils.RandomString(32)] = testutils.RandomString(32)
 	}
 
 	return descriptor

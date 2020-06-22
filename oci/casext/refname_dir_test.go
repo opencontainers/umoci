@@ -37,6 +37,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"golang.org/x/net/context"
 )
 
@@ -70,7 +71,7 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 		size := rand.Intn(512 * 1024)
 
 		if err := tw.WriteHeader(&tar.Header{
-			Name:     randomString(16),
+			Name:     testutils.RandomString(16),
 			Mode:     0755,
 			Uid:      rand.Intn(1337),
 			Gid:      rand.Intn(1337),
@@ -461,7 +462,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		}
 
 		// make it readonly
-		readonly(t, image)
+		testutils.MakeReadOnly(t, image)
 
 		newEngine, err := dir.Open(image)
 		if err != nil {
@@ -492,6 +493,6 @@ func TestEngineReferenceReadonly(t *testing.T) {
 		}
 
 		// make it readwrite again.
-		readwrite(t, image)
+		testutils.MakeReadWrite(t, image)
 	}
 }

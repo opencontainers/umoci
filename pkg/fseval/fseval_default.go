@@ -74,13 +74,18 @@ func (fs osFsEval) Readlink(path string) (string, error) {
 }
 
 // Symlink is equivalent to os.Symlink.
-func (fs osFsEval) Symlink(linkname, path string) error {
-	return os.Symlink(linkname, path)
+func (fs osFsEval) Symlink(target, linkname string) error {
+	return os.Symlink(target, linkname)
 }
 
-// Link is equivalent to os.Link.
-func (fs osFsEval) Link(linkname, path string) error {
-	return os.Link(linkname, path)
+// Link is equivalent to unix.Link(..., ~AT_SYMLINK_FOLLOW).
+func (fs osFsEval) Link(target, linkname string) error {
+	// We need to explicitly pass 0 as a flag because POSIX allows the default
+	// behaviour of link(2) when it comes to target being a symlink to be
+	// implementation-defined. Only linkat(2) allows us to guarantee the right
+	// behaviour.
+	//  <https://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html>
+	return unix.Linkat(unix.AT_FDCWD, target, unix.AT_FDCWD, linkname, 0)
 }
 
 // Chmod is equivalent to os.Chmod.

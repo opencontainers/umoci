@@ -26,6 +26,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 	"golang.org/x/net/context"
 )
@@ -156,7 +157,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		}
 
 		// make it readonly
-		readonly(t, image)
+		testutils.MakeReadOnly(t, image)
 
 		newEngine, err := dir.Open(image)
 		if err != nil {
@@ -194,6 +195,6 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		}
 
 		// make it readwrite again.
-		readwrite(t, image)
+		testutils.MakeReadWrite(t, image)
 	}
 }

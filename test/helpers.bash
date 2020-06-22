@@ -14,8 +14,10 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+source "$(dirname "$BASH_SOURCE")/../hack/readlinkf.sh"
+
 # Root directory of integration tests.
-INTEGRATION_ROOT=$(dirname "$(readlink -f "$BASH_SOURCE")")
+INTEGRATION_ROOT=$(dirname "$(readlinkf_posix "$BASH_SOURCE")")
 UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 GOMTREE="/usr/bin/gomtree" # For some reason $(whence ...) and $(where ...) are broken.
 
@@ -36,14 +38,14 @@ mkdir -p "$TESTDIR_TMPDIR"
 # Stores the set of tmpdirs that still have to be cleaned up. Calling
 # teardown_tmpdirs will set this to an empty array (and all the tmpdirs
 # contained within are removed).
-export TESTDIR_LIST="$(mktemp --tmpdir="$TESTDIR_TMPDIR" umoci-integration-tmpdirs.XXXXXX)"
+export TESTDIR_LIST="$(mktemp "$TESTDIR_TMPDIR/umoci-integration-tmpdirs.XXXXXX")"
 
 # setup_tmpdir creates a new temporary directory and returns its name.  Note
 # that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
 # expected -- so tests should not really attempt to clean up tmpdirs.
 function setup_tmpdir() {
 	[[ -n "$UMOCI_TMPDIR" ]] || UMOCI_TMPDIR="$TESTDIR_TMPDIR"
-	mktemp -d --tmpdir="$UMOCI_TMPDIR" umoci-integration-tmpdir.XXXXXXXX | tee -a "$TESTDIR_LIST"
+	mktemp -d "$UMOCI_TMPDIR/umoci-integration-tmpdir.XXXXXXXX" | tee -a "$TESTDIR_LIST"
 }
 
 # setup_tmpdirs just sets up the "built-in" tmpdirs.

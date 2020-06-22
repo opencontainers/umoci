@@ -15,13 +15,14 @@
  * limitations under the License.
  */
 
-package casext
+package testutils
 
 import (
 	"math/rand"
 )
 
-func randomString(n int) string {
+// RandomString returns a pseudorandom alphabetical (mixed-case) string.
+func RandomString(n int) string {
 	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
 	b := make([]byte, n)
 	for i := range b {

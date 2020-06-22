@@ -7,12 +7,13 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 set -Eeuo pipefail
+source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 
 ## --->
 # Project-specific options and functions. In *theory* you shouldn't need to
 # touch anything else in this script in order to use this elsewhere.
 project="umoci"
-root="$(readlink -f "$(dirname "${BASH_SOURCE}")/..")"
+root="$(readlinkf_posix "$(dirname "${BASH_SOURCE}")/..")"
 
 # These functions allow you to configure how the defaults are computed.
 function get_arch()    { go env GOARCH || uname -m; }
@@ -24,7 +25,7 @@ function setup_project() { true ; }
 # This function takes an output path as an argument, where the built
 # (preferably static) binary should be placed.
 function build_project() {
-	tmprootfs="$(mktemp -d --tmpdir "$project-build.XXXXXX")"
+	tmprootfs="$(mktemp -dt "$project-build.XXXXXX")"
 
 	make -C "$root" BUILD_DIR="$tmprootfs" COMMIT_NO= "$project.static"
 	mv "$tmprootfs/$project.static" "$1"

@@ -13,6 +13,29 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
+umoci has been adopted by the Open Container Initative as a reference
+implementation of the OCI Image Specification. This will have little impact on
+the roadmap or scope of umoci, but it does further solidify umoci as a useful
+piece of "boring container infrastructure" that can be used to build larger
+systems.
+
+### Changed ###
+* As part of the adoption procedure, the import path and module name of umoci
+  has changed from `github.com/openSUSE/umoci` to
+  `github.com/opencontainers/umoci`. This means that users of our (still
+  unstable) Go API will have to change their import paths in order to update to
+  newer versions of umoci.
+
+  The old GitHub project will contain a snapshot of `v0.4.5` with a few minor
+  changes to the readme that explain the situation. Go projects which import
+  the archived project will receive build warnings that explain the need to
+  update their import paths.
+
+### Added ###
+- umoci now builds on MacOS, and we currently run the unit tests on MacOS to
+  hopefully catch core regressions (in the future we will get the integration
+  tests running to catch more possible regressions). opencontainers/umoci#318
+
 ### Fixed ###
 - Suppress repeated xattr warnings on destination filesystems that do not
   support xattrs. opencontainers/umoci#311
