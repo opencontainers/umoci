@@ -32,8 +32,7 @@ import (
 
 func TestWrapNoTricks(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapNoTricks")
@@ -67,8 +66,7 @@ func TestWrapNoTricks(t *testing.T) {
 
 func TestLstat(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLstat")
@@ -151,8 +149,7 @@ func TestLstat(t *testing.T) {
 
 func TestReadlink(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReadlink")
@@ -241,8 +238,7 @@ func TestReadlink(t *testing.T) {
 
 func TestSymlink(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestSymlink")
@@ -333,8 +329,7 @@ func TestSymlink(t *testing.T) {
 
 func TestOpen(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestOpen")
@@ -471,8 +466,7 @@ func TestOpen(t *testing.T) {
 
 func TestReaddir(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReaddir")
@@ -595,8 +589,7 @@ func TestReaddir(t *testing.T) {
 
 func TestWrapWrite(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapWrite")
@@ -678,8 +671,7 @@ func TestWrapWrite(t *testing.T) {
 
 func TestLink(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLink")
@@ -843,14 +835,12 @@ func TestLink(t *testing.T) {
 
 func TestLchownRemove(t *testing.T) {
 	// FIXME: We probably should remove Lchown.
-	t.Log("unpriv.Lchown cannot really be tested")
-	t.Skip()
+	t.Skip("unpriv.Lchown cannot really be tested")
 }
 
 func TestChtimes(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestChtimes")
@@ -963,8 +953,7 @@ func TestChtimes(t *testing.T) {
 
 func TestLutimes(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLutimes")
@@ -1125,8 +1114,7 @@ func TestLutimes(t *testing.T) {
 
 func TestRemove(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemove")
@@ -1208,8 +1196,7 @@ func TestRemove(t *testing.T) {
 
 func TestRemoveAll(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemoveAll")
@@ -1281,8 +1268,7 @@ func TestRemoveAll(t *testing.T) {
 
 func TestMkdir(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdir")
@@ -1366,8 +1352,7 @@ func TestMkdir(t *testing.T) {
 
 func TestMkdirAll(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAll")
@@ -1486,8 +1471,7 @@ func TestMkdirAll(t *testing.T) {
 
 func TestMkdirAllMissing(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAllMissing")
@@ -1583,8 +1567,7 @@ func TestMkdirAllMissing(t *testing.T) {
 // (specifically /var/log/anaconda/pre-anaconda-logs/lvmdump).
 func TestMkdirRWPerm(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRWPerm")
@@ -1703,8 +1686,7 @@ func TestMkdirRWPerm(t *testing.T) {
 // are handled correctly with Mkdir or Create.
 func TestMkdirRPerm(t *testing.T) {
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRPerm")
@@ -1799,8 +1781,7 @@ func TestWalk(t *testing.T) {
 	// expected.
 
 	if os.Geteuid() == 0 {
-		t.Log("unpriv.* tests only work with non-root privileges")
-		t.Skip()
+		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
 	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWalk")

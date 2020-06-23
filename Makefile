@@ -27,7 +27,25 @@ CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
 UMOCI_IMAGE := umoci_dev
-DOCKER_RUN := docker run --rm -it --security-opt apparmor:unconfined --security-opt label:disable -v ${PWD}:/go/src/${PROJECT}
+
+# TODO: We should test umoci with all of the security options disabled so that
+#       we can make sure umoci inside containers works fine (all of these
+#       security options are necessary for the test code to run, not umoci
+#       itself). The AppArmor/SELinux settings are needed because of the
+#       mount-related tests, and the seccomp/systempaths settings are required
+#       for the runc tests for rootless containers.
+# XXX: Ideally we'd use --security-opt systempaths=unconfined, but the version
+#      of Docker in Travis-CI doesn't support that. Bind-mounting the host's
+#      proc into the container is more dangerous but has the same effect on the
+#      in-kernel mnt_too_revealing() checks and works on old Docker.
+DOCKER_RUN          := docker run --rm -it \
+                                  -v ${PWD}:/go/src/${PROJECT} \
+                                  --security-opt seccomp=unconfined \
+                                  --security-opt apparmor=unconfined \
+                                  --security-opt label=disable \
+                                  -v /proc:/tmp/.HOTFIX-stashed-proc
+DOCKER_ROOTPRIV_RUN := $(DOCKER_RUN) --privileged --cap-add=SYS_ADMIN
+DOCKER_ROOTLESS_RUN := $(DOCKER_RUN) -u 1000:1000 --cap-drop=all
 
 # Output directory.
 BUILD_DIR ?= .
@@ -163,8 +181,8 @@ endif
 .PHONY: test-unit
 test-unit: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) --cap-add=SYS_ADMIN $(UMOCI_IMAGE) make local-test-unit
-	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit:
@@ -173,15 +191,24 @@ local-test-unit:
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE)                             $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
-	$(DOCKER_RUN) -e COVERAGE=$(COVERAGE) -u 1000:1000 --cap-drop=all $(UMOCI_IMAGE) make TESTS="${TESTS}" local-test-integration
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
 	TESTS="${TESTS}" COVER=1 hack/test-integration.sh
 
+.PHONY: shell
 shell: umociimage
 	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
+
+.PHONY: root-shell
+root-shell: umociimage
+	$(DOCKER_ROOTPRIV_RUN) $(UMOCI_IMAGE) bash
+
+.PHONY: rootless-shell
+rootless-shell: umociimage
+	$(DOCKER_ROOTLESS_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
 ci: umoci umoci.cover validate docs test-unit test-integration

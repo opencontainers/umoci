@@ -35,6 +35,7 @@ RUN zypper -n in \
 		oci-image-tools \
 		oci-runtime-tools \
 		python-setuptools python-xattr attr \
+		runc \
 		skopeo \
 		tar
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
