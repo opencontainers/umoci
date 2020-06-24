@@ -13,6 +13,8 @@ The format is based on [Keep a Changelog](http://keepachangelog.com/)
 and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
+
+## [0.4.6] - 2020-06-24 ##
 umoci has been adopted by the Open Container Initative as a reference
 implementation of the OCI Image Specification. This will have little impact on
 the roadmap or scope of umoci, but it does further solidify umoci as a useful
@@ -445,7 +447,8 @@ systems.
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.4.5...HEAD
+[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.4.6...HEAD
+[0.4.6]: https://github.com/opencontainers/umoci/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/opencontainers/umoci/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/opencontainers/umoci/compare/v0.4.3...v0.4.4
 [0.4.3]: https://github.com/opencontainers/umoci/compare/v0.4.2...v0.4.3
