@@ -184,22 +184,22 @@ endif
 .PHONY: test-unit
 test-unit: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit:
-	GO=$(GO) COVER=1 hack/test-unit.sh
+	GO=$(GO) hack/test-unit.sh
 
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
-	TESTS="${TESTS}" COVER=1 hack/test-integration.sh
+	TESTS="${TESTS}" hack/test-integration.sh
 
 .PHONY: shell
 shell: umociimage

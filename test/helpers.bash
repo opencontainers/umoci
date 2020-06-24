@@ -14,10 +14,13 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+set -u
 source "$(dirname "$BASH_SOURCE")/../hack/readlinkf.sh"
 
 # Root directory of integration tests.
 INTEGRATION_ROOT=$(dirname "$(readlinkf_posix "$BASH_SOURCE")")
+
+# Binary paths.
 UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 # For some reason $(whence ...) and $(where ...) are broken.
 RUNC="/usr/bin/runc"
@@ -31,7 +34,7 @@ SOURCE_TAG="${SOURCE_TAG:-latest}"
 COVERAGE_DIR="${COVERAGE_DIR:-}"
 
 # Are we rootless?
-ROOTLESS="$(id -u)"
+IS_ROOTLESS="$(id -u)"
 
 # Let's not store everything in /tmp -- that would just be messy.
 TESTDIR_TMPDIR="$BATS_TMPDIR/umoci-integration"
@@ -43,10 +46,10 @@ mkdir -p "$TESTDIR_TMPDIR"
 export TESTDIR_LIST="$(mktemp "$TESTDIR_TMPDIR/umoci-integration-tmpdirs.XXXXXX")"
 
 # setup_tmpdir creates a new temporary directory and returns its name.  Note
-# that if "$ROOTLESS" is true, then removing this tmpdir might be harder than
-# expected -- so tests should not really attempt to clean up tmpdirs.
+# that if "$IS_ROOTLESS" is true, then removing this tmpdir might be harder
+# than expected -- so tests should not really attempt to clean up tmpdirs.
 function setup_tmpdir() {
-	[[ -n "$UMOCI_TMPDIR" ]] || UMOCI_TMPDIR="$TESTDIR_TMPDIR"
+	[[ -n "${UMOCI_TMPDIR:-}" ]] || UMOCI_TMPDIR="$TESTDIR_TMPDIR"
 	mktemp -d "$UMOCI_TMPDIR/umoci-integration-tmpdir.XXXXXXXX" | tee -a "$TESTDIR_LIST"
 }
 
@@ -81,7 +84,7 @@ function requires() {
 	for var in "$@"; do
 		case $var in
 			root)
-				if [ "$ROOTLESS" -ne 0 ]; then
+				if [ "$IS_ROOTLESS" -ne 0 ]; then
 					skip "test requires ${var}"
 				fi
 				;;
@@ -110,11 +113,9 @@ function bundle-verify() {
 
 function umoci() {
 	local args=()
-	if [[ "$COVER" == 1 ]]; then
-		if [ "$COVERAGE_DIR" ]; then
-			args+=("-test.coverprofile=$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)")
-		fi
-		args+=("__DEVEL--i-heard-you-like-tests")
+	if [ -n "$COVERAGE_DIR" ]; then
+		coverprofile="$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)"
+		args+=("-test.coverprofile=${coverprofile}" "__DEVEL--i-heard-you-like-tests")
 	fi
 
 	if [[ "$1" == "raw" ]]; then
@@ -123,10 +124,12 @@ function umoci() {
 	fi
 
 	# Set the first argument (the subcommand).
+	# TODO: This doesn't correctly handle any global arguments which go before
+	#       the subcommand. We should probably switch to getopt here.
 	args+=("$1")
 
 	# We're rootless if we're asked to unpack something.
-	if [[ "$ROOTLESS" != 0 && "$1" == "unpack" ]]; then
+	if [[ "$IS_ROOTLESS" != 0 && "$1" == "unpack" ]]; then
 		args+=("--rootless")
 	fi
 
@@ -134,14 +137,13 @@ function umoci() {
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 
-	if [[ "$COVER" == 1 ]]; then
-		# Because this is running as a -test.cover test, we need to remove the last
-		# two lines.
-		if [ "$status" -eq 0 ]; then
-			export output="$(echo "$output" | head -n-2)"
-			unset 'lines[${#lines[@]}-1]'
-			unset 'lines[${#lines[@]}-1]'
-		fi
+	if [ "$status" -eq 0 ]; then
+		# Because this is a "go test -c" binary, we need to remove the last two
+		# lines (PASS and the coverage percentage).
+		# TODO: Make this actually depend on whether it's a test binary.
+		export output="$(echo "$output" | head -n-2)"
+		unset 'lines[${#lines[@]}-1]'
+		unset 'lines[${#lines[@]}-1]'
 	fi
 }
 
@@ -151,7 +153,7 @@ function gomtree() {
 	# We're rootless. Note that the "-rootless" flag is actually an out-of-tree
 	# patch applied by openSUSE here:
 	#   <https://build.opensuse.org/package/show/Virtualization:containers/go-mtree>.
-	if [[ "$ROOTLESS" != 0 ]]; then
+	if [[ "$IS_ROOTLESS" != 0 ]]; then
 		args+=("-rootless")
 	fi
 

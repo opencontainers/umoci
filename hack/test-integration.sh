@@ -21,32 +21,39 @@ export ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
 
 # Set up the coverage directory.
 COVERAGE="${COVERAGE:-}"
-export COVER="${COVER:-0}"
-if [ "$COVER" -eq 1 ]; then
-	export COVERAGE_DIR=$(mktemp -dt umoci-coverage.XXXXXX)
-fi
+if [ -n "$COVERAGE" ]
+then
+	# -coverprofile= truncates the target file, so we need to create a
+	# temporary file for each execution of the coverage-generating umoci
+	# binary, which will then be collated after all the tests are run.
+	export COVERAGE_DIR="$(mktemp -dt umoci-coverage.XXXXXX)"
 
-if [ "$COVER" -eq 1 ]; then
 	# Create a temporary symlink for umoci, since the --help tests require the
-	# binary have the name "umoci". This is all just to make the Makefile nicer.
+	# binary have the name "umoci". This is all just to make the Makefile and
+	# test/helpers.bash nicer.
 	UMOCI_DIR="$(mktemp -dt umoci.XXXXXX)"
 	export UMOCI="$UMOCI_DIR/umoci"
 	ln -s "$ROOT/umoci.cover" "$UMOCI"
 fi
 
-# Run the tests and collate the results.
+# TODO: This really isn't that nice of an interface...
 tests=()
-if [[ -z "$TESTS" ]]; then
+if [[ -z "$TESTS" ]]
+then
 	tests=("$ROOT/test/"*.bats)
 else
 	for f in $TESTS; do
 		tests+=("$ROOT/test/$f.bats")
 	done
 fi
-bats --jobs "+1" --tap "${tests[@]}"
-if [ "$COVER" -eq 1 ]; then
-	[ "$COVERAGE" ] && "$ROOT/hack/collate.awk" "$COVERAGE_DIR/"* "$COVERAGE" | sponge "$COVERAGE"
-fi
 
-# Clean up the coverage directory.
-rm -rf "$COVERAGE_DIR"
+# Run the tests.
+bats --jobs "+1" --tap "${tests[@]}"
+
+# Collate the results into the target $COVERAGE file.
+if [ -n "$COVERAGE" ]
+then
+	touch "$COVERAGE"
+	"$ROOT/hack/collate.awk" "$COVERAGE_DIR/"* "$COVERAGE" | sponge "$COVERAGE"
+	rm -rf "$COVERAGE_DIR"
+fi

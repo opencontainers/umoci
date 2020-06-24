@@ -23,12 +23,29 @@ GO="${GO:-go}"
 COVERAGE="${COVERAGE:-}"
 PROJECT="${PROJECT:-github.com/opencontainers/umoci}"
 
-# Run the tests.
-extra_args=()
+extra_args=("$@")
+
+# Set up the coverage file.
 if [ -n "$COVERAGE" ]
 then
+	# -coverprofile= truncates the target file, so we need to create a
+	# temporary file for this test run and collate it with the current
+	# $COVERAGE file.
+	COVERAGE_FILE="$(mktemp -t umoci-coverage.XXXXXX)"
+
 	# If we have to generate a coverage file, make sure the coverage covers the
-	# entire project and not just the package being tested.
-	extra_args+=("-covermode=count" "-coverprofile=$COVERAGE" "-coverpkg=$PROJECT/...")
+	# entire project and not just the package being tested. This mirrors
+	# ${TEST_BUILD_FLAGS} from the Makefile.
+	extra_args+=("-covermode=count" "-coverprofile=$COVERAGE_FILE" "-coverpkg=$PROJECT/...")
 fi
+
+# Run the tests.
 "$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." 2>/dev/null
+
+# Collate the results into the target $COVERAGE file.
+if [ -n "$COVERAGE" ]
+then
+	touch "$COVERAGE"
+	"$ROOT/hack/collate.awk" "$COVERAGE_FILE" "$COVERAGE" | sponge "$COVERAGE"
+	rm -f "$COVERAGE_FILE"
+fi

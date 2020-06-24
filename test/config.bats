@@ -118,7 +118,7 @@ function teardown() {
 	# Make sure additionalGids were set.
 	sane_run jq -SMr '.process.user.additionalGids | length' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	if [ "$ROOTLESS" -eq 0 ]; then
+	if [ "$IS_ROOTLESS" -eq 0 ]; then
 		[[ "$output" == 2 ]]
 
 		# Check the actual values.
