@@ -98,19 +98,9 @@ func (fs osFsEval) Lutimes(path string, atime, mtime time.Time) error {
 	return system.Lutimes(path, atime, mtime)
 }
 
-// Remove is equivalent to os.Remove.
-func (fs osFsEval) Remove(path string) error {
-	return os.Remove(path)
-}
-
 // RemoveAll is equivalent to os.RemoveAll.
 func (fs osFsEval) RemoveAll(path string) error {
 	return os.RemoveAll(path)
-}
-
-// Mkdir is equivalent to os.Mkdir.
-func (fs osFsEval) Mkdir(path string, perm os.FileMode) error {
-	return os.Mkdir(path, perm)
 }
 
 // Mknod is equivalent to unix.Mknod.

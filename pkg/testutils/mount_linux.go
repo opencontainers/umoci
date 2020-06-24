@@ -52,6 +52,8 @@ func MakeReadWrite(t *testing.T, path string) {
 		t.Skip("readonly tests only work with root privileges")
 	}
 
+	t.Logf("mounting %s as readwrite", path)
+
 	if err := unix.Unmount(path, unix.MNT_DETACH); err != nil {
 		t.Fatalf("unmount %s: %s", path, err)
 	}

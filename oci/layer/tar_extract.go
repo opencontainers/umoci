@@ -105,8 +105,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply the owner. If we are rootless then "user.rootlesscontainers" has
 	// already been set up by unmapHeader, so nothing to do here.
 	if !te.mapOptions.Rootless {
-		// XXX: While unpriv.Lchown doesn't make a whole lot of sense this
-		//      should _probably_ be put inside FsEval.
+		// NOTE: This is not done through fsEval.
 		if err := os.Lchown(path, hdr.Uid, hdr.Gid); err != nil {
 			return errors.Wrapf(err, "restore chown metadata: %s", path)
 		}

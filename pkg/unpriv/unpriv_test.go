@@ -833,11 +833,6 @@ func TestLink(t *testing.T) {
 	}
 }
 
-func TestLchownRemove(t *testing.T) {
-	// FIXME: We probably should remove Lchown.
-	t.Skip("unpriv.Lchown cannot really be tested")
-}
-
 func TestChtimes(t *testing.T) {
 	if os.Geteuid() == 0 {
 		t.Skip("unpriv.* tests only work with non-root privileges")

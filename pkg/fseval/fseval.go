@@ -64,14 +64,8 @@ type FsEval interface {
 	// Lutimes is equivalent to os.Lutimes.
 	Lutimes(path string, atime, mtime time.Time) error
 
-	// Remove is equivalent to os.Remove.
-	Remove(path string) error
-
 	// RemoveAll is equivalent to os.RemoveAll.
 	RemoveAll(path string) error
-
-	// Mkdir is equivalent to os.Mkdir.
-	Mkdir(path string, perm os.FileMode) error
 
 	// MkdirAll is equivalent to os.MkdirAll.
 	MkdirAll(path string, perm os.FileMode) error
