@@ -130,7 +130,7 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.4.5
+   0.4.6
 
 AUTHOR:
    Aleksa Sarai <asarai@suse.com>
