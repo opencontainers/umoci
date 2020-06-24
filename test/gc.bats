@@ -26,8 +26,26 @@ function teardown() {
 	teardown_image
 }
 
-@test "umoci gc [missing args]" {
+@test "umoci gc [missing arguments]" {
+	# Missing --layout argument.
 	umoci gc
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty layout path.
+	umoci gc --layout ""
+	[ "$status" -ne 0 ]
+
+	# Layout path contains a ":".
+	umoci gc --layout "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	# Unknown flag argument.
+	umoci gc --this-is-an-invalid-argument --layout "${IMAGE}"
+	[ "$status" -ne 0 ]
+
+	# Too many positional arguments.
+	umoci gc --layout "${IMAGE}" this-is-an-invalid-argument
 	[ "$status" -ne 0 ]
 }
 

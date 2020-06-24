@@ -89,6 +89,107 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci insert [invalid arguments]" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	touch "$INSERTDIR/foobar"
+
+	# Missing --image, source, and target argument.
+	umoci insert
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing --image and target argument.
+	umoci insert "$INSERTDIR"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing source and target argument.
+	umoci insert --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing target argument.
+	umoci insert --image "${IMAGE}:${TAG}" "$INSERTDIR"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci insert --this-is-an-invalid-argument \
+		--image "${IMAGE}:${TAG}" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty positional arguments.
+	umoci insert --image "${IMAGE}:${TAG}" "$INSERTDIR" ""
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	umoci insert --image "${IMAGE}:${TAG}" "" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty positional arguments (--whiteout).
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout ""
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci insert --image "${IMAGE}:${TAG}" "$INSERTDIR" /foo/bar this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments (--whiteout).
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout /foo/bar this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci insert --image ":${TAG}" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci insert --image "${IMAGE}-doesnotexist:${TAG}" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci insert --image "${IMAGE}:" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci insert --image "${IMAGE}:${TAG}-doesnotexist" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci insert --image "${IMAGE}:${INVALID_TAG}" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image destination tag.
+	umoci insert --image "${IMAGE}:${TAG}" --tag "" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image destination tag.
+	umoci insert --image "${IMAGE}:${TAG}" --tag "${INVALID_TAG}" "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Insertion of a file with a .wh. prefix must fail.
+	umoci insert --image "${IMAGE}:${TAG}" "$INSERTDIR" /foo/bar/.wh.invalid-path
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Whiteout of a file with a .wh. prefix must fail.
+	umoci insert --image "${IMAGE}:${TAG}" --whiteout /foo/bar/.wh.invalid-whiteout
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+}
+
 @test "umoci insert --opaque" {
 	# Some things to insert.
 	INSERTDIR="$(setup_tmpdir)"

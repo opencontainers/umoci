@@ -45,6 +45,9 @@ mkdir -p "$TESTDIR_TMPDIR"
 # contained within are removed).
 export TESTDIR_LIST="$(mktemp "$TESTDIR_TMPDIR/umoci-integration-tmpdirs.XXXXXX")"
 
+# INVALID_TAG is a sample invalid tag as per the OCI spec.
+INVALID_TAG=".AZ94n18s"
+
 # setup_tmpdir creates a new temporary directory and returns its name.  Note
 # that if "$IS_ROOTLESS" is true, then removing this tmpdir might be harder
 # than expected -- so tests should not really attempt to clean up tmpdirs.

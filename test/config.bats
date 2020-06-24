@@ -72,9 +72,63 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci config [missing args]" {
+@test "umoci config [invalid arguments]" {
+	# Missing --image argument.
 	umoci config
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci config --image "${IMAGE}:${TAG}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci config --image ":${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci config --image "${IMAGE}-doesnotexist:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci config --image "${IMAGE}:"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci config --image "${IMAGE}:${TAG}-doesnotexist"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci config --image "${IMAGE}:${INVALID_TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image destination tag.
+	umoci config --image "${IMAGE}:${TAG}" --tag ""
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image destination tag.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${INVALID_TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# --no-history conflicts with --history.* flags.
+	umoci config --image "${IMAGE}:${TAG}" \
+		--no-history --history.author "Violet Beauregarde"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# --history.created has to be an ISO-8601 date.
+	umoci config --image "${IMAGE}:${TAG}" \
+		--history.created "invalid date"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci config --config.user 'user'" {
