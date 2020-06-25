@@ -45,6 +45,9 @@ github.com/opencontainers/go-digest
 ## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
+# github.com/opencontainers/runc v1.0.0-rc90
+## explicit
+github.com/opencontainers/runc/libcontainer/user
 # github.com/opencontainers/runtime-spec v1.0.2
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
@@ -77,7 +80,7 @@ golang.org/x/crypto/ripemd160
 # golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 ## explicit
 golang.org/x/net/context
-# golang.org/x/sys v0.0.0-20200615200032-f1bc736245b1
+# golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
