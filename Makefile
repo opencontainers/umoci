@@ -86,6 +86,9 @@ umoci: $(GO_SRC)
 umoci.static: $(GO_SRC)
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
+.PHONY: static
+static: umoci.static
+
 umoci.cover: $(GO_SRC)
 	$(GO) test -c -cover -covermode=count -coverpkg=./... ${TEST_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
@@ -211,5 +214,5 @@ rootless-shell: umociimage
 	$(DOCKER_ROOTLESS_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover validate docs test-unit test-integration
+ci: umoci umoci.static umoci.cover validate docs test-unit test-integration
 	hack/ci-coverage.sh $(COVERAGE)
