@@ -46,6 +46,13 @@ humans to read, and might change in future versions.`,
 	// stat gives information about a manifest.
 	Category: "image",
 
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
+		return nil
+	},
+
 	Flags: []cli.Flag{
 		cli.BoolFlag{
 			Name:  "json",

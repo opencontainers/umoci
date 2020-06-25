@@ -50,6 +50,9 @@ image.`,
 
 	// Verify the metadata.
 	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
 		if _, ok := ctx.App.Metadata["--image-path"]; !ok {
 			return errors.Errorf("missing mandatory argument: --image")
 		}

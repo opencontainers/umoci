@@ -41,6 +41,13 @@ needing a base image to start from.`,
 	// new modifies an image layout.
 	Category: "image",
 
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
+		return nil
+	},
+
 	Action: newImage,
 }
 

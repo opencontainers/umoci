@@ -105,6 +105,13 @@ tag to remove.`,
 	// tag modifies an image layout.
 	Category: "image",
 
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
+		return nil
+	},
+
 	Action: tagRemove,
 }
 
@@ -142,6 +149,13 @@ line. See umoci-stat(1) to get more information about each tagged image.`,
 
 	// tag modifies an image layout.
 	Category: "layout",
+
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
+		return nil
+	},
 
 	Action: tagList,
 }
