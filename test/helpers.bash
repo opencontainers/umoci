@@ -137,14 +137,34 @@ function umoci() {
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
 
-	if [ "$status" -eq 0 ]; then
-		# Because this is a "go test -c" binary, we need to remove the last two
-		# lines (PASS and the coverage percentage).
-		# TODO: Make this actually depend on whether it's a test binary.
-		export output="$(echo "$output" | head -n-2)"
+	# Because this is a "go test -c" binary, we need to remove some lines from
+	# the output so that it matches a regular umoci binary (and so the tests
+	# make sense if you read them as an umoci user).
+	#
+	# TODO: Make all of this actually depend on whether it's a test binary.
+	case "$status" in
+		# If the test succeeded then we only need to remove two lines:
+		#
+		#  PASS
+		#  coverage: 23.9% of statements in ./...
+		0)
+			lines_to_remove=2
+			;;
+		# However, if the test failed then "go test" will output more
+		# information about the test failure:
+		#
+		#   open CAS: validate: read oci-layout: invalid image detected
+		#   --- FAIL: TestUmoci (0.00s)
+		#   FAIL
+		#   coverage: 5.6% of statements in ./...
+		*)
+			lines_to_remove=3
+			;;
+	esac
+	export output="$(echo "$output" | head -n "-$lines_to_remove")"
+	for _ in $(seq "$lines_to_remove"); do
 		unset 'lines[${#lines[@]}-1]'
-		unset 'lines[${#lines[@]}-1]'
-	fi
+	done
 }
 
 function gomtree() {

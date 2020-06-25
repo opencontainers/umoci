@@ -18,6 +18,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 	"strings"
 	"testing"
@@ -49,9 +50,13 @@ func TestUmoci(t *testing.T) {
 			args = append(args, arg)
 		}
 	}
-	os.Args = args
 
 	if run {
-		main()
+		if err := Main(args); err != nil {
+			// Output to stderr rather than the test log so that the
+			// integration tests can properly handle cleaning up the output.
+			fmt.Fprintf(os.Stderr, "%v\n", err)
+			t.Fail()
+		}
 	}
 }

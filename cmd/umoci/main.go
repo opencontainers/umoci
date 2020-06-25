@@ -36,7 +36,10 @@ const (
 	categoryImage  = "image"
 )
 
-func main() {
+// Main is the underlying main() implementation. You can call this directly as
+// though it were the command-line arguments of the umoci binary (this is
+// needed for umoci's integration test hacks you can find in main_test.go).
+func Main(args []string) error {
 	app := cli.NewApp()
 	app.Name = "umoci"
 	app.Usage = usage
@@ -152,15 +155,21 @@ func main() {
 		}
 	}
 
-	// Actually run umoci.
-	if err := app.Run(os.Args); err != nil {
+	err := app.Run(args)
+	if err != nil {
 		// If an error is a permission based error, give a hint to the user
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
 		if os.IsPermission(errors.Cause(err)) {
 			log.Warn("umoci encountered a permission error: maybe --rootless will help?")
 		}
-		log.Fatalf("%v", err)
 		log.Debugf("%+v", err)
+	}
+	return err
+}
+
+func main() {
+	if err := Main(os.Args); err != nil {
+		log.Fatalf("%v", err)
 	}
 }
