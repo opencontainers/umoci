@@ -18,23 +18,15 @@
 package main
 
 import (
-	"fmt"
 	"os"
 	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
+	"github.com/opencontainers/umoci"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
-
-// version is version ID for the source, read from VERSION in the source and
-// populated on build by make.
-var version = ""
-
-// gitCommit is the commit hash that the binary was built from and will be
-// populated on build by make.
-var gitCommit = ""
 
 const (
 	usage = `umoci modifies Open Container images`
@@ -54,16 +46,7 @@ func main() {
 			Email: "asarai@suse.com",
 		},
 	}
-
-	// Fill the version.
-	v := "unknown"
-	if version != "" {
-		v = version
-	}
-	if gitCommit != "" {
-		v = fmt.Sprintf("%s~git%s", v, gitCommit)
-	}
-	app.Version = v
+	app.Version = umoci.FullVersion()
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
