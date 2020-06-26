@@ -43,69 +43,65 @@ import (
 // with the given prefix will resolve to the same path without it during
 // unpacking. The "unsafe" version should resolve to the parent directory
 // (which will be checked). The rootfs is assumed to be <dir>/rootfs.
-func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) func(t *testing.T) {
-	// We return a function so that we can pass it directly to t.Run(...).
-	return func(t *testing.T) {
-		hostValue := []byte("host content")
-		ctrValue := []byte("container content")
+func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
+	hostValue := []byte("host content")
+	ctrValue := []byte("container content")
 
-		rootfs := filepath.Join(dir, "rootfs")
+	rootfs := filepath.Join(dir, "rootfs")
 
-		// Create a host file that we want to make sure doesn't get overwrittern.
-		if err := ioutil.WriteFile(filepath.Join(dir, "file"), hostValue, 0644); err != nil {
-			t.Fatal(err)
-		}
+	// Create a host file that we want to make sure doesn't get overwrittern.
+	if err := ioutil.WriteFile(filepath.Join(dir, "file"), hostValue, 0644); err != nil {
+		t.Fatal(err)
+	}
 
-		// Create our header. We raw prepend the prefix because we are generating
-		// invalid tar headers.
-		hdr := &tar.Header{
-			Name:       prefix + "/" + filepath.Base(file),
-			Uid:        os.Getuid(),
-			Gid:        os.Getgid(),
-			Mode:       0644,
-			Size:       int64(len(ctrValue)),
-			Typeflag:   tar.TypeReg,
-			ModTime:    time.Now(),
-			AccessTime: time.Now(),
-			ChangeTime: time.Now(),
-		}
+	// Create our header. We raw prepend the prefix because we are generating
+	// invalid tar headers.
+	hdr := &tar.Header{
+		Name:       prefix + "/" + filepath.Base(file),
+		Uid:        os.Getuid(),
+		Gid:        os.Getgid(),
+		Mode:       0644,
+		Size:       int64(len(ctrValue)),
+		Typeflag:   tar.TypeReg,
+		ModTime:    time.Now(),
+		AccessTime: time.Now(),
+		ChangeTime: time.Now(),
+	}
 
-		te := NewTarExtractor(MapOptions{})
-		if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-			t.Fatalf("unexpected UnpackEntry error: %s", err)
-		}
+	te := NewTarExtractor(MapOptions{})
+	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
+		t.Fatalf("unexpected UnpackEntry error: %s", err)
+	}
 
-		hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, "file"))
-		if err != nil {
-			t.Fatalf("unexpected readfile error on host: %s", err)
-		}
+	hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, "file"))
+	if err != nil {
+		t.Fatalf("unexpected readfile error on host: %s", err)
+	}
 
-		ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "file"))
-		if err != nil {
-			t.Fatalf("unexpected readfile error in ctr: %s", err)
-		}
+	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "file"))
+	if err != nil {
+		t.Fatalf("unexpected readfile error in ctr: %s", err)
+	}
 
-		if !bytes.Equal(ctrValue, ctrValueGot) {
-			t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
-		}
-		if !bytes.Equal(hostValue, hostValueGot) {
-			t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected='%s' got='%s'", string(hostValue), string(hostValueGot))
-		}
+	if !bytes.Equal(ctrValue, ctrValueGot) {
+		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+	}
+	if !bytes.Equal(hostValue, hostValueGot) {
+		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected='%s' got='%s'", string(hostValue), string(hostValueGot))
 	}
 }
 
 // TestUnpackEntrySanitiseScoping makes sure that path sanitisation is done
 // safely with regards to /../../ prefixes in invalid tar archives.
 func TestUnpackEntrySanitiseScoping(t *testing.T) {
-	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
-	func(t *testing.T) {
-		for _, test := range []struct {
-			name   string
-			prefix string
-		}{
-			{"GarbagePrefix", "/.."},
-			{"DotDotPrefix", ".."},
-		} {
+	for _, test := range []struct {
+		name   string
+		prefix string
+	}{
+		{"GarbagePrefix", "/.."},
+		{"DotDotPrefix", ".."},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySanitiseScoping")
 			if err != nil {
 				t.Fatal(err)
@@ -117,10 +113,9 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			t.Logf("running Test%s", test.name)
-			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), test.prefix)(t)
-		}
-	}(t)
+			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), test.prefix)
+		})
+	}
 }
 
 // TestUnpackEntrySymlinkScoping makes sure that path sanitisation is done
@@ -128,18 +123,17 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 // prefixes in invalid tar archives (a regular tar archive won't contain stuff
 // like that).
 func TestUnpackEntrySymlinkScoping(t *testing.T) {
-	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
-	func(t *testing.T) {
-		for _, test := range []struct {
-			name   string
-			prefix string
-		}{
-			{"RootPrefix", "/"},
-			{"GarbagePrefix1", "/../"},
-			{"GarbagePrefix2", "/../../../../../../../../../../../../../../../"},
-			{"GarbagePrefix3", "/./.././.././.././.././.././.././.././.././../"},
-			{"DotDotPrefix", ".."},
-		} {
+	for _, test := range []struct {
+		name   string
+		prefix string
+	}{
+		{"RootPrefix", "/"},
+		{"GarbagePrefix1", "/../"},
+		{"GarbagePrefix2", "/../../../../../../../../../../../../../../../"},
+		{"GarbagePrefix3", "/./.././.././.././.././.././.././.././.././../"},
+		{"DotDotPrefix", ".."},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySymlinkScoping")
 			if err != nil {
 				t.Fatal(err)
@@ -156,10 +150,9 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 				t.Fatal(err)
 			}
 
-			t.Logf("running Test%s", test.name)
-			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), "link")(t)
-		}
-	}(t)
+			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), "link")
+		})
+	}
 }
 
 // TestUnpackEntryParentDir ensures that when UnpackEntry hits a path that
@@ -211,23 +204,21 @@ func TestUnpackEntryParentDir(t *testing.T) {
 // TestUnpackEntryWhiteout checks whether whiteout handling is done correctly,
 // as well as ensuring that the metadata of the parent is maintained.
 func TestUnpackEntryWhiteout(t *testing.T) {
-	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
-	func(t *testing.T) {
-		for _, test := range []struct {
-			name string
-			path string
-			dir  bool // TODO: Switch to Typeflag
-		}{
-			{"FileInRoot", "rootpath", false},
-			{"HiddenFileInRoot", ".hiddenroot", false},
-			{"FileInSubdir", "some/path/file", false},
-			{"HiddenFileInSubdir", "another/path/.hiddenfile", false},
-			{"DirInRoot", "rootpath", true},
-			{"HiddenDirInRoot", ".hiddenroot", true},
-			{"DirInSubdir", "some/path/dir", true},
-			{"HiddenDirInSubdir", "another/path/.hiddendir", true},
-		} {
-			t.Logf("running Test%s", test.name)
+	for _, test := range []struct {
+		name string
+		path string
+		dir  bool // TODO: Switch to Typeflag
+	}{
+		{"FileInRoot", "rootpath", false},
+		{"HiddenFileInRoot", ".hiddenroot", false},
+		{"FileInSubdir", "some/path/file", false},
+		{"HiddenFileInSubdir", "another/path/.hiddenfile", false},
+		{"DirInRoot", "rootpath", true},
+		{"HiddenDirInRoot", ".hiddenroot", true},
+		{"DirInSubdir", "some/path/dir", true},
+		{"HiddenDirInSubdir", "another/path/.hiddendir", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			testMtime := testutils.Unix(123, 456)
 			testAtime := testutils.Unix(789, 111)
 
@@ -309,8 +300,8 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 					t.Errorf("atime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testAtime)
 				}
 			}
-		}
-	}(t)
+		})
+	}
 }
 
 // TestUnpackOpaqueWhiteout checks whether *opaque* whiteout handling is done
@@ -352,125 +343,123 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 		}, r
 	}
 
-	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
-	func(t *testing.T) {
-		for _, test := range []struct {
-			name          string
-			ignoreExist   bool // ignore if extra upper files exist
-			pseudoHeaders []pseudoHdr
-		}{
-			{"EmptyDir", false, nil},
-			{"OneLevel", false, []pseudoHdr{
-				{"file", "", tar.TypeReg, false},
-				{"link", "..", tar.TypeSymlink, true},
-				{"badlink", "./nothing", tar.TypeSymlink, true},
-				{"fifo", "", tar.TypeFifo, false},
-			}},
-			{"OneLevelNoUpper", false, []pseudoHdr{
-				{"file", "", tar.TypeReg, false},
-				{"link", "..", tar.TypeSymlink, false},
-				{"badlink", "./nothing", tar.TypeSymlink, false},
-				{"fifo", "", tar.TypeFifo, false},
-			}},
-			{"TwoLevel", false, []pseudoHdr{
-				{"file", "", tar.TypeReg, true},
-				{"link", "..", tar.TypeSymlink, false},
-				{"badlink", "./nothing", tar.TypeSymlink, false},
-				{"dir", "", tar.TypeDir, true},
-				{"dir/file", "", tar.TypeRegA, true},
-				{"dir/link", "../badlink", tar.TypeSymlink, false},
-				{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
-				{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-			}},
-			{"TwoLevelNoUpper", false, []pseudoHdr{
-				{"file", "", tar.TypeReg, false},
-				{"link", "..", tar.TypeSymlink, false},
-				{"badlink", "./nothing", tar.TypeSymlink, false},
-				{"dir", "", tar.TypeDir, false},
-				{"dir/file", "", tar.TypeRegA, false},
-				{"dir/link", "../badlink", tar.TypeSymlink, false},
-				{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-				{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-			}},
-			{"MultiLevel", false, []pseudoHdr{
-				{"level1_file", "", tar.TypeReg, true},
-				{"level1_link", "..", tar.TypeSymlink, false},
-				{"level1a", "", tar.TypeDir, true},
-				{"level1a/level2_file", "", tar.TypeRegA, false},
-				{"level1a/level2_link", "../../../", tar.TypeSymlink, true},
-				{"level1a/level2a", "", tar.TypeDir, false},
-				{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
-				{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
-				{"level1a/level2b", "", tar.TypeDir, true},
-				{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
-				{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
-				{"level1a/level2b/level3", "", tar.TypeDir, false},
-				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-				{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
-				{"level1b", "", tar.TypeDir, false},
-				{"level1b/level2_fileA", "", tar.TypeReg, false},
-				{"level1b/level2_fileB", "", tar.TypeReg, false},
-				{"level1b/level2", "", tar.TypeDir, false},
-				{"level1b/level2/level3_file", "", tar.TypeReg, false},
-			}},
-			{"MultiLevelNoUpper", false, []pseudoHdr{
-				{"level1_file", "", tar.TypeReg, false},
-				{"level1_link", "..", tar.TypeSymlink, false},
-				{"level1a", "", tar.TypeDir, false},
-				{"level1a/level2_file", "", tar.TypeRegA, false},
-				{"level1a/level2_link", "../../../", tar.TypeSymlink, false},
-				{"level1a/level2a", "", tar.TypeDir, false},
-				{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
-				{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
-				{"level1a/level2b", "", tar.TypeDir, false},
-				{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
-				{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
-				{"level1a/level2b/level3", "", tar.TypeDir, false},
-				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-				{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-				{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
-				{"level1b", "", tar.TypeDir, false},
-				{"level1b/level2_fileA", "", tar.TypeReg, false},
-				{"level1b/level2_fileB", "", tar.TypeReg, false},
-				{"level1b/level2", "", tar.TypeDir, false},
-				{"level1b/level2/level3_file", "", tar.TypeReg, false},
-			}},
-			{"MissingUpperAncestor", true, []pseudoHdr{
-				{"some", "", tar.TypeDir, false},
-				{"some/dir", "", tar.TypeDir, false},
-				{"some/dir/somewhere", "", tar.TypeReg, true},
-				{"another", "", tar.TypeDir, false},
-				{"another/dir", "", tar.TypeDir, false},
-				{"another/dir/somewhere", "", tar.TypeReg, false},
-			}},
-			{"UpperWhiteout", false, []pseudoHdr{
-				{whPrefix + "fileB", "", tar.TypeReg, true},
-				{"fileA", "", tar.TypeReg, true},
-				{"fileB", "", tar.TypeReg, true},
-				{"fileC", "", tar.TypeReg, false},
-				{whPrefix + "fileA", "", tar.TypeReg, true},
-				{whPrefix + "fileC", "", tar.TypeReg, true},
-			}},
-			// XXX: What umoci should do here is not really defined by the
-			//      spec. In particular, whether you need a whiteout for every
-			//      sub-path or just the path itself is not well-defined. This
-			//      code assumes that you *do not*.
-			{"UpperDirWhiteout", false, []pseudoHdr{
-				{whPrefix + "dir2", "", tar.TypeReg, true},
-				{"file", "", tar.TypeReg, false},
-				{"dir1", "", tar.TypeDir, true},
-				{"dir1/file", "", tar.TypeRegA, true},
-				{"dir1/link", "../badlink", tar.TypeSymlink, false},
-				{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
-				{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-				{whPrefix + "dir1", "", tar.TypeReg, true},
-				{"dir2", "", tar.TypeDir, true},
-				{"dir2/file", "", tar.TypeRegA, true},
-				{"dir2/link", "../badlink", tar.TypeSymlink, false},
-			}},
-		} {
-			t.Logf("running Test%s", test.name)
+	for _, test := range []struct {
+		name          string
+		ignoreExist   bool // ignore if extra upper files exist
+		pseudoHeaders []pseudoHdr
+	}{
+		{"EmptyDir", false, nil},
+		{"OneLevel", false, []pseudoHdr{
+			{"file", "", tar.TypeReg, false},
+			{"link", "..", tar.TypeSymlink, true},
+			{"badlink", "./nothing", tar.TypeSymlink, true},
+			{"fifo", "", tar.TypeFifo, false},
+		}},
+		{"OneLevelNoUpper", false, []pseudoHdr{
+			{"file", "", tar.TypeReg, false},
+			{"link", "..", tar.TypeSymlink, false},
+			{"badlink", "./nothing", tar.TypeSymlink, false},
+			{"fifo", "", tar.TypeFifo, false},
+		}},
+		{"TwoLevel", false, []pseudoHdr{
+			{"file", "", tar.TypeReg, true},
+			{"link", "..", tar.TypeSymlink, false},
+			{"badlink", "./nothing", tar.TypeSymlink, false},
+			{"dir", "", tar.TypeDir, true},
+			{"dir/file", "", tar.TypeRegA, true},
+			{"dir/link", "../badlink", tar.TypeSymlink, false},
+			{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
+			{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+		}},
+		{"TwoLevelNoUpper", false, []pseudoHdr{
+			{"file", "", tar.TypeReg, false},
+			{"link", "..", tar.TypeSymlink, false},
+			{"badlink", "./nothing", tar.TypeSymlink, false},
+			{"dir", "", tar.TypeDir, false},
+			{"dir/file", "", tar.TypeRegA, false},
+			{"dir/link", "../badlink", tar.TypeSymlink, false},
+			{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+			{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+		}},
+		{"MultiLevel", false, []pseudoHdr{
+			{"level1_file", "", tar.TypeReg, true},
+			{"level1_link", "..", tar.TypeSymlink, false},
+			{"level1a", "", tar.TypeDir, true},
+			{"level1a/level2_file", "", tar.TypeRegA, false},
+			{"level1a/level2_link", "../../../", tar.TypeSymlink, true},
+			{"level1a/level2a", "", tar.TypeDir, false},
+			{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
+			{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
+			{"level1a/level2b", "", tar.TypeDir, true},
+			{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
+			{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
+			{"level1a/level2b/level3", "", tar.TypeDir, false},
+			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+			{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
+			{"level1b", "", tar.TypeDir, false},
+			{"level1b/level2_fileA", "", tar.TypeReg, false},
+			{"level1b/level2_fileB", "", tar.TypeReg, false},
+			{"level1b/level2", "", tar.TypeDir, false},
+			{"level1b/level2/level3_file", "", tar.TypeReg, false},
+		}},
+		{"MultiLevelNoUpper", false, []pseudoHdr{
+			{"level1_file", "", tar.TypeReg, false},
+			{"level1_link", "..", tar.TypeSymlink, false},
+			{"level1a", "", tar.TypeDir, false},
+			{"level1a/level2_file", "", tar.TypeRegA, false},
+			{"level1a/level2_link", "../../../", tar.TypeSymlink, false},
+			{"level1a/level2a", "", tar.TypeDir, false},
+			{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
+			{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
+			{"level1a/level2b", "", tar.TypeDir, false},
+			{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
+			{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
+			{"level1a/level2b/level3", "", tar.TypeDir, false},
+			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
+			{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
+			{"level1b", "", tar.TypeDir, false},
+			{"level1b/level2_fileA", "", tar.TypeReg, false},
+			{"level1b/level2_fileB", "", tar.TypeReg, false},
+			{"level1b/level2", "", tar.TypeDir, false},
+			{"level1b/level2/level3_file", "", tar.TypeReg, false},
+		}},
+		{"MissingUpperAncestor", true, []pseudoHdr{
+			{"some", "", tar.TypeDir, false},
+			{"some/dir", "", tar.TypeDir, false},
+			{"some/dir/somewhere", "", tar.TypeReg, true},
+			{"another", "", tar.TypeDir, false},
+			{"another/dir", "", tar.TypeDir, false},
+			{"another/dir/somewhere", "", tar.TypeReg, false},
+		}},
+		{"UpperWhiteout", false, []pseudoHdr{
+			{whPrefix + "fileB", "", tar.TypeReg, true},
+			{"fileA", "", tar.TypeReg, true},
+			{"fileB", "", tar.TypeReg, true},
+			{"fileC", "", tar.TypeReg, false},
+			{whPrefix + "fileA", "", tar.TypeReg, true},
+			{whPrefix + "fileC", "", tar.TypeReg, true},
+		}},
+		// XXX: What umoci should do here is not really defined by the
+		//      spec. In particular, whether you need a whiteout for every
+		//      sub-path or just the path itself is not well-defined. This
+		//      code assumes that you *do not*.
+		{"UpperDirWhiteout", false, []pseudoHdr{
+			{whPrefix + "dir2", "", tar.TypeReg, true},
+			{"file", "", tar.TypeReg, false},
+			{"dir1", "", tar.TypeDir, true},
+			{"dir1/file", "", tar.TypeRegA, true},
+			{"dir1/link", "../badlink", tar.TypeSymlink, false},
+			{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
+			{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+			{whPrefix + "dir1", "", tar.TypeReg, true},
+			{"dir2", "", tar.TypeDir, true},
+			{"dir2/file", "", tar.TypeRegA, true},
+			{"dir2/link", "../badlink", tar.TypeSymlink, false},
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			mapOptions := MapOptions{
 				Rootless: os.Geteuid() != 0,
 			}
@@ -526,8 +515,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 			if err := te.UnpackEntry(dir, whHdr, nil); err != nil {
-				t.Errorf("unpack whiteout %s failed: %v", whiteoutRoot, err)
-				continue
+				t.Fatalf("unpack whiteout %s failed: %v", whiteoutRoot, err)
 			}
 
 			// Now we double-check it worked. If the file was in "upper" it
@@ -575,8 +563,8 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 					t.Errorf("expected empty opaque'd dir: got %v", names)
 				}
 			}
-		}
-	}(t)
+		})
+	}
 }
 
 // TestUnpackHardlink makes sure that hardlinks are correctly unpacked in all
@@ -744,16 +732,22 @@ func TestUnpackEntryMap(t *testing.T) {
 		t.Skip("mapOptions tests only work with root privileges")
 	}
 
-	// TODO: Modify this to use subtests once Go 1.7 is in enough places.
-	func(t *testing.T) {
-		for _, test := range []struct {
-			uidMap rspec.LinuxIDMapping
-			gidMap rspec.LinuxIDMapping
-		}{
-			{rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}},
-			{rspec.LinuxIDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
-			{rspec.LinuxIDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100}, rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
-		} {
+	for _, test := range []struct {
+		name   string
+		uidMap rspec.LinuxIDMapping
+		gidMap rspec.LinuxIDMapping
+	}{
+		{"IdentityRoot",
+			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100},
+			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}},
+		{"MapSelfToRoot",
+			rspec.LinuxIDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100},
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
+		{"MapOtherToRoot",
+			rspec.LinuxIDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100},
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
 			// Create the files we're going to play with.
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryMap")
 			if err != nil {
@@ -894,8 +888,8 @@ func TestUnpackEntryMap(t *testing.T) {
 					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
 				}
 			}
-		}
-	}(t)
+		})
+	}
 }
 
 func TestIsDirlink(t *testing.T) {
