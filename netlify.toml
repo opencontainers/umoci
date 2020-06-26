@@ -1,4 +1,3 @@
-#!/bin/bash
 # umoci: Umoci Modifies Open Containers' Images
 # Copyright (C) 2016-2020 SUSE LLC
 #
@@ -14,27 +13,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-set -Eeuo pipefail
-source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
+[build]
+base = ".site"
+public = "public"
+command = "hugo"
 
-# Change to site root.
-site_root="$(readlinkf_posix "$(dirname "${BASH_SOURCE}")/../.site")"
-cd "$site_root"
-
-# Make sure that we've checked out submodules.
-git submodule update --init --recursive || :
-
-# Check out the 'gh-pages' worktree.
-rm -rf public/ && git worktree prune
-git fetch -f https://github.com/opencontainers/umoci.git gh-pages:gh-pages
-git worktree add -B gh-pages 'public' gh-pages
-
-# Build the source.
-hugo
-
-# Commit the changes.
-(
-	cd public/ ;
-	git add --all ;
-	git commit -sm "update gh-pages $(date --utc --iso-8601=s)" ;
-)
+# NOTE: All security headers are set in .site/static/_headers, and redirects in
+#       .site/static/_redirects. While Netlify does support setting headers and
+#       redirects in netlify.toml, it seems that this doesn't work for our
+#       website. (TODO: Fix that.)
