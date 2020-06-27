@@ -1,19 +1,49 @@
-[![umoci](https://umo.ci/umoci-black.png)][umoci-site]
+<p align="center">
+  <a href="https://umo.ci/" alt="Project Website">
+    <img src="https://umo.ci/umoci-black.png" alt="umoci" height="130"/></a>
+</p>
 
 <!--
   This hack is necessary to work around the fact we cannot conditionally hide
   these images in Hugo (see <https://github.com/gohugoio/hugo/issues/7398>).
+  Thankfully, GitHub won't render <div> tags, so we can abuse that to hide the
+  badges on the umo.ci website while still showing them in the GitHub README.
 -->
 <div style="display: none">
+<p align="center">
+  <a href="https://github.com/opencontainers/umoci/releases/latest" alt="Latest Release">
+    <img src="https://img.shields.io/github/v/release/opencontainers/umoci"/></a>
+  <a href="https://pkg.go.dev/github.com/opencontainers/umoci" alt="Go Documentation">
+    <img src="https://img.shields.io/badge/godoc-unstable-red?logo=go"/></a>
+  <a href="https://github.com/opencontainers/umoci/blob/master/COPYING" alt="License: Apache-2.0">
+    <img src="https://img.shields.io/github/license/opencontainers/umoci"/></a>
 
-[![Release](https://img.shields.io/github/release/opencontainers/umoci.svg)](https://github.com/opencontainers/umoci/releases/latest)
-[![Build Status](https://img.shields.io/travis/opencontainers/umoci/master.svg)](https://travis-ci.org/opencontainers/umoci)
-![License: Apache 2.0](https://img.shields.io/github/license/opencontainers/umoci.svg)
+  <br/>
 
-[![Go Report Card](https://goreportcard.com/badge/github.com/opencontainers/umoci)](https://goreportcard.com/report/github.com/opencontainers/umoci)
-[![CII Best Practices](https://bestpractices.coreinfrastructure.org/projects/1084/badge)](https://bestpractices.coreinfrastructure.org/projects/1084)
-[![DOI](https://zenodo.org/badge/72283469.svg)](https://zenodo.org/badge/latestdoi/72283469)
+  <a href="https://travis-ci.org/opencontainers/umoci" alt="Build Status">
+    <img src="https://img.shields.io/travis/opencontainers/umoci?logo=travis"/></a>
+  <a href="https://app.netlify.com/sites/umoci/deploys" alt="Netlify Status">
+    <img src="https://img.shields.io/netlify/78e5d3da-f8b5-4a8e-8c7b-9e1effb23f2f?logo=netlify"/></a>
 
+  <br/>
+
+  <a href="https://bestpractices.coreinfrastructure.org/projects/1084" alt="CII Best Practices">
+    <img src="https://bestpractices.coreinfrastructure.org/projects/1084/badge"/></a>
+  <a href="https://goreportcard.com/report/github.com/opencontainers/umoci" alt="Go Report Card">
+    <img src="https://goreportcard.com/badge/github.com/opencontainers/umoci"/></a>
+  <a href="https://observatory.mozilla.org/analyze/umo.ci" alt="Mozilla Observatory Grade">
+    <img src="https://img.shields.io/mozilla-observatory/grade-score/umo.ci?label=umo.ci&logo=mozilla"/></a>
+
+  <br/>
+
+  <a href="https://github.com/opencontainers/umoci/releases" alt="Release Downloads">
+    <img src="https://img.shields.io/github/downloads/opencontainers/umoci/total"/></a>
+  <a href="https://zenodo.org/badge/latestdoi/72283469" alt="DOI Badge">
+    <img src="https://zenodo.org/badge/72283469.svg"/></a>
+  <a href="https://matrix.to/#/#opencontainers:matrix.org" alt="Matrix Room">
+    <img src="https://img.shields.io/matrix/opencontainers:matrix.org?logo=matrix"/></a>
+</p>
+<hr/>
 </div>
 
 **u**moci **m**odifies **O**pen **C**ontainer **i**mages.
@@ -50,7 +80,7 @@ ctr-sh$ exit
 % umoci gc --layout opensuse
 ```
 
-See [the project website][umoci-site] for more accessible documentation about
+See [the quick start guide][quickstart] for more accessible documentation about
 how to use umoci. Notable users of umoci include:
 
  * [KIWI][kiwi], which uses umoci to support building both [base and derived
@@ -73,7 +103,7 @@ for this project to refresh your knowledge about how to submit good bug reports
 and patches. Information about how to privately submit security disclosures is
 also provided.
 
-[umoci-site]: https://umo.ci/
+[quickstart]: https://umo.ci/quick-start/
 [umoci-ipa]: http://ipa-reader.xyz/?text=u%CB%90mo%CB%88%CA%A8i&voice=Amy
 [oci-image-spec]: https://github.com/opencontainers/image-spec
 [kiwi]: https://osinside.github.io/kiwi/
