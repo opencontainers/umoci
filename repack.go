@@ -62,9 +62,9 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		"keywords": MtreeKeywords,
 	}).Debugf("umoci: parsed mtree spec")
 
-	fsEval := fseval.DefaultFsEval
+	fsEval := fseval.Default
 	if meta.MapOptions.Rootless {
-		fsEval = fseval.RootlessFsEval
+		fsEval = fseval.Rootless
 	}
 
 	log.Info("computing filesystem diff ...")

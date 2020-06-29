@@ -27,11 +27,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// DefaultFsEval is the "identity" form of FsEval. In particular, it does not
-// do any trickery and calls directly to the relevant os.* functions (and does
-// not wrap KeywordFunc). This should be used by default, because there are no
+// Default is the "identity" form of FsEval. In particular, it does not do any
+// trickery and calls directly to the relevant os.* functions (and does not
+// wrap KeywordFunc). This should be used by default, because there are no
 // weird side-effects.
-var DefaultFsEval FsEval = osFsEval(0)
+var Default FsEval = osFsEval(0)
 
 // osFsEval is a hack to be able to make DefaultFsEval a const.
 type osFsEval int

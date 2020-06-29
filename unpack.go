@@ -86,9 +86,9 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, mapOpti
 	}
 	log.Info("... done")
 
-	fsEval := fseval.DefaultFsEval
+	fsEval := fseval.Default
 	if meta.MapOptions.Rootless {
-		fsEval = fseval.RootlessFsEval
+		fsEval = fseval.Rootless
 	}
 
 	if err := GenerateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {

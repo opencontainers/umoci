@@ -78,9 +78,9 @@ type tarGenerator struct {
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
 func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
-	fsEval := fseval.DefaultFsEval
+	fsEval := fseval.Default
 	if opt.Rootless {
-		fsEval = fseval.RootlessFsEval
+		fsEval = fseval.Rootless
 	}
 
 	return &tarGenerator{

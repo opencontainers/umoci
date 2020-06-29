@@ -28,12 +28,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// RootlessFsEval is an FsEval implementation that uses "umoci/pkg/unpriv".*
+// Rootless is an FsEval implementation that uses "umoci/pkg/unpriv".*
 // functions in order to provide the ability for unprivileged users (those
 // without CAP_DAC_OVERRIDE and CAP_DAC_READ_SEARCH) to evaluate parts of a
 // filesystem that they own. Note that by necessity this requires modifying the
 // filesystem (and thus will not work on read-only filesystems).
-var RootlessFsEval FsEval = unprivFsEval(0)
+var Rootless FsEval = unprivFsEval(0)
 
 // unprivFsEval is a hack to be able to make RootlessFsEval a const.
 type unprivFsEval int
