@@ -1,0 +1,23 @@
+/*
+  # Our TLS certificate is managed by Netlify so this is all handled for us.
+  Strict-Transport-Security: max-age=63072000; includeSubDomains; preload
+  Expect-CT: max-age=63072000; enforce
+
+  # This needs to be kept up-to-date with hugo-learn-theme changes. Annoyingly,
+  # hugo-theme-learn uses inline CSS and JS, so we need to enable
+  # 'unsafe-eval'. Also in order to make Netlify previews work, we need to
+  # explicitly enable umo.ci in a few places. This is a no-op for the main
+  # site.
+  Content-Security-Policy: base-uri 'none'; default-src 'none'; frame-ancestors 'none'; form-action 'none'; font-src 'self'; img-src 'self' https:; connect-src 'self' https://umo.ci:443; style-src 'self' 'unsafe-inline'; script-src 'self' 'unsafe-inline'
+
+  # Obvious settings.
+  X-Frame-Options: DENY
+  X-XSS-Protection: 1; mode=block
+  X-Content-Type-Options: nosniff
+
+  # Give a little bit of privacy to users.
+  Referrer-Policy: no-referrer, strict-origin-when-cross-origin
+
+/index.json
+  # This is needed for Netlify preview builds, but it's fairly harmless.
+  Access-Control-Allow-Origin: *

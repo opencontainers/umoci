@@ -1,0 +1,3 @@
+# Redirect umoci.org to main site.
+https://umoci.org/*		https://umo.ci/:splat	301!
+https://www.umoci.org/*	https://umo.ci/:splat	301!
