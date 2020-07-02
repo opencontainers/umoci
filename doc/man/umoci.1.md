@@ -31,6 +31,11 @@ doing a high-level operation such as **umoci-repack**(1)).
 **--version, -v**
   Print the version.
 
+**--cpu-profile**=*filename*
+  Generate a CPU profile during umoci's execution and save it to *filename*.
+  This file is stored in [Go's pprof][2] format and can be analysed using *go
+  tool pprof* or similar tools.
+
 **--log**={*debug*|*info*|*warn*|*error*|*fatal*}
   Set the logging level. The default is "warn".
 
@@ -93,3 +98,4 @@ doing a high-level operation such as **umoci-repack**(1)).
 **skopeo**(1)
 
 [1]: https://github.com/opencontainers/image-spec
+[2]: https://golang.org/pkg/runtime/pprof/

@@ -20,6 +20,7 @@ package main
 import (
 	"fmt"
 	"os"
+	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
@@ -74,6 +75,11 @@ func main() {
 			Usage: "set the log level (debug, info, [warn], error, fatal)",
 			Value: "warn",
 		},
+		cli.StringFlag{
+			Name:   "cpu-profile",
+			Usage:  "profile umoci during execution and output it to a file",
+			Hidden: true,
+		},
 	}
 
 	app.Before = func(ctx *cli.Context) error {
@@ -88,12 +94,26 @@ func main() {
 				return errors.Wrap(err, "[internal error] failure auto-setting --log=info")
 			}
 		}
-
 		level, err := log.ParseLevel(ctx.GlobalString("log"))
 		if err != nil {
 			return errors.Wrap(err, "parsing log level")
 		}
 		log.SetLevel(level)
+
+		if path := ctx.GlobalString("cpu-profile"); path != "" {
+			fh, err := os.Create(path)
+			if err != nil {
+				return errors.Wrap(err, "opening cpu-profile path")
+			}
+			if err := pprof.StartCPUProfile(fh); err != nil {
+				return errors.Wrap(err, "start cpu-profile")
+			}
+		}
+		return nil
+	}
+
+	app.After = func(ctx *cli.Context) error {
+		pprof.StopCPUProfile()
 		return nil
 	}
 
