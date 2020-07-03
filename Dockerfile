@@ -19,13 +19,15 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE Leap yet, or are out of date in Leap.
 RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
-	zypper ar -f -p 10 -g obs://home:cyphar:bats obs-bats && \
+	zypper ar -f -p 10 -g obs://devel:tools obs-tools && \
 	zypper ar -f -p 10 -g obs://devel:languages:go obs-go && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
+		attr \
 		bats \
 		git \
+		gnu_parallel \
 		go1.14 \
 		go-mtree \
 		jq \
@@ -34,7 +36,8 @@ RUN zypper -n in \
 		moreutils \
 		oci-image-tools \
 		oci-runtime-tools \
-		python-setuptools python-xattr attr \
+		python-setuptools \
+		python-xattr \
 		runc \
 		skopeo \
 		tar
