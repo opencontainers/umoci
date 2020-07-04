@@ -25,6 +25,9 @@ import (
 	"golang.org/x/net/context"
 )
 
+// GCPolicy is a policy function that returns 'true' if a blob can be GC'ed
+type GCPolicy func(ctx context.Context, digest digest.Digest) (bool, error)
+
 // GC will perform a mark-and-sweep garbage collection of the OCI image
 // referenced by the given CAS engine. The root set is taken to be the set of
 // references stored in the image, and all blobs not reachable by following a
@@ -35,7 +38,11 @@ import (
 // functions. In other words, it assumes it is the only user of the image that
 // is making modifications. Things will not go well if this assumption is
 // challenged.
-func (e Engine) GC(ctx context.Context) error {
+//
+// Furthermore, GC policies (zero or more) can also be specified which given a
+// blob's digest can indicate whether that blob needs to garbage collected. The
+// blob is skipped for garbage collection if a policy returns false.
+func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 	// Generate the root set of descriptors.
 	var root []ispec.Descriptor
 
@@ -74,12 +81,26 @@ func (e Engine) GC(ctx context.Context) error {
 	}
 
 	n := 0
+sweep:
 	for _, digest := range blobs {
 		if _, ok := black[digest]; ok {
 			// Digest is in the black set.
 			continue
 		}
-		log.Infof("garbage collecting blob: %s", digest)
+
+		for i, policy := range policies {
+			ok, err := policy(ctx, digest)
+			if err != nil {
+				return errors.Wrapf(err, "invoking policy %d failed", i)
+			}
+
+			if !ok {
+				// skip this blob for GC
+				log.Debugf("skipping garbage collection of blob %s because of policy %d", digest, i)
+				continue sweep
+			}
+		}
+		log.Debugf("garbage collecting blob: %s", digest)
 
 		if err := e.DeleteBlob(ctx, digest); err != nil {
 			return errors.Wrapf(err, "remove unmarked blob %s", digest)
