@@ -71,21 +71,26 @@ type TarExtractor struct {
 	// than a warning for every file, which can amount to 1000s of messages that
 	// scroll a terminal, and may obscure other more important warnings.
 	enotsupWarned bool
+
+	// keepDirlinks is the corresponding flag from the UnpackOptions
+	// supplied when this TarExtractor was constructed.
+	keepDirlinks bool
 }
 
 // NewTarExtractor creates a new TarExtractor.
-func NewTarExtractor(opt MapOptions) *TarExtractor {
+func NewTarExtractor(opt UnpackOptions) *TarExtractor {
 	fsEval := fseval.Default
-	if opt.Rootless {
+	if opt.MapOptions.Rootless {
 		fsEval = fseval.Rootless
 	}
 
 	return &TarExtractor{
-		mapOptions:      opt,
-		partialRootless: opt.Rootless || inUserNamespace,
+		mapOptions:      opt.MapOptions,
+		partialRootless: opt.MapOptions.Rootless || inUserNamespace,
 		fsEval:          fsEval,
 		upperPaths:      make(map[string]struct{}),
 		enotsupWarned:   false,
+		keepDirlinks:    opt.KeepDirlinks,
 	}
 }
 
@@ -500,14 +505,14 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		//       this is something that would also be useful in the same vein
 		//       as --keep-dirlinks (which currently only prevents clobbering
 		//       in the opposite case).
-		if te.mapOptions.KeepDirlinks &&
+		if te.keepDirlinks &&
 			fi.Mode()&os.ModeSymlink == os.ModeSymlink && hdr.Typeflag == tar.TypeDir {
 			isDirlink, err = te.isDirlink(root, path)
 			if err != nil {
 				return errors.Wrap(err, "check is dirlink")
 			}
 		}
-		if !(isDirlink && te.mapOptions.KeepDirlinks) {
+		if !(isDirlink && te.keepDirlinks) {
 			if err := te.fsEval.RemoveAll(path); err != nil {
 				return errors.Wrap(err, "clobber old path")
 			}

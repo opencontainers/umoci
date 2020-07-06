@@ -18,10 +18,10 @@
 package main
 
 import (
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
@@ -68,6 +68,7 @@ func unpack(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
 
+	var unpackOptions layer.UnpackOptions
 	var meta umoci.Meta
 	meta.Version = umoci.MetaVersion
 
@@ -77,7 +78,8 @@ func unpack(ctx *cli.Context) error {
 		return err
 	}
 
-	meta.MapOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
+	unpackOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
+	unpackOptions.MapOptions = meta.MapOptions
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
@@ -86,5 +88,5 @@ func unpack(ctx *cli.Context) error {
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
-	return umoci.Unpack(engineExt, fromName, bundlePath, meta.MapOptions, nil, ispec.Descriptor{})
+	return umoci.Unpack(engineExt, fromName, bundlePath, unpackOptions)
 }

@@ -40,13 +40,6 @@ type MapOptions struct {
 
 	// Rootless specifies whether any to error out if chown fails.
 	Rootless bool `json:"rootless"`
-
-	// KeepDirlinks is essentially the same as rsync's optio
-	// --keep-dirlinks: if, on extraction, a directory would be created
-	// where a symlink to a directory previously existed, KeepDirlinks
-	// doesn't create that directory, but instead just uses the existing
-	// symlink.
-	KeepDirlinks bool `json:"-"`
 }
 
 // mapHeader maps a tar.Header generated from the filesystem so that it

@@ -51,12 +51,12 @@ type AfterLayerUnpackCallback func(manifest ispec.Manifest, desc ispec.Descripto
 // root. It ensures that the state of the root is as close as possible to the
 // state used to create the layer. If an error is returned, the state of root
 // is undefined (unpacking is not guaranteed to be atomic).
-func UnpackLayer(root string, layer io.Reader, opt *MapOptions) error {
-	var mapOptions MapOptions
+func UnpackLayer(root string, layer io.Reader, opt *UnpackOptions) error {
+	var unpackOptions UnpackOptions
 	if opt != nil {
-		mapOptions = *opt
+		unpackOptions = *opt
 	}
-	te := NewTarExtractor(mapOptions)
+	te := NewTarExtractor(unpackOptions)
 	tr := tar.NewReader(layer)
 	for {
 		hdr, err := tr.Next()
@@ -93,7 +93,7 @@ func needsGunzip(mediaType string) bool {
 // <bundle>/<layer.RootfsName>.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback, startFrom ispec.Descriptor) (err error) {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *UnpackOptions) (err error) {
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -121,7 +121,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	defer func() {
 		if err != nil {
 			fsEval := fseval.Default
-			if opt != nil && opt.Rootless {
+			if opt != nil && opt.MapOptions.Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
@@ -130,7 +130,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}()
 
-	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) && startFrom.MediaType == "" {
+	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) && opt.StartFrom.MediaType == "" {
 		if err == nil {
 			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
@@ -138,7 +138,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
-	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt, callback, startFrom); err != nil {
+	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt); err != nil {
 		return errors.Wrap(err, "unpack rootfs")
 	}
 
@@ -149,7 +149,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 	defer configFile.Close()
 
-	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, opt); err != nil {
+	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &opt.MapOptions); err != nil {
 		return errors.Wrap(err, "unpack config.json")
 	}
 	return nil
@@ -157,7 +157,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 // UnpackRootfs extracts all of the layers in the given manifest.
 // Some verification is done during image extraction.
-func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *MapOptions, callback AfterLayerUnpackCallback, startFrom ispec.Descriptor) (err error) {
+func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *UnpackOptions) (err error) {
 	engineExt := casext.NewEngine(engine)
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
@@ -170,7 +170,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	defer func() {
 		if err != nil {
 			fsEval := fseval.Default
-			if opt != nil && opt.Rootless {
+			if opt != nil && opt.MapOptions.Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
@@ -180,11 +180,11 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	}()
 
 	// Make sure that the owner is correct.
-	rootUID, err := idtools.ToHost(0, opt.UIDMappings)
+	rootUID, err := idtools.ToHost(0, opt.MapOptions.UIDMappings)
 	if err != nil {
 		return errors.Wrap(err, "ensure rootuid has mapping")
 	}
-	rootGID, err := idtools.ToHost(0, opt.GIDMappings)
+	rootGID, err := idtools.ToHost(0, opt.MapOptions.GIDMappings)
 	if err != nil {
 		return errors.Wrap(err, "ensure rootgid has mapping")
 	}
@@ -227,7 +227,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// Layer extraction.
 	found := false
 	for idx, layerDescriptor := range manifest.Layers {
-		if !found && startFrom.MediaType != "" && layerDescriptor.Digest.String() != startFrom.Digest.String() {
+		if !found && opt.StartFrom.MediaType != "" && layerDescriptor.Digest.String() != opt.StartFrom.Digest.String() {
 			continue
 		}
 		found = true
@@ -285,8 +285,8 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			return errors.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}
 
-		if callback != nil {
-			if err := callback(manifest, layerDescriptor); err != nil {
+		if opt.AfterLayerUnpack != nil {
+			if err := opt.AfterLayerUnpack(manifest, layerDescriptor); err != nil {
 				return err
 			}
 		}

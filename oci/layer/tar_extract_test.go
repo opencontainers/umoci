@@ -68,7 +68,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 		ChangeTime: time.Now(),
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 		t.Fatalf("unexpected UnpackEntry error: %s", err)
 	}
@@ -186,7 +186,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		ChangeTime: time.Now(),
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
 		t.Fatalf("unexpected UnpackEntry error: %s", err)
 	}
@@ -271,7 +271,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 
-			te := NewTarExtractor(MapOptions{})
+			te := NewTarExtractor(UnpackOptions{})
 			if err := te.UnpackEntry(dir, hdr, nil); err != nil {
 				t.Fatalf("unexpected error in UnpackEntry: %s", err)
 			}
@@ -460,8 +460,10 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			mapOptions := MapOptions{
-				Rootless: os.Geteuid() != 0,
+			unpackOptions := UnpackOptions{
+				MapOptions: MapOptions{
+					Rootless: os.Geteuid() != 0,
+				},
 			}
 
 			dir, err := ioutil.TempDir("", "umoci-TestUnpackOpaqueWhiteout")
@@ -481,7 +483,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			numUpper := 0
 
 			// First we apply the non-upper files in a new TarExtractor.
-			te := NewTarExtractor(mapOptions)
+			te := NewTarExtractor(unpackOptions)
 			for _, ph := range test.pseudoHeaders {
 				// Skip upper.
 				if ph.upper {
@@ -496,7 +498,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			}
 
 			// Now we apply the upper files in another TarExtractor.
-			te = NewTarExtractor(mapOptions)
+			te = NewTarExtractor(unpackOptions)
 			for _, ph := range test.pseudoHeaders {
 				// Skip non-upper.
 				if !ph.upper {
@@ -590,7 +592,7 @@ func TestUnpackHardlink(t *testing.T) {
 		hardFileB = "hard link to symlink"
 	)
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 
 	// Regular file.
 	hdr = &tar.Header{
@@ -767,10 +769,10 @@ func TestUnpackEntryMap(t *testing.T) {
 				symDir   = "link-dir"
 			)
 
-			te := NewTarExtractor(MapOptions{
+			te := NewTarExtractor(UnpackOptions{MapOptions: MapOptions{
 				UIDMappings: []rspec.LinuxIDMapping{test.uidMap},
 				GIDMappings: []rspec.LinuxIDMapping{test.gidMap},
-			})
+			}})
 
 			// Regular file.
 			hdrUID, hdrGID = 0, 0
@@ -911,7 +913,7 @@ func TestIsDirlink(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	// Basic symlink usage.
 	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
 		t.Errorf("symlink failed: %v", err)
