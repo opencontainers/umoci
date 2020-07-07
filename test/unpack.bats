@@ -62,13 +62,54 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci unpack [missing args]" {
-	umoci unpack --image="${IMAGE}:${TAG}"
+@test "umoci unpack [invalid arguments]" {
+	# Missing --image and bundle argument.
+	umoci unpack
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
+	# Missing --image argument.
 	new_bundle_rootfs
 	umoci unpack "$BUNDLE"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing bundle argument.
+	umoci unpack --image="${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci unpack --image ":${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci unpack --image "${IMAGE}-doesnotexist:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci unpack --image "${IMAGE}:" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci unpack --image "${IMAGE}:${INVALID_TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci unpack --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE" \
+		this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci unpack [config.json contains mount namespace]" {

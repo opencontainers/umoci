@@ -26,25 +26,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// Ensure that mtree.FsEval is implemented by FsEval.
-var _ mtree.FsEval = DefaultFsEval
-var _ mtree.FsEval = RootlessFsEval
-
 // FsEval is a super-interface that implements everything required for
 // mtree.FsEval as well as including all of the imporant os.* wrapper functions
 // needed for "oci/layers".tarExtractor.
 type FsEval interface {
-	// Open is equivalent to os.Open.
-	Open(path string) (*os.File, error)
+	// We inherit all of the base methods from mtree.FsEval.
+	mtree.FsEval
 
 	// Create is equivalent to os.Create.
 	Create(path string) (*os.File, error)
-
-	// Readdir is equivalent to os.Readdir.
-	Readdir(path string) ([]os.FileInfo, error)
-
-	// Lstat is equivalent to os.Lstat.
-	Lstat(path string) (os.FileInfo, error)
 
 	// Lstatx is equivalent to unix.Lstat.
 	Lstatx(path string) (unix.Stat_t, error)
@@ -64,14 +54,8 @@ type FsEval interface {
 	// Lutimes is equivalent to os.Lutimes.
 	Lutimes(path string, atime, mtime time.Time) error
 
-	// Remove is equivalent to os.Remove.
-	Remove(path string) error
-
 	// RemoveAll is equivalent to os.RemoveAll.
 	RemoveAll(path string) error
-
-	// Mkdir is equivalent to os.Mkdir.
-	Mkdir(path string, perm os.FileMode) error
 
 	// MkdirAll is equivalent to os.MkdirAll.
 	MkdirAll(path string, perm os.FileMode) error
@@ -93,9 +77,6 @@ type FsEval interface {
 
 	// Lclearxattrs is equivalent to system.Lclearxattrs
 	Lclearxattrs(path string, except map[string]struct{}) error
-
-	// KeywordFunc returns a wrapper around the given mtree.KeywordFunc.
-	KeywordFunc(fn mtree.KeywordFunc) mtree.KeywordFunc
 
 	// Walk is equivalent to filepath.Walk.
 	Walk(root string, fn filepath.WalkFunc) error

@@ -120,9 +120,9 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	defer func() {
 		if err != nil {
-			fsEval := fseval.DefaultFsEval
+			fsEval := fseval.Default
 			if opt != nil && opt.Rootless {
-				fsEval = fseval.RootlessFsEval
+				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
 			// #nosec G104
@@ -169,9 +169,9 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// important (`rm -rf` won't work on most distro rootfs's).
 	defer func() {
 		if err != nil {
-			fsEval := fseval.DefaultFsEval
+			fsEval := fseval.Default
 			if opt != nil && opt.Rootless {
-				fsEval = fseval.RootlessFsEval
+				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
 			// #nosec G104

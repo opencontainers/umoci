@@ -27,14 +27,18 @@ services:
 notifications:
   email: false
 
+addons:
+  apt:
+    packages:
+      - gcc-multilib
+  homebrew:
+    packages:
+      # Needed for sponge.
+      # NOTE: This conflicts with gnu_parallel so we'll need to work
+      #       around that when we enable integration testing.
+      - moreutils
+
 before_install:
-  - |-
-      case "$TRAVIS_OS_NAME" in
-        linux)
-          sudo apt-get -qq update
-          sudo apt-get install -y gcc-multilib
-          ;;
-      esac
   # Need to set GO111MODULE=off here because Travis runs inside our source repo
   # (which is a Go module) and thus 'go get' will actually add dependencies to
   # our go.mod file. Annoyingly this means we cannot require v2 of go-md2man
@@ -67,6 +71,7 @@ matrix:
     - env: DOCKER_IMAGE="fedora:latest"
   include:
     - os: osx
+      osx_image: xcode12
       env:
         # Clear DOCKER_IMAGE since we don't use it.
         - DOCKER_IMAGE=""

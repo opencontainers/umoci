@@ -89,24 +89,78 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci raw add-layer [missing args]" {
-	# Missing layer.
-	umoci raw add-layer --image="${IMAGE}:${TAG}"
-	[ "$status" -ne 0 ]
+@test "umoci raw add-layer [invalid arguments]" {
+	LAYERFILE="$UMOCI_TMPDIR/file"
+	touch "$LAYERFILE"{,-extra}
 
-	# Missing image.
-	touch "$UMOCI_TMPDIR/file"
-	umoci raw add-layer "$UMOCI_TMPDIR/file"
+	# Missing --image and layer argument.
+	umoci raw add-layer
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
-	# Using a directory as an image file.
-	umoci raw add-layer --image="${IMAGE}:${TAG}" "$UMOCI_TMPDIR"
+	# Missing layer argument.
+	umoci raw add-layer --image "${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
-}
+	image-verify "${IMAGE}"
 
-@test "umoci raw add-layer [too many args]" {
-	touch "$UMOCI_TMPDIR/file"{1..3}
-
-	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/file"{1..3}
+	# Missing --image argument.
+	umoci raw add-layer "$LAYERFILE"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci raw add-layer --image ":${TAG}" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci raw add-layer --image "${IMAGE}-doesnotexist:${TAG}" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci raw add-layer --image "${IMAGE}:" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci raw add-layer --image "${IMAGE}:${TAG}-doesnotexist" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci raw add-layer --image "${IMAGE}:${INVALID_TAG}" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image destination tag.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --tag "" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image destination tag.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --tag "${INVALID_TAG}" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci raw add-layer --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$LAYERFILE" "$LAYERFILE-extra"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent layer file.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$LAYERFILE-doesnotexist"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Using a directory as a layer.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }

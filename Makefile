@@ -61,7 +61,7 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 # Basic build flags.
 BUILD_FLAGS ?=
 BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}"
-BASE_LDFLAGS := -s -w -X main.gitCommit=${COMMIT} -X main.version=${VERSION}
+BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT} -X ${PROJECT}.version=${VERSION}
 
 # Specific build flags for build type.
 DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
@@ -85,6 +85,9 @@ umoci: $(GO_SRC)
 
 umoci.static: $(GO_SRC)
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+
+.PHONY: static
+static: umoci.static
 
 umoci.cover: $(GO_SRC)
 	$(GO) test -c -cover -covermode=count -coverpkg=./... ${TEST_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
@@ -181,22 +184,22 @@ endif
 .PHONY: test-unit
 test-unit: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit:
-	GO=$(GO) COVER=1 hack/test-unit.sh
+	GO=$(GO) hack/test-unit.sh
 
 .PHONY: test-integration
 test-integration: umociimage
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE=$(COVERAGE) $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTLESS_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
-	TESTS="${TESTS}" COVER=1 hack/test-integration.sh
+	TESTS="${TESTS}" hack/test-integration.sh
 
 .PHONY: shell
 shell: umociimage
@@ -211,5 +214,5 @@ rootless-shell: umociimage
 	$(DOCKER_ROOTLESS_RUN) $(UMOCI_IMAGE) bash
 
 .PHONY: ci
-ci: umoci umoci.cover validate docs test-unit test-integration
+ci: umoci umoci.static umoci.cover validate docs test-unit test-integration
 	hack/ci-coverage.sh $(COVERAGE)

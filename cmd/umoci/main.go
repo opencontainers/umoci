@@ -18,22 +18,15 @@
 package main
 
 import (
-	"fmt"
 	"os"
+	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
+	"github.com/opencontainers/umoci"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
-
-// version is version ID for the source, read from VERSION in the source and
-// populated on build by make.
-var version = ""
-
-// gitCommit is the commit hash that the binary was built from and will be
-// populated on build by make.
-var gitCommit = ""
 
 const (
 	usage = `umoci modifies Open Container images`
@@ -43,7 +36,10 @@ const (
 	categoryImage  = "image"
 )
 
-func main() {
+// Main is the underlying main() implementation. You can call this directly as
+// though it were the command-line arguments of the umoci binary (this is
+// needed for umoci's integration test hacks you can find in main_test.go).
+func Main(args []string) error {
 	app := cli.NewApp()
 	app.Name = "umoci"
 	app.Usage = usage
@@ -53,16 +49,7 @@ func main() {
 			Email: "asarai@suse.com",
 		},
 	}
-
-	// Fill the version.
-	v := "unknown"
-	if version != "" {
-		v = version
-	}
-	if gitCommit != "" {
-		v = fmt.Sprintf("%s~git%s", v, gitCommit)
-	}
-	app.Version = v
+	app.Version = umoci.FullVersion()
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
@@ -73,6 +60,11 @@ func main() {
 			Name:  "log",
 			Usage: "set the log level (debug, info, [warn], error, fatal)",
 			Value: "warn",
+		},
+		cli.StringFlag{
+			Name:   "cpu-profile",
+			Usage:  "profile umoci during execution and output it to a file",
+			Hidden: true,
 		},
 	}
 
@@ -88,12 +80,26 @@ func main() {
 				return errors.Wrap(err, "[internal error] failure auto-setting --log=info")
 			}
 		}
-
 		level, err := log.ParseLevel(ctx.GlobalString("log"))
 		if err != nil {
 			return errors.Wrap(err, "parsing log level")
 		}
 		log.SetLevel(level)
+
+		if path := ctx.GlobalString("cpu-profile"); path != "" {
+			fh, err := os.Create(path)
+			if err != nil {
+				return errors.Wrap(err, "opening cpu-profile path")
+			}
+			if err := pprof.StartCPUProfile(fh); err != nil {
+				return errors.Wrap(err, "start cpu-profile")
+			}
+		}
+		return nil
+	}
+
+	app.After = func(ctx *cli.Context) error {
+		pprof.StopCPUProfile()
 		return nil
 	}
 
@@ -149,15 +155,21 @@ func main() {
 		}
 	}
 
-	// Actually run umoci.
-	if err := app.Run(os.Args); err != nil {
+	err := app.Run(args)
+	if err != nil {
 		// If an error is a permission based error, give a hint to the user
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
 		if os.IsPermission(errors.Cause(err)) {
 			log.Warn("umoci encountered a permission error: maybe --rootless will help?")
 		}
-		log.Fatalf("%v", err)
 		log.Debugf("%+v", err)
+	}
+	return err
+}
+
+func main() {
+	if err := Main(os.Args); err != nil {
+		log.Fatalf("%v", err)
 	}
 }

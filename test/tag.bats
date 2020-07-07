@@ -50,22 +50,45 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci list [missing args]" {
+@test "umoci list [invalid arguments]" {
+	umoci list
+	[ "$status" -ne 0 ]
+
 	umoci ls
 	[ "$status" -ne 0 ]
 
-	umoci list
+	# Missing --layout argument.
+	umoci ls
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty layout path.
+	umoci ls --layout ""
+	[ "$status" -ne 0 ]
+
+	# Layout path contains a ":".
+	umoci ls --layout "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	# Unknown flag argument.
+	umoci ls --this-is-an-invalid-argument --layout "${IMAGE}"
+	[ "$status" -ne 0 ]
+
+	# Too many positional arguments.
+	umoci ls --layout "${IMAGE}" this-is-an-invalid-argument
 	[ "$status" -ne 0 ]
 }
 
 @test "umoci tag" {
+	NEW_TAG="${TAG}-newtag"
+
 	# Get blob and mediatype that a tag references.
 	umoci list --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Add a new tag.
-	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-newtag"
+	umoci tag --image "${IMAGE}:${TAG}" "${NEW_TAG}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -78,7 +101,7 @@ function teardown() {
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
 	oldOutput="$output"
-	umoci stat --image "${IMAGE}:${TAG}-newtag" --json
+	umoci stat --image "${IMAGE}:${NEW_TAG}" --json
 	[ "$status" -eq 0 ]
 	newOutput="$output"
 
@@ -87,32 +110,82 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci tag [missing args]" {
+@test "umoci tag [invalid arguments]" {
+	NEW_TAG="${TAG}-newtag"
+
+	# Missing --image and tag arguments.
+	umoci tag
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing --image argument.
+	umoci tag "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing tag argument.
 	umoci tag --image "${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
-	umoci tag new-tag
+	# Empty image path.
+	umoci tag --image ":${TAG}" "$NEW_TAG"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci tag --image "${IMAGE}-doesnotexist:${TAG}" "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci tag --image "${IMAGE}:" "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci tag --image "${IMAGE}:${TAG}-doesnotexist" "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci tag --image "${IMAGE}:${INVALID_TAG}" "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci tag --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$NEW_TAG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci tag --image "${IMAGE}:${TAG}" "$NEW_TAG" \
+		this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci tag [clobber]" {
+	NEW_TAG="${TAG}-newtag"
+
 	# Get blob and mediatype that a tag references.
 	umoci list --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Make a copy of the tag.
-	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-newtag"
+	umoci tag --image "${IMAGE}:${TAG}" "${NEW_TAG}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Modify the configuration.
-	umoci config --author="Someone" --image "${IMAGE}:${TAG}-newtag"
+	umoci config --author="Someone" --image "${IMAGE}:${NEW_TAG}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
 	# Clobber the tag.
-	umoci tag --image "${IMAGE}:${TAG}" "${TAG}-newtag"
+	umoci tag --image "${IMAGE}:${TAG}" "${NEW_TAG}"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -120,7 +193,7 @@ function teardown() {
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
 	oldOutput="$output"
-	umoci stat --image "${IMAGE}:${TAG}-newtag" --json
+	umoci stat --image "${IMAGE}:${NEW_TAG}" --json
 	[ "$status" -eq 0 ]
 	newOutput="$output"
 
@@ -154,7 +227,8 @@ function teardown() {
 	done
 
 	# Make sure it's truly gone.
-	umoci unpack --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/notused"
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -ne 0 ]
 
 	# ... like, really gone.
@@ -164,10 +238,44 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci remove [missing args]" {
+@test "umoci remove [invalid arguments]" {
+	# Missing --image argument.
 	umoci remove
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
+	# Missing --image argument.
 	umoci rm
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci rm --image ":${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci rm --image "${IMAGE}-doesnotexist:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image tag.
+	umoci rm --image "${IMAGE}:"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image tag.
+	umoci rm --image "${IMAGE}:${INVALID_TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci rm --this-is-an-invalid-argument --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci rm --image "${IMAGE}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }

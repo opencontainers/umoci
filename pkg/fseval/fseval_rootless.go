@@ -28,12 +28,12 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-// RootlessFsEval is an FsEval implementation that uses "umoci/pkg/unpriv".*
+// Rootless is an FsEval implementation that uses "umoci/pkg/unpriv".*
 // functions in order to provide the ability for unprivileged users (those
 // without CAP_DAC_OVERRIDE and CAP_DAC_READ_SEARCH) to evaluate parts of a
 // filesystem that they own. Note that by necessity this requires modifying the
 // filesystem (and thus will not work on read-only filesystems).
-var RootlessFsEval FsEval = unprivFsEval(0)
+var Rootless FsEval = unprivFsEval(0)
 
 // unprivFsEval is a hack to be able to make RootlessFsEval a const.
 type unprivFsEval int
@@ -87,19 +87,9 @@ func (fs unprivFsEval) Lutimes(path string, atime, mtime time.Time) error {
 	return unpriv.Lutimes(path, atime, mtime)
 }
 
-// Remove is equivalent to unpriv.Remove.
-func (fs unprivFsEval) Remove(path string) error {
-	return unpriv.Remove(path)
-}
-
 // RemoveAll is equivalent to unpriv.RemoveAll.
 func (fs unprivFsEval) RemoveAll(path string) error {
 	return unpriv.RemoveAll(path)
-}
-
-// Mkdir is equivalent to unpriv.Mkdir.
-func (fs unprivFsEval) Mkdir(path string, perm os.FileMode) error {
-	return unpriv.Mkdir(path, perm)
 }
 
 // Mknod is equivalent to unpriv.Mknod.

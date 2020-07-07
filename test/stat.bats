@@ -63,9 +63,51 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci stat [missing args]" {
+@test "umoci stat [invalid arguments]" {
+	# Missing --image argument.
 	umoci stat
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci stat --image "${IMAGE}:${TAG}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci stat --image ":${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci stat --image "${IMAGE}-doesnotexist:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci stat --image "${IMAGE}:"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci stat --image "${IMAGE}:${TAG}-doesnotexist"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci stat --image "${IMAGE}:${INVALID_TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci stat --this-is-an-invalid-argument --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci stat --image "${IMAGE}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 # TODO: Add a test to make sure that empty_layer and layer are mutually

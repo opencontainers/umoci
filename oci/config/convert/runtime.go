@@ -23,9 +23,9 @@ import (
 
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/opencontainers/runc/libcontainer/user"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/opencontainers/umoci/third_party/user"
 	"github.com/pkg/errors"
 )
 

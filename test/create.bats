@@ -26,9 +26,32 @@ function teardown() {
 	teardown_image
 }
 
-@test "umoci init [missing args]" {
+@test "umoci init [invalid arguments]" {
+	# We are making a new image.
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+
+	# Missing --layout argument.
 	umoci init
 	[ "$status" -ne 0 ]
+
+	# Empty layout path.
+	umoci init --layout ""
+	[ "$status" -ne 0 ]
+
+	# Layout path contains a ":".
+	umoci init --layout "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+
+	# Unknown flag argument.
+	umoci init --this-is-an-invalid-argument --layout "${IMAGE}"
+	[ "$status" -ne 0 ]
+
+	# Too many positional arguments.
+	umoci init --layout "${IMAGE}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+
+	# Image should not exist.
+	! [ -e "${IMAGE}" ]
 }
 
 @test "umoci init --layout [empty]" {
@@ -64,9 +87,55 @@ function teardown() {
 	image-verify "$IMAGE"
 }
 
-@test "umoci new [missing args]" {
+@test "umoci new [invalid arguments]" {
+	# We are making a new image.
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+
+	# Create an empty layout.
+	umoci init --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+	image-verify "$IMAGE"
+
+	# Missing --image argument.
 	umoci new
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci new --image ":${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci new --image "${IMAGE}-doesnotexist:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty tag.
+	umoci new --image "${IMAGE}:"
+	[ "$status" -ne 0 ]
+	image-verify "$IMAGE"
+
+	# Invalid tag name.
+	umoci new --image "${IMAGE}:${INVALID_TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "$IMAGE"
+
+	# Unknown flag argument.
+	umoci new --this-is-an-invalid-argument --layout "${IMAGE}"
+	[ "$status" -ne 0 ]
+	image-verify "$IMAGE"
+
+	# Too many positional arguments.
+	umoci new --layout "${IMAGE}" this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "$IMAGE"
+
+	# The set of tags should be empty.
+	umoci list --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+	[ "${#lines[@]}" -eq 0 ]
+	image-verify "$IMAGE"
 }
 
 @test "umoci new --image" {

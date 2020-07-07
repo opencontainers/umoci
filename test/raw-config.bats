@@ -54,9 +54,63 @@ function teardown() {
 	[ -z "$output" ]
 }
 
-@test "umoci raw runtime-config [missing args]" {
-	umoci config
+@test "umoci raw runtime-config [invalid arguments]" {
+	new_bundle_rootfs
+	BUNDLE_CONFIG="$BUNDLE/config.json"
+
+	# Missing --image and config argument.
+	umoci raw runtime-config
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing --image argument.
+	umoci raw runtime-config "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing config argument.
+	umoci raw runtime-config --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci raw runtime-config --image ":${TAG}" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci raw runtime-config --image "${IMAGE}-doesnotexist:${TAG}" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci raw runtime-config --image "${IMAGE}:" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci raw runtime-config --image "${IMAGE}:${TAG}-doesnotexist" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci raw runtime-config --image "${IMAGE}:${INVALID_TAG}" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci raw runtime-config --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$BUNDLE_CONFIG"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci raw runtime-config --image "${IMAGE}:${TAG}" "$BUNDLE_CONFIG" \
+		this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	! [ -e "$BUNDLE/config.json" ]
 }
 
 @test "umoci raw runtime-config --config.user 'user'" {

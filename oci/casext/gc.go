@@ -65,7 +65,7 @@ func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 			"digest": descriptor.Digest,
 		}).Debugf("GC: marking from root")
 
-		reachables, err := e.Reachable(ctx, descriptor)
+		reachables, err := e.reachable(ctx, descriptor)
 		if err != nil {
 			return errors.Wrapf(err, "getting reachables from root %d", idx)
 		}

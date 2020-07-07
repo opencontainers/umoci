@@ -38,7 +38,7 @@ function teardown() {
 
 	# Check that the image appears about right.
 	# NOTE: Since we could be using different images, this will be fairly
-	#	   generic.
+	#       generic.
 	[ -e "$BUNDLE/rootfs/bin/sh" ]
 	[ -e "$BUNDLE/rootfs/etc/passwd" ]
 	[ -e "$BUNDLE/rootfs/etc/group" ]
@@ -46,22 +46,63 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci raw unpack [missing args]" {
+@test "umoci raw unpack [invalid arguments]" {
 	ROOTFS="$(setup_tmpdir)"
 
-	umoci raw unpack --image="${IMAGE}:${TAG}"
+	# Missing --image and bundle argument.
+	umoci raw unpack
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
+	# Missing --image argument.
+	new_bundle_rootfs
 	umoci raw unpack "$ROOTFS"
 	[ "$status" -ne 0 ]
-}
+	image-verify "${IMAGE}"
 
-@test "umoci raw unpack [too many args]" {
-	umoci raw unpack --image "${IMAGE}:${TAG}" too many arguments
+	# Missing bundle argument.
+	umoci raw unpack --image="${IMAGE}:${TAG}"
 	[ "$status" -ne 0 ]
-	! [ -d too ]
-	! [ -d many ]
-	! [ -d arguments ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci raw unpack --image ":${TAG}" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci raw unpack --image "${IMAGE}-doesnotexist:${TAG}" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image source tag.
+	umoci raw unpack --image "${IMAGE}:" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image source tag.
+	umoci raw unpack --image "${IMAGE}:${TAG}-doesnotexist" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image source tag.
+	umoci raw unpack --image "${IMAGE}:${INVALID_TAG}" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Unknown flag argument.
+	umoci raw unpack --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$ROOTFS"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci raw unpack --image "${IMAGE}:${TAG}" "$ROOTFS" \
+		this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	! [ -d this-is-an-invalid-argument ]
 }
 
 @test "umoci raw unpack [cross-check with umoci unpack]" {
@@ -75,6 +116,7 @@ function teardown() {
 	BUNDLE_B="$(setup_tmpdir)" && ROOTFS_B="$BUNDLE_B/rootfs"
 	umoci raw unpack --image "${IMAGE}:${TAG}" "$ROOTFS_B"
 	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
 
 	# Ensure that gomtree succeeds on the new unpacked rootfs.
 	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree

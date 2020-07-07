@@ -19,7 +19,7 @@ set -Eeuo pipefail
 COVERAGE="$1"
 
 function coverage() {
-	go tool cover -func <(egrep -v 'vendor|third_party' "$@")
+	go tool cover -func "$@"
 }
 
 # Sort the coverage of all of the functions. This helps eye-ball what parts of

@@ -41,6 +41,13 @@ commands.`,
 	// create modifies an image layout.
 	Category: "layout",
 
+	Before: func(ctx *cli.Context) error {
+		if ctx.NArg() != 0 {
+			return errors.Errorf("invalid number of positional arguments: expected none")
+		}
+		return nil
+	},
+
 	Action: initLayout,
 }
 

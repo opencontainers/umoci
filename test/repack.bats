@@ -98,16 +98,83 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci repack [missing args]" {
+@test "umoci repack [invalid arguments]" {
+	# Unpack the image.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
 	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
 
-	umoci repack --image "${IMAGE}:${TAG}"
+	# Missing --image and bundle arguments.
+	umoci repack
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 
+	# Missing --image argument.
 	umoci repack "$BUNDLE"
 	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Missing bundle argument.
+	umoci repack --image "${IMAGE}:${TAG}"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image path.
+	umoci repack --image ":${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent image path.
+	umoci repack --image "${IMAGE}-doesnotexist:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Empty image destination tag.
+	umoci repack --image "${IMAGE}:" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Invalid image destination tag.
+	umoci repack --image "${IMAGE}:${INVALID_TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent bundle directory.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE-doesnotexist"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Non-existent rootfs directory.
+	mv "$BUNDLE/rootfs" "$BUNDLE/old_rootfs"
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+	mv "$BUNDLE/old_rootfs" "$BUNDLE/rootfs"
+
+	# Unknown flag argument.
+	umoci repack --this-is-an-invalid-argument \
+		--image="${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# Too many positional arguments.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE" \
+		this-is-an-invalid-argument
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# --no-history conflicts with --history.* flags.
+	umoci repack --image "${IMAGE}:${TAG}" \
+		--no-history --history.author "Violet Beauregarde" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
+
+	# --history.created has to be an ISO-8601 date.
+	umoci repack --image "${IMAGE}:${TAG}" \
+		--history.created "invalid date" "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci repack [whiteout]" {

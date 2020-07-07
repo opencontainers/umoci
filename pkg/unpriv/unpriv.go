@@ -274,18 +274,6 @@ func Chmod(path string, mode os.FileMode) error {
 	}), "unpriv.chmod")
 }
 
-// Lchown is a wrapper around os.Lchown which has been wrapped with unpriv.Wrap
-// to make it possible to change the owner of a path even if you do not
-// currently have the required access bits to access the path. Note that this
-// function is not particularly useful in most rootless scenarios.
-//
-// FIXME: This probably should be removed because it's questionably useful.
-func Lchown(path string, uid, gid int) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return os.Lchown(path, uid, gid)
-	}), "unpriv.lchown")
-}
-
 // Chtimes is a wrapper around os.Chtimes which has been wrapped with
 // unpriv.Wrap to make it possible to change the modified times of a path even
 // if you do not currently have the required access bits to access the path.

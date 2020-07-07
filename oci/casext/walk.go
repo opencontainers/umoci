@@ -157,35 +157,27 @@ func (e Engine) Walk(ctx context.Context, root ispec.Descriptor, walkFunc WalkFu
 	})
 }
 
-// Paths returns the set of descriptor paths that can be traversed from the
-// provided root descriptor. It is effectively shorthand for Walk(). Note that
-// there may be repeated descriptors in the returned slice, due to different
-// blobs containing the same (or a similar) descriptor. However, the
-// DescriptorPaths should be unique.
-func (e Engine) Paths(ctx context.Context, root ispec.Descriptor) ([]DescriptorPath, error) {
-	var reachable []DescriptorPath
-	err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
-		reachable = append(reachable, descriptorPath)
-		return nil
-	})
-	return reachable, err
-}
-
-// Reachable returns the set of digests which can be reached using a descriptor
-// path from the provided root descriptor. It is effectively a shorthand for
-// Walk(). The returned slice will *not* contain any duplicate digest.Digest
-// entries. Note that without descriptors, a digest is not particularly
-// meaninful (OCI blobs are not self-descriptive).
-func (e Engine) Reachable(ctx context.Context, root ispec.Descriptor) ([]digest.Digest, error) {
+// reachable returns the set of digests which can be reached using a descriptor
+// path from the provided root descriptor. The returned slice will *not*
+// contain any duplicate digest.Digest entries.
+//
+// Please note that without descriptors, a digest is not particularly meaninful
+// (OCI blobs are not self-descriptive). This method primarily exists for GC()
+// and any use outside of GC() should be carefully considered (you probably
+// want to use Walk directly).
+func (e Engine) reachable(ctx context.Context, root ispec.Descriptor) ([]digest.Digest, error) {
 	seen := map[digest.Digest]struct{}{}
-
 	if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
-		seen[descriptorPath.Descriptor().Digest] = struct{}{}
+		digest := descriptorPath.Descriptor().Digest
+		if _, ok := seen[digest]; ok {
+			// Don't traverse further if we've already seen this digest.
+			return ErrSkipDescriptor
+		}
+		seen[digest] = struct{}{}
 		return nil
 	}); err != nil {
 		return nil, err
 	}
-
 	var reachable []digest.Digest
 	for node := range seen {
 		reachable = append(reachable, node)
