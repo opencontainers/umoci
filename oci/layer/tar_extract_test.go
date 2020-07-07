@@ -304,45 +304,45 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 	}
 }
 
+type pseudoHdr struct {
+	path     string
+	linkname string
+	typeflag byte
+	upper    bool
+}
+
+func fromPseudoHdr(ph pseudoHdr) (*tar.Header, io.Reader) {
+	var r io.Reader
+	var size int64
+	if ph.typeflag == tar.TypeReg || ph.typeflag == tar.TypeRegA {
+		size = 256 * 1024
+		r = &io.LimitedReader{
+			R: rand.Reader,
+			N: size,
+		}
+	}
+
+	mode := os.FileMode(0777)
+	if ph.typeflag == tar.TypeDir {
+		mode |= os.ModeDir
+	}
+
+	return &tar.Header{
+		Name:       ph.path,
+		Linkname:   ph.linkname,
+		Typeflag:   ph.typeflag,
+		Mode:       int64(mode),
+		Size:       size,
+		ModTime:    testutils.Unix(1210393, 4528036),
+		AccessTime: testutils.Unix(7892829, 2341211),
+		ChangeTime: testutils.Unix(8731293, 8218947),
+	}, r
+}
+
 // TestUnpackOpaqueWhiteout checks whether *opaque* whiteout handling is done
 // correctly, as well as ensuring that the metadata of the parent is
 // maintained -- and that upperdir entries are handled.
 func TestUnpackOpaqueWhiteout(t *testing.T) {
-	type pseudoHdr struct {
-		path     string
-		linkname string
-		typeflag byte
-		upper    bool
-	}
-
-	fromPseudoHdr := func(ph pseudoHdr) (*tar.Header, io.Reader) {
-		var r io.Reader
-		var size int64
-		if ph.typeflag == tar.TypeReg || ph.typeflag == tar.TypeRegA {
-			size = 256 * 1024
-			r = &io.LimitedReader{
-				R: rand.Reader,
-				N: size,
-			}
-		}
-
-		mode := os.FileMode(0777)
-		if ph.typeflag == tar.TypeDir {
-			mode |= os.ModeDir
-		}
-
-		return &tar.Header{
-			Name:       ph.path,
-			Linkname:   ph.linkname,
-			Typeflag:   ph.typeflag,
-			Mode:       int64(mode),
-			Size:       size,
-			ModTime:    testutils.Unix(1210393, 4528036),
-			AccessTime: testutils.Unix(7892829, 2341211),
-			ChangeTime: testutils.Unix(8731293, 8218947),
-		}, r
-	}
-
 	for _, test := range []struct {
 		name          string
 		ignoreExist   bool // ignore if extra upper files exist

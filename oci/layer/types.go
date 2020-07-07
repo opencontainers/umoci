@@ -4,6 +4,8 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+// WhiteoutMode indicates how this TarExtractor will create whiteouts on the
+// filesystem when it encounters them.
 type WhiteoutMode int
 
 const (
@@ -17,6 +19,7 @@ const (
 	OverlayFSWhiteout
 )
 
+// UnpackOptions describes the behavior of the various unpack operations.
 type UnpackOptions struct {
 	// MapOptions are the UID and GID mappings used when unpacking an image
 	MapOptions MapOptions
