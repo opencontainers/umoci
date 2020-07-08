@@ -41,3 +41,14 @@ type UnpackOptions struct {
 	// WhiteoutMode is the type of whiteout to write to the filesystem.
 	WhiteoutMode WhiteoutMode
 }
+
+// RepackOptions describes the behavior of the various GenerateLayer operations.
+type RepackOptions struct {
+	// MapOptions are the UID and GID mappings used when unpacking an image
+	MapOptions MapOptions
+
+	// TranslateOverlayWhiteouts changes char devices of type 0,0 to
+	// .wh.foo style whiteouts when generating tarballs. Without this,
+	// whiteouts are untouched.
+	TranslateOverlayWhiteouts bool
+}

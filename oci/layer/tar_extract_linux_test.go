@@ -24,11 +24,23 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"syscall"
 	"testing"
 
 	"golang.org/x/sys/unix"
 )
+
+func canMknod(dir string) (bool, error) {
+	testNode := filepath.Join(dir, "test")
+	err := unix.Mknod(testNode, unix.S_IFCHR|0666, int(unix.Mkdev(0, 0)))
+	if err != nil {
+		if os.IsPermission(err) {
+			return false, nil
+		}
+
+		return false, err
+	}
+	return true, os.Remove(testNode)
+}
 
 func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 	dir, err := ioutil.TempDir("", "umoci-TestOverlayFSWhiteout")
@@ -37,13 +49,13 @@ func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 	}
 	defer os.RemoveAll(dir)
 
-	err = unix.Mknod(filepath.Join(dir, "test"), syscall.S_IFCHR|0666, int(unix.Mkdev(0, 0)))
+	mknodOk, err := canMknod(dir)
 	if err != nil {
-		if os.IsPermission(err) {
-			t.Skip("skipping overlayfs test on kernel < 5.8")
-		}
+		t.Fatalf("couldn't mknod in dir: %v", err)
+	}
 
-		t.Fatalf("couldn't mknod: %v", err)
+	if !mknodOk {
+		t.Skip("skipping overlayfs test on kernel < 5.8")
 	}
 
 	headers := []pseudoHdr{
@@ -82,9 +94,8 @@ func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 		t.Fatalf("failed to stat `file`: %v", err)
 	}
 
-	sysStat := fi.Sys().(*syscall.Stat_t)
-	if unix.Major(sysStat.Rdev) != 0 || unix.Minor(sysStat.Rdev) != 0 {
-		t.Fatalf("extract didn't make overlay whiteout %v", sysStat.Dev)
+	if !isOverlayWhiteout(fi) {
+		t.Fatalf("extract didn't make overlay whiteout")
 	}
 
 	if canSetTrustedXattrs {

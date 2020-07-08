@@ -8,6 +8,8 @@ github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.2
 ## explicit
 github.com/cyphar/filepath-securejoin
+# github.com/davecgh/go-spew v1.1.1
+github.com/davecgh/go-spew/spew
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
@@ -54,6 +56,8 @@ github.com/opencontainers/runtime-spec/specs-go
 # github.com/pkg/errors v0.9.1
 ## explicit
 github.com/pkg/errors
+# github.com/pmezard/go-difflib v1.0.0
+github.com/pmezard/go-difflib/difflib
 # github.com/rootless-containers/proto v0.1.0
 ## explicit
 github.com/rootless-containers/proto/go-proto
@@ -64,6 +68,9 @@ github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.6.0
 ## explicit
 github.com/sirupsen/logrus
+# github.com/stretchr/testify v1.6.1
+## explicit
+github.com/stretchr/testify/assert
 # github.com/tj/assert v0.0.3
 ## explicit
 # github.com/urfave/cli v1.22.4
@@ -117,3 +124,4 @@ google.golang.org/protobuf/runtime/protoimpl
 ## explicit
 # gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776
 ## explicit
+gopkg.in/yaml.v3

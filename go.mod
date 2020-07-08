@@ -22,6 +22,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/proto v0.1.0
 	github.com/sirupsen/logrus v1.6.0 // indirect
+	github.com/stretchr/testify v1.6.1
 	github.com/tj/assert v0.0.3 // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/vbatts/go-mtree v0.5.0
