@@ -63,13 +63,8 @@ _matrix_integration: &matrix_integration
 
 matrix:
   fast_finish: true
-  allow_failures:
-    # The Fedora image has caused us plenty of pain in the past, so don't let
-    # it kill PRs. This is made more annoying by the fact that the Fedora
-    # image's size makes this test stage take much longer than any other image
-    # (~40 minutes on some days).
-    - env: DOCKER_IMAGE="fedora:latest"
   include:
+    # Build and other validation checks.
     - name: "validate"
       before_install:
       # Install basic Go tooling.
@@ -100,26 +95,6 @@ matrix:
         # Necessary to make Travis co-operate with Docker.
         - chmod a+rwx .
         - make ci-unit
-    - <<: *matrix_integration
-      name: "integration (opensuse/leap)"
-      env:
-        - DOCKER_IMAGE="opensuse/leap:latest"
-    - <<: *matrix_integration
-      name: "integration (centos)"
-      env:
-        - DOCKER_IMAGE="centos:latest"
-    - <<: *matrix_integration
-      name: "integration (debian)"
-      env:
-        - DOCKER_IMAGE="debian:latest"
-    - <<: *matrix_integration
-      name: "integration (ubuntu)"
-      env:
-        - DOCKER_IMAGE="ubuntu:latest"
-    - <<: *matrix_integration
-      name: "integration (fedora)"
-      env:
-        - DOCKER_IMAGE="fedora:latest"
     - name: "macos-unit"
       os: osx
       osx_image: xcode12
@@ -131,3 +106,17 @@ matrix:
         - |-
             make umoci
             ./umoci help
+
+    # Integration tests.
+    - <<: *matrix_integration
+      name: "integration (fedora)"
+      env:
+        - DOCKER_IMAGE="fedora:latest"
+    - <<: *matrix_integration
+      name: "integration (opensuse/leap)"
+      env:
+        - DOCKER_IMAGE="opensuse/leap:latest"
+    - <<: *matrix_integration
+      name: "integration (debian)"
+      env:
+        - DOCKER_IMAGE="debian:latest"
