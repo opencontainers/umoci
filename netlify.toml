@@ -17,6 +17,7 @@
 base = ".site"
 public = "public"
 command = "hugo"
+ignore = "false"
 
 # NOTE: All security headers are set in .site/static/_headers, and redirects in
 #       .site/static/_redirects. While Netlify does support setting headers and
