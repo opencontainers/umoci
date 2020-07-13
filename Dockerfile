@@ -18,7 +18,8 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE Leap yet, or are out of date in Leap.
-RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
+RUN zypper mr -d repo-non-oss repo-update-non-oss && \
+	zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 	zypper ar -f -p 10 -g obs://devel:tools obs-tools && \
 	zypper ar -f -p 10 -g obs://devel:languages:go obs-go && \
 	zypper --gpg-auto-import-keys -n ref && \
@@ -26,10 +27,13 @@ RUN zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 RUN zypper -n in \
 		attr \
 		bats \
+		bc \
+		curl \
 		git \
 		gnu_parallel \
 		go1.14 \
 		go-mtree \
+		gzip \
 		jq \
 		libcap-progs \
 		make \
@@ -55,4 +59,3 @@ RUN skopeo copy docker://$DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
 WORKDIR /go/src/github.com/opencontainers/umoci
-COPY . /go/src/github.com/opencontainers/umoci

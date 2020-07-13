@@ -26,7 +26,7 @@ PROJECT := github.com/opencontainers/umoci
 CMD := ${PROJECT}/cmd/umoci
 
 # We use Docker because Go is just horrific to deal with.
-UMOCI_IMAGE := umoci_dev
+UMOCI_IMAGE := umoci/ci:latest
 
 # TODO: We should test umoci with all of the security options disabled so that
 #       we can make sure umoci inside containers works fine (all of these
@@ -34,18 +34,22 @@ UMOCI_IMAGE := umoci_dev
 #       itself). The AppArmor/SELinux settings are needed because of the
 #       mount-related tests, and the seccomp/systempaths settings are required
 #       for the runc tests for rootless containers.
-# XXX: Ideally we'd use --security-opt systempaths=unconfined, but the version
-#      of Docker in Travis-CI doesn't support that. Bind-mounting the host's
-#      proc into the container is more dangerous but has the same effect on the
-#      in-kernel mnt_too_revealing() checks and works on old Docker.
-DOCKER_RUN          := docker run --rm -it \
-                                  -v ${PWD}:/go/src/${PROJECT} \
-                                  --security-opt seccomp=unconfined \
-                                  --security-opt apparmor=unconfined \
-                                  --security-opt label=disable \
-                                  -v /proc:/tmp/.HOTFIX-stashed-proc
-DOCKER_ROOTPRIV_RUN := $(DOCKER_RUN) --privileged --cap-add=SYS_ADMIN
-DOCKER_ROOTLESS_RUN := $(DOCKER_RUN) -u 1000:1000 --cap-drop=all
+DOCKER_RUN = docker run --rm -v ${PWD}:/go/src/${PROJECT} \
+                        --security-opt apparmor=unconfined \
+                        --security-opt label=disable \
+                        --security-opt seccomp=unconfined \
+                        --security-opt systempaths=unconfined
+
+# We only add the CodeCov environment (and ping codecov) if we're running in
+# Travis, to avoid pinging third-party servers for local builds.
+ifdef TRAVIS
+$(shell echo "WARNING: This make invocation will fetch and run code from https://codecov.io/." >&2)
+DOCKER_RUN += $(shell echo "+ curl -sSL https://codecov.io/env | bash" >&2) \
+              $(shell ./hack/resilient-curl.sh -sSL https://codecov.io/env | bash)
+endif
+
+DOCKER_ROOTPRIV_RUN = $(DOCKER_RUN) --privileged --cap-add=SYS_ADMIN
+DOCKER_ROOTLESS_RUN = $(DOCKER_RUN) -u 1000:1000 --cap-drop=all
 
 # Output directory.
 BUILD_DIR ?= .
@@ -113,11 +117,11 @@ uninstall:
 
 .PHONY: clean
 clean:
-	rm -f umoci umoci.static umoci.cov*
+	rm -f umoci umoci.static umoci-ci.tar umoci.cov*
 	rm -f $(MANPAGES)
 
 .PHONY: validate
-validate: umociimage
+validate: ci-image
 	$(DOCKER_RUN) $(UMOCI_IMAGE) make local-validate
 
 .PHONY: local-validate
@@ -170,19 +174,15 @@ doc/man/%.1: doc/man/%.1.md
 docs: $(MANPAGES)
 
 # Used for tests.
-DOCKER_IMAGE :=opensuse/amd64:tumbleweed
-
-.PHONY: umociimage
-umociimage:
-	docker build -t $(UMOCI_IMAGE) --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) .
+DOCKER_IMAGE ?=opensuse/amd64:tumbleweed
 
 ifndef COVERAGE
 COVERAGE := $(notdir $(shell mktemp -u umoci.cov.XXXXXX))
-export COVERAGE
 endif
+export COVERAGE
 
 .PHONY: test-unit
-test-unit: umociimage
+test-unit: ci-image
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
 	$(DOCKER_ROOTLESS_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
@@ -192,7 +192,7 @@ local-test-unit:
 	GO=$(GO) hack/test-unit.sh
 
 .PHONY: test-integration
-test-integration: umociimage
+test-integration: ci-image
 	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
 	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
 	$(DOCKER_ROOTLESS_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
@@ -202,17 +202,49 @@ local-test-integration: umoci.cover
 	TESTS="${TESTS}" hack/test-integration.sh
 
 .PHONY: shell
-shell: umociimage
-	$(DOCKER_RUN) $(UMOCI_IMAGE) bash
+shell: ci-image
+	$(DOCKER_RUN) -it $(UMOCI_IMAGE) bash
 
 .PHONY: root-shell
-root-shell: umociimage
-	$(DOCKER_ROOTPRIV_RUN) $(UMOCI_IMAGE) bash
+root-shell: ci-image
+	$(DOCKER_ROOTPRIV_RUN) -it $(UMOCI_IMAGE) bash
 
 .PHONY: rootless-shell
-rootless-shell: umociimage
-	$(DOCKER_ROOTLESS_RUN) $(UMOCI_IMAGE) bash
+rootless-shell: ci-image
+	$(DOCKER_ROOTLESS_RUN) -it $(UMOCI_IMAGE) bash
+
+CACHE := .cache
+CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
+
+.PHONY: ci-image
+ci-image:
+	docker pull opensuse/leap:latest
+	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
+	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
+	                               --progress plain \
+	                               --cache-from $(UMOCI_IMAGE) \
+	                               --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) \
+	                               --build-arg BUILDKIT_INLINE_CACHE=1 .
+
+.PHONY: ci-cache
+ci-cache: ci-image
+	rm -rf $(CACHE) && mkdir -p $(CACHE)
+	docker save $(UMOCI_IMAGE) | zstd > $(CACHE_IMAGE)
+
+.PHONY: ci-validate
+ci-validate: umoci umoci.static
+	make docs local-validate
+
+.PHONY: ci-unit
+ci-unit: umoci.cover
+	make test-unit
+
+.PHONY: ci-integration
+ci-integration: umoci.cover
+	make test-integration
 
 .PHONY: ci
-ci: umoci umoci.static umoci.cover validate docs test-unit test-integration
+ci:
+	@echo "NOTE: This is not identical to the upstream CI, but the tests are the same."
+	make ci-validate ci-unit ci-integration
 	hack/ci-coverage.sh $(COVERAGE)

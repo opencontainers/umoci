@@ -1,3 +1,4 @@
+#!/bin/bash
 # umoci: Umoci Modifies Open Containers' Images
 # Copyright (C) 2016-2020 SUSE LLC
 #
@@ -13,13 +14,14 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[build]
-base = ".site"
-public = "public"
-command = "hugo"
-ignore = "false"
+set -Eeuo pipefail
 
-# NOTE: All security headers are set in .site/static/_headers, and redirects in
-#       .site/static/_redirects. While Netlify does support setting headers and
-#       redirects in netlify.toml, it seems that this doesn't work for our
-#       website. (TODO: Fix that.)
+ATTEMPT=0
+MAX_ATTEMPTS=10
+BACKOFF=0.2
+
+until ( timeout 5s curl "$@" )
+do
+	[[ "$((++ATTEMPT))" -lt "$MAX_ATTEMPTS" ]] || exit 1
+	sleep "$(bc <<<"$BACKOFF * 2*$ATTEMPT")"
+done

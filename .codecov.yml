@@ -13,13 +13,24 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-[build]
-base = ".site"
-public = "public"
-command = "hugo"
-ignore = "false"
+comment:
+  layout: "reach, diff, files"
+  behavior: new
+  branches:
+    - master
 
-# NOTE: All security headers are set in .site/static/_headers, and redirects in
-#       .site/static/_redirects. While Netlify does support setting headers and
-#       redirects in netlify.toml, it seems that this doesn't work for our
-#       website. (TODO: Fix that.)
+coverage:
+  range: 60..100
+  status:
+    project:
+      default:
+        # TODO: Bump this to >80%.
+        target: 75%
+        threshold: 0%
+      delta:
+        target: auto
+        threshold: 0.1%
+    patch:
+      default:
+        target: auto
+        threshold: 0%
