@@ -33,6 +33,7 @@ RUN zypper -n in \
 		gnu_parallel \
 		go1.14 \
 		go-mtree \
+		gzip \
 		jq \
 		libcap-progs \
 		make \

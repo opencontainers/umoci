@@ -25,27 +25,32 @@ PROJECT="${PROJECT:-github.com/opencontainers/umoci}"
 
 extra_args=("$@")
 
-# Set up the coverage file.
-if [ -n "$COVERAGE" ]
-then
-	# -coverprofile= truncates the target file, so we need to create a
-	# temporary file for this test run and collate it with the current
-	# $COVERAGE file.
-	COVERAGE_FILE="$(mktemp -t umoci-coverage.XXXXXX)"
+# -coverprofile= truncates the target file, so we need to create a
+# temporary file for this test run and collate it with the current
+# $COVERAGE file.
+COVERAGE_FILE="$(mktemp -t umoci-coverage.XXXXXX)"
 
-	# If we have to generate a coverage file, make sure the coverage covers the
-	# entire project and not just the package being tested. This mirrors
-	# ${TEST_BUILD_FLAGS} from the Makefile.
-	extra_args+=("-covermode=count" "-coverprofile=$COVERAGE_FILE" "-coverpkg=$PROJECT/...")
-fi
+# If we have to generate a coverage file, make sure the coverage covers the
+# entire project and not just the package being tested. This mirrors
+# ${TEST_BUILD_FLAGS} from the Makefile.
+extra_args+=("-covermode=count" "-coverprofile=$COVERAGE_FILE" "-coverpkg=$PROJECT/...")
 
 # Run the tests.
 "$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." 2>/dev/null
 
-# Collate the results into the target $COVERAGE file.
-if [ -n "$COVERAGE" ]
+if [ -n "${TRAVIS:-}" ]
 then
+	coverage_tags=unit
+	[[ "$(id -u)" == 0 ]] || coverage_tags+=",rootless"
+
+	# If we're running in Travis, upload the coverage files and don't bother
+	# with the local coverage generation.
+	"$ROOT/hack/resilient-curl.sh" -sSL https://codecov.io/bash | \
+		bash -s -- -cZ -f "$COVERAGE_FILE" -F "$coverage_tags"
+elif [ -n "$COVERAGE" ]
+then
+	# If running locally, collate the coverage information.
 	touch "$COVERAGE"
 	"$ROOT/hack/collate.awk" "$COVERAGE_FILE" "$COVERAGE" | sponge "$COVERAGE"
-	rm -f "$COVERAGE_FILE"
 fi
+rm -f "$COVERAGE_FILE"
