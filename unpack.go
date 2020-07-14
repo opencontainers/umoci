@@ -36,6 +36,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	var meta Meta
 	meta.Version = MetaVersion
 	meta.MapOptions = unpackOptions.MapOptions
+	meta.WhiteoutMode = unpackOptions.WhiteoutMode
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
