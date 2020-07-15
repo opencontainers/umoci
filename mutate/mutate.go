@@ -155,6 +155,17 @@ func (m *Mutator) Config(ctx context.Context) (ispec.ImageConfig, error) {
 	return m.config.Config, nil
 }
 
+// Manifest returns the current (cached) image manifest. This is what will be
+// appended to when any additional Add() calls are made, and what will be
+// Commit()ed if no further changes are made.
+func (m *Mutator) Manifest(ctx context.Context) (ispec.Manifest, error) {
+	if err := m.cache(ctx); err != nil {
+		return ispec.Manifest{}, errors.Wrap(err, "getting cache failed")
+	}
+
+	return *m.manifest, nil
+}
+
 // Meta returns the current (cached) image metadata, which should be used as
 // the source for any modifications of the configuration using Set.
 func (m *Mutator) Meta(ctx context.Context) (Meta, error) {

@@ -256,6 +256,15 @@ func TestMutateAdd(t *testing.T) {
 		t.Fatalf("unexpected digest for new layer: %v %v", mutator.manifest.Layers[1].Digest, newLayerDesc.Digest)
 	}
 
+	manifestFromFunction, err := mutator.Manifest(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error getting manifest: %+v", err)
+	}
+
+	if !reflect.DeepEqual(manifestFromFunction, *mutator.manifest) {
+		t.Fatalf("mutator.Manifest() didn't return the cached manifest")
+	}
+
 	// Check layer was added.
 	if len(mutator.manifest.Layers) != 2 {
 		t.Errorf("manifest.Layers was not updated")
