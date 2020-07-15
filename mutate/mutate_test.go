@@ -215,9 +215,10 @@ func TestMutateAdd(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	if err := mutator.Add(context.Background(), buffer, &ispec.History{
+	newLayerDesc, err := mutator.Add(context.Background(), buffer, &ispec.History{
 		Comment: "new layer",
-	}); err != nil {
+	})
+	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
 
@@ -249,6 +250,10 @@ func TestMutateAdd(t *testing.T) {
 	}
 	if mutator.manifest.Layers[1].Digest == expectedLayerDigest {
 		t.Errorf("manifest.Layers[1].Digest is not the same!")
+	}
+
+	if mutator.manifest.Layers[1].Digest != newLayerDesc.Digest {
+		t.Fatalf("unexpected digest for new layer: %v %v", mutator.manifest.Layers[1].Digest, newLayerDesc.Digest)
 	}
 
 	// Check layer was added.

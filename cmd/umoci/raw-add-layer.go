@@ -155,7 +155,7 @@ func rawAddLayer(ctx *cli.Context) error {
 
 	// TODO: We should add a flag to allow for a new layer to be made
 	//       non-distributable.
-	if err := mutator.Add(context.Background(), newLayer, history); err != nil {
+	if _, err := mutator.Add(context.Background(), newLayer, history); err != nil {
 		return errors.Wrap(err, "add diff layer")
 	}
 
