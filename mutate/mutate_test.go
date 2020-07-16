@@ -215,9 +215,9 @@ func TestMutateAdd(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayerGzip, buffer, &ispec.History{
+	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	})
+	}, GzipCompressor)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}

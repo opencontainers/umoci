@@ -25,11 +25,9 @@ package mutate
 import (
 	"io"
 	"reflect"
-	"runtime"
 	"time"
 
 	"github.com/apex/log"
-	gzip "github.com/klauspost/pgzip"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas"
@@ -232,7 +230,7 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 // add adds the given layer to the CAS, and mutates the configuration to
 // include the diffID. The returned string is the digest of the *compressed*
 // layer (which is compressed by us).
-func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History) (digest.Digest, int64, error) {
+func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History, compressor Compressor) (digest.Digest, int64, error) {
 	if err := m.cache(ctx); err != nil {
 		return "", -1, errors.Wrap(err, "getting cache failed")
 	}
@@ -240,30 +238,13 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 	diffidDigester := cas.BlobAlgorithm.Digester()
 	hashReader := io.TeeReader(reader, diffidDigester.Hash())
 
-	pipeReader, pipeWriter := io.Pipe()
-	defer pipeReader.Close()
-
-	gzw := gzip.NewWriter(pipeWriter)
-	defer gzw.Close()
-	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
-		return "", -1, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
+	compressed, err := compressor.Compress(hashReader)
+	if err != nil {
+		return "", -1, errors.Wrapf(err, "couldn't create compression for blob")
 	}
-	go func() {
-		if _, err := io.Copy(gzw, hashReader); err != nil {
-			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
-		}
-		if err := gzw.Close(); err != nil {
-			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
-		}
-		if err := pipeWriter.Close(); err != nil {
-			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close pipe writer"))
-		}
-	}()
+	defer compressed.Close()
 
-	layerDigest, layerSize, err := m.engine.PutBlob(ctx, pipeReader)
+	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "put layer blob")
 	}
@@ -291,20 +272,25 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
+func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor) (ispec.Descriptor, error) {
 	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
 		return desc, errors.Wrap(err, "getting cache failed")
 	}
 
-	digest, size, err := m.add(ctx, r, history)
+	digest, size, err := m.add(ctx, r, history, compressor)
 	if err != nil {
 		return desc, errors.Wrap(err, "add layer")
 	}
 
+	compressedMediaType := mediaType
+	if compressor.MediaTypeSuffix() != "" {
+		compressedMediaType = compressedMediaType + "+" + compressor.MediaTypeSuffix()
+	}
+
 	// Append to layers.
 	desc = ispec.Descriptor{
-		MediaType: mediaType,
+		MediaType: compressedMediaType,
 		Digest:    digest,
 		Size:      size,
 	}
