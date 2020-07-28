@@ -315,24 +315,26 @@ func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) 
 
 // AddNonDistributable is the same as Add, except it adds a non-distributable
 // layer to the image.
-func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) error {
+func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
+	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
-		return errors.Wrap(err, "getting cache failed")
+		return desc, errors.Wrap(err, "getting cache failed")
 	}
 
 	digest, size, err := m.add(ctx, r, history)
 	if err != nil {
-		return errors.Wrap(err, "add non-distributable layer")
+		return desc, errors.Wrap(err, "add non-distributable layer")
 	}
 
 	// Append to layers.
-	m.manifest.Layers = append(m.manifest.Layers, ispec.Descriptor{
+	desc = ispec.Descriptor{
 		// TODO: Detect whether the layer is gzip'd or not...
 		MediaType: ispec.MediaTypeImageLayerNonDistributableGzip,
 		Digest:    digest,
 		Size:      size,
-	})
-	return nil
+	}
+	m.manifest.Layers = append(m.manifest.Layers, desc)
+	return desc, nil
 }
 
 // Commit writes all of the temporary changes made to the configuration,
