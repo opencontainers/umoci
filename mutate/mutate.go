@@ -155,6 +155,17 @@ func (m *Mutator) Config(ctx context.Context) (ispec.ImageConfig, error) {
 	return m.config.Config, nil
 }
 
+// Manifest returns the current (cached) image manifest. This is what will be
+// appended to when any additional Add() calls are made, and what will be
+// Commit()ed if no further changes are made.
+func (m *Mutator) Manifest(ctx context.Context) (ispec.Manifest, error) {
+	if err := m.cache(ctx); err != nil {
+		return ispec.Manifest{}, errors.Wrap(err, "getting cache failed")
+	}
+
+	return *m.manifest, nil
+}
+
 // Meta returns the current (cached) image metadata, which should be used as
 // the source for any modifications of the configuration using Set.
 func (m *Mutator) Meta(ctx context.Context) (Meta, error) {
@@ -280,46 +291,50 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) error {
+func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
+	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
-		return errors.Wrap(err, "getting cache failed")
+		return desc, errors.Wrap(err, "getting cache failed")
 	}
 
 	digest, size, err := m.add(ctx, r, history)
 	if err != nil {
-		return errors.Wrap(err, "add layer")
+		return desc, errors.Wrap(err, "add layer")
 	}
 
 	// Append to layers.
-	m.manifest.Layers = append(m.manifest.Layers, ispec.Descriptor{
+	desc = ispec.Descriptor{
 		// TODO: Detect whether the layer is gzip'd or not...
 		MediaType: ispec.MediaTypeImageLayerGzip,
 		Digest:    digest,
 		Size:      size,
-	})
-	return nil
+	}
+	m.manifest.Layers = append(m.manifest.Layers, desc)
+	return desc, nil
 }
 
 // AddNonDistributable is the same as Add, except it adds a non-distributable
 // layer to the image.
-func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) error {
+func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
+	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
-		return errors.Wrap(err, "getting cache failed")
+		return desc, errors.Wrap(err, "getting cache failed")
 	}
 
 	digest, size, err := m.add(ctx, r, history)
 	if err != nil {
-		return errors.Wrap(err, "add non-distributable layer")
+		return desc, errors.Wrap(err, "add non-distributable layer")
 	}
 
 	// Append to layers.
-	m.manifest.Layers = append(m.manifest.Layers, ispec.Descriptor{
+	desc = ispec.Descriptor{
 		// TODO: Detect whether the layer is gzip'd or not...
 		MediaType: ispec.MediaTypeImageLayerNonDistributableGzip,
 		Digest:    digest,
 		Size:      size,
-	})
-	return nil
+	}
+	m.manifest.Layers = append(m.manifest.Layers, desc)
+	return desc, nil
 }
 
 // Commit writes all of the temporary changes made to the configuration,
