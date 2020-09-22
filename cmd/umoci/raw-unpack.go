@@ -69,6 +69,7 @@ func rawUnpack(ctx *cli.Context) error {
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	rootfsPath := ctx.App.Metadata["rootfs"].(string)
 
+	var unpackOptions layer.UnpackOptions
 	var meta umoci.Meta
 	meta.Version = umoci.MetaVersion
 
@@ -79,7 +80,8 @@ func rawUnpack(ctx *cli.Context) error {
 		return err
 	}
 
-	meta.MapOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
+	unpackOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
+	unpackOptions.MapOptions = meta.MapOptions
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
@@ -126,7 +128,7 @@ func rawUnpack(ctx *cli.Context) error {
 	}
 
 	log.Warnf("unpacking rootfs ...")
-	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &meta.MapOptions, nil, ispec.Descriptor{}); err != nil {
+	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &unpackOptions); err != nil {
 		return errors.Wrap(err, "create rootfs")
 	}
 	log.Warnf("... done")

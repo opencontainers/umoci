@@ -156,7 +156,8 @@ func insert(ctx *cli.Context) error {
 		return err
 	}
 
-	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &meta.MapOptions)
+	packOptions := layer.RepackOptions{MapOptions: meta.MapOptions}
+	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &packOptions)
 	defer reader.Close()
 
 	var history *ispec.History

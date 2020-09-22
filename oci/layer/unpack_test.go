@@ -161,7 +161,7 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 	defer os.RemoveAll(bundle)
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
-	mapOptions := &MapOptions{
+	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
 		UIDMappings: []rspec.LinuxIDMapping{
 			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
 			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
@@ -171,13 +171,13 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
 		},
 		Rootless: os.Geteuid() != 0,
-	}
+	}}
 	called := false
-	callback := func(m ispec.Manifest, d ispec.Descriptor) error {
+	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
 		called = true
 		return nil
 	}
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, mapOptions, callback, ispec.Descriptor{}); err != nil {
+	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
 		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
 	}
 	if !called {
@@ -198,7 +198,7 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 	defer os.RemoveAll(bundle)
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
-	mapOptions := &MapOptions{
+	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
 		UIDMappings: []rspec.LinuxIDMapping{
 			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
 			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
@@ -208,9 +208,9 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
 		},
 		Rootless: os.Geteuid() != 0,
-	}
-	startFrom := manifest.Layers[1]
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, mapOptions, nil, startFrom); err != nil {
+	}}
+	unpackOptions.StartFrom = manifest.Layers[1]
+	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
 		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
 	}
 

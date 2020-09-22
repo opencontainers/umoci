@@ -74,7 +74,7 @@ func TestGenerate(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reader, err := GenerateLayer(dir, diffs, &MapOptions{})
+	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	}
 
 	// Generate a layer where the changed file is missing after the diff.
-	reader, err := GenerateLayer(dir, diffs, &MapOptions{})
+	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -253,7 +253,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	}
 
 	// Generate a layer with the wrong root directory.
-	reader, err := GenerateLayer(filepath.Join(dir, "some"), diffs, &MapOptions{})
+	reader, err := GenerateLayer(filepath.Join(dir, "some"), diffs, &RepackOptions{})
 	if err != nil {
 		t.Fatal(err)
 	}

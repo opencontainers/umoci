@@ -45,6 +45,10 @@ var ignoreXattrs = map[string]struct{}{
 	// NFSv4 ACLs are very system-specific and shouldn't be touched by us, nor
 	// should they be included in images.
 	"system.nfs4_acl": {},
+
+	// In order to support overlayfs whiteout mode, we shouldn't un-set
+	// this after we've set it when writing out the whiteouts.
+	"trusted.overlay.opaque": {},
 }
 
 func init() {

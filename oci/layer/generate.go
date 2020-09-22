@@ -43,10 +43,10 @@ func (ids inodeDeltas) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
 // provided path (which should be the rootfs of the layer that was diffed). The
 // returned reader is for the *raw* tar data, it is the caller's responsibility
 // to gzip it.
-func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.ReadCloser, error) {
-	var mapOptions MapOptions
+func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (io.ReadCloser, error) {
+	var packOptions RepackOptions
 	if opt != nil {
-		mapOptions = *opt
+		packOptions = *opt
 	}
 
 	reader, writer := io.Pipe()
@@ -61,7 +61,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := newTarGenerator(writer, mapOptions)
+		tg := newTarGenerator(writer, packOptions.MapOptions)
 
 		// Sort the delta paths.
 		// FIXME: We need to add whiteouts first, otherwise we might end up
@@ -79,6 +79,19 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
+				if packOptions.TranslateOverlayWhiteouts {
+					fi, err := os.Stat(fullPath)
+					if err != nil {
+						return errors.Wrapf(err, "couldn't determine overlay whiteout for %s", fullPath)
+					}
+
+					if isOverlayWhiteout(fi) {
+						if err := tg.AddWhiteout(fullPath); err != nil {
+							return errors.Wrap(err, "generate whiteout from overlayfs")
+						}
+					}
+					continue
+				}
 				if err := tg.AddFile(name, fullPath); err != nil {
 					log.Warnf("generate layer: could not add file '%s': %s", name, err)
 					return errors.Wrap(err, "generate layer file")
@@ -105,12 +118,12 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *MapOptions) (io.
 // GenerateInsertLayer generates a completely new layer from "root"to be
 // inserted into the image at "target". If "root" is an empty string then the
 // "target" will be removed via a whiteout.
-func GenerateInsertLayer(root string, target string, opaque bool, opt *MapOptions) io.ReadCloser {
+func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
 	root = CleanPath(root)
 
-	var mapOptions MapOptions
+	var packOptions RepackOptions
 	if opt != nil {
-		mapOptions = *opt
+		packOptions = *opt
 	}
 
 	reader, writer := io.Pipe()
@@ -121,7 +134,7 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *MapOption
 			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
 		}()
 
-		tg := newTarGenerator(writer, mapOptions)
+		tg := newTarGenerator(writer, packOptions.MapOptions)
 
 		if opaque {
 			if err := tg.AddOpaqueWhiteout(target); err != nil {
@@ -137,6 +150,11 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *MapOption
 			}
 
 			pathInTar := path.Join(target, curPath[len(root):])
+			if packOptions.TranslateOverlayWhiteouts && isOverlayWhiteout(info) {
+				log.Debugf("converting overlayfs whiteout %s to OCI whiteout", pathInTar)
+				return tg.AddWhiteout(pathInTar)
+			}
+
 			return tg.AddFile(pathInTar, curPath)
 		})
 	}()

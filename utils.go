@@ -89,6 +89,10 @@ type Meta struct {
 	// umoci-repack(1) calls, changing them is not recommended and so the
 	// default should be that they are the same.
 	MapOptions layer.MapOptions `json:"map_options"`
+
+	// WhiteoutMode indicates what style of whiteout was written to disk
+	// when this filesystem was extracted.
+	WhiteoutMode layer.WhiteoutMode `json:"whiteout_mode"`
 }
 
 // WriteTo writes a JSON-serialised version of Meta to the given io.Writer.

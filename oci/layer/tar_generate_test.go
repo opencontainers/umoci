@@ -54,7 +54,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 		Size:       int64(len(data)),
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	if err := ioutil.WriteFile(path, data, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
@@ -148,7 +148,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 		Size:       0,
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	if err := os.Mkdir(path, 0777); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}
@@ -235,7 +235,7 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 		Size:       0,
 	}
 
-	te := NewTarExtractor(MapOptions{})
+	te := NewTarExtractor(UnpackOptions{})
 	if err := os.Symlink(linkname, path); err != nil {
 		t.Fatalf("unexpected error creating file to add: %s", err)
 	}

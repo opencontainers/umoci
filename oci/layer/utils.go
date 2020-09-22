@@ -28,6 +28,7 @@ import (
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/pkg/errors"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
+	"golang.org/x/sys/unix"
 )
 
 // MapOptions specifies the UID and GID mappings used when unpacking and
@@ -40,13 +41,6 @@ type MapOptions struct {
 
 	// Rootless specifies whether any to error out if chown fails.
 	Rootless bool `json:"rootless"`
-
-	// KeepDirlinks is essentially the same as rsync's optio
-	// --keep-dirlinks: if, on extraction, a directory would be created
-	// where a symlink to a directory previously existed, KeepDirlinks
-	// doesn't create that directory, but instead just uses the existing
-	// symlink.
-	KeepDirlinks bool `json:"-"`
 }
 
 // mapHeader maps a tar.Header generated from the filesystem so that it
@@ -231,4 +225,15 @@ func InnerErrno(err error) error {
 		errno = err.Err
 	}
 	return errno
+}
+
+// isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
+// whiteout (i.e. mknod c 0 0) and false otherwise.
+func isOverlayWhiteout(info os.FileInfo) bool {
+	sysStat := info.Sys().(*unix.Stat_t)
+	if unix.Major(uint64(sysStat.Rdev)) != 0 || unix.Minor(uint64(sysStat.Rdev)) != 0 {
+		return false
+	}
+
+	return info.Mode()&os.ModeCharDevice != 0
 }
