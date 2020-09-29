@@ -215,7 +215,7 @@ func TestMutateAdd(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	newLayerDesc, err := mutator.Add(context.Background(), buffer, &ispec.History{
+	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayerGzip, buffer, &ispec.History{
 		Comment: "new layer",
 	})
 	if err != nil {
@@ -270,90 +270,6 @@ func TestMutateAdd(t *testing.T) {
 		t.Errorf("manifest.Layers was not updated")
 	}
 	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerGzip {
-		t.Errorf("manifest.Layers[1].MediaType is the wrong value: %s", mutator.manifest.Layers[1].MediaType)
-	}
-
-	// Check config was also modified.
-	if len(mutator.config.RootFS.DiffIDs) != 2 {
-		t.Errorf("config.RootFS.DiffIDs was not updated")
-	}
-
-	// Check history.
-	if len(mutator.config.History) != 2 {
-		t.Errorf("config.History was not updated")
-	}
-	if mutator.config.History[1].EmptyLayer != false {
-		t.Errorf("config.History[1].EmptyLayer was not set")
-	}
-	if mutator.config.History[1].Comment != "new layer" {
-		t.Errorf("config.History[1].Comment was not set")
-	}
-}
-
-func TestMutateAddNonDistributable(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAddNonDistributable")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
-
-	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// This isn't a valid image, but whatever.
-	buffer := bytes.NewBufferString("contents")
-
-	// Add a new layer.
-	newLayerDesc, err := mutator.AddNonDistributable(context.Background(), buffer, &ispec.History{
-		Comment: "new layer",
-	})
-	if err != nil {
-		t.Fatalf("unexpected error adding layer: %+v", err)
-	}
-
-	newDescriptor, err := mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error committing changes: %+v", err)
-	}
-
-	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
-		t.Fatalf("new and old descriptors are the same!")
-	}
-
-	mutator, err = New(engine, newDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
-
-	// Cache the data to check it.
-	if err := mutator.cache(context.Background()); err != nil {
-		t.Fatalf("unexpected error getting cache: %+v", err)
-	}
-
-	// Check digests are different.
-	if mutator.manifest.Config.Digest == expectedConfigDigest {
-		t.Errorf("manifest.Config.Digest is the same!")
-	}
-	if mutator.manifest.Layers[0].Digest != expectedLayerDigest {
-		t.Errorf("manifest.Layers[0].Digest is not the same!")
-	}
-	if mutator.manifest.Layers[1].Digest == expectedLayerDigest {
-		t.Errorf("manifest.Layers[1].Digest is not the same!")
-	}
-	if mutator.manifest.Layers[1].Digest != newLayerDesc.Digest {
-		t.Fatalf("unexpected digest for new layer: %v %v", mutator.manifest.Layers[1].Digest, newLayerDesc.Digest)
-	}
-
-	// Check layer was added.
-	if len(mutator.manifest.Layers) != 2 {
-		t.Errorf("manifest.Layers was not updated")
-	}
-	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerNonDistributableGzip {
 		t.Errorf("manifest.Layers[1].MediaType is the wrong value: %s", mutator.manifest.Layers[1].MediaType)
 	}
 

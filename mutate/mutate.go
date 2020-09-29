@@ -291,7 +291,7 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
+func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
 	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
 		return desc, errors.Wrap(err, "getting cache failed")
@@ -304,32 +304,7 @@ func (m *Mutator) Add(ctx context.Context, r io.Reader, history *ispec.History) 
 
 	// Append to layers.
 	desc = ispec.Descriptor{
-		// TODO: Detect whether the layer is gzip'd or not...
-		MediaType: ispec.MediaTypeImageLayerGzip,
-		Digest:    digest,
-		Size:      size,
-	}
-	m.manifest.Layers = append(m.manifest.Layers, desc)
-	return desc, nil
-}
-
-// AddNonDistributable is the same as Add, except it adds a non-distributable
-// layer to the image.
-func (m *Mutator) AddNonDistributable(ctx context.Context, r io.Reader, history *ispec.History) (ispec.Descriptor, error) {
-	desc := ispec.Descriptor{}
-	if err := m.cache(ctx); err != nil {
-		return desc, errors.Wrap(err, "getting cache failed")
-	}
-
-	digest, size, err := m.add(ctx, r, history)
-	if err != nil {
-		return desc, errors.Wrap(err, "add non-distributable layer")
-	}
-
-	// Append to layers.
-	desc = ispec.Descriptor{
-		// TODO: Detect whether the layer is gzip'd or not...
-		MediaType: ispec.MediaTypeImageLayerNonDistributableGzip,
+		MediaType: mediaType,
 		Digest:    digest,
 		Size:      size,
 	}
