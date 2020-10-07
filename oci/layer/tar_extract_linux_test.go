@@ -94,7 +94,11 @@ func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 		t.Fatalf("failed to stat `file`: %v", err)
 	}
 
-	if !isOverlayWhiteout(fi) {
+	whiteout, err := isOverlayWhiteout(fi)
+	if err != nil {
+		t.Fatalf("failed to check overlay whiteout: %v", err)
+	}
+	if !whiteout {
 		t.Fatalf("extract didn't make overlay whiteout")
 	}
 

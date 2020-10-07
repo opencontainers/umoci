@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"os"
 	"path/filepath"
+	"syscall"
 
 	"github.com/apex/log"
 	"github.com/golang/protobuf/proto"
@@ -229,11 +230,19 @@ func InnerErrno(err error) error {
 
 // isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
 // whiteout (i.e. mknod c 0 0) and false otherwise.
-func isOverlayWhiteout(info os.FileInfo) bool {
-	sysStat := info.Sys().(*unix.Stat_t)
-	if unix.Major(uint64(sysStat.Rdev)) != 0 || unix.Minor(uint64(sysStat.Rdev)) != 0 {
-		return false
+func isOverlayWhiteout(info os.FileInfo) (bool, error) {
+	var major, minor uint32
+	switch stat := info.Sys().(type) {
+	case *unix.Stat_t:
+		major = unix.Major(uint64(stat.Rdev))
+		minor = unix.Minor(uint64(stat.Rdev))
+	case *syscall.Stat_t:
+		major = unix.Major(uint64(stat.Rdev))
+		minor = unix.Minor(uint64(stat.Rdev))
+	default:
+		return false, errors.Errorf("[internal error] unknown stat info type %T", info.Sys())
 	}
 
-	return info.Mode()&os.ModeCharDevice != 0
+	return major == 0 && minor == 0 &&
+		info.Mode()&os.ModeCharDevice != 0, nil
 }
