@@ -85,7 +85,11 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 						return errors.Wrapf(err, "couldn't determine overlay whiteout for %s", fullPath)
 					}
 
-					if isOverlayWhiteout(fi) {
+					whiteout, err := isOverlayWhiteout(fi)
+					if err != nil {
+						return err
+					}
+					if whiteout {
 						if err := tg.AddWhiteout(fullPath); err != nil {
 							return errors.Wrap(err, "generate whiteout from overlayfs")
 						}
@@ -150,7 +154,11 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			}
 
 			pathInTar := path.Join(target, curPath[len(root):])
-			if packOptions.TranslateOverlayWhiteouts && isOverlayWhiteout(info) {
+			whiteout, err := isOverlayWhiteout(info)
+			if err != nil {
+				return err
+			}
+			if packOptions.TranslateOverlayWhiteouts && whiteout {
 				log.Debugf("converting overlayfs whiteout %s to OCI whiteout", pathInTar)
 				return tg.AddWhiteout(pathInTar)
 			}
