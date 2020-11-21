@@ -2,9 +2,11 @@ package mutate
 
 import (
 	"bytes"
+	"io"
 	"io/ioutil"
 	"testing"
 
+	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	"github.com/stretchr/testify/assert"
 )
@@ -44,4 +46,23 @@ func TestGzipCompressor(t *testing.T) {
 	assert.NoError(err)
 
 	assert.Equal(string(content), fact)
+}
+
+func TestZstdCompressor(t *testing.T) {
+	assert := assert.New(t)
+
+	buf := bytes.NewBufferString(fact)
+	c := ZstdCompressor
+
+	r, err := c.Compress(buf)
+	assert.NoError(err)
+	assert.Equal(c.MediaTypeSuffix(), "zstd")
+
+	dec, err := zstd.NewReader(r)
+	assert.NoError(err)
+
+	var content bytes.Buffer
+	_, err = io.Copy(&content, dec)
+	assert.NoError(err)
+	assert.Equal(content.String(), fact)
 }

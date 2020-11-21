@@ -20,9 +20,14 @@ github.com/fatih/color
 github.com/golang/protobuf/proto
 # github.com/google/go-cmp v0.5.0
 ## explicit
-# github.com/klauspost/compress v1.10.9
+# github.com/klauspost/compress v1.11.3
 ## explicit
 github.com/klauspost/compress/flate
+github.com/klauspost/compress/fse
+github.com/klauspost/compress/huff0
+github.com/klauspost/compress/snappy
+github.com/klauspost/compress/zstd
+github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/pgzip v1.2.4
 ## explicit
 github.com/klauspost/pgzip

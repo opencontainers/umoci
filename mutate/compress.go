@@ -5,6 +5,7 @@ import (
 	"io/ioutil"
 	"runtime"
 
+	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	"github.com/pkg/errors"
 )
@@ -66,4 +67,38 @@ func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 func (gz gzipCompressor) MediaTypeSuffix() string {
 	return "gzip"
+}
+
+// ZstdCompressor provides zstd compression.
+var ZstdCompressor Compressor = zstdCompressor{}
+
+type zstdCompressor struct{}
+
+func (zs zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
+
+	pipeReader, pipeWriter := io.Pipe()
+	zenc, err := zstd.NewWriter(pipeWriter)
+	if err != nil {
+		return nil, err
+	}
+	go func() {
+		if _, err := io.Copy(zenc, reader); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
+		}
+		if err := zenc.Close(); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
+		}
+		if err := pipeWriter.Close(); err != nil {
+			// #nosec G104
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close pipe writer"))
+		}
+	}()
+
+	return pipeReader, nil
+}
+
+func (zs zstdCompressor) MediaTypeSuffix() string {
+	return "zstd"
 }
