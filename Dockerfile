@@ -19,6 +19,7 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE Leap yet, or are out of date in Leap.
 RUN zypper mr -d repo-non-oss repo-update-non-oss && \
+	zypper ar -f -p 5 -g obs://home:cyphar:bats obs-bats && \
 	zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
 	zypper ar -f -p 10 -g obs://devel:tools obs-tools && \
 	zypper ar -f -p 10 -g obs://devel:languages:go obs-go && \
