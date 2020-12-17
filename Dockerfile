@@ -13,7 +13,7 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM opensuse/leap:latest
+FROM registry.opensuse.org/opensuse/leap:latest
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged

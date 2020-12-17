@@ -115,7 +115,7 @@ matrix:
     - <<: *matrix_integration
       name: "integration (opensuse/leap)"
       env:
-        - DOCKER_IMAGE="opensuse/leap:latest"
+        - DOCKER_IMAGE="registry.opensuse.org/opensuse/leap:latest"
     - <<: *matrix_integration
       name: "integration (debian)"
       env:

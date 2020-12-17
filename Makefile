@@ -174,7 +174,7 @@ doc/man/%.1: doc/man/%.1.md
 docs: $(MANPAGES)
 
 # Used for tests.
-DOCKER_IMAGE ?=opensuse/amd64:tumbleweed
+DOCKER_IMAGE ?=registry.opensuse.org/opensuse/leap:latest
 
 ifndef COVERAGE
 COVERAGE := $(notdir $(shell mktemp -u umoci.cov.XXXXXX))
@@ -218,7 +218,7 @@ CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
 
 .PHONY: ci-image
 ci-image:
-	docker pull opensuse/leap:latest
+	docker pull registry.opensuse.org/opensuse/leap:latest
 	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
 	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
 	                               --progress plain \
