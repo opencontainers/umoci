@@ -9,7 +9,7 @@ require (
 	github.com/docker/go-units v0.4.0
 	github.com/golang/protobuf v1.4.2
 	github.com/google/go-cmp v0.5.0 // indirect
-	github.com/klauspost/compress v1.10.9 // indirect
+	github.com/klauspost/compress v1.11.3
 	github.com/klauspost/pgzip v1.2.4
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mattn/go-colorable v0.1.6 // indirect
