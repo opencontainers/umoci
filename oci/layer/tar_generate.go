@@ -49,6 +49,17 @@ var ignoreXattrs = map[string]struct{}{
 	// In order to support overlayfs whiteout mode, we shouldn't un-set
 	// this after we've set it when writing out the whiteouts.
 	"trusted.overlay.opaque": {},
+
+	// We don't want to these xattrs into the image, because they're only
+	// relevant based on how the build overlay is constructed and will not
+	// be true on the target system once the image is unpacked (e.g. inodes
+	// might be different, impure status won't be true, etc.).
+	"trusted.overlay.redirect": {},
+	"trusted.overlay.origin":   {},
+	"trusted.overlay.impure":   {},
+	"trusted.overlay.nlink":    {},
+	"trusted.overlay.upper":    {},
+	"trusted.overlay.metacopy": {},
 }
 
 func init() {
