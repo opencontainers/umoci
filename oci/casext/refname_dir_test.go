@@ -20,6 +20,7 @@ package casext
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	crand "crypto/rand"
 	"fmt"
 	"io"
@@ -38,7 +39,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"golang.org/x/net/context"
 )
 
 const (

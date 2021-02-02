@@ -19,6 +19,7 @@ package dir
 
 import (
 	"bytes"
+	"context"
 	"io"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // NOTE: These tests aren't really testing OCI-style manifests. It's all just

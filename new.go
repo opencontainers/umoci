@@ -18,6 +18,7 @@
 package umoci
 
 import (
+	"context"
 	"runtime"
 	"time"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // NewImage creates a new empty image (tag) in the existing layout.

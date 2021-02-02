@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/apex/log"
@@ -28,7 +29,6 @@ import (
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 var rawUnpackCommand = uxRemap(cli.Command{

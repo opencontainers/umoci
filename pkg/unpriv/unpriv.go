@@ -25,7 +25,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cyphar/filepath-securejoin"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"

@@ -19,6 +19,7 @@ package umoci
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -37,7 +38,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
-	"golang.org/x/net/context"
 )
 
 // FIXME: This should be moved to a library. Too much of this code is in the

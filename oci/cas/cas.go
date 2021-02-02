@@ -18,6 +18,7 @@
 package cas
 
 import (
+	"context"
 	"fmt"
 	"io"
 
@@ -28,7 +29,6 @@ import (
 
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"golang.org/x/net/context"
 )
 
 const (

@@ -18,6 +18,7 @@
 package dir
 
 import (
+	"context"
 	"encoding/json"
 	"io"
 	"io/ioutil"
@@ -31,7 +32,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 	"golang.org/x/sys/unix"
 )
 

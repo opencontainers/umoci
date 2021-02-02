@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"strings"
 	"time"
 
@@ -29,7 +30,6 @@ import (
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 // FIXME: We should also implement a raw mode that just does modifications of

@@ -23,6 +23,7 @@
 package mutate
 
 import (
+	"context"
 	"io"
 	"reflect"
 	"time"
@@ -33,7 +34,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 func configPtr(c ispec.Image) *ispec.Image         { return &c }

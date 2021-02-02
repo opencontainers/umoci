@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"time"
 
@@ -31,7 +32,6 @@ import (
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 var repackCommand = uxHistory(cli.Command{

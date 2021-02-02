@@ -18,6 +18,7 @@
 package umoci
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"strings"
@@ -28,7 +29,6 @@ import (
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Unpack unpacks an image to the specified bundle path.

@@ -19,8 +19,7 @@ package layer
 
 import (
 	"archive/tar"
-	// Import is necessary for go-digest.
-	_ "crypto/sha256"
+	"context"
 	"encoding/json"
 	"fmt"
 	"io"
@@ -28,6 +27,9 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+
+	// Import is necessary for go-digest.
+	_ "crypto/sha256"
 
 	"github.com/apex/log"
 	gzip "github.com/klauspost/pgzip"
@@ -41,7 +43,6 @@ import (
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // AfterLayerUnpackCallback is called after each layer is unpacked.

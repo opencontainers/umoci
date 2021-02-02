@@ -18,11 +18,12 @@
 package casext
 
 import (
+	"context"
+
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // GCPolicy is a policy function that returns 'true' if a blob can be GC'ed

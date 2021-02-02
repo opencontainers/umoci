@@ -18,6 +18,7 @@
 package umoci
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"strings"
@@ -31,7 +32,6 @@ import (
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
-	"golang.org/x/net/context"
 )
 
 // Repack repacks a bundle into an image adding a new layer for the changed
