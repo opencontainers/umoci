@@ -27,7 +27,6 @@ require (
 	github.com/urfave/cli v1.22.4
 	github.com/vbatts/go-mtree v0.5.0
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
-	golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 	golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 	google.golang.org/protobuf v1.24.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
