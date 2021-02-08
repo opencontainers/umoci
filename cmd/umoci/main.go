@@ -116,6 +116,7 @@ func Main(args []string) error {
 		statCommand,
 		rawSubcommand,
 		insertCommand,
+		copyCommand,
 	}
 
 	app.Metadata = map[string]interface{}{}

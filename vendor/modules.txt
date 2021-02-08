@@ -2,6 +2,9 @@
 ## explicit
 github.com/apex/log
 github.com/apex/log/handlers/cli
+# github.com/bloodorangeio/reggie v0.5.0
+## explicit
+github.com/bloodorangeio/reggie
 # github.com/cpuguy83/go-md2man/v2 v2.0.0
 ## explicit
 github.com/cpuguy83/go-md2man/v2/md2man
@@ -15,6 +18,8 @@ github.com/davecgh/go-spew/spew
 github.com/docker/go-units
 # github.com/fatih/color v1.9.0
 github.com/fatih/color
+# github.com/go-resty/resty/v2 v2.1.0
+github.com/go-resty/resty/v2
 # github.com/golang/protobuf v1.4.2
 ## explicit
 github.com/golang/protobuf/proto
@@ -40,6 +45,8 @@ github.com/konsorten/go-windows-terminal-sequences
 github.com/mattn/go-colorable
 # github.com/mattn/go-isatty v0.0.12
 github.com/mattn/go-isatty
+# github.com/mitchellh/mapstructure v1.1.2
+github.com/mitchellh/mapstructure
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 ## explicit
 github.com/mohae/deepcopy
@@ -92,6 +99,7 @@ golang.org/x/crypto/ripemd160
 # golang.org/x/net v0.0.0-20200602114024-627f9648deb9
 ## explicit
 golang.org/x/net/context
+golang.org/x/net/publicsuffix
 # golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 ## explicit
 golang.org/x/sys/internal/unsafeheader
