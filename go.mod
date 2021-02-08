@@ -1,9 +1,10 @@
 module github.com/opencontainers/umoci
 
-go 1.14
+go 1.15
 
 require (
 	github.com/apex/log v1.4.0
+	github.com/bloodorangeio/reggie v0.5.0
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/go-units v0.4.0
