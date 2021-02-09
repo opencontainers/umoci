@@ -89,9 +89,6 @@ github.com/vbatts/go-mtree/xattr
 # golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 ## explicit
 golang.org/x/crypto/ripemd160
-# golang.org/x/net v0.0.0-20200602114024-627f9648deb9
-## explicit
-golang.org/x/net/context
 # golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
 ## explicit
 golang.org/x/sys/internal/unsafeheader

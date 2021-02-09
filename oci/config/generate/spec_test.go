@@ -24,6 +24,7 @@ import (
 	"reflect"
 	"testing"
 	"time"
+
 	// Import is necessary for go-digest.
 	_ "crypto/sha256"
 

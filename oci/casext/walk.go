@@ -18,13 +18,13 @@
 package casext
 
 import (
+	"context"
 	"errors"
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas"
-	"golang.org/x/net/context"
 )
 
 // childDescriptors is a wrapper around MapDescriptors which just creates a

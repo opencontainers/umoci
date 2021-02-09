@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"fmt"
 
 	"github.com/apex/log"
@@ -25,7 +26,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 var tagAddCommand = cli.Command{

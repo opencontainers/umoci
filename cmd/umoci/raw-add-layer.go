@@ -18,6 +18,7 @@
 package main
 
 import (
+	"context"
 	"os"
 	"time"
 
@@ -30,7 +31,6 @@ import (
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 var rawAddLayerCommand = uxHistory(uxTag(cli.Command{

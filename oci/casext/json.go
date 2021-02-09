@@ -19,11 +19,11 @@ package casext
 
 import (
 	"bytes"
+	"context"
 	"encoding/json"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // PutBlobJSON adds a new JSON blob to the image (marshalled from the given

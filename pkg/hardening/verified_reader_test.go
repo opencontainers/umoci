@@ -20,12 +20,13 @@ package hardening
 import (
 	"bytes"
 	"crypto/rand"
-	// Needed for digest.
-	_ "crypto/sha256"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"testing"
+
+	// Needed for digest.
+	_ "crypto/sha256"
 
 	"github.com/opencontainers/go-digest"
 	"github.com/pkg/errors"

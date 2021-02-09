@@ -28,7 +28,7 @@ import (
 	"time"
 
 	"github.com/apex/log"
-	"github.com/cyphar/filepath-securejoin"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/third_party/shared"

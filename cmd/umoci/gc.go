@@ -18,11 +18,12 @@
 package main
 
 import (
+	"context"
+
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 	"github.com/urfave/cli"
-	"golang.org/x/net/context"
 )
 
 var gcCommand = cli.Command{

@@ -18,13 +18,13 @@
 package casext
 
 import (
+	"context"
 	"regexp"
 
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // refnameRegex is a regex that only matches reference names that are valid

@@ -20,6 +20,7 @@ package mutate
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -34,7 +35,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	casdir "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"golang.org/x/net/context"
 )
 
 // These come from just running the code.

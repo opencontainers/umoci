@@ -18,13 +18,13 @@
 package casext
 
 import (
+	"context"
 	"io"
 	"io/ioutil"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/pkg/errors"
-	"golang.org/x/net/context"
 )
 
 // Blob represents a "parsed" blob in an OCI image's blob store. MediaType
