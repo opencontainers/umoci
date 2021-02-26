@@ -1,5 +1,3 @@
-// +build !freebsd
-
 /*
  * umoci: Umoci Modifies Open Containers' Images
  * Copyright (C) 2016-2020 SUSE LLC
@@ -20,11 +18,26 @@
 package system
 
 import (
+	"archive/tar"
+
 	"golang.org/x/sys/unix"
 )
 
-// Mknod creates a filesystem node (file, device special file or named pipe) named path
-// with attributes specified by mode and dev.
-func Mknod(path string, mode uint32, dev uint64) error {
-	return unix.Mknod(path, mode, int(dev))
+// Tarmode takes a Typeflag (from a tar.Header for example) and returns the
+// corresponding os.Filemode bit. Unknown typeflags are treated like regular
+// files.
+func Tarmode(typeflag byte) uint32 {
+	switch typeflag {
+	case tar.TypeSymlink:
+		return unix.S_IFLNK
+	case tar.TypeChar:
+		return unix.S_IFCHR
+	case tar.TypeBlock:
+		return unix.S_IFBLK
+	case tar.TypeFifo:
+		return unix.S_IFIFO
+	case tar.TypeDir:
+		return unix.S_IFDIR
+	}
+	return 0
 }
