@@ -19,7 +19,18 @@ SHELL = /bin/bash
 # Go tools.
 GO ?= go
 GO_MD2MAN ?= go-md2man
-export GO111MODULE=on
+ifeq ($(shell go help mod >/dev/null 2>&1 && echo true), true)
+  export GO111MODULE=on
+  MOD_VENDOR=-mod=vendor
+endif
+GOOS=$(shell go env GOOS)
+GOARCH=$(shell go env GOARCH)
+GO_BUILDMODE="-buildmode=pie"
+ifeq ($(GOOS), linux)
+	ifeq ($(GOARCH), $(filter $(GOARCH),mips mipsle mips64 mips64le ppc64 riscv64))
+		GO_BUILDMODE=
+	endif
+endif
 
 # Set up the ... lovely ... GOPATH hacks.
 PROJECT := github.com/opencontainers/umoci
@@ -68,8 +79,9 @@ BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}"
 BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT} -X ${PROJECT}.version=${VERSION}
 
 # Specific build flags for build type.
-DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
-TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
+DYN_BUILD_FLAGS := ${MOD_VENDOR} ${BASE_FLAGS} ${GO_BUILDMODE} -ldflags "${BASE_LDFLAGS}"
+LOCAL_VALIDATE_BUILD_FLAGS := ${BASE_FLAGS} ${GO_BUILDMODE} -ldflags "${BASE_LDFLAGS}"
+TEST_BUILD_FLAGS := ${MOD_VENDOR} ${BASE_FLAGS} ${GO_BUILDMODE} -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
 STATIC_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS} -extldflags '-static'"
 
 # Installation directories.
@@ -160,9 +172,9 @@ local-validate-reproducible:
 
 .PHONY: local-validate-build
 local-validate-build:
-	$(GO) build ${DYN_BUILD_FLAGS} -o /dev/null ${CMD}
+	$(GO) build ${LOCAL_VALIDATE_BUILD_FLAGS} -o /dev/null ${CMD}
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o /dev/null ${CMD}
-	$(GO) test -run nothing ${DYN_BUILD_FLAGS} $(PROJECT)/...
+	$(GO) test -run nothing ${LOCAL_VALIDATE_BUILD_FLAGS} $(PROJECT)/...
 
 MANPAGES_MD := $(wildcard doc/man/*.md)
 MANPAGES    := $(MANPAGES_MD:%.md=%)
