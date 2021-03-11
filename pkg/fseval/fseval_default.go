@@ -105,7 +105,7 @@ func (fs osFsEval) RemoveAll(path string) error {
 
 // Mknod is equivalent to unix.Mknod.
 func (fs osFsEval) Mknod(path string, mode os.FileMode, dev uint64) error {
-	return unix.Mknod(path, uint32(mode), int(dev))
+	return system.Mknod(path, uint32(mode), dev)
 }
 
 // MkdirAll is equivalent to os.MkdirAll.

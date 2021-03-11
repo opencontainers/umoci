@@ -45,7 +45,8 @@ RUN zypper -n in \
 		python-xattr \
 		runc \
 		skopeo \
-		tar
+		tar \
+		which
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH

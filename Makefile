@@ -14,11 +14,13 @@
 # limitations under the License.
 
 # Use bash, so that we can do process substitution.
-SHELL = /bin/bash
+SHELL := $(shell which bash)
 
 # Go tools.
 GO ?= go
 GO_MD2MAN ?= go-md2man
+GOOS ?= $(shell go env GOOS)
+GOARCH ?= $(shell go env GOARCH)
 export GO111MODULE=on
 
 # Set up the ... lovely ... GOPATH hacks.
@@ -68,13 +70,20 @@ BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}"
 BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT} -X ${PROJECT}.version=${VERSION}
 
 # Specific build flags for build type.
-DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
-TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
+ifeq ($(GOOS), linux)
+	TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"		   DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
+	TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
+else
+	DYN_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS}"
+	TEST_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
+endif
+
+
 STATIC_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS} -extldflags '-static'"
 
 # Installation directories.
 DESTDIR ?=
-PREFIX ?=/usr
+PREFIX ?=/usr/local
 BINDIR ?=$(PREFIX)/bin
 MANDIR ?=$(PREFIX)/share/man
 
@@ -85,7 +94,7 @@ GO_SRC = $(shell find . -type f -name '*.go')
 # NOTE: If you change these make sure you also update local-validate-build.
 
 umoci: $(GO_SRC)
-	$(GO) build ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+	GOOS=$(GOOS) GOARCH=$(GOARCH) $(GO) build ${DYN_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
 
 umoci.static: $(GO_SRC)
 	env CGO_ENABLED=0 $(GO) build ${STATIC_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}

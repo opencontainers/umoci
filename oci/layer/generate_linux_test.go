@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/stretchr/testify/assert"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
@@ -32,7 +33,7 @@ func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 	}
 
 	testNode := path.Join(dir, "test")
-	err = unix.Mknod(testNode, unix.S_IFCHR|0666, int(unix.Mkdev(0, 0)))
+	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
 	assert.NoError(err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -69,7 +70,7 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 	}
 
 	testNode := path.Join(dir, "test")
-	err = unix.Mknod(testNode, unix.S_IFCHR|0666, int(unix.Mkdev(0, 0)))
+	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
 	assert.NoError(err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}

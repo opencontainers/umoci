@@ -26,12 +26,13 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/opencontainers/umoci/pkg/system"
 	"golang.org/x/sys/unix"
 )
 
 func canMknod(dir string) (bool, error) {
 	testNode := filepath.Join(dir, "test")
-	err := unix.Mknod(testNode, unix.S_IFCHR|0666, int(unix.Mkdev(0, 0)))
+	err := system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
 	if err != nil {
 		if os.IsPermission(err) {
 			return false, nil

@@ -451,7 +451,7 @@ func MkdirAll(path string, perm os.FileMode) error {
 // required access bits to modify or resolve the path.
 func Mknod(path string, mode os.FileMode, dev uint64) error {
 	return errors.Wrap(Wrap(path, func(path string) error {
-		return unix.Mknod(path, uint32(mode), int(dev))
+		return system.Mknod(path, uint32(mode), dev)
 	}), "unpriv.mknod")
 }
 
