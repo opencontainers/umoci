@@ -3,6 +3,7 @@ module github.com/opencontainers/umoci
 go 1.14
 
 require (
+	github.com/AdamKorcz/go-fuzz-headers v0.0.0-20210312213058-32f4d319f0d2
 	github.com/apex/log v1.4.0
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2
