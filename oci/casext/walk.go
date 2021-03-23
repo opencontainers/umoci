@@ -101,7 +101,7 @@ var ErrSkipDescriptor = errors.New("[internal] do not recurse into descriptor")
 //       more than once. This is quite important for remote CAS implementations.
 type WalkFunc func(descriptorPath DescriptorPath) error
 
-func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath) error {
+func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath) (Err error) {
 	log.WithFields(log.Fields{
 		"digest": descriptorPath.Descriptor().Digest,
 	}).Debugf("-> ws.recurse")
@@ -129,7 +129,14 @@ func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath)
 		}
 		return err
 	}
-	defer blob.Close()
+	defer func() {
+		if err := blob.Close(); err != nil {
+			log.Warnf("during recursion blob %v had error on Close: %v", descriptor.Digest, err)
+			if Err == nil {
+				Err = err
+			}
+		}
+	}()
 
 	// Recurse into children.
 	for _, child := range childDescriptors(blob.Data) {
