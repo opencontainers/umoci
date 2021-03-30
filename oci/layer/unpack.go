@@ -274,8 +274,22 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// in the later diff_id check failing because the digester didn't get
 		// the whole uncompressed stream). Just blindly consume anything left
 		// in the layer.
-		if _, err = io.Copy(ioutil.Discard, layer); err != nil {
+		if n, err := io.Copy(ioutil.Discard, layer); err != nil {
 			return errors.Wrap(err, "discard trailing archive bits")
+		} else if n != 0 {
+			log.Debugf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the tar stream -- probably from GNU tar", layerDescriptor.Digest, n)
+		}
+		// Same goes for compressed layers -- it seems like some gzip
+		// implementations add trailing NUL bytes, which Go doesn't slurp up.
+		// Just eat up the rest of the remaining bytes and discard them.
+		//
+		// FIXME: We use layerData here because pgzip returns io.EOF from
+		// WriteTo, which causes havoc with io.Copy. Ideally we would use
+		// layerRaw. See <https://github.com/klauspost/pgzip/issues/38>.
+		if n, err := io.Copy(ioutil.Discard, layerData); err != nil {
+			return errors.Wrap(err, "discard trailing raw bits")
+		} else if n != 0 {
+			log.Warnf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the blob stream -- this may indicate a bug in the tool which built this image", layerDescriptor.Digest, n)
 		}
 		if err := layerData.Close(); err != nil {
 			return errors.Wrap(err, "close layer data")

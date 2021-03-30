@@ -18,7 +18,10 @@
 package hardening
 
 import (
+	"fmt"
 	"io"
+	"io/ioutil"
+	"os"
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
@@ -94,11 +97,9 @@ func (v *VerifiedReadCloser) verify(nilErr error) error {
 		// Not enough bytes in the stream.
 		case v.currentSize < v.ExpectedSize:
 			return errors.Wrapf(ErrSizeMismatch, "expected %d bytes (only %d bytes in stream)", v.ExpectedSize, v.currentSize)
-
 		// We don't read the entire blob, so the message needs to be slightly adjusted.
 		case v.currentSize > v.ExpectedSize:
 			return errors.Wrapf(ErrSizeMismatch, "expected %d bytes (extra bytes in stream)", v.ExpectedSize)
-
 		}
 	}
 	// Forward the provided error.
@@ -131,7 +132,9 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 	// anything left by doing a 1-byte read (Go doesn't allow for zero-length
 	// Read()s to give EOFs).
 	case left == 0:
-		// We just want to know whether we read something (n>0). #nosec G104
+		// We just want to know whether we read something (n>0). Whatever we
+		// read is irrelevant because if we read something that means the
+		// reader will fail to verify. #nosec G104
 		nTmp, _ := v.Reader.Read(make([]byte, 1))
 		v.currentSize += int64(nTmp)
 	}
@@ -157,9 +160,36 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 	return n, err
 }
 
+// sourceName returns a debugging-friendly string to indicate to the user what
+// the source reader is for this verified reader.
+func (v *VerifiedReadCloser) sourceName() string {
+	switch inner := v.Reader.(type) {
+	case *VerifiedReadCloser:
+		return fmt.Sprintf("vrdr[%s]", inner.sourceName())
+	case *os.File:
+		return inner.Name()
+	case fmt.Stringer:
+		return inner.String()
+	// TODO: Maybe handle things like ioutil.NopCloser by using reflection?
+	default:
+		return fmt.Sprintf("%#v", inner)
+	}
+}
+
 // Close is a wrapper around VerifiedReadCloser.Reader, but with a digest check
 // which will return an error if the underlying Close() didn't.
 func (v *VerifiedReadCloser) Close() error {
+	// Consume any remaining bytes to make sure that we've actually read to the
+	// end of the stream. VerifiedReadCloser.Read will not read past
+	// ExpectedSize+1, so we don't need to add a limit here.
+	if n, err := io.Copy(ioutil.Discard, v); err != nil {
+		return errors.Wrap(err, "consume remaining unverified stream")
+	} else if n != 0 {
+		// If there's trailing bytes being discarded at this point, that
+		// indicates whatever you used to generate this blob is adding trailing
+		// gunk.
+		log.Infof("verified reader: %d bytes of trailing data discarded from %s", n, v.sourceName())
+	}
 	// Piped to underlying close.
 	err := v.Reader.Close()
 	if err != nil {

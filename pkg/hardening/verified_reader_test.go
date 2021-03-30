@@ -92,6 +92,37 @@ func TestValidIgnoreLength(t *testing.T) {
 	}
 }
 
+func TestValidTrailing(t *testing.T) {
+	for size := 1; size <= 16384; size *= 2 {
+		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
+			// Fill buffer with random data.
+			buffer := new(bytes.Buffer)
+			if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
+				t.Fatalf("getting random data for buffer failed: %v", err)
+			}
+
+			// Get expected hash.
+			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
+			verifiedReader := &VerifiedReadCloser{
+				Reader:         ioutil.NopCloser(buffer),
+				ExpectedDigest: expectedDigest,
+				ExpectedSize:   int64(-1),
+			}
+
+			// Read *half* of the bytes, leaving some remaining. We should get
+			// no errors.
+			if _, err := io.CopyN(ioutil.Discard, verifiedReader, int64(size/2)); err != nil {
+				t.Errorf("expected no error after reading only %d bytes: got an error: %v", size/2, err)
+			}
+
+			// And on close we shouldn't get an error either.
+			if err := verifiedReader.Close(); err != nil {
+				t.Errorf("expected digest+size to be correct on Close: got an error: %v", err)
+			}
+		})
+	}
+}
+
 func TestInvalidDigest(t *testing.T) {
 	for size := 1; size <= 16384; size *= 2 {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
@@ -120,6 +151,48 @@ func TestInvalidDigest(t *testing.T) {
 				t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
 			}
 		})
+	}
+}
+
+func TestInvalidDigest_Trailing(t *testing.T) {
+	for size := 1; size <= 16384; size *= 2 {
+		for delta := 1; delta-1 <= size/2; delta *= 2 {
+			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
+				// Fill buffer with random data.
+				buffer := new(bytes.Buffer)
+				if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
+					t.Fatalf("getting random data for buffer failed: %v", err)
+				}
+
+				// Generate a correct hash (for a shorter buffer), but don't
+				// verify the size -- this is to make sure that we actually
+				// read all the bytes.
+				shortBuffer := buffer.Bytes()[:size-delta]
+				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
+				verifiedReader := &VerifiedReadCloser{
+					Reader:         ioutil.NopCloser(buffer),
+					ExpectedDigest: expectedDigest,
+					ExpectedSize:   -1,
+				}
+
+				// Make sure everything if we copy-to-EOF we get the right error.
+				if _, err := io.CopyN(ioutil.Discard, verifiedReader, int64(size-delta)); err != nil {
+					t.Errorf("expected no errors after reading N bytes: got error: %v", err)
+				}
+
+				// Check that the digest does actually match right now.
+				verifiedReader.init()
+				if err := verifiedReader.verify(nil); err != nil {
+					t.Errorf("expected no errors in verify before Close: got error: %v", err)
+				}
+
+				// And on close we should get the error.
+				if err := verifiedReader.Close(); errors.Cause(err) != ErrDigestMismatch {
+					t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
+				}
+			})
+
+		}
 	}
 }
 
