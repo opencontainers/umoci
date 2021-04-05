@@ -14,6 +14,38 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Security ###
+- A security flaw was found in umoci, and has been fixed in this release. If
+  umoci was used to unpack a malicious image (using either `umoci unpack` or
+  `umoci raw unpack`) that contained a symlink entry for `/.`, umoci would
+  apply subsequent layers to the target of the symlink (resolved on the host
+  filesystem). This means that if you ran umoci as root, a malicious image
+  could overwrite any file on the system (assuming you didn't have any other
+  access control restrictions). CVE-2021-29136
+
+### Added ###
+- umoci now compiles on FreeBSD and appears to work, with the notable
+  limitation that it currently refuses to extract non-Linux images on any
+  platform (this will be fixed in a future release -- see #364). #357
+- Initial fuzzer implementations for oss-fuzz. #365
+
+### Changed ###
+- umoci will now read all trailing data from image layers, to combat the
+  existence of some image generators that appear to append NUL bytes to the end
+  of the gzip stream (which would previously cause checksum failures because we
+  didn't read nor checksum the trailing junk bytes). However, umoci will still
+  not read past the descriptor length. #360
+- umoci now ignores all overlayfs xattrs during unpack and repack operations,
+  to avoid causing issues when packing a raw overlayfs directory. #354
+- Changes to the (still-internal) APIs to allow for users to use umoci more
+  effectively as a library.
+  - The garbage collection API now supports custom GC policies. #338
+  - The mutate API now returns information about what layers were added by the
+    operation. #344
+  - The mutate API now supports custom compression, and has in-tree support for
+    zstd. #348 #350
+  - Support overlayfs-style whiteouts during unpack and repack. #342
+
 ## [0.4.6] - 2020-06-24 ##
 umoci has been adopted by the Open Container Initative as a reference
 implementation of the OCI Image Specification. This will have little impact on
@@ -22,7 +54,7 @@ piece of "boring container infrastructure" that can be used to build larger
 systems.
 
 ### Changed ###
-* As part of the adoption procedure, the import path and module name of umoci
+- As part of the adoption procedure, the import path and module name of umoci
   has changed from `github.com/openSUSE/umoci` to
   `github.com/opencontainers/umoci`. This means that users of our (still
   unstable) Go API will have to change their import paths in order to update to
