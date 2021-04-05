@@ -404,6 +404,11 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	if filepath.Join("/", hdr.Name) == "/" {
 		// If we got an entry for the root, then unsafeDir is the full path.
 		unsafeDir, file = hdr.Name, "."
+		// If we're being asked to change the root type, bail because they may
+		// change it to a symlink which we could inadvertently follow.
+		if hdr.Typeflag != tar.TypeDir {
+			return errors.New("malicious tar entry -- refusing to change type of root directory")
+		}
 	}
 	dir, err := securejoin.SecureJoinVFS(root, unsafeDir, te.fsEval)
 	if err != nil {
