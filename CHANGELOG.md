@@ -14,6 +14,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+## [0.4.7] - 2021-04-05 ##
+
 ### Security ###
 - A security flaw was found in umoci, and has been fixed in this release. If
   umoci was used to unpack a malicious image (using either `umoci unpack` or
@@ -479,7 +481,8 @@ systems.
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.4.6...HEAD
+[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.4.7...HEAD
+[0.4.7]: https://github.com/opencontainers/umoci/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/opencontainers/umoci/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/opencontainers/umoci/compare/v0.4.4...v0.4.5
 [0.4.4]: https://github.com/opencontainers/umoci/compare/v0.4.3...v0.4.4
