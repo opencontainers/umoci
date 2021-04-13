@@ -17,13 +17,15 @@
 load helpers
 
 @test "umoci --version" {
+	VERSION="$(cat "$INTEGRATION_ROOT/../VERSION")"
+
 	umoci --version
 	[ "$status" -eq 0 ]
-	[[ "$output" =~ "umoci version "+ ]]
+	[[ "$output" =~ "umoci version $VERSION"+ ]]
 
 	umoci -v
 	[ "$status" -eq 0 ]
-	[[ "$output" =~ "umoci version "+ ]]
+	[[ "$output" =~ "umoci version $VERSION"+ ]]
 }
 
 @test "umoci --help" {

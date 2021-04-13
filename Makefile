@@ -71,7 +71,7 @@ BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT} -X ${PROJECT}.version=${
 
 # Specific build flags for build type.
 ifeq ($(GOOS), linux)
-	TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"		   DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
+	DYN_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS}"
 	TEST_BUILD_FLAGS := ${BASE_FLAGS} -buildmode=pie -ldflags "${BASE_LDFLAGS} -X ${PROJECT}/pkg/testutils.binaryType=test"
 else
 	DYN_BUILD_FLAGS := ${BASE_FLAGS} -ldflags "${BASE_LDFLAGS}"
