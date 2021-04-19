@@ -61,8 +61,7 @@ then
 	find "$COVERAGE_DIR" -type f -print0 | xargs -0 "$ROOT/hack/collate.awk" >"$tmp_coverage"
 
 	# Upload the merged coverage file.
-	"$ROOT/hack/resilient-curl.sh" -sSL https://codecov.io/bash | \
-		bash -s -- -cZ -f "$tmp_coverage" -F "$coverage_tags"
+	"$ROOT/hack/ci-codecov.sh" codecov -cZ -f "$tmp_coverage" -F "$coverage_tags"
 elif [ -n "$COVERAGE" ]
 then
 	# If running locally, collate the coverage information.

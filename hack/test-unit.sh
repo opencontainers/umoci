@@ -45,8 +45,7 @@ then
 
 	# If we're running in Travis, upload the coverage files and don't bother
 	# with the local coverage generation.
-	"$ROOT/hack/resilient-curl.sh" -sSL https://codecov.io/bash | \
-		bash -s -- -cZ -f "$COVERAGE_FILE" -F "$coverage_tags"
+	"$ROOT/hack/ci-codecov.sh" codecov -cZ -f "$COVERAGE_FILE" -F "$coverage_tags"
 elif [ -n "$COVERAGE" ]
 then
 	# If running locally, collate the coverage information.

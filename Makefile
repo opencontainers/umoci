@@ -46,8 +46,8 @@ DOCKER_RUN = docker run --rm -v ${PWD}:/go/src/${PROJECT} \
 # Travis, to avoid pinging third-party servers for local builds.
 ifdef TRAVIS
 $(shell echo "WARNING: This make invocation will fetch and run code from https://codecov.io/." >&2)
-DOCKER_RUN += $(shell echo "+ curl -sSL https://codecov.io/env | bash" >&2) \
-              $(shell ./hack/resilient-curl.sh -sSL https://codecov.io/env | bash)
+DOCKER_RUN += $(shell echo "+ Running https://codecov.io/env." >&2) \
+              $(shell ./hack/ci-codecov.sh env)
 endif
 
 DOCKER_ROOTPRIV_RUN = $(DOCKER_RUN) --privileged --cap-add=SYS_ADMIN
