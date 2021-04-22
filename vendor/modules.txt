@@ -1,6 +1,6 @@
-# github.com/AdamKorcz/go-fuzz-headers v0.0.0-20210312213058-32f4d319f0d2
+# github.com/AdaLogics/go-fuzz-headers v0.0.0-20210401092550-0a8691dafd0d
 ## explicit
-github.com/AdamKorcz/go-fuzz-headers
+github.com/AdaLogics/go-fuzz-headers
 # github.com/apex/log v1.4.0
 ## explicit
 github.com/apex/log

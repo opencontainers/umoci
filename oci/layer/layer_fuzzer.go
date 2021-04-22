@@ -20,6 +20,21 @@
 package layer
 
 import (
+	"bytes"
+	"encoding/base64"
+	"io"
+
+	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/umoci/oci/cas/dir"
+
+	"context"
+
+	"github.com/apex/log"
+	"github.com/opencontainers/image-spec/specs-go"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/oci/casext"
+
 	"archive/tar"
 
 	"io/ioutil"
@@ -27,10 +42,12 @@ import (
 	"path/filepath"
 	"unicode"
 
-	fuzzheaders "github.com/AdamKorcz/go-fuzz-headers"
+	fuzz "github.com/AdaLogics/go-fuzz-headers"
+	fuzzheaders "github.com/AdaLogics/go-fuzz-headers"
 	"github.com/vbatts/go-mtree"
 )
 
+// createRandomFile is a helper function
 func createRandomFile(dirpath string, filename []byte, filecontents []byte) error {
 	fileP := filepath.Join(dirpath, string(filename))
 	if err := ioutil.WriteFile(fileP, filecontents, 0644); err != nil {
@@ -40,6 +57,7 @@ func createRandomFile(dirpath string, filename []byte, filecontents []byte) erro
 	return nil
 }
 
+// createRandomDir is a helper function
 func createRandomDir(basedir string, dirname []byte, dirArray []string) ([]string, error) {
 	dirPath := filepath.Join(basedir, string(dirname))
 	if err := os.MkdirAll(dirPath, 0755); err != nil {
@@ -50,6 +68,7 @@ func createRandomDir(basedir string, dirname []byte, dirArray []string) ([]strin
 	return dirArray, nil
 }
 
+// isLetter is a helper function
 func isLetter(input []byte) bool {
 	s := string(input)
 	for _, r := range s {
@@ -60,7 +79,8 @@ func isLetter(input []byte) bool {
 	return true
 }
 
-// FuzzGenerateLayer fuzzes layer.GenerateLayer().
+// FuzzGenerateLayer implements a fuzzer
+// that targets layer.GenerateLayer().
 func FuzzGenerateLayer(data []byte) int {
 	if len(data) < 5 {
 		return -1
@@ -173,5 +193,151 @@ func FuzzGenerateLayer(data []byte) int {
 			break
 		}
 	}
+	return 1
+}
+
+// mustDecodeString is a helper function
+func mustDecodeString(s string) []byte {
+	b, _ := base64.StdEncoding.DecodeString(s)
+	return b
+}
+
+// makeImage is a helper function
+func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, error) {
+
+	ctx := context.Background()
+
+	var layers = []struct {
+		base64 string
+		digest digest.Digest
+	}{
+		{
+			base64: base641,
+			digest: digest.NewDigestFromHex(digest.SHA256.String(), "e489a16a8ca0d682394867ad8a8183f0a47cbad80b3134a83412a6796ad9242a"),
+		},
+		{
+			base64: base642,
+			digest: digest.NewDigestFromHex(digest.SHA256.String(), "39f100ed000b187ba74b3132cc207c63ad1765adaeb783aa7f242f1f7b6f5ea2"),
+		},
+	}
+
+	root, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer")
+	if err != nil {
+		return "nil", ispec.Manifest{}, casext.Engine{}, err
+	}
+
+	// Create our image.
+	image := filepath.Join(root, "image")
+	if err := dir.Create(image); err != nil {
+		return "nil", ispec.Manifest{}, casext.Engine{}, err
+	}
+	engine, err := dir.Open(image)
+	if err != nil {
+		return "nil", ispec.Manifest{}, casext.Engine{}, err
+	}
+	engineExt := casext.NewEngine(engine)
+
+	// Set up the CAS and an image from the above layers.
+	var layerDigests []digest.Digest
+	var layerDescriptors []ispec.Descriptor
+	for _, layer := range layers {
+		var layerReader io.Reader
+
+		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
+		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
+		if err != nil {
+			return "nil", ispec.Manifest{}, casext.Engine{}, err
+		}
+
+		layerDigests = append(layerDigests, layer.digest)
+		layerDescriptors = append(layerDescriptors, ispec.Descriptor{
+			MediaType: ispec.MediaTypeImageLayerGzip,
+			Digest:    layerDigest,
+			Size:      layerSize,
+		})
+	}
+
+	// Create the config.
+	config := ispec.Image{
+		OS: "linux",
+		RootFS: ispec.RootFS{
+			Type:    "layers",
+			DiffIDs: layerDigests,
+		},
+	}
+	configDigest, configSize, err := engineExt.PutBlobJSON(ctx, config)
+	if err != nil {
+		return "nil", ispec.Manifest{}, casext.Engine{}, err
+	}
+	configDescriptor := ispec.Descriptor{
+		MediaType: ispec.MediaTypeImageConfig,
+		Digest:    configDigest,
+		Size:      configSize,
+	}
+
+	// Create the manifest.
+	manifest := ispec.Manifest{
+		Versioned: specs.Versioned{
+			SchemaVersion: 2,
+		},
+		Config: configDescriptor,
+		Layers: layerDescriptors,
+	}
+
+	return root, manifest, engineExt, nil
+}
+
+// FuzzUnpack implements a fuzzer
+// that targets UnpackManifest().
+func FuzzUnpack(data []byte) int {
+	// We would like as little log output as possible:
+	level, err := log.ParseLevel("fatal")
+	if err != nil {
+		return -1
+	}
+	log.SetLevel(level)
+	ctx := context.Background()
+	c := fuzz.NewConsumer(data)
+	base641, err := c.GetString()
+	if err != nil {
+		return -1
+	}
+
+	base642, err := c.GetString()
+	if err != nil {
+		return -1
+	}
+	root, manifest, engineExt, err := makeImage(base641, base642)
+	if err != nil {
+		return 0
+	}
+	defer os.RemoveAll(root)
+
+	bundle, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer_bundle")
+	if err != nil {
+		return 0
+	}
+	defer os.RemoveAll(bundle)
+
+	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
+		UIDMappings: []rspec.LinuxIDMapping{
+			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+		},
+		GIDMappings: []rspec.LinuxIDMapping{
+			{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+		},
+		Rootless: os.Geteuid() != 0,
+	}}
+
+	called := false
+	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
+		called = true
+		return nil
+	}
+
+	_ = UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+
 	return 1
 }
