@@ -227,6 +227,22 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 	return nil
 }
 
+func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Digest) {
+	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID)
+
+	// Append history.
+	if history != nil {
+		history.EmptyLayer = false
+		m.config.History = append(m.config.History, *history)
+	} else {
+		// Some tools get confused if there are layers with no history entry.
+		// Especially if you have later layers have history entries (which will
+		// result in the history entries not matching up and everyone getting
+		// quite confused).
+		log.Warnf("new layer has no history entry -- this will confuse many tools!")
+	}
+}
+
 // add adds the given layer to the CAS, and mutates the configuration to
 // include the diffID. The returned string is the digest of the *compressed*
 // layer (which is compressed by us).
@@ -251,19 +267,7 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 
 	// Add DiffID to configuration.
 	layerDiffID := diffidDigester.Digest()
-	m.config.RootFS.DiffIDs = append(m.config.RootFS.DiffIDs, layerDiffID)
-
-	// Append history.
-	if history != nil {
-		history.EmptyLayer = false
-		m.config.History = append(m.config.History, *history)
-	} else {
-		// Some tools get confused if there are layers with no history entry.
-		// Especially if you have later layers have history entries (which will
-		// result in the history entries not matching up and everyone getting
-		// quite confused).
-		log.Warnf("new layer has no history entry -- this will confuse many tools!")
-	}
+	m.appendToConfig(history, layerDiffID)
 	return layerDigest, layerSize, nil
 }
 
@@ -296,6 +300,19 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	}
 	m.manifest.Layers = append(m.manifest.Layers, desc)
 	return desc, nil
+}
+
+// AddExisting adds a blob that already exists to the layer, using the user
+// specified DiffID. It currently checks that the layer exists, but does not
+// validate the DiffID.
+func (m *Mutator) AddExisting(ctx context.Context, desc ispec.Descriptor, history *ispec.History, diffID digest.Digest) error {
+	if err := m.cache(ctx); err != nil {
+		return errors.Wrap(err, "getting cache failed")
+	}
+
+	m.appendToConfig(history, diffID)
+	m.manifest.Layers = append(m.manifest.Layers, desc)
+	return nil
 }
 
 // Commit writes all of the temporary changes made to the configuration,

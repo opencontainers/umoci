@@ -290,6 +290,91 @@ func TestMutateAdd(t *testing.T) {
 	}
 }
 
+func TestMutateAddExisting(t *testing.T) {
+	dir, err := ioutil.TempDir("", "umoci-TestMutateAddExisting")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer os.RemoveAll(dir)
+
+	engine, fromDescriptor := setup(t, dir)
+	defer engine.Close()
+
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// This isn't a valid image, but whatever.
+	buffer := bytes.NewBufferString("contents")
+
+	// Add a new layer.
+	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
+		Comment: "new layer",
+	}, GzipCompressor)
+	if err != nil {
+		t.Fatalf("unexpected error adding layer: %+v", err)
+	}
+
+	newDescriptor, err := mutator.Commit(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error committing changes: %+v", err)
+	}
+
+	mutator, err = New(engine, newDescriptor)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// add the layer again; first loading the cache so we can use the existing one
+	err = mutator.cache(context.Background())
+	diffID := mutator.config.RootFS.DiffIDs[len(mutator.config.RootFS.DiffIDs)-1]
+	history := ispec.History{Comment: "hello world"}
+	layerDesc := mutator.manifest.Layers[len(mutator.manifest.Layers)-1]
+	err = mutator.AddExisting(context.Background(), layerDesc, &history, diffID)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	_, err = mutator.Commit(context.Background())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	manifestFromFunction, err := mutator.Manifest(context.Background())
+	if err != nil {
+		t.Fatalf("unexpected error getting manifest: %+v", err)
+	}
+
+	if !reflect.DeepEqual(manifestFromFunction, *mutator.manifest) {
+		t.Fatalf("mutator.Manifest() didn't return the cached manifest")
+	}
+
+	if len(mutator.manifest.Layers) != 3 {
+		t.Fatalf("manifest.Layers was not updated")
+	}
+
+	if !reflect.DeepEqual(mutator.manifest.Layers[2], layerDesc) {
+		t.Fatalf("new layer doesn't match")
+	}
+
+	if !reflect.DeepEqual(mutator.manifest.Layers[1], layerDesc) {
+		t.Fatalf("old layer doesn't match")
+	}
+
+	if len(mutator.config.RootFS.DiffIDs) != 3 {
+		t.Fatalf("config.RootFS.DiffIDs was not updated")
+	}
+
+	if mutator.config.RootFS.DiffIDs[2] != diffID {
+		t.Fatalf("new layer's diffid doesn't match")
+	}
+
+	if mutator.config.RootFS.DiffIDs[1] != diffID {
+		t.Fatalf("old layer's diffid doesn't match")
+	}
+}
+
 func TestMutateSet(t *testing.T) {
 	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
 	if err != nil {
