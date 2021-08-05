@@ -24,7 +24,9 @@ import (
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
 )
 
 // childDescriptors is a wrapper around MapDescriptors which just creates a
@@ -87,7 +89,7 @@ func (d DescriptorPath) Descriptor() ispec.Descriptor {
 
 // ErrSkipDescriptor is a special error returned by WalkFunc which will cause
 // Walk to not recurse into the descriptor currently being evaluated by
-// WalkFunc.  This interface is roughly equivalent to filepath.SkipDir.
+// WalkFunc. This interface is roughly equivalent to filepath.SkipDir.
 var ErrSkipDescriptor = errors.New("[internal] do not recurse into descriptor")
 
 // WalkFunc is the type of function passed to Walk. It will be a called on each
@@ -119,6 +121,16 @@ func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath)
 
 	// Get blob to recurse into.
 	descriptor := descriptorPath.Descriptor()
+
+	// Since FromDescriptor gives us a full VerifiedReadCloser (meaning that
+	// Close is expensive if we don't read any bytes), we should only try to
+	// recurse into this thing if we actually can parse it.
+	if mediatype.GetParser(descriptor.MediaType) == nil {
+		log.Infof("skipping walk into non-parseable media-type %v of blob %v", descriptor.MediaType, descriptor.Digest)
+		return nil
+	}
+
+	// Recurse into the blob now.
 	blob, err := ws.engine.FromDescriptor(ctx, descriptor)
 	if err != nil {
 		// Ignore cases where the descriptor points to an object we don't know
