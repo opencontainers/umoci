@@ -14,7 +14,7 @@
 # limitations under the License.
 
 # Use bash, so that we can do process substitution.
-SHELL := $(shell which bash)
+SHELL := bash
 
 # Go tools.
 GO ?= go
