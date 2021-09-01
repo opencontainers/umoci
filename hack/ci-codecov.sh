@@ -23,7 +23,7 @@ CODECOV_DIR="$(mktemp -dt umoci-codecov.XXXXXX)"
 export ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
 
 # Download the codecov-bash uploader from GitHub and check the SHA512.
-CODECOV_VERSION="e42edd84d7b19089c3e314661a7699c3b594300f" # to be able to check 'env' as well
+CODECOV_VERSION="1.0.6"
 CODECOV_REPOURL="https://raw.githubusercontent.com/codecov/codecov-bash/$CODECOV_VERSION"
 
 echo "WARNING: Downloading and executing codecov-bash, which will upload data." >&2

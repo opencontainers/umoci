@@ -183,7 +183,8 @@ doc/man/%.1: doc/man/%.1.md
 docs: $(MANPAGES)
 
 # Used for tests.
-DOCKER_IMAGE ?=registry.opensuse.org/opensuse/leap:latest
+# TODO: Make this grep the string from Dockerfile.
+DOCKER_IMAGE ?=registry.opensuse.org/opensuse/leap:15.2
 
 ifndef COVERAGE
 COVERAGE := $(notdir $(shell mktemp -u umoci.cov.XXXXXX))

@@ -20,8 +20,8 @@
 
   <br/>
 
-  <a href="https://travis-ci.org/opencontainers/umoci" alt="Build Status">
-    <img src="https://img.shields.io/travis/opencontainers/umoci?logo=travis"/></a>
+  <a href="https://github.com/opencontainers/umoci/actions/workflows/ci.yml" alt="Build Status">
+    <img src="https://github.com/opencontainers/umoci/actions/workflows/ci.yml/badge.svg"/></a>
   <a href="https://codecov.io/gh/opencontainers/umoci" alt="Code Coverage">
     <img src="https://img.shields.io/codecov/c/gh/opencontainers/umoci?logo=codecov"/></a>
   <a href="https://app.netlify.com/sites/umoci/deploys" alt="Netlify Status">

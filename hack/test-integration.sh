@@ -46,7 +46,7 @@ else
 fi
 
 # Run the tests.
-bats --jobs "+1" --tap "${tests[@]}"
+bats --jobs "+8" --tap "${tests[@]}"
 
 if [ -n "${TRAVIS:-}" ]
 then
