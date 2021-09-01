@@ -191,7 +191,16 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 }
 
 // GetBlob returns a reader for retrieving a blob from the image, which the
-// caller must Close(). Returns os.ErrNotExist if the digest is not found.
+// caller must Close(). Returns ErrNotExist if the digest is not found.
+//
+// This function will return a VerifiedReadCloser, meaning that you must call
+// Close() and check the error returned from Close() in order to ensure that
+// the hash of the blob is verified.
+//
+// Please note that calling Close() on the returned blob will read the entire
+// from disk and hash it (even if you didn't read any bytes before calling
+// Close), so if you wish to only check if a blob exists you should use
+// StatBlob() instead.
 func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
@@ -203,6 +212,26 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 		ExpectedDigest: digest,
 		ExpectedSize:   int64(-1), // We don't know the expected size.
 	}, errors.Wrap(err, "open blob")
+}
+
+// StatBlob returns whether the specified blob exists in the image. Returns
+// false if the blob doesn't exist, true if it does, or an error if any error
+// occurred.
+//
+// NOTE: In future this API may change to return additional information.
+func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, error) {
+	path, err := blobPath(digest)
+	if err != nil {
+		return false, errors.Wrap(err, "compute blob path")
+	}
+	_, err = os.Stat(path)
+	if os.IsNotExist(err) {
+		return false, nil
+	}
+	if err != nil {
+		return false, errors.Wrap(err, "stat blob path")
+	}
+	return true, nil
 }
 
 // PutIndex sets the index of the OCI image to the given index, replacing the

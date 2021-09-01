@@ -70,7 +70,20 @@ type Engine interface {
 
 	// GetBlob returns a reader for retrieving a blob from the image, which the
 	// caller must Close(). Returns ErrNotExist if the digest is not found.
+	//
+	// This function will return a VerifiedReadCloser, meaning that you must
+	// call Close() and check the error returned from Close() in order to
+	// ensure that the hash of the blob is verified.
+	//
+	// Please note that calling Close() on the returned blob will read the
+	// entire from disk and hash it (even if you didn't read any bytes before
+	// calling Close), so if you wish to only check if a blob exists you should
+	// use StatBlob() instead.
 	GetBlob(ctx context.Context, digest digest.Digest) (reader io.ReadCloser, err error)
+
+	// StatBlob returns whether the specified blob exists in the image. Returns
+	// ErrNotExist if the digest was not found.
+	StatBlob(ctx context.Context, digest digest.Digest) (bool, error)
 
 	// PutIndex sets the index of the OCI image to the given index, replacing
 	// the previously existing index. This operation is atomic; any readers
