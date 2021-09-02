@@ -64,7 +64,10 @@ jobs:
       - run: make local-validate-build
       - run: make local-test-unit
       - name: codecov
-        run: hack/ci-codecov.sh codecov -F unit,macos -f $COVERAGE
+        uses: codecov/codecov-action@v2
+        with:
+          files: ${{ env.COVERAGE }}
+          flags: unit,macos
       - name: upload coverage
         uses: actions/upload-artifact@v2
         with:
@@ -109,7 +112,10 @@ jobs:
           path: ${{ github.workspace }}/.cache/
       - run: make test-unit
       - name: codecov
-        run: hack/ci-codecov.sh codecov -F unit,linux -f $COVERAGE
+        uses: codecov/codecov-action@v2
+        with:
+          files: ${{ env.COVERAGE }}
+          flags: unit,linux
       - name: upload coverage
         uses: actions/upload-artifact@v2
         with:
@@ -140,7 +146,10 @@ jobs:
           path: ${{ github.workspace }}/.cache/
       - run: make DOCKER_IMAGE=$DOCKER_IMAGE test-integration
       - name: codecov
-        run: hack/ci-codecov.sh codecov -F integration,linux -f $COVERAGE
+        uses: codecov/codecov-action@v2
+        with:
+          files: ${{ env.COVERAGE }}
+          flags: integration,linux
       - name: upload coverage
         uses: actions/upload-artifact@v2
         with:
