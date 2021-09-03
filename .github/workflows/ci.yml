@@ -25,9 +25,6 @@ on:
   schedule:
     - cron: '0 0 * * *'
 
-env:
-  CODECOV_TOKEN: "562db4d7-963a-46f4-ac46-6db723595328"
-
 jobs:
   validate:
     runs-on: ubuntu-latest
