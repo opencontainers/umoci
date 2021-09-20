@@ -18,11 +18,9 @@ github.com/davecgh/go-spew/spew
 github.com/docker/go-units
 # github.com/fatih/color v1.9.0
 github.com/fatih/color
-# github.com/golang/protobuf v1.4.2
+# github.com/golang/protobuf v1.4.3
 ## explicit
 github.com/golang/protobuf/proto
-# github.com/google/go-cmp v0.5.0
-## explicit
 # github.com/klauspost/compress v1.11.3
 ## explicit
 github.com/klauspost/compress/flate
@@ -34,8 +32,6 @@ github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/pgzip v1.2.5
 ## explicit
 github.com/klauspost/pgzip
-# github.com/konsorten/go-windows-terminal-sequences v1.0.3
-github.com/konsorten/go-windows-terminal-sequences
 # github.com/kr/text v0.2.0
 ## explicit
 # github.com/mattn/go-colorable v0.1.6
@@ -55,10 +51,10 @@ github.com/opencontainers/go-digest
 ## explicit
 github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
-# github.com/opencontainers/runc v1.0.0-rc90
+# github.com/opencontainers/runc v1.0.0-rc95
 ## explicit
 github.com/opencontainers/runc/libcontainer/user
-# github.com/opencontainers/runtime-spec v1.0.2
+# github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 ## explicit
 github.com/opencontainers/runtime-spec/specs-go
 # github.com/pkg/errors v0.9.1
@@ -73,8 +69,7 @@ github.com/rootless-containers/proto/go-proto
 github.com/russross/blackfriday/v2
 # github.com/shurcooL/sanitized_anchor_name v1.0.0
 github.com/shurcooL/sanitized_anchor_name
-# github.com/sirupsen/logrus v1.6.0
-## explicit
+# github.com/sirupsen/logrus v1.7.0
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.7.0
 ## explicit
@@ -90,12 +85,12 @@ github.com/vbatts/go-mtree/xattr
 # golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
 ## explicit
 golang.org/x/crypto/ripemd160
-# golang.org/x/sys v0.0.0-20200622214017-ed371f2e16b4
+# golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
-# google.golang.org/protobuf v1.24.0
-## explicit
+golang.org/x/sys/windows
+# google.golang.org/protobuf v1.25.0
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
 google.golang.org/protobuf/internal/descfmt
@@ -106,12 +101,11 @@ google.golang.org/protobuf/internal/encoding/messageset
 google.golang.org/protobuf/internal/encoding/tag
 google.golang.org/protobuf/internal/encoding/text
 google.golang.org/protobuf/internal/errors
-google.golang.org/protobuf/internal/fieldnum
 google.golang.org/protobuf/internal/fieldsort
 google.golang.org/protobuf/internal/filedesc
 google.golang.org/protobuf/internal/filetype
 google.golang.org/protobuf/internal/flags
-google.golang.org/protobuf/internal/genname
+google.golang.org/protobuf/internal/genid
 google.golang.org/protobuf/internal/impl
 google.golang.org/protobuf/internal/mapsort
 google.golang.org/protobuf/internal/pragma
