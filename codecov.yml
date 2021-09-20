@@ -15,7 +15,8 @@
 
 comment:
   layout: "reach, diff, files"
-  behavior: new
+  require_changes: true
+  behavior: once
   branches:
     - master
 
@@ -25,12 +26,15 @@ coverage:
     project:
       default:
         # TODO: Bump this to >80%.
-        target: 75%
+        target: 70%
         threshold: 0%
       delta:
         target: auto
-        threshold: 0.1%
+        informational: true
     patch:
       default:
         target: auto
         threshold: 0%
+
+github_checks:
+  annotations: true
