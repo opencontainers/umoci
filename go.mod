@@ -23,7 +23,7 @@ require (
 	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/proto v0.1.0
 	github.com/sirupsen/logrus v1.6.0 // indirect
-	github.com/stretchr/testify v1.6.1
+	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.4
 	github.com/vbatts/go-mtree v0.5.0
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
