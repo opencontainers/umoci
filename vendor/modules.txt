@@ -8,7 +8,7 @@ github.com/apex/log/handlers/cli
 # github.com/cpuguy83/go-md2man/v2 v2.0.0
 ## explicit
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/cyphar/filepath-securejoin v0.2.2
+# github.com/cyphar/filepath-securejoin v0.2.3
 ## explicit
 github.com/cyphar/filepath-securejoin
 # github.com/davecgh/go-spew v1.1.1
