@@ -4,7 +4,7 @@ go 1.14
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20210401092550-0a8691dafd0d
-	github.com/apex/log v1.4.0
+	github.com/apex/log v1.9.0
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.2
 	github.com/docker/go-units v0.4.0
@@ -24,7 +24,6 @@ require (
 	github.com/rootless-containers/proto v0.1.0
 	github.com/sirupsen/logrus v1.6.0 // indirect
 	github.com/stretchr/testify v1.6.1
-	github.com/tj/assert v0.0.3 // indirect
 	github.com/urfave/cli v1.22.4
 	github.com/vbatts/go-mtree v0.5.0
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
