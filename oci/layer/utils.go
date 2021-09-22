@@ -136,7 +136,7 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		// just leave it as 0 (since that is what the source of truth told us
 		// the owner was), but this would result in a massive increase in
 		// xattrs with no real benefit.
-		payload := rootlesscontainers.Resource{
+		payload := &rootlesscontainers.Resource{
 			Uid: rootlesscontainers.NoopID,
 			Gid: rootlesscontainers.NoopID,
 		}
@@ -150,7 +150,7 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		// Don't add the xattr if the owner isn't just (0, 0) because that's a
 		// waste of space.
 		if !rootlesscontainers.IsDefault(payload) {
-			valueBytes, err := proto.Marshal(&payload)
+			valueBytes, err := proto.Marshal(payload)
 			if err != nil {
 				return errors.Wrap(err, "marshal rootlesscontainers payload")
 			}

@@ -20,7 +20,7 @@ require (
 	github.com/opencontainers/runc v1.0.2
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/pkg/errors v0.9.1
-	github.com/rootless-containers/proto v0.1.0
+	github.com/rootless-containers/proto/go-proto v0.0.0-20210921234734-69430b6543fb
 	github.com/stretchr/testify v1.7.0
 	github.com/urfave/cli v1.22.4
 	github.com/vbatts/go-mtree v0.5.0

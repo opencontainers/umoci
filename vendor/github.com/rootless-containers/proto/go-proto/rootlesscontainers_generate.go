@@ -18,7 +18,7 @@
 package rootlesscontainers
 
 // Generate everything for our protobuf.
-//go:generate protoc --go_out=import_path=rootlesscontainers:. rootlesscontainers.proto
+//go:generate protoc --go_out=. --go_opt=Mrootlesscontainers.proto=.;rootlesscontainers rootlesscontainers.proto
 
 // Keyname is the official xattr key used to store rootlesscontainers.proto
 // blobs, and is the only key we will treat in this special way.
@@ -32,6 +32,6 @@ var NoopID uint32 = 0xFFFFFFFF
 // IsDefault returns whether the given Resource is the default. If a Resource
 // is equal to the default Resource then it is not necesary to include it on
 // the filesystem.
-func IsDefault(r Resource) bool {
+func IsDefault(r *Resource) bool {
 	return r.Uid == NoopID && r.Gid == NoopID
 }
