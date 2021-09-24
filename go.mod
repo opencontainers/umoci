@@ -8,7 +8,6 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/go-units v0.4.0
-	github.com/golang/protobuf v1.5.2
 	github.com/klauspost/compress v1.11.3
 	github.com/klauspost/pgzip v1.2.5
 	github.com/kr/text v0.2.0 // indirect
@@ -26,6 +25,7 @@ require (
 	github.com/vbatts/go-mtree v0.5.0
 	golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9 // indirect
 	golang.org/x/sys v0.0.0-20210426230700-d19ff857e887
+	google.golang.org/protobuf v1.27.1
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.0-20200615113413-eeeca48fe776 // indirect
 )

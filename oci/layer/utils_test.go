@@ -21,9 +21,9 @@ import (
 	"archive/tar"
 	"testing"
 
-	"github.com/golang/protobuf/proto"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
+	"google.golang.org/protobuf/proto"
 )
 
 // We need to have individual tests for the rootlesscontainers-proto, because
