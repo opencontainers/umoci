@@ -97,7 +97,7 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 			return err
 		}
 
-		err = mutator.Set(context.Background(), config, imageMeta, annotations, history)
+		err = mutator.Set(context.Background(), config.Config, imageMeta, annotations, history)
 		if err != nil {
 			return err
 		}

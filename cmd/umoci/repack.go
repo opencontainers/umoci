@@ -133,7 +133,7 @@ func repack(ctx *cli.Context) error {
 
 	maskedPaths := ctx.StringSlice("mask-path")
 	if !ctx.Bool("no-mask-volumes") {
-		for v := range config.Volumes {
+		for v := range config.Config.Volumes {
 			maskedPaths = append(maskedPaths, v)
 		}
 	}
