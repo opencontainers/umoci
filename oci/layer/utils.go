@@ -24,12 +24,12 @@ import (
 	"syscall"
 
 	"github.com/apex/log"
-	"github.com/golang/protobuf/proto"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/pkg/errors"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
+	"google.golang.org/protobuf/proto"
 )
 
 // MapOptions specifies the UID and GID mappings used when unpacking and
