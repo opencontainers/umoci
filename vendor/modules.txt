@@ -18,12 +18,13 @@ github.com/davecgh/go-spew/spew
 github.com/docker/go-units
 # github.com/fatih/color v1.9.0
 github.com/fatih/color
-# github.com/klauspost/compress v1.11.3
+# github.com/klauspost/compress v1.13.6
 ## explicit
+github.com/klauspost/compress
 github.com/klauspost/compress/flate
 github.com/klauspost/compress/fse
 github.com/klauspost/compress/huff0
-github.com/klauspost/compress/snappy
+github.com/klauspost/compress/internal/snapref
 github.com/klauspost/compress/zstd
 github.com/klauspost/compress/zstd/internal/xxhash
 # github.com/klauspost/pgzip v1.2.5
