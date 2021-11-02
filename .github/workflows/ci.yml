@@ -61,7 +61,7 @@ jobs:
           go-version: '^1'
       - name: install dependencies
         run: |
-          brew unlink parallel # clashes with moreutils
+          brew ls --versions parallel && brew unlink parallel # clashes with moreutils
           brew install coreutils moreutils
       - run: make local-validate-build
       - run: make local-test-unit
