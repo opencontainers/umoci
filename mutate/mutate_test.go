@@ -593,13 +593,13 @@ func TestMutatePath(t *testing.T) {
 
 		// Change the label.
 		label := fmt.Sprintf("TestMutateSet+%d", idx)
-		if config.Labels == nil {
-			config.Labels = map[string]string{}
+		if config.Config.Labels == nil {
+			config.Config.Labels = map[string]string{}
 		}
-		config.Labels["org.opensuse.testidx"] = label
+		config.Config.Labels["org.opensuse.testidx"] = label
 
 		// Update it.
-		if err := mutator.Set(context.Background(), config, meta, nil, &ispec.History{
+		if err := mutator.Set(context.Background(), config.Config, meta, nil, &ispec.History{
 			Comment: "change label " + label,
 		}); err != nil {
 			t.Fatalf("%d: unexpected error modifying config: %+v", idx, err)

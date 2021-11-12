@@ -170,7 +170,7 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "create mutator for manifest")
 	}
 
-	imageConfig, err := mutator.Config(context.Background())
+	config, err := mutator.Config(context.Background())
 	if err != nil {
 		return errors.Wrap(err, "get base config")
 	}
@@ -185,7 +185,7 @@ func config(ctx *cli.Context) error {
 		return errors.Wrap(err, "get base annotations")
 	}
 
-	g, err := igen.NewFromImage(toImage(imageConfig, imageMeta))
+	g, err := igen.NewFromImage(toImage(config.Config, imageMeta))
 	if err != nil {
 		return errors.Wrap(err, "create new generator")
 	}

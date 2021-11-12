@@ -145,12 +145,12 @@ func New(engine cas.Engine, src casext.DescriptorPath) (*Mutator, error) {
 // Config returns the current (cached) image configuration, which should be
 // used as the source for any modifications of the configuration using
 // Set.
-func (m *Mutator) Config(ctx context.Context) (ispec.ImageConfig, error) {
+func (m *Mutator) Config(ctx context.Context) (ispec.Image, error) {
 	if err := m.cache(ctx); err != nil {
-		return ispec.ImageConfig{}, errors.Wrap(err, "getting cache failed")
+		return ispec.Image{}, errors.Wrap(err, "getting cache failed")
 	}
 
-	return m.config.Config, nil
+	return *m.config, nil
 }
 
 // Manifest returns the current (cached) image manifest. This is what will be
