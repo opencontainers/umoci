@@ -122,6 +122,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType: ispec.MediaTypeImageManifest,
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageLayer,
 			Digest:    digest,
@@ -152,6 +153,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType: ispec.MediaTypeImageIndex,
 		Manifests: []ispec.Descriptor{
 			{
 				MediaType: ispec.MediaTypeImageManifest,
@@ -259,6 +261,7 @@ func TestGCWithPolicy(t *testing.T) {
 			Versioned: imeta.Versioned{
 				SchemaVersion: 2,
 			},
+			MediaType: ispec.MediaTypeImageManifest,
 			Config: ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageLayer,
 				Digest:    digest,
@@ -280,6 +283,7 @@ func TestGCWithPolicy(t *testing.T) {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType: ispec.MediaTypeImageIndex,
 		Manifests: []ispec.Descriptor{
 			{
 				MediaType: ispec.MediaTypeImageManifest,

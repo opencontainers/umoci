@@ -97,7 +97,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		{
 			num: 7,
 			obj: ispec.Manifest{
-				Config: randomDescriptor(t),
+				MediaType: ispec.MediaTypeImageManifest,
+				Config:    randomDescriptor(t),
 				Layers: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -111,6 +112,7 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		{
 			num: 2,
 			obj: ispec.Index{
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -121,7 +123,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		{
 			num: 5,
 			obj: &ispec.Manifest{
-				Config: randomDescriptor(t),
+				MediaType: ispec.MediaTypeImageManifest,
+				Config:    randomDescriptor(t),
 				Layers: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -133,6 +136,7 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		{
 			num: 9,
 			obj: &ispec.Index{
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -154,13 +158,15 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		{
 			num: 1,
 			obj: ispec.Manifest{
-				Config: randomDescriptor(t),
-				Layers: nil,
+				MediaType: ispec.MediaTypeImageManifest,
+				Config:    randomDescriptor(t),
+				Layers:    nil,
 			},
 		},
 		{
 			num: 0,
 			obj: ispec.Index{
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{},
 			},
 		},
@@ -226,7 +232,8 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 		// Make sure official OCI structs work.
 		{
 			obj: &ispec.Manifest{
-				Config: randomDescriptor(t),
+				MediaType: ispec.MediaTypeImageManifest,
+				Config:    randomDescriptor(t),
 				Layers: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -239,6 +246,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 		},
 		{
 			obj: ispec.Index{
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
@@ -247,6 +255,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 		},
 		{
 			obj: &ispec.Index{
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
 					randomDescriptor(t),
 					randomDescriptor(t),
