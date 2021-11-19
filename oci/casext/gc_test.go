@@ -65,7 +65,7 @@ func TestGCWithEmptyIndex(t *testing.T) {
 		t.Fatalf("unable to list blobs: %+v", err)
 	}
 	if len(b) != 0 {
-		t.Fatalf("expected empty blob list after GC")
+		t.Fatalf("expected empty blob list after GC: %#v", b)
 	}
 }
 
@@ -123,13 +123,13 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 			SchemaVersion: 2,
 		},
 		Config: ispec.Descriptor{
-			MediaType: ispec.MediaTypeImageIndex,
+			MediaType: ispec.MediaTypeImageLayer,
 			Digest:    digest,
 			Size:      size,
 		},
 		Layers: []ispec.Descriptor{
 			{
-				MediaType: ispec.MediaTypeImageIndex,
+				MediaType: ispec.MediaTypeImageLayer,
 				Digest:    digest,
 				Size:      size,
 			},
@@ -154,7 +154,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 		},
 		Manifests: []ispec.Descriptor{
 			{
-				MediaType: ispec.MediaTypeImageIndex,
+				MediaType: ispec.MediaTypeImageManifest,
 				Digest:    digest,
 				Size:      size,
 			},
@@ -162,6 +162,14 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	}
 	if err := engine.PutIndex(ctx, idx); err != nil {
 		t.Fatalf("error writing index: %+v", err)
+	}
+
+	b, err = engine.ListBlobs(ctx)
+	if err != nil {
+		t.Fatalf("unable to list blobs: %+v", err)
+	}
+	if len(b) <= 2 {
+		t.Fatalf("expected >2 blob list before GC: %#v", b)
 	}
 
 	err = engineExt.GC(ctx)
@@ -173,8 +181,8 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("unable to list blobs: %+v", err)
 	}
-	if len(b) != 1 {
-		t.Fatalf("expected single-entry blob list after GC")
+	if len(b) != 2 {
+		t.Fatalf("expected two-entry blob list after GC: %#v", b)
 	}
 }
 
@@ -300,7 +308,7 @@ func TestGCWithPolicy(t *testing.T) {
 		t.Fatalf("unable to list blobs: %+v", err)
 	}
 	if len(b) != 3 {
-		t.Fatalf("expected all entries in blob list after skip GC policy")
+		t.Fatalf("expected all entries in blob list after skip GC policy: %#v", b)
 	}
 
 	err = engineExt.GC(ctx, gcOkFunc(t, odigest, digest))
@@ -314,6 +322,6 @@ func TestGCWithPolicy(t *testing.T) {
 		t.Fatalf("unable to list blobs: %+v", err)
 	}
 	if len(b) != 2 {
-		t.Fatalf("expected blob list with two entries after GC")
+		t.Fatalf("expected blob list with two entries after GC: %#v", b)
 	}
 }
