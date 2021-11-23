@@ -153,7 +153,8 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			Versioned: ispecs.Versioned{
 				SchemaVersion: 2,
 			},
-			Config: configDescriptor,
+			MediaType: ispec.MediaTypeImageManifest,
+			Config:    configDescriptor,
 		}
 		for _, layer := range layerDescriptors {
 			manifest.Layers = append(manifest.Layers, layer)
@@ -179,6 +180,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
 				},
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
@@ -278,6 +280,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
 				},
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
@@ -329,6 +332,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
 				},
+				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)

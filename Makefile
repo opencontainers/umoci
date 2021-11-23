@@ -228,7 +228,7 @@ CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
 
 .PHONY: ci-image
 ci-image:
-	docker pull registry.opensuse.org/opensuse/leap:latest
+	docker pull registry.opensuse.org/opensuse/leap:15.2
 	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
 	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
 	                               --progress plain \

@@ -137,8 +137,9 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		Config: configDescriptor,
-		Layers: layerDescriptors,
+		MediaType: ispec.MediaTypeImageManifest,
+		Config:    configDescriptor,
+		Layers:    layerDescriptors,
 	}
 
 	return root, manifest, engineExt

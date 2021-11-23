@@ -42,7 +42,7 @@ import (
 const (
 	expectedLayerDigest    = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
 	expectedConfigDigest   = "sha256:ddcc2a93d5b0bcdcb571431c3607d84abe3752406f7c631a898340e6e7e61ed0"
-	expectedManifestDigest = "sha256:0e8b342d2b01241b3f0197d0210ed5c0012d01817881defc1464e000f5b08f4d"
+	expectedManifestDigest = "sha256:a4f6551691241fd52bcabb6af7994c30e9f8c8fe3d5b6b0c1ffd137386689675"
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
@@ -108,6 +108,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType: ispec.MediaTypeImageManifest,
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,
 			Digest:    configDigest,
@@ -554,6 +555,7 @@ func TestMutatePath(t *testing.T) {
 
 		// Create an Index that points to the old root.
 		newRoot := ispec.Index{
+			MediaType: ispec.MediaTypeImageIndex,
 			Manifests: []ispec.Descriptor{
 				oldPath.Root(),
 			},

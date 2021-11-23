@@ -24,6 +24,7 @@ import (
 	"sync"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/pkg/errors"
 )
 
 // ParseFunc is a parser that is registered for a given mediatype and called
@@ -136,22 +137,66 @@ func CustomJSONParser(v interface{}) ParseFunc {
 	if t.Kind() != reflect.Struct {
 		panic("CustomJSONParser() called with non-struct kind!")
 	}
-	return func(reader io.Reader) (_ interface{}, err error) {
+	return func(rdr io.Reader) (_ interface{}, err error) {
 		ptr := reflect.New(t)
-		if reader != nil {
-			err = json.NewDecoder(reader).Decode(ptr.Interface())
+		if rdr != nil {
+			err = json.NewDecoder(rdr).Decode(ptr.Interface())
 		}
 		ret := reflect.Indirect(ptr)
 		return ret.Interface(), err
 	}
 }
 
+func indexParser(rdr io.Reader) (interface{}, error) {
+	// Construct a fake struct which contains bad fields. CVE-2021-41190
+	var index struct {
+		ispec.Index
+		Config json.RawMessage `json:"config,omitempty"`
+		Layers json.RawMessage `json:"layers,omitempty"`
+	}
+	if rdr != nil {
+		if err := json.NewDecoder(rdr).Decode(&index); err != nil {
+			return nil, err
+		}
+	}
+	if index.MediaType != "" && index.MediaType != ispec.MediaTypeImageIndex {
+		return nil, errors.Errorf("malicious image detected: index contained incorrect mediaType: %s", index.MediaType)
+	}
+	if len(index.Config) != 0 {
+		return nil, errors.New("malicious image detected: index contained forbidden 'config' field")
+	}
+	if len(index.Layers) != 0 {
+		return nil, errors.New("malicious image detected: index contained forbidden 'layers' field")
+	}
+	return index.Index, nil
+}
+
+func manifestParser(rdr io.Reader) (interface{}, error) {
+	// Construct a fake struct which contains bad fields. CVE-2021-41190
+	var manifest struct {
+		ispec.Manifest
+		Manifests json.RawMessage `json:"manifests,omitempty"`
+	}
+	if rdr != nil {
+		if err := json.NewDecoder(rdr).Decode(&manifest); err != nil {
+			return nil, err
+		}
+	}
+	if manifest.MediaType != "" && manifest.MediaType != ispec.MediaTypeImageManifest {
+		return nil, errors.Errorf("malicious manifest detected: manifest contained incorrect mediaType: %s", manifest.MediaType)
+	}
+	if len(manifest.Manifests) != 0 {
+		return nil, errors.New("malicious manifest detected: manifest contained forbidden 'manifests' field")
+	}
+	return manifest.Manifest, nil
+}
+
 // Register the core image-spec types.
 func init() {
 	RegisterParser(ispec.MediaTypeDescriptor, CustomJSONParser(ispec.Descriptor{}))
-	RegisterParser(ispec.MediaTypeImageIndex, CustomJSONParser(ispec.Index{}))
+	RegisterParser(ispec.MediaTypeImageIndex, indexParser)
 	RegisterParser(ispec.MediaTypeImageConfig, CustomJSONParser(ispec.Image{}))
 
 	RegisterTarget(ispec.MediaTypeImageManifest)
-	RegisterParser(ispec.MediaTypeImageManifest, CustomJSONParser(ispec.Manifest{}))
+	RegisterParser(ispec.MediaTypeImageManifest, manifestParser)
 }

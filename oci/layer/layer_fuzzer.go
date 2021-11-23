@@ -281,8 +281,9 @@ func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, 
 		Versioned: specs.Versioned{
 			SchemaVersion: 2,
 		},
-		Config: configDescriptor,
-		Layers: layerDescriptors,
+		MediaType: ispec.MediaTypeImageManifest,
+		Config:    configDescriptor,
+		Layers:    layerDescriptors,
 	}
 
 	return root, manifest, engineExt, nil

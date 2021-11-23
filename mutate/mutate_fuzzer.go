@@ -96,6 +96,7 @@ func fuzzSetup(dir string, data []byte) (cas.Engine, ispec.Descriptor, error) {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2,
 		},
+		MediaType: ispec.MediaTypeImageManifest,
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,
 			Digest:    configDigest,

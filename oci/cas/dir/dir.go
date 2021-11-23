@@ -243,6 +243,9 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 		return errors.Wrap(err, "ensure tempdir")
 	}
 
+	// Make sure the index has the mediatype field set.
+	index.MediaType = ispec.MediaTypeImageIndex
+
 	// We copy this into a temporary index to ensure the atomicity of this
 	// operation.
 	fh, err := ioutil.TempFile(e.temp, "index-")
@@ -442,6 +445,7 @@ func Create(path string) error {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
 		},
+		MediaType: ispec.MediaTypeImageIndex,
 	}
 	if err := json.NewEncoder(indexFh).Encode(defaultIndex); err != nil {
 		return errors.Wrap(err, "encode index.json")

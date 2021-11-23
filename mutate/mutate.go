@@ -207,6 +207,9 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 		return errors.Wrap(err, "getting cache failed")
 	}
 
+	// Ensure the mediatype is correct.
+	m.manifest.MediaType = ispec.MediaTypeImageManifest
+
 	// Set annotations.
 	m.manifest.Annotations = annotations
 

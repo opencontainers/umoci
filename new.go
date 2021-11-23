@@ -69,6 +69,7 @@ func NewImage(engineExt casext.Engine, tagName string) error {
 		Versioned: imeta.Versioned{
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
 		},
+		MediaType: ispec.MediaTypeImageManifest,
 		Config: ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,
 			Digest:    configDigest,
