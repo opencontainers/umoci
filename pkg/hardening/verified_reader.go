@@ -188,7 +188,7 @@ func (v *VerifiedReadCloser) Close() error {
 		// If there's trailing bytes being discarded at this point, that
 		// indicates whatever you used to generate this blob is adding trailing
 		// gunk.
-		log.Infof("verified reader: %d bytes of trailing data discarded from %s", n, v.sourceName())
+		log.Debugf("verified reader: %d bytes of trailing data discarded from %s", n, v.sourceName())
 	}
 	// Piped to underlying close.
 	err := v.Reader.Close()
