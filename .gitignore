@@ -4,3 +4,4 @@
 /.cache
 /release
 *.swp
+dist
