@@ -181,11 +181,18 @@ func (s *sequenceDecs) decode(seqs int, br *bitReader, hist []byte) error {
 			return fmt.Errorf("output (%d) bigger than max block size", size)
 		}
 		if size > cap(s.out) {
-			// Not enough size, will be extremely rarely triggered,
+			// Not enough size, which can happen under high volume block streaming conditions
 			// but could be if destination slice is too small for sync operations.
-			// We add maxBlockSize to the capacity.
-			s.out = append(s.out, make([]byte, maxBlockSize)...)
-			s.out = s.out[:len(s.out)-maxBlockSize]
+			// over-allocating here can create a large amount of GC pressure so we try to keep
+			// it as contained as possible
+			used := len(s.out) - startSize
+			addBytes := 256 + ll + ml + used>>2
+			// Clamp to max block size.
+			if used+addBytes > maxBlockSize {
+				addBytes = maxBlockSize - used
+			}
+			s.out = append(s.out, make([]byte, addBytes)...)
+			s.out = s.out[:len(s.out)-addBytes]
 		}
 		if ml > maxMatchLen {
 			return fmt.Errorf("match len (%d) bigger than max allowed length", ml)
@@ -271,7 +278,7 @@ func (s *sequenceDecs) decode(seqs int, br *bitReader, hist []byte) error {
 			mlState = mlTable[mlState.newState()&maxTableMask]
 			ofState = ofTable[ofState.newState()&maxTableMask]
 		} else {
-			bits := br.getBitsFast(nBits)
+			bits := br.get32BitsFast(nBits)
 			lowBits := uint16(bits >> ((ofState.nbBits() + mlState.nbBits()) & 31))
 			llState = llTable[(llState.newState()+lowBits)&maxTableMask]
 
@@ -319,7 +326,7 @@ func (s *sequenceDecs) updateAlt(br *bitReader) {
 		s.offsets.state.state = s.offsets.state.dt[c.newState()]
 		return
 	}
-	bits := br.getBitsFast(nBits)
+	bits := br.get32BitsFast(nBits)
 	lowBits := uint16(bits >> ((c.nbBits() + b.nbBits()) & 31))
 	s.litLengths.state.state = s.litLengths.state.dt[a.newState()+lowBits]
 
