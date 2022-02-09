@@ -1,0 +1,24 @@
+name: release
+
+on:
+  # TODO: remove
+  workflow_dispatch:
+
+jobs:
+  publish_artifacts:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - uses: actions/setup-go@v2
+        with:
+          go-version: '1.17.x'
+      - run: |  
+          ./hack/release_build.sh \
+            -a linux/amd64 -a linux/arm64 -a linux/armhf -a linux/armel  -a linux/386 -a linux/s390x \
+            -a freebsd/amd64 -a freebsd/arm64 -a freebsd/armhf -a freebsd/armel  -a freebsd/386 \
+            -a darwin/arm64 -a darwin/amd64
+          # TODO: enable this
+          # ./hack/release_sign.sh -S A135FAC32CC7DAE364F972CED3456C900C6869E1
+      - uses: actions/upload-artifact@v2
+        with:
+          path: ./release/*/*
