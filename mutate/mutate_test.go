@@ -216,9 +216,10 @@ func TestMutateAdd(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
+	annotations := map[string]string{"hello": "world"}
 	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor)
+	}, GzipCompressor, annotations)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
@@ -251,6 +252,9 @@ func TestMutateAdd(t *testing.T) {
 	}
 	if mutator.manifest.Layers[1].Digest == expectedLayerDigest {
 		t.Errorf("manifest.Layers[1].Digest is not the same!")
+	}
+	if len(mutator.manifest.Layers[1].Annotations) != 1 || mutator.manifest.Layers[1].Annotations["hello"] != "world" {
+		t.Errorf("manifest.Layers[1].Annotations was not set correctly!")
 	}
 
 	if mutator.manifest.Layers[1].Digest != newLayerDesc.Digest {
@@ -312,7 +316,7 @@ func TestMutateAddExisting(t *testing.T) {
 	// Add a new layer.
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor)
+	}, GzipCompressor, nil)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
