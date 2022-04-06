@@ -66,7 +66,7 @@ jobs:
       - run: make local-validate-build
       - run: make local-test-unit
       - name: codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: ${{ env.COVERAGE }}
           flags: unit,macos
@@ -114,7 +114,7 @@ jobs:
           path: ${{ github.workspace }}/.cache/
       - run: make test-unit
       - name: codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: ${{ env.COVERAGE }}
           flags: unit,linux
@@ -148,7 +148,7 @@ jobs:
           path: ${{ github.workspace }}/.cache/
       - run: make DOCKER_IMAGE=$DOCKER_IMAGE test-integration
       - name: codecov
-        uses: codecov/codecov-action@v2
+        uses: codecov/codecov-action@v3
         with:
           files: ${{ env.COVERAGE }}
           flags: integration,linux
