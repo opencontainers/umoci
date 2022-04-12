@@ -111,7 +111,7 @@ also provided.
 [kiwi]: https://osinside.github.io/kiwi/
 [kiwi-container]: https://osinside.github.io/kiwi/building/build_docker_container.html
 [obs]: https://openbuildservice.org/
-[stacker]: https://github.com/anuvu/stacker
+[stacker]: https://github.com/project-stacker/stacker
 [lxc]: https://linuxcontainers.org/
 [lxc-oci]: https://github.com/lxc/lxc/blob/lxc-4.0.2/templates/lxc-oci.in
 [contributing]: /CONTRIBUTING.md
