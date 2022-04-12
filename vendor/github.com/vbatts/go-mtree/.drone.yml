@@ -1,23 +1,13 @@
-language: go
-go:
-  - "1.x"
-  - "1.14.x"
-  - "1.13.x"
-  - "1.12.x"
-  - "1.11.x"
-  - "1.10.x"
-  - "1.9.x"
-
-sudo: false
-
-before_install:
+kind: pipeline
+name: default
+steps:
+steps:
+- name: build
+  image: golang
+  commands:
   - git config --global url."https://".insteadOf git://
   - make install.tools
   - mkdir -p $GOPATH/src/github.com/vbatts && ln -sf $(pwd) $GOPATH/src/github.com/vbatts/go-mtree
-
-install: true
-
-script:
   - make validation
   - make validation.tags
   - make build.arches

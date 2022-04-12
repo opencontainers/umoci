@@ -5,8 +5,7 @@ github.com/AdaLogics/go-fuzz-headers
 ## explicit
 github.com/apex/log
 github.com/apex/log/handlers/cli
-# github.com/cpuguy83/go-md2man/v2 v2.0.0
-## explicit
+# github.com/cpuguy83/go-md2man/v2 v2.0.1
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.3
 ## explicit
@@ -16,7 +15,7 @@ github.com/davecgh/go-spew/spew
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
-# github.com/fatih/color v1.9.0
+# github.com/fatih/color v1.13.0
 github.com/fatih/color
 # github.com/klauspost/compress v1.11.3
 ## explicit
@@ -31,10 +30,9 @@ github.com/klauspost/compress/zstd/internal/xxhash
 github.com/klauspost/pgzip
 # github.com/kr/text v0.2.0
 ## explicit
-# github.com/mattn/go-colorable v0.1.6
-## explicit
+# github.com/mattn/go-colorable v0.1.12
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.12
+# github.com/mattn/go-isatty v0.0.14
 github.com/mattn/go-isatty
 # github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 ## explicit
@@ -62,10 +60,8 @@ github.com/pmezard/go-difflib/difflib
 # github.com/rootless-containers/proto/go-proto v0.0.0-20210921234734-69430b6543fb
 ## explicit
 github.com/rootless-containers/proto/go-proto
-# github.com/russross/blackfriday/v2 v2.0.1
+# github.com/russross/blackfriday/v2 v2.1.0
 github.com/russross/blackfriday/v2
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.7.1
@@ -74,15 +70,14 @@ github.com/stretchr/testify/assert
 # github.com/urfave/cli v1.22.4
 ## explicit
 github.com/urfave/cli
-# github.com/vbatts/go-mtree v0.5.0
+# github.com/vbatts/go-mtree v0.5.1
 ## explicit
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
-# golang.org/x/crypto v0.0.0-20200604202706-70a84ac30bf9
-## explicit
+# golang.org/x/crypto v0.0.0-20220331220935-ae2d96664a29
 golang.org/x/crypto/ripemd160
-# golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c
+# golang.org/x/sys v0.0.0-20220403205710-6acee93ad0eb
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix

@@ -430,10 +430,10 @@ func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]Ino
 				// the files are the same.
 				results = append(results, InodeDelta{
 					diff: Same,
-					path:  path,
-					old:   *diff.Old,
-					new:   *diff.New,
-					keys:  changed,
+					path: path,
+					old:  *diff.Old,
+					new:  *diff.New,
+					keys: changed,
 				})
 			}
 		}

@@ -1,6 +1,7 @@
 # go-mtree
 
-[![Build Status](https://travis-ci.org/vbatts/go-mtree.svg?branch=master)](https://travis-ci.org/vbatts/go-mtree) [![Go Report Card](https://goreportcard.com/badge/github.com/vbatts/go-mtree)](https://goreportcard.com/report/github.com/vbatts/go-mtree)
+[![Go](https://github.com/vbatts/go-mtree/actions/workflows/go.yml/badge.svg)](https://github.com/vbatts/go-mtree/actions/workflows/go.yml)
+[![Go Report Card](https://goreportcard.com/badge/github.com/vbatts/go-mtree)](https://goreportcard.com/report/github.com/vbatts/go-mtree)
 
 `mtree` is a filesystem hierarchy validation tooling and format.
 This is a library and simple cli tool for [mtree(8)][mtree(8)] support.
@@ -11,7 +12,6 @@ provided with libarchive ([libarchive-formats(5)][libarchive-formats(5)]).
 
 There is also an [mtree port for Linux][archiecobbs/mtree-port] though it is
 not widely packaged for Linux distributions.
-
 
 ## Format
 
@@ -26,11 +26,10 @@ This implementation of mtree supports a few non-upstream "keyword"s, such as:
 `xattr` and `tar_time`. If you include these keywords, the FreeBSD `mtree`
 will fail, as they are unknown keywords to that implementation.
 
-To have `go-mtree` produce specifications that will be 
+To have `go-mtree` produce specifications that will be
 strictly compatible with the BSD `mtree`, use the `-bsd-keywords` flag when
 creating a manifest. This will make sure that only the keywords supported by
 BSD `mtree` are used in the program.
-
 
 ### Typical form
 
@@ -50,7 +49,6 @@ specification looks like:
 See the directory presently in, and the files present. Along with each
 path, is provided the keywords and the unique values for each path. Any common
 keyword and values are established in the `/set` command.
-
 
 ### Extended attributes form
 
@@ -97,22 +95,20 @@ More interestingly, this also means that we can create a manifest from an archiv
 validate this manifest against a filesystem hierarchy that's on disk, and vice versa.
 
 Notice that for the output of creating a validation manifest from a tar file, the default behavior
-for evaluating a notion of time is to use the `tar_time` keyword. In the 
-"filesystem hierarchy" format of mtree, `time` is being evaluated with 
+for evaluating a notion of time is to use the `tar_time` keyword. In the
+"filesystem hierarchy" format of mtree, `time` is being evaluated with
 nanosecond precision. However, GNU tar truncates a file's modification time
-to 1-second precision. That is, if a file's full modification time is 
+to 1-second precision. That is, if a file's full modification time is
 123456789.123456789, the "tar time" equivalent would be 123456789.000000000.
 This way, if you validate a manifest created using a tar file against an
 actual root directory, there will be no complaints from `go-mtree` so long as the
 1-second precision time of a file in the root directory is the same.
-
 
 ## Usage
 
 To use the Go programming language library, see [the docs][godoc].
 
 To use the command line tool, first [build it](#Building), then the following.
-
 
 ### Create a manifest
 
@@ -122,7 +118,7 @@ This will also include the sha512 digest of the files.
 gomtree -c -K sha512digest -p . > /tmp/root.mtree
 ```
 
-With a tar file: 
+With a tar file:
 
 ```bash
 gomtree -c -K sha512digest -T sometarfile.tar > /tmp/tar.mtree
@@ -173,7 +169,6 @@ Available keywords:
  sha512digest
 ```
 
-
 ## Building
 
 Either:
@@ -193,17 +188,18 @@ go build ./cmd/gomtree
 ## Testing
 
 On Linux:
+
 ```bash
 cd $GOPATH/src/github.com/vbatts/go-mtree
 make
 ```
 
 On FreeBSD:
+
 ```bash
 cd $GOPATH/src/github.com/vbatts/go-mtree
 gmake
 ```
-
 
 [mtree(8)]: https://www.freebsd.org/cgi/man.cgi?mtree(8)
 [libarchive-formats(5)]: https://www.freebsd.org/cgi/man.cgi?query=libarchive-formats&sektion=5&n=1
