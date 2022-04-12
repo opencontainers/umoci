@@ -29,7 +29,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v2
         with:
           # We currently need to pick a set Go version because sometimes Go
@@ -55,7 +55,7 @@ jobs:
     env:
       COVERAGE: umoci.coverage
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - uses: actions/setup-go@v2
         with:
           go-version: '^1'
@@ -79,7 +79,7 @@ jobs:
   linux-ci-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: fetch cached ci image
         id: fetch-ci-image
         uses: actions/cache@v2
@@ -106,7 +106,7 @@ jobs:
     env:
       COVERAGE: umoci.coverage
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: download ci image
         uses: actions/download-artifact@v3
         with:
@@ -140,7 +140,7 @@ jobs:
       DOCKER_IMAGE: ${{ matrix.image }}
       COVERAGE: umoci.coverage
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: download ci image
         uses: actions/download-artifact@v3
         with:
@@ -167,7 +167,7 @@ jobs:
     env:
       COVERAGE: umoci.coverage
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
       - name: download all coverage
         uses: actions/download-artifact@v3
         with:
