@@ -279,7 +279,7 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor) (ispec.Descriptor, error) {
+func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (ispec.Descriptor, error) {
 	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
 		return desc, errors.Wrap(err, "getting cache failed")
@@ -297,9 +297,10 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 
 	// Append to layers.
 	desc = ispec.Descriptor{
-		MediaType: compressedMediaType,
-		Digest:    digest,
-		Size:      size,
+		MediaType:   compressedMediaType,
+		Digest:      digest,
+		Size:        size,
+		Annotations: annotations,
 	}
 	m.manifest.Layers = append(m.manifest.Layers, desc)
 	return desc, nil
