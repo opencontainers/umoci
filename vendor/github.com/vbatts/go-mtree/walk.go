@@ -103,7 +103,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 						}
 						keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 						if !ok {
-							return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
+							return fmt.Errorf("unknown keyword %q for file %q", keyword.Prefix(), path)
 						}
 						kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
 						if err != nil {
@@ -138,7 +138,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 						}
 						keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 						if !ok {
-							return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
+							return fmt.Errorf("unknown keyword %q for file %q", keyword.Prefix(), path)
 						}
 						kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
 						if err != nil {
@@ -198,7 +198,7 @@ func Walk(root string, excludes []ExcludeFunc, keywords []Keyword, fsEval FsEval
 				}
 				keyFunc, ok := KeywordFuncs[keyword.Prefix()]
 				if !ok {
-					return fmt.Errorf("Unknown keyword %q for file %q", keyword.Prefix(), path)
+					return fmt.Errorf("unknown keyword %q for file %q", keyword.Prefix(), path)
 				}
 				kvs, err := creator.fs.KeywordFunc(keyFunc)(path, info, r)
 				if err != nil {

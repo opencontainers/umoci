@@ -14,7 +14,23 @@ default: build validation
 validation: .test .lint .vet .cli.test
 
 .PHONY: validation.tags
-validation.tags: .test.tags .vet.tags .cli.test
+validation.tags: .test.tags .vet.tags .cli.test .staticcheck
+
+.PHONY: gocyclo
+gocyclo: .gocyclo
+
+CLEAN_FILES += .gocyclo
+
+.gocyclo:
+	gocyclo -avg -over 15 -ignore 'vendor/*' . && touch $@
+
+.PHONY: staticcheck
+staticcheck: .staticcheck
+
+CLEAN_FILES += .staticcheck
+
+.staticcheck:
+	staticcheck . && touch $@
 
 .PHONY: test
 test: .test
@@ -34,7 +50,7 @@ lint: .lint
 CLEAN_FILES += .lint
 
 .lint: $(SOURCE_FILES)
-	@if [[ "$(findstring $(GO_VER),$(shell go version))" != "" ]] ; then \
+	@if [ "$(findstring $(GO_VER),$(shell go version))" != "" ] ; then \
 		set -e ; for dir in $(NO_VENDOR_DIR) ; do golint -set_exit_status $$dir ; done && touch $@ \
 	else \
 		touch $@ ; \
@@ -57,20 +73,22 @@ cli.test: .cli.test
 CLEAN_FILES += .cli.test .cli.test.tags
 
 .cli.test: $(BUILD) $(wildcard ./test/cli/*.sh)
-	@go run ./test/cli.go ./test/cli/*.sh && touch $@
+	@go run ./test/cli-test/main.go ./test/cli/*.sh && touch $@
 
 .cli.test.tags: $(BUILD) $(wildcard ./test/cli/*.sh)
-	@set -e ; for tag in $(TAGS) ; do go run -tags $$tag ./test/cli.go ./test/cli/*.sh ; done && touch $@
+	@set -e ; for tag in $(TAGS) ; do go run -tags $$tag ./test/cli-test/main.go ./test/cli/*.sh ; done && touch $@
 
 .PHONY: build
 build: $(BUILD)
 
 $(BUILD): $(SOURCE_FILES)
-	go build -o $(BUILD) $(BUILDPATH)
+	go build -mod=vendor -o $(BUILD) $(BUILDPATH)
 
 install.tools:
-	@go get -u github.com/fatih/color ; \
-	if [[ "$(findstring $(GO_VER),$(shell go version))" != "" ]] ; then \
+	@go install -u github.com/fatih/color@latest ; \
+	go install -u github.com/fzipp/gocyclo/cmd/gocyclo@latest ; \
+	go install -u honnef.co/go/tools/cmd/staticcheck@latest ; \
+	if [ "$(findstring $(GO_VER),$(shell go version))" != "" ] ; then \
 		go get -u golang.org/x/lint/golint ;\
 	fi
 
@@ -85,7 +103,7 @@ build.arches: ./bin
 	p=$$(echo $$pair | cut -d , -f 1);\
 	a=$$(echo $$pair | cut -d , -f 2);\
 	echo "Building $$p/$$a ...";\
-	GOOS=$$p GOARCH=$$a go build -o ./bin/gomtree.$$p.$$a $(BUILDPATH) ;\
+	GOOS=$$p GOARCH=$$a go build -mod=vendor -o ./bin/gomtree.$$p.$$a $(BUILDPATH) ;\
 	done
 
 clean:

@@ -373,7 +373,6 @@ func flatten(root *Entry, creator *dhCreator, keywords []Keyword) {
 		}
 		creator.DH.Entries = append(creator.DH.Entries, dotEntry)
 	}
-	return
 }
 
 // resolveHardlinks goes through an Entry tree, and finds the Entry's associated
@@ -407,31 +406,6 @@ func resolveHardlinks(root *Entry, hardlinks map[string][]string, countlinks boo
 			basefile.Keywords = append(basefile.Keywords, KeyVal(fmt.Sprintf("nlink=%d", len(links)+1)))
 		}
 	}
-}
-
-// filter takes in a pointer to an Entry, and returns a slice of Entry's that
-// satisfy the predicate p
-func filter(root *Entry, p func(*Entry) bool) []Entry {
-	if root != nil {
-		var validEntrys []Entry
-		if len(root.Children) > 0 || root.Prev != nil {
-			for _, c := range root.Children {
-				// filter the sub-directory
-				if c.Prev != nil {
-					validEntrys = append(validEntrys, filter(c, p)...)
-				}
-				if p(c) {
-					if c.Prev == nil {
-						validEntrys = append([]Entry{*c}, validEntrys...)
-					} else {
-						validEntrys = append(validEntrys, *c)
-					}
-				}
-			}
-			return validEntrys
-		}
-	}
-	return nil
 }
 
 func (ts *tarStream) setErr(err error) {
