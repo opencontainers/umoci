@@ -30,7 +30,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           # We currently need to pick a set Go version because sometimes Go
           # updates will change the output of gofmt. Ideally we would have some
@@ -56,7 +56,7 @@ jobs:
       COVERAGE: umoci.coverage
     steps:
       - uses: actions/checkout@v3
-      - uses: actions/setup-go@v2
+      - uses: actions/setup-go@v3
         with:
           go-version: '^1'
       - name: install dependencies
