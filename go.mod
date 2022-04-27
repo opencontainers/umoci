@@ -7,7 +7,7 @@ require (
 	github.com/apex/log v1.9.0
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/go-units v0.4.0
-	github.com/klauspost/compress v1.11.3
+	github.com/klauspost/compress v1.15.2
 	github.com/klauspost/pgzip v1.2.5
 	github.com/kr/text v0.2.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
