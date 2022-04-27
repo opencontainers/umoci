@@ -11,6 +11,10 @@ updates:
     ignore:
       # a regression in v1.22.2, see https://github.com/urfave/cli/issues/1092
       - dependency-name: "github.com/urfave/cli"
+      # we cannot update this dependency because they change the compression
+      # output format fairly regularly, which causes umoci to generate
+      # different output for the same input.
+      - dependency-name: "github.com/klauspost/compress"
 
   # Dependencies listed in .github/workflows/*.yml
   - package-ecosystem: "github-actions"
