@@ -25,6 +25,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
 
@@ -182,7 +183,7 @@ func (v *VerifiedReadCloser) Close() error {
 	// Consume any remaining bytes to make sure that we've actually read to the
 	// end of the stream. VerifiedReadCloser.Read will not read past
 	// ExpectedSize+1, so we don't need to add a limit here.
-	if n, err := io.Copy(ioutil.Discard, v); err != nil {
+	if n, err := system.Copy(ioutil.Discard, v); err != nil {
 		return errors.Wrap(err, "consume remaining unverified stream")
 	} else if n != 0 {
 		// If there's trailing bytes being discarded at this point, that

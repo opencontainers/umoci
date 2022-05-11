@@ -26,6 +26,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
 )
@@ -259,7 +260,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		}
 		defer fh.Close()
 
-		n, err := io.Copy(tg.tw, fh)
+		n, err := system.Copy(tg.tw, fh)
 		if err != nil {
 			return errors.Wrap(err, "copy to layer")
 		}

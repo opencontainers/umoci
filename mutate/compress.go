@@ -7,6 +7,7 @@ import (
 
 	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
 
@@ -48,7 +49,7 @@ func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		return nil, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
 	}
 	go func() {
-		if _, err := io.Copy(gzw, reader); err != nil {
+		if _, err := system.Copy(gzw, reader); err != nil {
 			// #nosec G104
 			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
 		}
@@ -82,7 +83,7 @@ func (zs zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		return nil, err
 	}
 	go func() {
-		if _, err := io.Copy(zenc, reader); err != nil {
+		if _, err := system.Copy(zenc, reader); err != nil {
 			// #nosec G104
 			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
 		}
