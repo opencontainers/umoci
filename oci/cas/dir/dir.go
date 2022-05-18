@@ -31,6 +31,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/hardening"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
@@ -167,7 +168,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	defer fh.Close()
 
 	writer := io.MultiWriter(fh, digester.Hash())
-	size, err := io.Copy(writer, reader)
+	size, err := system.Copy(writer, reader)
 	if err != nil {
 		return "", -1, errors.Wrap(err, "copy to temporary blob")
 	}

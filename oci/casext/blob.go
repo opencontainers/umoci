@@ -24,6 +24,7 @@ import (
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
 
@@ -72,7 +73,7 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 
 	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
 		defer func() {
-			if _, err := io.Copy(ioutil.Discard, reader); Err == nil {
+			if _, err := system.Copy(ioutil.Discard, reader); Err == nil {
 				Err = errors.Wrapf(err, "discard trailing %q blob", descriptor.MediaType)
 			}
 			if err := reader.Close(); Err == nil {

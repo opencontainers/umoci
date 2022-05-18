@@ -5,8 +5,10 @@ import (
 	"io/ioutil"
 	"runtime"
 
+	"github.com/apex/log"
 	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
+	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/pkg/errors"
 )
 
@@ -48,17 +50,22 @@ func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		return nil, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
 	}
 	go func() {
-		if _, err := io.Copy(gzw, reader); err != nil {
+		if _, err := system.Copy(gzw, reader); err != nil {
+			log.Warnf("gzip compress: could not compress layer: %v", err)
 			// #nosec G104
 			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
+			return
 		}
 		if err := gzw.Close(); err != nil {
+			log.Warnf("gzip compress: could not close gzip writer: %v", err)
 			// #nosec G104
 			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
+			return
 		}
 		if err := pipeWriter.Close(); err != nil {
-			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close pipe writer"))
+			log.Warnf("gzip compress: could not close pipe: %v", err)
+			// We don't CloseWithError because we cannot override the Close.
+			return
 		}
 	}()
 
@@ -77,22 +84,27 @@ type zstdCompressor struct{}
 func (zs zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 	pipeReader, pipeWriter := io.Pipe()
-	zenc, err := zstd.NewWriter(pipeWriter)
+	zw, err := zstd.NewWriter(pipeWriter)
 	if err != nil {
 		return nil, err
 	}
 	go func() {
-		if _, err := io.Copy(zenc, reader); err != nil {
+		if _, err := system.Copy(zw, reader); err != nil {
+			log.Warnf("zstd compress: could not compress layer: %v", err)
 			// #nosec G104
 			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
+			return
 		}
-		if err := zenc.Close(); err != nil {
+		if err := zw.Close(); err != nil {
+			log.Warnf("zstd compress: could not close gzip writer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
+			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close zstd writer"))
+			return
 		}
 		if err := pipeWriter.Close(); err != nil {
-			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close pipe writer"))
+			log.Warnf("zstd compress: could not close pipe: %v", err)
+			// We don't CloseWithError because we cannot override the Close.
+			return
 		}
 	}()
 
