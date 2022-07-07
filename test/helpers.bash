@@ -67,7 +67,7 @@ function teardown_tmpdirs() {
 	[ -e "$TESTDIR_LIST" ] || return
 
 	# Remove all of the tmpdirs.
-	while IFS= read tmpdir; do
+	while IFS= read -r tmpdir; do
 		[ -e "$tmpdir" ] || continue
 		chmod -R 0777 "$tmpdir"
 		rm -rf "$tmpdir"
@@ -208,20 +208,37 @@ function setup_image() {
 }
 
 function teardown_image() {
-	rm -rf "${IMAGE}"
+	rm_rf "${IMAGE}"
 }
 
 function setup_runc() {
 	declare -g RUNC_ROOT="$(setup_tmpdir)"
 }
 
+function retry() {
+	local attempts="$1" delay="$2"
+	shift 2
+
+	local i
+	for ((i = 0; i < attempts; i++)); do
+		sane_run "$@"
+		if [[ "$status" -eq 0 ]]; then
+			return 0
+		fi
+		sleep "$delay"
+	done
+
+	echo "command \"$*\" failed $attempts times" >&2
+	false
+}
+
 function is_container_dead() {
 	runc state "$1"
-	[ "$status" -ne 0 ] || [ "$output" =~ *stopped* ]
+	[ "$status" -ne 0 ] || [[ "$output" = *stopped* ]]
 }
 
 function teardown_runc() {
-	for ctr in $(ls "$RUNC_ROOT" 2>/dev/null)
+	for ctr in $(runc list -q)
 	do
 		runc kill "$ctr" KILL
 		retry 10 1 eval "is_container_dead '$ctr'"
@@ -237,7 +254,7 @@ function new_bundle_rootfs() {
 
 # _getfattr is a sane wrapper around getfattr(1) which only extracts the value
 # of the requested xattr (and removes any of the other crap that it spits out).
-# The usage is "sane_getfattr <xattr name> <path>" and outputs the hex
+# The usage is "sane_run _getfattr <xattr name> <path>" and outputs the hex
 # representation in a single line. Exit status is non-zero if the xattr isn't
 # set.
 function _getfattr() {
@@ -254,4 +271,28 @@ function _getfattr() {
 			| grep "^$xattr=" | sed "s|^$xattr=||g"
 	)
 	return $?
+}
+
+# A wrapper around "rm -rf" which works for unprivileged users (namely cases
+# where a directory has mode 000 which causes a DAC refusal even though the
+# user is the owner of the directory).
+function rm_rf() {
+	for path in "$@"
+	do
+		[ -e "$path" ] || continue
+		dir="$(dirname "$path")"
+
+		# We need to make sure the parent directory is searchable and writable
+		# but we want to recover the original mode after we do the delete.
+		old_mode="$(stat -c '%a' "$dir")"
+
+		sane_run chmod 0777 "$dir"
+		[ "$status" -eq 0 ]
+
+		[ -d "$path" ] && find "$path" -type d -exec chmod +rwx {} \;
+		rm -rf "$path"
+
+		sane_run chmod "$old_mode" "$dir"
+		[ "$status" -eq 0 ]
+	done
 }

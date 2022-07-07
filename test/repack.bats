@@ -190,9 +190,7 @@ function teardown() {
 	[ -e "$ROOTFS/usr/bin/env" ]
 
 	# Remove them.
-	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
-	chmod +w "$ROOTFS/bin/." && rm -f "$ROOTFS/bin/sh"
-	chmod +w "$ROOTFS/usr/bin/." && rm -f "$ROOTFS/usr/bin/env"
+	rm_rf "$ROOTFS/"{etc,bin/sh,usr/bin/env}
 
 	# Repack the image under a new tag.
 	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
@@ -231,7 +229,7 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	# Try to create a layer containing a ".wh." directory.
-	rm -rf "$ROOTFS/whiteout_test"
+	rm_rf "$ROOTFS/whiteout_test"
 	mkdir -p "$ROOTFS/.wh.another_whiteout"
 
 	# Repacking a rootfs with a '.wh.' directory *must* fail.
@@ -253,11 +251,9 @@ function teardown() {
 	[ -e "$ROOTFS/usr/bin/env" ]
 
 	# Replace them.
-	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
+	rm_rf "$ROOTFS/"{etc,bin/sh,usr/bin/env}
 	echo "different" > "$ROOTFS/etc"
-	chmod +w "$ROOTFS/bin/." && rm -f "$ROOTFS/bin/sh"
 	mkdir "$ROOTFS/bin/sh"
-	chmod +w "$ROOTFS/usr/bin/." && rm -f "$ROOTFS/usr/bin/env"
 	ln -s "a \\really //weird _00..:=path " "$ROOTFS/usr/bin/env"
 
 	# Repack the image under the same tag.
@@ -623,6 +619,7 @@ function teardown() {
 	touch "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem"
 	touch "$ROOTFS/AC_Raíz_Certicámara_S.A..pem"
 	touch "$ROOTFS/ <-- some more weird characters --> 你好，世界"
+	touch "$ROOTFS/変な字じゃないけど色んなソフトは全然処理できないんだよ。。。"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE"
@@ -640,9 +637,10 @@ function teardown() {
 	[ -f "$ROOTFS/TÜBİTAK_UEKAE_Kök_Sertifika_ Hizmet Sağlayıcısı -_Sürüm_3/NetLock_Arany_=Class_Gold=_Főtanúsítvány.pem" ]
 	[ -f "$ROOTFS/AC_Raíz_Certicámara_S.A..pem" ]
 	[ -f "$ROOTFS/ <-- some more weird characters --> 你好，世界" ]
+	[ -f "$ROOTFS/変な字じゃないけど色んなソフトは全然処理できないんだよ。。。" ]
 
 	# Now make some changes.
-	rm -f "$ROOTFS/AC_Raíz_Certicámara_S.A..pem"
+	rm_rf "$ROOTFS/AC_Raíz_Certicámara_S.A..pem"
 
 	# Repack the image.
 	umoci repack --image "${IMAGE}" "$BUNDLE"
