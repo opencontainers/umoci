@@ -90,9 +90,8 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Change the rootfs. We need to chmod because of fedora.
-	chmod +w "$ROOTFS/usr/bin/." && rm -rf "$ROOTFS/usr/bin"
-	chmod +w "$ROOTFS/etc/." && rm -rf "$ROOTFS/etc"
+	# Change the rootfs.
+	rm_rf "$ROOTFS/"{etc,usr/bin}
 
 	# Repack the image under a new tag.
 	umoci repack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
