@@ -215,10 +215,10 @@ function teardown() {
 	# Ensure that the capability bits were preserved.
 	sane_run getcap "$ROOTFS/setcap1"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *" = cap_net_raw+eip"* ]]
+	[[ "$output" == *" cap_net_raw=eip"* ]]
 	sane_run getcap "$ROOTFS/setcap2"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *" = cap_sys_admin,cap_setfcap"* ]]
+	[[ "$output" == *" cap_sys_admin,cap_setfcap=eip"* ]]
 
 	# Unpack the image (as rootless).
 	new_bundle_rootfs

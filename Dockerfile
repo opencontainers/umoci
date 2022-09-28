@@ -13,16 +13,16 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.opensuse.org/opensuse/leap:15.2
+FROM registry.opensuse.org/opensuse/leap:15.4
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE Leap yet, or are out of date in Leap.
 RUN zypper mr -d repo-non-oss repo-update-non-oss && \
-	zypper ar -f -p 5 -g obs://home:cyphar:bats obs-bats && \
-	zypper ar -f -p 10 -g obs://Virtualization:containers obs-vc && \
-	zypper ar -f -p 10 -g obs://devel:tools obs-tools && \
-	zypper ar -f -p 10 -g obs://devel:languages:go obs-go && \
+	zypper ar -f -p 10 -g 'obs://Virtualization:containers/$releasever' obs-vc && \
+	zypper ar -f -p 10 -g 'obs://devel:tools/$releasever'               obs-tools && \
+	zypper ar -f -p 10 -g 'obs://devel:languages:go/$releasever'        obs-go && \
+	zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever'    obs-gomtree && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
@@ -32,15 +32,14 @@ RUN zypper -n in \
 		curl \
 		git \
 		gnu_parallel \
-		"go>=1.16" \
+		"go>=1.18" \
 		go-mtree \
 		gzip \
 		jq \
 		libcap-progs \
 		make \
 		moreutils \
-		python-setuptools \
-		python-xattr \
+		python3-xattr python3-setuptools \
 		runc \
 		skopeo \
 		tar \
@@ -66,7 +65,7 @@ RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/o
 	rm -rf /tmp/oci-image-tools
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
-ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.2
+ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.4
 RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
