@@ -80,17 +80,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: get current date
+        id: date
+        run: |
+          echo "date-weekfmt=$(date '+%Yw%W')" >>"$GITHUB_OUTPUT"
+          echo "date-dayfmt=$(date '+%Y%m%d')" >>"$GITHUB_OUTPUT"
       - name: fetch cached ci image
         id: fetch-ci-image
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/.cache/ci-image.tar.zst
-          key: ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ github.run_id }}
+          key: ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ steps.date.outputs.date-dayfmt }}-${{ github.run_id }}
           restore-keys: |
-            ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-
-            ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-
-            ${{ github.workflow }}-image-${{ runner.os }}-
-            ${{ github.workflow }}-image-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ steps.date.outputs.date-dayfmt }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-
       - name: build updated ci image
         run: make ci-cache
       - name: upload ci image
