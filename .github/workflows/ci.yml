@@ -137,7 +137,7 @@ jobs:
           - ubuntu:latest
           - fedora:latest
     env:
-      DOCKER_IMAGE: ${{ matrix.image }}
+      TEST_DOCKER_IMAGE: ${{ matrix.image }}
       COVERAGE: umoci.coverage
     steps:
       - uses: actions/checkout@v3
@@ -146,7 +146,7 @@ jobs:
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
-      - run: make DOCKER_IMAGE=$DOCKER_IMAGE test-integration
+      - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-integration
       - name: codecov
         uses: codecov/codecov-action@v3
         with:

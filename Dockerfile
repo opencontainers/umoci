@@ -66,8 +66,8 @@ RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/o
 	rm -rf /tmp/oci-image-tools
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
-ARG DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.2
-RUN skopeo copy docker://$DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
+ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.2
+RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
 WORKDIR /go/src/github.com/opencontainers/umoci
