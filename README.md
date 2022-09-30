@@ -1,3 +1,10 @@
+<!--
+  This comment is necessary to get Hugo to parse this page properly. For
+  whatever reason, it thinks files that start with HTML tags are not Markdown
+  documents (even though this is not actually the case). See
+  <https://github.com/gohugoio/hugo/issues/7296>.
+ -->
+
 <p align="center">
   <a href="https://umo.ci/" alt="Project Website">
     <img src="https://umo.ci/umoci-black.png" alt="umoci" height="130"/></a>
@@ -8,7 +15,7 @@
   these images in Hugo (see <https://github.com/gohugoio/hugo/issues/7398>).
   Thankfully, GitHub won't render <div> tags, so we can abuse that to hide the
   badges on the umo.ci website while still showing them in the GitHub README.
--->
+ -->
 <div style="display: none">
 <p align="center">
   <a href="https://github.com/opencontainers/umoci/releases/latest" alt="Latest Release">
