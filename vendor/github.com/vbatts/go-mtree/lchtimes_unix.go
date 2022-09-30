@@ -1,3 +1,4 @@
+//go:build darwin || dragonfly || freebsd || openbsd || linux || netbsd || solaris
 // +build darwin dragonfly freebsd openbsd linux netbsd solaris
 
 package mtree
