@@ -104,7 +104,11 @@ build.arches: ./bin
 	a=$$(echo $$pair | cut -d , -f 2);\
 	echo "Building $$p/$$a ...";\
 	GOOS=$$p GOARCH=$$a go build -mod=vendor -o ./bin/gomtree.$$p.$$a $(BUILDPATH) ;\
-	done
+	done ;\
+	cd bin ;\
+	sha1sum gomtree.* > SUMS ;\
+	sha512sum gomtree.* >> SUMS ;\
+	cd -
 
 clean:
 	rm -rf $(BUILD) $(CLEAN_FILES)

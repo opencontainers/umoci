@@ -128,6 +128,7 @@ includes_FreeBSD='
 #include <sys/mount.h>
 #include <sys/wait.h>
 #include <sys/ioctl.h>
+#include <sys/ptrace.h>
 #include <net/bpf.h>
 #include <net/if.h>
 #include <net/if_types.h>
@@ -215,6 +216,7 @@ struct ltchars {
 #include <linux/ethtool_netlink.h>
 #include <linux/falloc.h>
 #include <linux/fanotify.h>
+#include <linux/fib_rules.h>
 #include <linux/filter.h>
 #include <linux/fs.h>
 #include <linux/fscrypt.h>
@@ -528,7 +530,7 @@ ccflags="$@"
 		$2 ~ /^(MS|MNT|MOUNT|UMOUNT)_/ ||
 		$2 ~ /^NS_GET_/ ||
 		$2 ~ /^TUN(SET|GET|ATTACH|DETACH)/ ||
-		$2 ~ /^(O|F|[ES]?FD|NAME|S|PTRACE|PT|TFD)_/ ||
+		$2 ~ /^(O|F|[ES]?FD|NAME|S|PTRACE|PT|PIOD|TFD)_/ ||
 		$2 ~ /^KEXEC_/ ||
 		$2 ~ /^LINUX_REBOOT_CMD_/ ||
 		$2 ~ /^LINUX_REBOOT_MAGIC[12]$/ ||
@@ -613,6 +615,7 @@ ccflags="$@"
 		$2 ~ /^OTP/ ||
 		$2 ~ /^MEM/ ||
 		$2 ~ /^WG/ ||
+		$2 ~ /^FIB_RULE_/ ||
 		$2 ~ /^BLK[A-Z]*(GET$|SET$|BUF$|PART$|SIZE)/ {printf("\t%s = C.%s\n", $2, $2)}
 		$2 ~ /^__WCOREFLAG$/ {next}
 		$2 ~ /^__W[A-Z0-9]+$/ {printf("\t%s = C.%s\n", substr($2,3), $2)}
