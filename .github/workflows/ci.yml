@@ -41,10 +41,10 @@ jobs:
       - name: install dependencies
         run: |
           # TODO: Move this to 'make fetch-deps'.
-          GO111MODULE=off go get -u github.com/cpuguy83/go-md2man
-          GO111MODULE=off go get -u golang.org/x/lint/golint
-          GO111MODULE=off go get -u github.com/securego/gosec/cmd/gosec
-          GO111MODULE=off go get -u github.com/client9/misspell/cmd/misspell
+          go install github.com/cpuguy83/go-md2man/v2@latest
+          go install golang.org/x/lint/golint@latest
+          go install github.com/securego/gosec/cmd/gosec@latest
+          go install github.com/client9/misspell/cmd/misspell@latest
       - run: |
           make local-validate
 

@@ -39,8 +39,6 @@ RUN zypper -n in \
 		libcap-progs \
 		make \
 		moreutils \
-		oci-image-tools \
-		oci-runtime-tools \
 		python-setuptools \
 		python-xattr \
 		runc \
@@ -50,10 +48,22 @@ RUN zypper -n in \
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
-RUN go get -u github.com/cpuguy83/go-md2man && \
-    go get -u golang.org/x/lint/golint && \
-    go get -u github.com/securego/gosec/cmd/gosec && \
-    go get -u github.com/client9/misspell/cmd/misspell
+RUN go install github.com/cpuguy83/go-md2man/v2@latest && \
+	go install golang.org/x/lint/golint@latest && \
+	go install github.com/securego/gosec/cmd/gosec@latest && \
+	go install github.com/client9/misspell/cmd/misspell@latest
+# FIXME: We need to get an ancient version of oci-runtime-tools because the
+#        config.json conversion we do is technically not spec-compliant due to
+#        an oversight and new versions of oci-runtime-tools verify this.
+#        See <https://github.com/opencontainers/runtime-spec/pull/1197>.
+RUN go install github.com/opencontainers/runtime-tools/cmd/oci-runtime-tool@v0.5.0
+# FIXME: oci-image-tool was basically broken for our needs after v0.3.0 (it
+#        cannot scan image layouts). The source is so old we need to manually
+#        build it (including doing "go mod init").
+RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/oci-image-tools && \
+	( cd /tmp/oci-image-tools && go mod init github.com/opencontainers/image-tools && go mod tidy && go mod vendor; ) && \
+	make -C /tmp/oci-image-tools all install && \
+	rm -rf /tmp/oci-image-tools
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.2
