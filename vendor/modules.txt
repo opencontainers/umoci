@@ -77,7 +77,7 @@ github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
 # golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 golang.org/x/crypto/ripemd160
-# golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
+# golang.org/x/sys v0.5.0
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
