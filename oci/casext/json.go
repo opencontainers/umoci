@@ -33,9 +33,10 @@ import (
 // return the same digest.
 //
 // TODO: Use a proper JSON serialisation library, which actually guarantees
-//       consistent output. Go's JSON library doesn't even attempt to sort
-//       map[...]... objects (which have their iteration order randomised in
-//       Go).
+//
+//	consistent output. Go's JSON library doesn't even attempt to sort
+//	map[...]... objects (which have their iteration order randomised in
+//	Go).
 func (e Engine) PutBlobJSON(ctx context.Context, data interface{}) (digest.Digest, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {

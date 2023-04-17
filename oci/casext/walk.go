@@ -100,7 +100,8 @@ var ErrSkipDescriptor = errors.New("[internal] do not recurse into descriptor")
 // caller.
 //
 // TODO: Also provide Blob to WalkFunc so that callers don't need to load blobs
-//       more than once. This is quite important for remote CAS implementations.
+//
+//	more than once. This is quite important for remote CAS implementations.
 type WalkFunc func(descriptorPath DescriptorPath) error
 
 func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath) (Err error) {

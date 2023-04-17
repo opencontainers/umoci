@@ -33,7 +33,8 @@ import (
 )
 
 // FIXME: We should also implement a raw mode that just does modifications of
-//        JSON blobs (allowing this all to be used outside of our build setup).
+//
+//	JSON blobs (allowing this all to be used outside of our build setup).
 var configCommand = uxHistory(uxTag(cli.Command{
 	Name:  "config",
 	Usage: "modifies the image configuration of an OCI image",

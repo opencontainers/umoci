@@ -29,9 +29,10 @@ import (
 
 // MakeReadOnly makes the given path read-only (by bind-mounting it as "ro").
 // TODO: This should be done through an interface restriction in the test
-//       (which is then backed up by the readonly mount if necessary). The fact
-//       this test is necessary is a sign that we need a better split up of the
-//       CAS interface.
+//
+//	(which is then backed up by the readonly mount if necessary). The fact
+//	this test is necessary is a sign that we need a better split up of the
+//	CAS interface.
 func MakeReadOnly(t *testing.T, path string) {
 	if os.Geteuid() != 0 {
 		t.Skip("readonly tests only work with root privileges")

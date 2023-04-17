@@ -37,10 +37,11 @@ import (
 // (unexpected behaviour may occur otherwise).
 //
 // NOTE: Your ParseFunc must be able to accept a nil Reader (the error
-//       value is not relevant). This is used during registration in order to
-//       determine the type of the struct (thus you must return a struct that
-//       you would return in a non-nil reader scenario). Go doesn't have a way
-//       for us to enforce this.
+//
+//	value is not relevant). This is used during registration in order to
+//	determine the type of the struct (thus you must return a struct that
+//	you would return in a non-nil reader scenario). Go doesn't have a way
+//	for us to enforce this.
 type ParseFunc func(io.Reader) (interface{}, error)
 
 var (

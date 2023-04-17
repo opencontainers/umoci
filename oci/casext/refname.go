@@ -36,10 +36,10 @@ var refnameRegex = regexp.MustCompile(`^([A-Za-z0-9]+(([-._:@+]|--)[A-Za-z0-9]+)
 // OCI specification. This only matches against the MUST requirement, not the
 // SHOULD requirement. The EBNF defined in the specification is:
 //
-//   refname   ::= component ("/" component)*
-//   component ::= alphanum (separator alphanum)*
-//   alphanum  ::= [A-Za-z0-9]+
-//   separator ::= [-._:@+] | "--"
+//	refname   ::= component ("/" component)*
+//	component ::= alphanum (separator alphanum)*
+//	alphanum  ::= [A-Za-z0-9]+
+//	separator ::= [-._:@+] | "--"
 func IsValidReferenceName(refname string) bool {
 	return refnameRegex.MatchString(refname)
 }
@@ -54,7 +54,8 @@ func IsValidReferenceName(refname string) bool {
 // be consulted to resolve the conflict (due to ambiguity in resolution paths).
 //
 // TODO: How are we meant to implement other restrictions such as the
-//       architecture and feature flags? The API will need to change.
+//
+//	architecture and feature flags? The API will need to change.
 func (e Engine) ResolveReference(ctx context.Context, refname string) ([]DescriptorPath, error) {
 	// XXX: It should be possible to override this somehow, in case we are
 	//      dealing with an image that abuses the image specification in some

@@ -36,8 +36,9 @@ import (
 // bad idea to unpack. They are also excluded from Lclearxattr when extracting
 // an archive.
 // XXX: Maybe we should make this configurable so users can manually blacklist
-//      (or even whitelist) xattrs that they actually want included? Like how
-//      GNU tar's xattr setup works.
+//
+//	(or even whitelist) xattrs that they actually want included? Like how
+//	GNU tar's xattr setup works.
 var ignoreXattrs = map[string]struct{}{
 	// SELinux doesn't allow you to set SELinux policies generically. They're
 	// also host-specific. So just ignore them during extraction.

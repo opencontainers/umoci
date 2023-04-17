@@ -23,7 +23,8 @@ import (
 
 // These are populated during "make" using -ldflags "-X ...".
 // TODO: Switch to embedding the version here so that FullVersion() makes sense
-//       even when umoci is used as a library.
+//
+//	even when umoci is used as a library.
 var (
 	version   = "unknown"
 	gitCommit = ""
@@ -31,7 +32,8 @@ var (
 
 // FullVersion returns a fully-qualified version string if one is available.
 // NOTE: This function will return "unknown" if umoci is being used as a "go
-//       get" dependency or binary.
+//
+//	get" dependency or binary.
 func FullVersion() string {
 	v := "unknown"
 	if version != "" {

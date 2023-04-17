@@ -26,7 +26,8 @@ import (
 
 // FtimeGranularity is the filesystem timestamp granularity for this system.
 // TODO: We should probably make this dependent on the path since some
-//       filesystems can have different granularities...
+//
+//	filesystems can have different granularities...
 func FtimeGranularity() time.Duration {
 	// On Linux, most filesystems have nano-second-level granularity.
 	return time.Nanosecond

@@ -135,7 +135,8 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 
 // ManifestStat has information about a given OCI manifest.
 // TODO: Implement support for manifest lists, this should also be able to
-//       contain stat information for a list of manifests.
+//
+//	contain stat information for a list of manifests.
 type ManifestStat struct {
 	// TODO: Flesh this out. Currently it's only really being used to get an
 	//       equivalent of docker-history(1). We really need to add more
@@ -148,8 +149,9 @@ type ManifestStat struct {
 // Format formats a ManifestStat using the default formatting, and writes the
 // result to the given writer.
 // TODO: This should really be implemented in a way that allows for users to
-//       define their own custom templates for different blocks (meaning that
-//       this should use text/template rather than using tabwriters manually.
+//
+//	define their own custom templates for different blocks (meaning that
+//	this should use text/template rather than using tabwriters manually.
 func (ms ManifestStat) Format(w io.Writer) error {
 	// Output history information.
 	tw := tabwriter.NewWriter(w, 4, 2, 1, ' ', 0)
