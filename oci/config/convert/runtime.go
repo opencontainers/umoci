@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/blang/semver/v4"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/runc/libcontainer/user"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
@@ -116,9 +117,24 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 
 	allocateNilStruct(spec)
 
-	// FIXME: We need to figure out if we're modifying an incompatible runtime spec.
-	//spec.Version = rspec.Version
-	spec.Version = "1.0.0"
+	// Default config to our rspec version if none was specified.
+	if spec.Version == "" {
+		spec.Version = curSpecVersion.String()
+	}
+
+	// Make sure that the previous version of the spec is compatible with us.
+	// We cannot operate on specifications that are newer than us (because we
+	// might drop fields that the user finds important).
+	oldVersion, err := semver.Parse(spec.Version)
+	if err != nil {
+		return errors.Wrap(err, "parsing original runtime-spec config version")
+	}
+	if oldVersion.GT(curSpecVersion) {
+		return errors.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
+	}
+	if oldVersion.Major != curSpecVersion.Major {
+		return errors.Errorf("original runtime-spec config version %s is incompatible with version %s: mismatching major number", oldVersion, curSpecVersion)
+	}
 
 	// Set verbatim fields
 	spec.Process.Terminal = true

@@ -20,15 +20,18 @@ package convert
 import (
 	"strings"
 
+	"github.com/blang/semver/v4"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 )
+
+var curSpecVersion = semver.MustParse(rspec.Version)
 
 // Example returns an example spec file, used as a "good sane default".
 // XXX: Really we should just use runc's directly.
 func Example() rspec.Spec {
 	return rspec.Spec{
-		Version: rspec.Version,
+		Version: curSpecVersion.String(),
 		Root: &rspec.Root{
 			Path:     "rootfs",
 			Readonly: false,

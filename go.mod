@@ -5,6 +5,7 @@ go 1.14
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20210401092550-0a8691dafd0d
 	github.com/apex/log v1.9.0
+	github.com/blang/semver/v4 v4.0.0
 	github.com/cyphar/filepath-securejoin v0.2.3
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
