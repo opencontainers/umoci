@@ -6,7 +6,7 @@ require (
 	github.com/davecgh/go-spew v1.1.1
 	github.com/fatih/color v1.13.0
 	github.com/sirupsen/logrus v1.8.1
-	github.com/urfave/cli/v2 v2.10.3
+	github.com/urfave/cli/v2 v2.24.4
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 )
