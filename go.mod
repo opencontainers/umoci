@@ -21,7 +21,7 @@ require (
 	github.com/rootless-containers/proto/go-proto v0.0.0-20210921234734-69430b6543fb
 	github.com/stretchr/testify v1.8.2
 	github.com/urfave/cli v1.22.4
-	github.com/vbatts/go-mtree v0.5.2
+	github.com/vbatts/go-mtree v0.5.3
 	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 	google.golang.org/protobuf v1.30.0
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
