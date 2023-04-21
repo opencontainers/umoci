@@ -14,6 +14,33 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Security ###
+- A security flaw was found in the OCI image-spec, where it is possible to
+  cause a blob with one media-type to be interpreted as a different media-type.
+  As umoci is not a registry nor does it handle signatures, this vulnerability
+  had no real impact on umoci but for safety we implemented the now-recommended
+  media-type embedding and verification. CVE-2021-41190
+
+### Changes ###
+- In this release, the primary development branch was renamed to `main`.
+- The runtime-spec version of the `config.json` version we generate is no
+  longer hard-coded to `1.0.0`. We now use the version of the spec we have
+  imported (with any `-dev` suffix stripped, as such a prefix causes havoc with
+  verification tools -- ideally we would only ever use released versions of the
+  spec but that's not always possible). #452
+
+### Fixed ###
+- In 0.4.7, a performance regression was introduced as part of the
+  `VerifiedReadCloser` hardening work (to read all trailing bytes) which would
+  cause walk operations on images to hash every blob in the image (even blobs
+  which we couldn't parse and thus couldn't recurse into). To resolve this, we
+  no longer recurse into unparseable blobs. #373 #375 #394
+- Handle `EINTR` on `io.Copy` operations. Newer Go versions have added more
+  opportunistic pre-emption which can cause `EINTR` errors in io paths that
+  didn't occur before. #437
+- Quite a few changes were made to CI to try to avoid issues with fragility.
+  #452
+
 ## [0.4.7] - 2021-04-05 ##
 
 ### Security ###
