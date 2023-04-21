@@ -41,10 +41,10 @@ jobs:
       - name: install dependencies
         run: |
           # TODO: Move this to 'make fetch-deps'.
-          GO111MODULE=off go get -u github.com/cpuguy83/go-md2man
-          GO111MODULE=off go get -u golang.org/x/lint/golint
-          GO111MODULE=off go get -u github.com/securego/gosec/cmd/gosec
-          GO111MODULE=off go get -u github.com/client9/misspell/cmd/misspell
+          go install github.com/cpuguy83/go-md2man/v2@latest
+          go install golang.org/x/lint/golint@latest
+          go install github.com/securego/gosec/cmd/gosec@latest
+          go install github.com/client9/misspell/cmd/misspell@latest
       - run: |
           make local-validate
 
@@ -80,17 +80,22 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v3
+      - name: get current date
+        id: date
+        run: |
+          echo "date-weekfmt=$(date '+%Yw%W')" >>"$GITHUB_OUTPUT"
+          echo "date-dayfmt=$(date '+%Y%m%d')" >>"$GITHUB_OUTPUT"
       - name: fetch cached ci image
         id: fetch-ci-image
         uses: actions/cache@v3
         with:
           path: ${{ github.workspace }}/.cache/ci-image.tar.zst
-          key: ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ github.run_id }}
+          key: ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ steps.date.outputs.date-dayfmt }}-${{ github.run_id }}
           restore-keys: |
-            ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-
-            ${{ github.workflow }}-image-${{ runner.os }}-${{ hashFiles('Dockerfile') }}-
-            ${{ github.workflow }}-image-${{ runner.os }}-
-            ${{ github.workflow }}-image-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ steps.date.outputs.date-dayfmt }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-
+            ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-
       - name: build updated ci image
         run: make ci-cache
       - name: upload ci image
@@ -137,7 +142,7 @@ jobs:
           - ubuntu:latest
           - fedora:latest
     env:
-      DOCKER_IMAGE: ${{ matrix.image }}
+      TEST_DOCKER_IMAGE: ${{ matrix.image }}
       COVERAGE: umoci.coverage
     steps:
       - uses: actions/checkout@v3
@@ -146,7 +151,7 @@ jobs:
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
-      - run: make DOCKER_IMAGE=$DOCKER_IMAGE test-integration
+      - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-integration
       - name: codecov
         uses: codecov/codecov-action@v3
         with:

@@ -5,6 +5,9 @@ github.com/AdaLogics/go-fuzz-headers
 ## explicit
 github.com/apex/log
 github.com/apex/log/handlers/cli
+# github.com/blang/semver/v4 v4.0.0
+## explicit
+github.com/blang/semver/v4
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.3

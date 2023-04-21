@@ -20,15 +20,28 @@ package convert
 import (
 	"strings"
 
+	"github.com/blang/semver/v4"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/pkg/errors"
 )
+
+// FIXME: We currently use an unreleased version of the runtime-spec and so we
+// have to modify the version string because OCI specifications use "-dev" as
+// suffix for not-yet-released versions but in such a way that it produces
+// incorrect behaviour. This is compounded with the fact that runtime-tools
+// cannot handle any version other than the single version they were compiled
+// with.
+//
+// For instance, 1.0.2-dev is the development version after the release of
+// 1.0.2, but according to SemVer 1.0.2-dev should be considered older than
+// 1.0.2 (it has a pre-release tag) -- the specs should be using 1.0.2+dev.
+var curSpecVersion = semver.MustParse(strings.TrimSuffix(rspec.Version, "-dev"))
 
 // Example returns an example spec file, used as a "good sane default".
 // XXX: Really we should just use runc's directly.
 func Example() rspec.Spec {
 	return rspec.Spec{
-		Version: rspec.Version,
+		Version: curSpecVersion.String(),
 		Root: &rspec.Root{
 			Path:     "rootfs",
 			Readonly: false,

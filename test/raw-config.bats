@@ -229,8 +229,10 @@ function teardown() {
 	# Check that HOME is set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	export "${lines[@]}"
-	[[ "$HOME" == "/my home dir " ]]
+	(
+		export "${lines[@]}"
+		[[ "$HOME" == "/my home dir " ]]
+	)
 
 	# Modify /etc/passwd and /etc/group.
 	sed -i -e 's|^testuser:x:1337:8888:test user:/my home dir :|testuser:x:3333:2321:a:/another  home:|' "$OLD_ROOTFS/etc/passwd"
@@ -254,8 +256,10 @@ function teardown() {
 	# Check that HOME is set.
 	sane_run jq -SMr '.process.env[]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
-	export "${lines[@]}"
-	[[ "$HOME" == "/another  home" ]]
+	(
+		export "${lines[@]}"
+		[[ "$HOME" == "/another  home" ]]
+	)
 
 	image-verify "${IMAGE}"
 }
@@ -382,9 +386,11 @@ function teardown() {
 	[ "$numDefs" -eq "$numVars" ]
 
 	# Set the variables.
-	export "${lines[@]}"
-	[[ "$VARIABLE1" == "test" ]]
-	[[ "$VARIABLE2" == "what" ]]
+	(
+		export "${lines[@]}"
+		[[ "$VARIABLE1" == "test" ]]
+		[[ "$VARIABLE2" == "what" ]]
+	)
 
 	image-verify "${IMAGE}"
 }

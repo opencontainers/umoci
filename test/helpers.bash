@@ -177,7 +177,7 @@ function gomtree() {
 	# patch applied by openSUSE here:
 	#   <https://build.opensuse.org/package/show/Virtualization:containers/go-mtree>.
 	if [[ "$IS_ROOTLESS" != 0 ]]; then
-		args+=("-rootless")
+		args+=("--rootless")
 	fi
 
 	sane_run "$GOMTREE" -K sha256digest "${args[@]}"

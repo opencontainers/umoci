@@ -182,9 +182,8 @@ doc/man/%.1: doc/man/%.1.md
 .PHONY: docs
 docs: $(MANPAGES)
 
-# Used for tests.
-# TODO: Make this grep the string from Dockerfile.
-DOCKER_IMAGE ?=registry.opensuse.org/opensuse/leap:15.2
+CI_DOCKER_IMAGE ?=$(shell sed -En 's/^FROM\s+(.*)/\1/p' Dockerfile)
+TEST_DOCKER_IMAGE ?=$(shell sed -En 's/^ARG\s+TEST_DOCKER_IMAGE=(.*)/\1/p' Dockerfile)
 
 ifndef COVERAGE
 COVERAGE := $(notdir $(shell mktemp -u umoci.cov.XXXXXX))
@@ -228,12 +227,12 @@ CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
 
 .PHONY: ci-image
 ci-image:
-	docker pull registry.opensuse.org/opensuse/leap:15.2
+	docker pull $(CI_DOCKER_IMAGE)
 	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
 	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
 	                               --progress plain \
 	                               --cache-from $(UMOCI_IMAGE) \
-	                               --build-arg DOCKER_IMAGE=$(DOCKER_IMAGE) \
+	                               --build-arg TEST_DOCKER_IMAGE=$(TEST_DOCKER_IMAGE) \
 	                               --build-arg BUILDKIT_INLINE_CACHE=1 .
 
 .PHONY: ci-cache
