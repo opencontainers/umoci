@@ -67,7 +67,7 @@ github.com/rootless-containers/proto/go-proto
 github.com/russross/blackfriday/v2
 # github.com/sirupsen/logrus v1.8.1
 github.com/sirupsen/logrus
-# github.com/stretchr/testify v1.8.1
+# github.com/stretchr/testify v1.8.2
 ## explicit
 github.com/stretchr/testify/assert
 # github.com/urfave/cli v1.22.4
