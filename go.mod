@@ -1,6 +1,6 @@
 module github.com/opencontainers/umoci
 
-go 1.14
+go 1.18
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20210401092550-0a8691dafd0d
@@ -10,9 +10,7 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
 	github.com/klauspost/pgzip v1.2.5
-	github.com/kr/text v0.2.0 // indirect
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
-	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2
 	github.com/opencontainers/runc v1.1.4
@@ -24,5 +22,20 @@ require (
 	github.com/vbatts/go-mtree v0.5.3
 	golang.org/x/sys v0.0.0-20220704084225-05e143d24a9e
 	google.golang.org/protobuf v1.30.0
+)
+
+require (
+	github.com/cpuguy83/go-md2man/v2 v2.0.2 // indirect
+	github.com/davecgh/go-spew v1.1.1 // indirect
+	github.com/fatih/color v1.13.0 // indirect
+	github.com/kr/text v0.2.0 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-isatty v0.0.14 // indirect
+	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
+	github.com/pmezard/go-difflib v1.0.0 // indirect
+	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/sirupsen/logrus v1.8.1 // indirect
+	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
+	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
