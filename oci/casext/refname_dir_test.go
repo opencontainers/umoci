@@ -53,7 +53,7 @@ type fakeManifest struct {
 }
 
 func init() {
-	fakeManifestParser := mediatype.CustomJSONParser(fakeManifest{})
+	fakeManifestParser := mediatype.JSONParser[fakeManifest]
 
 	mediatype.RegisterParser(customMediaType, fakeManifestParser)
 	mediatype.RegisterTarget(customTargetMediaType)
