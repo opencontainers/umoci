@@ -24,6 +24,8 @@ import (
 	"testing"
 )
 
+// TODO: Replace all of this with "go build -cover".
+
 // Build:
 //  $ go test -c -covermode=count -o umoci \
 //            -cover -coverpkg=github.com/opencontainers/umoci/... \
@@ -59,4 +61,12 @@ func TestUmoci(t *testing.T) {
 			t.Fail()
 		}
 	}
+
+	// Before returning, we change stdout to /dev/null because "go test"
+	// binaries will output information to stdout that interferes with our bats
+	// tests (namely the PASS/FAIL line as well as the coverage information).
+	//
+	// Unfortunately there appears to be no way to block the "--- FAIL:" text
+	// in case of an error...
+	os.Stdout, _ = os.Create(os.DevNull)
 }
