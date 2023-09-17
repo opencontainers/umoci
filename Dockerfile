@@ -51,11 +51,25 @@ RUN go install github.com/cpuguy83/go-md2man/v2@latest && \
 	go install golang.org/x/lint/golint@latest && \
 	go install github.com/securego/gosec/cmd/gosec@latest && \
 	go install github.com/client9/misspell/cmd/misspell@latest
+
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
 #        an oversight and new versions of oci-runtime-tools verify this.
 #        See <https://github.com/opencontainers/runtime-spec/pull/1197>.
-RUN go install github.com/opencontainers/runtime-tools/cmd/oci-runtime-tool@v0.5.0
+#
+#        In addition, there is no go.mod in all released versions up to v0.9.0,
+#        which means that we will pull the latest runtime-spec automatically
+#        which causes validation errors. But we need to forcefully update to
+#        runtime-spec 1.0.2. This is fine.
+#        See <https://github.com/opencontainers/runtime-tools/pull/774>.
+RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp/oci-runtime-tools && \
+	( cd /tmp/oci-runtime-tools && \
+		go mod init github.com/opencontainers/runtime-tools && \
+		go mod tidy && \
+		go get github.com/opencontainers/runtime-spec@v1.0.2 && \
+		go mod vendor; ) && \
+	make -C /tmp/oci-runtime-tools tool install && \
+	rm -rf /tmp/oci-runtime-tools
 # FIXME: oci-image-tool was basically broken for our needs after v0.3.0 (it
 #        cannot scan image layouts). The source is so old we need to manually
 #        build it (including doing "go mod init").
