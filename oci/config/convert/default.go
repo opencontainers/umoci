@@ -166,6 +166,9 @@ func Example() rspec.Spec {
 			},
 			Namespaces: []rspec.LinuxNamespace{
 				{
+					Type: "cgroup",
+				},
+				{
 					Type: "pid",
 				},
 				{
