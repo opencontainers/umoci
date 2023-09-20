@@ -129,11 +129,13 @@ func Open(path string) (*os.File, error) {
 			return errors.Wrap(err, "lstat file")
 		}
 
-		// Add +r permissions to the file.
-		if err := os.Chmod(path, fi.Mode()|0400); err != nil {
-			return errors.Wrap(err, "chmod +r")
+		if fi.Mode()&0400 != 0400 {
+			// Add +r permissions to the file.
+			if err := os.Chmod(path, fi.Mode()|0400); err != nil {
+				return errors.Wrap(err, "chmod +r")
+			}
+			defer fiRestore(path, fi)
 		}
-		defer fiRestore(path, fi)
 
 		// Open the damn thing.
 		fh, err = os.Open(path)
