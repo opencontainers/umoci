@@ -162,9 +162,7 @@ func (g *Generator) AddConfigEnv(name, value string) {
 // ConfigEnv returns the list of environment variables to be used in a container.
 func (g *Generator) ConfigEnv() []string {
 	copy := []string{}
-	for _, v := range g.image.Config.Env {
-		copy = append(copy, v)
-	}
+	copy = append(copy, g.image.Config.Env...)
 	return copy
 }
 
@@ -176,9 +174,7 @@ func (g *Generator) ClearConfigEntrypoint() {
 // SetConfigEntrypoint sets the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
 	copy := []string{}
-	for _, v := range entrypoint {
-		copy = append(copy, v)
-	}
+	copy = append(copy, entrypoint...)
 	g.image.Config.Entrypoint = copy
 }
 
@@ -186,9 +182,7 @@ func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
 func (g *Generator) ConfigEntrypoint() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	copy := []string{}
-	for _, v := range g.image.Config.Entrypoint {
-		copy = append(copy, v)
-	}
+	copy = append(copy, g.image.Config.Entrypoint...)
 	return copy
 }
 
@@ -200,9 +194,7 @@ func (g *Generator) ClearConfigCmd() {
 // SetConfigCmd sets the list of default arguments to the entrypoint of the container.
 func (g *Generator) SetConfigCmd(cmd []string) {
 	copy := []string{}
-	for _, v := range cmd {
-		copy = append(copy, v)
-	}
+	copy = append(copy, cmd...)
 	g.image.Config.Cmd = copy
 }
 
@@ -210,9 +202,7 @@ func (g *Generator) SetConfigCmd(cmd []string) {
 func (g *Generator) ConfigCmd() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	copy := []string{}
-	for _, v := range g.image.Config.Cmd {
-		copy = append(copy, v)
-	}
+	copy = append(copy, g.image.Config.Cmd...)
 	return copy
 }
 
@@ -309,9 +299,7 @@ func (g *Generator) AddRootfsDiffID(diffid digest.Digest) {
 // RootfsDiffIDs returns the the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
 func (g *Generator) RootfsDiffIDs() []digest.Digest {
 	copy := []digest.Digest{}
-	for _, v := range g.image.RootFS.DiffIDs {
-		copy = append(copy, v)
-	}
+	copy = append(copy, g.image.RootFS.DiffIDs...)
 	return copy
 }
 
@@ -328,9 +316,7 @@ func (g *Generator) AddHistory(history ispec.History) {
 // History returns the history of each layer.
 func (g *Generator) History() []ispec.History {
 	copy := []ispec.History{}
-	for _, v := range g.image.History {
-		copy = append(copy, v)
-	}
+	copy = append(copy, g.image.History...)
 	return copy
 }
 
