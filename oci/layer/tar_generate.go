@@ -29,6 +29,7 @@ import (
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/pkg/testutils"
 	"github.com/pkg/errors"
+	"golang.org/x/sys/unix"
 )
 
 // ignoreXattrs is a list of xattr names that should be ignored when
@@ -201,7 +202,10 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// XXX: This should probably be moved to a function in tar_unix.go.
 	names, err := tg.fsEval.Llistxattr(path)
 	if err != nil {
-		return errors.Wrap(err, "get xattr list")
+		if errors.Cause(err) != unix.EOPNOTSUPP {
+			return errors.Wrap(err, "get xattr list")
+		}
+		names = []string{}
 	}
 	for _, name := range names {
 		// Some xattrs need to be skipped for sanity reasons, such as
