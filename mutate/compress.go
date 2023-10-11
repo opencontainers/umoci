@@ -46,7 +46,7 @@ func (gz gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	gzw := gzip.NewWriter(pipeWriter)
-	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
+	if err := gzw.SetConcurrency(256<<12, 2*runtime.NumCPU()); err != nil {
 		return nil, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
 	}
 	go func() {
