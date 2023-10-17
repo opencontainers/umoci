@@ -277,8 +277,8 @@ function teardown() {
 	# Verify that the hashes of the blobs and index match (blobs are
 	# content-addressable so using hashes is a bit silly, but whatever).
 	known_hashes=(
-		"6f3716b8ae2bb4b3fd0a851f5a553946ea351ed5fdda0bd708d325363c0487f7  $IMAGE/index.json"
-		"73ecb862d0ebee78acdf8553d34d1ae5c13df509030ac262e561d096bb480dfc  $IMAGE/blobs/sha256/73ecb862d0ebee78acdf8553d34d1ae5c13df509030ac262e561d096bb480dfc"
+		"b780d08bfed4850ab807b7c308682fae6868ed9c09c0c842063c418ebe2a19fb  $IMAGE/index.json"
+		"27bcd3b4f31740cc087346382aaba3fe1c01872d75ead1bd2b9f7053d2bb3231  $IMAGE/blobs/sha256/27bcd3b4f31740cc087346382aaba3fe1c01872d75ead1bd2b9f7053d2bb3231"
 		"e7013826daf8b5d68f82c5b790ca5e9de222a834f2cb3fe3532030161bd72083  $IMAGE/blobs/sha256/e7013826daf8b5d68f82c5b790ca5e9de222a834f2cb3fe3532030161bd72083"
 		"f4a39a97d97aa834da7ad2d92940f9636a57e3d9b3cc7c53242451b02a6cea89  $IMAGE/blobs/sha256/f4a39a97d97aa834da7ad2d92940f9636a57e3d9b3cc7c53242451b02a6cea89"
 	)

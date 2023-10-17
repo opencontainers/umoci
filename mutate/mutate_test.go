@@ -214,6 +214,7 @@ func TestMutateAdd(t *testing.T) {
 
 	// This isn't a valid image, but whatever.
 	buffer := bytes.NewBufferString("contents")
+	bufferSize := buffer.Len()
 
 	// Add a new layer.
 	annotations := map[string]string{"hello": "world"}
@@ -253,10 +254,18 @@ func TestMutateAdd(t *testing.T) {
 	if mutator.manifest.Layers[1].Digest == expectedLayerDigest {
 		t.Errorf("manifest.Layers[1].Digest is not the same!")
 	}
-	if len(mutator.manifest.Layers[1].Annotations) != 1 || mutator.manifest.Layers[1].Annotations["hello"] != "world" {
-		t.Errorf("manifest.Layers[1].Annotations was not set correctly!")
+	if len(mutator.manifest.Layers[1].Annotations) != 2 {
+		t.Errorf("manifest.Layers[1].Annotations was not set correctly!: %+v", mutator.manifest.Layers[1].Annotations)
 	}
-
+	if mutator.manifest.Layers[1].Annotations["hello"] != "world" {
+		t.Errorf("manifest.Layers[1].Annotations['hello'] was not set correctly!: %+v", mutator.manifest.Layers[1].Annotations)
+	}
+	if mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation] != fmt.Sprintf("%d", bufferSize) {
+		t.Errorf("manifest.Layers[1].Annotations['%s'] was not set correctly!: %q, expected %d",
+			UmociUncompressedBlobSizeAnnotation,
+			mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation],
+			bufferSize)
+	}
 	if mutator.manifest.Layers[1].Digest != newLayerDesc.Digest {
 		t.Fatalf("unexpected digest for new layer: %v %v", mutator.manifest.Layers[1].Digest, newLayerDesc.Digest)
 	}
