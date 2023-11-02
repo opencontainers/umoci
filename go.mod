@@ -10,10 +10,10 @@ require (
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
 	github.com/klauspost/pgzip v1.2.5
+	github.com/moby/sys/user v0.1.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/opencontainers/go-digest v1.0.0
 	github.com/opencontainers/image-spec v1.0.2
-	github.com/opencontainers/runc v1.1.10
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/pkg/errors v0.9.1
 	github.com/rootless-containers/proto/go-proto v0.0.0-20230421021042-4cd87ebadd67
