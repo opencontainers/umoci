@@ -23,8 +23,8 @@ import (
 
 	"github.com/apex/log"
 	"github.com/blang/semver/v4"
+	"github.com/moby/sys/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/opencontainers/runc/libcontainer/user"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/pkg/errors"
