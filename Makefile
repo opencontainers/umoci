@@ -107,7 +107,9 @@ umoci.cover: $(GO_SRC)
 
 .PHONY: release
 release:
-	hack/release.sh -v $(VERSION) -S "$(GPG_KEYID)"
+	hack/release.sh \
+		-a 386 -a amd64 -a arm64 -a ppc64le -a riscv64 -a s390x \
+		-v $(VERSION) -S "$(GPG_KEYID)"
 
 .PHONY: install
 install: umoci docs
