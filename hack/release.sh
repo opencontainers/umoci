@@ -7,16 +7,18 @@
 # file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
 set -Eeuo pipefail
-source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
+# shellcheck source=./readlinkf.sh
+source "$(dirname "${BASH_SOURCE[0]}")/readlinkf.sh"
 
 ## --->
 # Project-specific options and functions. In *theory* you shouldn't need to
 # touch anything else in this script in order to use this elsewhere.
 project="umoci"
-root="$(readlinkf_posix "$(dirname "${BASH_SOURCE}")/..")"
+root="$(readlinkf_posix "$(dirname "${BASH_SOURCE[0]}")/..")"
 
 # These functions allow you to configure how the defaults are computed.
-function get_arch()    { go env GOARCH || uname -m; }
+function get_os()      { go env GOOS ; }
+function get_arch()    { go env GOARCH ; }
 function get_version() { cat "$root/VERSION" ; }
 
 # Any pre-configuration steps should be done here -- for instance ./configure.
@@ -27,7 +29,7 @@ function setup_project() { true ; }
 function build_project() {
 	tmprootfs="$(mktemp -dt "$project-build.XXXXXX")"
 
-	make -C "$root" BUILD_DIR="$tmprootfs" COMMIT_NO= "$project.static"
+	make -C "$root" GOOS="$GOOS" GOARCH="$GOARCH" BUILD_DIR="$tmprootfs" COMMIT_NO= "$project.static"
 	mv "$tmprootfs/$project.static" "$1"
 	rm -rf "$tmprootfs"
 }
@@ -61,22 +63,16 @@ function gpg_cansign() {
 # of the current commit, and generate detached signatures for both.
 keyid=""
 version=""
-arch=""
+targets=("$(get_os)/$(get_arch)")
 commit="HEAD"
 hashcmd="sha256sum"
-while getopts ":h:v:c:o:S:H:" opt; do
+while getopts ":a:c:H:h:o:S:t:v:" opt; do
 	case "$opt" in
-		S)
-			keyid="$OPTARG"
+		a)
+			targets+=("$(get_os)/$OPTARG")
 			;;
 		c)
 			commit="$OPTARG"
-			;;
-		o)
-			outputdir="$OPTARG"
-			;;
-		v)
-			version="$OPTARG"
 			;;
 		H)
 			hashcmd="$OPTARG"
@@ -84,7 +80,19 @@ while getopts ":h:v:c:o:S:H:" opt; do
 		h)
 			usage ; exit 0
 			;;
-		\:)
+		o)
+			outputdir="$OPTARG"
+			;;
+		S)
+			keyid="$OPTARG"
+			;;
+		t)
+			targets+=("$OPTARG")
+			;;
+		v)
+			version="$OPTARG"
+			;;
+		:)
 			echo "Missing argument: -$OPTARG" >&2
 			usage ; exit 1
 			;;
@@ -101,10 +109,10 @@ done
 # Generate the defaults for version and so on *after* argument parsing and
 # setup_project, to avoid calling get_version() needlessly.
 version="${version:-$(get_version)}"
-arch="${arch:-$(get_arch)}"
 outputdir="${outputdir:-release/$version}"
 
 log "[[ $project ]]"
+log "targets: ${targets[*]}"
 log "version: $version"
 log "commit: $commit"
 log "output_dir: $outputdir"
@@ -118,13 +126,18 @@ set -x
 rm -rf "$outputdir" && mkdir -p "$outputdir"
 
 # Build project.
-build_project "$outputdir/$project.$arch"
+for target in "${targets[@]}"; do
+	target="${target//\//.}"
+	os="$(cut -d. -f1 <<<"$target")"
+	arch="$(cut -d. -f2 <<<"$target")"
+	GOOS="$os" GOARCH="$arch" build_project "$outputdir/$project.$target"
+done
 
 # Generate new archive.
 git archive --format=tar --prefix="$project-$version/" "$commit" | xz > "$outputdir/$project.tar.xz"
 
 # Generate sha256 checksums for both.
-( cd "$outputdir" ; "$hashcmd" "$project".{"$arch",tar.xz} > "$project.$hashcmd" ; )
+( cd "$outputdir" ; "$hashcmd" "$project".* > "$project.$hashcmd" ; )
 
 # Set up the gpgflags.
 gpgflags=()
@@ -132,7 +145,10 @@ gpgflags=()
 gpg_cansign "${gpgflags[@]}" || quit "Could not find suitable GPG key, skipping signing step."
 
 # Sign everything.
-gpg "${gpgflags[@]}" --detach-sign --armor "$outputdir/$project.$arch"
+for target in "${targets[@]}"; do
+	target="${target//\//.}"
+	gpg "${gpgflags[@]}" --detach-sign --armor "$outputdir/$project.$target"
+done
 gpg "${gpgflags[@]}" --detach-sign --armor "$outputdir/$project.tar.xz"
 gpg "${gpgflags[@]}" --clear-sign --armor \
 	--output "$outputdir/$project.$hashcmd"{.tmp,} && \

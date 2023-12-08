@@ -26,6 +26,18 @@ on:
     - cron: '0 0 * * *'
 
 jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+      - uses: actions/setup-go@v5
+      - run: make release
+      - name: upload artifacts
+        uses: actions/upload-artifact@v3
+        with:
+          name: release-${{ github.run_id }}
+          path: release/*
+
   validate:
     runs-on: ubuntu-latest
     steps:
