@@ -156,9 +156,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			MediaType: ispec.MediaTypeImageManifest,
 			Config:    configDescriptor,
 		}
-		for _, layer := range layerDescriptors {
-			manifest.Layers = append(manifest.Layers, layer)
-		}
+		manifest.Layers = append(manifest.Layers, layerDescriptors...)
 
 		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(ctx, manifest)
 		if err != nil {
