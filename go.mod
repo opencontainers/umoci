@@ -6,7 +6,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1
 	github.com/apex/log v1.9.0
 	github.com/blang/semver/v4 v4.0.0
-	github.com/cyphar/filepath-securejoin v0.2.3
+	github.com/cyphar/filepath-securejoin v0.2.4
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
 	github.com/klauspost/pgzip v1.2.5
