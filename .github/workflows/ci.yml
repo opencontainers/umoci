@@ -33,7 +33,7 @@ jobs:
       - uses: actions/setup-go@v5
       - run: make release
       - name: upload artifacts
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: release-${{ github.run_id }}
           path: release/*
@@ -83,7 +83,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: unit,macos
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.COVERAGE }}
@@ -111,7 +111,7 @@ jobs:
       - name: build updated ci image
         run: make ci-cache
       - name: upload ci image
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/ci-image.tar.zst
@@ -125,7 +125,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: download ci image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
@@ -136,7 +136,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: unit,linux
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.COVERAGE }}
@@ -159,7 +159,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: download ci image
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
@@ -170,7 +170,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: integration,linux
       - name: upload coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.COVERAGE }}
@@ -186,7 +186,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: download all coverage
-        uses: actions/download-artifact@v3
+        uses: actions/download-artifact@v4
         with:
           path: coverage
       - name: compute coverage
@@ -194,7 +194,7 @@ jobs:
           find coverage/ -type f -name "*coverage*" -print0 | xargs -0 ./hack/collate.awk > "$COVERAGE"
           ./hack/ci-coverage.sh "$COVERAGE"
       - name: upload final coverage
-        uses: actions/upload-artifact@v3
+        uses: actions/upload-artifact@v4
         with:
           name: coverage
           path: ${{ env.COVERAGE }}
