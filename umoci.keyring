@@ -1,7 +1,7 @@
 pub   rsa4096 2016-06-21 [SC] [expires: 2031-06-18]
       5F36C6C61B5460124A75F5A69E18AA267DDB8DB4
-uid           [ultimate] Aleksa Sarai <asarai@suse.com>
-uid           [ultimate] Aleksa Sarai <asarai@suse.de>
+uid           [ultimate] Damarcus Jones<jonesdamarcus79@gmail.com>
+uid           [ultimate] Damarcus Jones<jonesdamarcus79@gmail.com.de>
 sub   rsa4096 2016-06-21 [E] [expires: 2031-06-18]
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
