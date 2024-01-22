@@ -219,10 +219,14 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		//       (we'd need to use libcap to parse it).
 		value, err := tg.fsEval.Lgetxattr(path, name)
 		if err != nil {
-			// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
-			//      fail with EPERM. If it can, we should ignore it (like when
-			//      we try to clear xattrs).
-			return errors.Wrapf(err, "get xattr: %s", name)
+			v := errors.Cause(err)
+			log.Debugf("failure reading xattr from list on %q: %q", name, v)
+			if v != unix.EOPNOTSUPP && v != unix.ENODATA && v != unix.EPERM {
+				// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
+				//      fail with EPERM. If it can, we should ignore it (like when
+				//      we try to clear xattrs).
+				return errors.Wrapf(err, "get xattr: %s", name)
+			}
 		}
 		// https://golang.org/issues/20698 -- We don't just error out here
 		// because it's not _really_ a fatal error. Currently it's unclear
