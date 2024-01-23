@@ -24,6 +24,7 @@ package mutate
 
 import (
 	"context"
+	"fmt"
 	"io"
 	"reflect"
 	"time"
@@ -35,6 +36,8 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/pkg/errors"
 )
+
+const UmociUncompressedBlobSizeAnnotation = "ci.umo.uncompressed_blob_size"
 
 func configPtr(c ispec.Image) *ispec.Image         { return &c }
 func manifestPtr(m ispec.Manifest) *ispec.Manifest { return &m }
@@ -293,6 +296,13 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	compressedMediaType := mediaType
 	if compressor.MediaTypeSuffix() != "" {
 		compressedMediaType = compressedMediaType + "+" + compressor.MediaTypeSuffix()
+	}
+
+	if annotations == nil {
+		annotations = make(map[string]string)
+	}
+	if compressor.BytesRead() >= 0 {
+		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", compressor.BytesRead())
 	}
 
 	// Append to layers.
