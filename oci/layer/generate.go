@@ -142,6 +142,12 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 
 		tg := newTarGenerator(writer, packOptions.MapOptions)
 
+		defer func() {
+			if err := tg.tw.Close(); err != nil {
+				log.Warnf("generate insert layer: could not close tar.Writer: %s", err)
+			}
+		}()
+
 		if opaque {
 			if err := tg.AddOpaqueWhiteout(target); err != nil {
 				return err
