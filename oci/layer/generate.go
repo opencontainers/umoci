@@ -54,7 +54,9 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	go func() (Err error) {
 		// Close with the returned error.
 		defer func() {
-			log.Warnf("could not generate layer: %v", Err)
+			if Err != nil {
+				log.Warnf("could not generate layer: %v", Err)
+			}
 			// #nosec G104
 			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
 		}()
@@ -135,7 +137,9 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 
 	go func() (Err error) {
 		defer func() {
-			log.Warnf("could not generate insert layer: %v", Err)
+			if Err != nil {
+				log.Warnf("could not generate insert layer: %v", Err)
+			}
 			// #nosec G104
 			_ = writer.CloseWithError(errors.Wrap(Err, "generate insert layer"))
 		}()
