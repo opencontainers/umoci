@@ -99,7 +99,21 @@ function requires() {
 }
 
 function image-verify() {
-	oci-image-tool validate --type "imageLayout" "$@"
+	local ocidir="$@"
+	# test that each generated targz file is valid according to gnutar:
+	for f in $(ls $ocidir/blobs/sha256/); do
+		file $ocidir/blobs/sha256/$f | grep "gzip" || {
+			continue
+		}
+		zcat $ocidir/blobs/sha256/$f | tar tvf - >/dev/null || {
+			rc=$?
+			file $ocidir/blobs/sha256/$f
+			echo "error untarring $f: $rc"
+			return $rc
+		}
+		echo $f: valid tar archive
+	done
+	oci-image-tool validate --type "imageLayout" "$ocidir"
 	return $?
 }
 
