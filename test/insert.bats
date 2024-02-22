@@ -45,6 +45,7 @@ function teardown() {
 	touch "${INSERTDIR}/test/a"
 	touch "${INSERTDIR}/test/b"
 	chmod +x "${INSERTDIR}/test/b"
+	echo "foo" > "${INSERTDIR}/test/smallfile"
 
 	# Make sure rootless mode works.
 	mkdir -p "${INSERTDIR}/some/path"
@@ -65,6 +66,10 @@ function teardown() {
 	image-verify "${IMAGE}"
 
 	umoci insert --image "${IMAGE}:${TAG}" --tag "${TAG}-new" "${INSERTDIR}/some" /rootless
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/test/smallfile" /tester/smallfile
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
