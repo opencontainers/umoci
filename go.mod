@@ -21,7 +21,7 @@ require (
 	github.com/urfave/cli v1.22.12
 	github.com/vbatts/go-mtree v0.5.3
 	golang.org/x/sys v0.18.0
-	google.golang.org/protobuf v1.32.0
+	google.golang.org/protobuf v1.33.0
 )
 
 require (
