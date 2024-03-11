@@ -5,7 +5,7 @@ weight = 50
 
 umoci has first class support for [rootless containers][rootlesscontaine.rs],
 and in particular it supports rootless unpacking. This means that an
-unprivileged user can unpack and repack and image (which is not traditionally
+unprivileged user can unpack and repack an image (which is not traditionally
 possible for most images), as well as generate a runtime configuration that can
 be used by runc to start a rootless container.
 
