@@ -19,6 +19,7 @@ package layer
 
 import (
 	"archive/tar"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -27,6 +28,7 @@ import (
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/pkg/errors"
+	"github.com/pkg/xattr"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
@@ -230,7 +232,7 @@ func InnerErrno(err error) error {
 
 // isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
 // whiteout (i.e. mknod c 0 0) and false otherwise.
-func isOverlayWhiteout(info os.FileInfo) (bool, error) {
+func isOverlayWhiteout(info os.FileInfo, path string) (bool, error) {
 	var major, minor uint32
 	switch stat := info.Sys().(type) {
 	case *unix.Stat_t:
@@ -243,6 +245,23 @@ func isOverlayWhiteout(info os.FileInfo) (bool, error) {
 		return false, errors.Errorf("[internal error] unknown stat info type %T", info.Sys())
 	}
 
-	return major == 0 && minor == 0 &&
-		info.Mode()&os.ModeCharDevice != 0, nil
+	if major == 0 && minor == 0 &&
+		info.Mode()&os.ModeCharDevice != 0 {
+		return true, nil
+	}
+
+	fmt.Printf("PATH=%s before ATTR\n", path)
+
+	attr, err := xattr.LGet("user.overlay.opaque", path)
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return false, errors.Errorf("[internal error] failed to get extended attrs for %s, err:%v", path, err)
+	}
+
+	if string(attr) == "y" {
+		return true, nil
+	}
+
+	fmt.Printf("PATH=%s after ATTR=%+v\n", path, string(attr))
+
+	return false, nil
 }

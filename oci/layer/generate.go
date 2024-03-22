@@ -18,6 +18,7 @@
 package layer
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -88,7 +89,8 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 						return errors.Wrapf(err, "couldn't determine overlay whiteout for %s", fullPath)
 					}
 
-					whiteout, err := isOverlayWhiteout(fi)
+					fmt.Printf("MTREE path\n")
+					whiteout, err := isOverlayWhiteout(fi, fullPath)
 					if err != nil {
 						return err
 					}
@@ -166,7 +168,8 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			}
 
 			pathInTar := path.Join(target, curPath[len(root):])
-			whiteout, err := isOverlayWhiteout(info)
+			fmt.Printf("TAR path\n")
+			whiteout, err := isOverlayWhiteout(info, curPath)
 			if err != nil {
 				return err
 			}
@@ -175,6 +178,7 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 				return tg.AddWhiteout(pathInTar)
 			}
 
+			fmt.Printf("TAR ADDING here: %s wo: %v\n", curPath, whiteout)
 			return tg.AddFile(pathInTar, curPath)
 		})
 	}()

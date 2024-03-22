@@ -19,6 +19,7 @@ package layer
 
 import (
 	"archive/tar"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -208,6 +209,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		names = []string{}
 	}
 	for _, name := range names {
+		fmt.Printf("TAR GENERATE: %s path:%s\n", name, path)
 		// Some xattrs need to be skipped for sanity reasons, such as
 		// security.selinux, because they are very much host-specific and
 		// carrying them to other hosts would be a really bad idea.
@@ -240,6 +242,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		// this conversion (while it might look a bit wrong) is actually fine.
 		hdr.Xattrs[name] = string(value)
 	}
+	fmt.Printf("XATTRS %+v\n", hdr.Xattrs)
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to
 	// handle this in a way that makes anything other than GNU/Linux happy

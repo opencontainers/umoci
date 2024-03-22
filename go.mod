@@ -16,6 +16,7 @@ require (
 	github.com/opencontainers/runc v1.1.8
 	github.com/opencontainers/runtime-spec v1.0.3-0.20210326190908-1c3f411f0417
 	github.com/pkg/errors v0.9.1
+	github.com/pkg/xattr v0.4.9
 	github.com/rootless-containers/proto/go-proto v0.0.0-20230421021042-4cd87ebadd67
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.12
