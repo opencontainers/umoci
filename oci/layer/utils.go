@@ -26,9 +26,9 @@ import (
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/pkg/errors"
-	"github.com/pkg/xattr"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
@@ -232,7 +232,7 @@ func InnerErrno(err error) error {
 
 // isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
 // whiteout (i.e. mknod c 0 0) and false otherwise.
-func isOverlayWhiteout(info os.FileInfo, path string) (bool, error) {
+func isOverlayWhiteout(info os.FileInfo, path string, fseval fseval.FsEval) (bool, error) {
 	var major, minor uint32
 	switch stat := info.Sys().(type) {
 	case *unix.Stat_t:
@@ -250,18 +250,21 @@ func isOverlayWhiteout(info os.FileInfo, path string) (bool, error) {
 		return true, nil
 	}
 
+	names, err := fseval.Llistxattr(path)
+	fmt.Printf("NAMES=%+v err:%v\n", names, err)
+
 	fmt.Printf("PATH=%s before ATTR\n", path)
 
-	attr, err := xattr.LGet("user.overlay.opaque", path)
-	if err != nil && !errors.Is(err, os.ErrNotExist) {
+	attr, err := fseval.Lgetxattr(path, "user.overlay.opaque")
+	if err != nil && !errors.Is(err, os.ErrNotExist) && !errors.Is(err, syscall.ENODATA) {
 		return false, errors.Errorf("[internal error] failed to get extended attrs for %s, err:%v", path, err)
 	}
+
+	fmt.Printf("PATH=%s after ATTR=%+v\n", path, string(attr))
 
 	if string(attr) == "y" {
 		return true, nil
 	}
-
-	fmt.Printf("PATH=%s after ATTR=%+v\n", path, string(attr))
 
 	return false, nil
 }
