@@ -253,7 +253,7 @@ func isOverlayWhiteout(info os.FileInfo, fullPath string, fsEval fseval.FsEval) 
 	attr, err := fsEval.Lgetxattr(fullPath, "user.overlay.opaque")
 	if err != nil {
 		v := errors.Cause(err)
-		if !errors.Is(err, os.ErrNotExist) && v != unix.EOPNOTSUPP && v != unix.ENODATA && v != unix.EPERM {
+		if !errors.Is(err, os.ErrNotExist) && v != unix.EOPNOTSUPP && v != unix.ENODATA && v != unix.EPERM && v != unix.EACCES {
 			return false, errors.Errorf("[internal error] unknown stat info type %T", info.Sys())
 		}
 
