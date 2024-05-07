@@ -20,7 +20,7 @@ require (
 	github.com/stretchr/testify v1.8.4
 	github.com/urfave/cli v1.22.12
 	github.com/vbatts/go-mtree v0.5.3
-	golang.org/x/sys v0.19.0
+	golang.org/x/sys v0.20.0
 	google.golang.org/protobuf v1.34.0
 )
 
