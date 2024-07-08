@@ -5,4 +5,5 @@
 .vet
 .staticcheck
 .gocyclo
-gomtree
+/gomtree
+main

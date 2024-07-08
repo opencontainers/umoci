@@ -5,13 +5,13 @@ CWD := $(shell pwd)
 SOURCE_FILES := $(shell find . -type f -name "*.go")
 CLEAN_FILES := *~
 TAGS :=
-ARCHES := linux,386 linux,amd64 linux,arm linux,arm64 openbsd,amd64 windows,amd64 darwin,amd64
+ARCHES := linux,386 linux,amd64 linux,arm linux,arm64 linux,mips64 linux,riscv64 openbsd,amd64 windows,amd64 windows,arm64 darwin,amd64 darwin,arm64
 GO_VER := go1.14
 
 default: build validation
 
 .PHONY: validation
-validation: .test .lint .vet .cli.test
+validation: .test .vet .cli.test
 
 .PHONY: validation.tags
 validation.tags: .test.tags .vet.tags .cli.test .staticcheck
@@ -50,11 +50,7 @@ lint: .lint
 CLEAN_FILES += .lint
 
 .lint: $(SOURCE_FILES)
-	@if [ "$(findstring $(GO_VER),$(shell go version))" != "" ] ; then \
-		set -e ; for dir in $(NO_VENDOR_DIR) ; do golint -set_exit_status $$dir ; done && touch $@ \
-	else \
-		touch $@ ; \
-	fi
+	set -e ; golangci-lint run && touch $@
 
 .PHONY: vet
 vet: .vet .vet.tags
@@ -82,15 +78,13 @@ CLEAN_FILES += .cli.test .cli.test.tags
 build: $(BUILD)
 
 $(BUILD): $(SOURCE_FILES)
-	go build -mod=vendor -o $(BUILD) $(BUILDPATH)
+	go build -ldflags="-X 'main.Version=$(shell git describe --always --dirty)'" -mod=vendor -o $(BUILD) $(BUILDPATH)
 
 install.tools:
-	@go install -u github.com/fatih/color@latest ; \
-	go install -u github.com/fzipp/gocyclo/cmd/gocyclo@latest ; \
-	go install -u honnef.co/go/tools/cmd/staticcheck@latest ; \
-	if [ "$(findstring $(GO_VER),$(shell go version))" != "" ] ; then \
-		go get -u golang.org/x/lint/golint ;\
-	fi
+	@go install github.com/fatih/color@latest ; \
+	go install github.com/fzipp/gocyclo/cmd/gocyclo@latest ; \
+	go install honnef.co/go/tools/cmd/staticcheck@latest ; \
+	go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest
 
 ./bin:
 	mkdir -p $@
