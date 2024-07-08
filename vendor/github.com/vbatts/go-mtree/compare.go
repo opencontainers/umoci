@@ -459,7 +459,8 @@ func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]Ino
 // InodeDeltas.
 //
 // NB: The order of the parameters matters (old, new) because Extra and
-//     Missing are considered as different discrepancy types.
+//
+//	Missing are considered as different discrepancy types.
 func Compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword) ([]InodeDelta, error) {
 	return compare(oldDh, newDh, keys, false)
 }

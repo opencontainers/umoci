@@ -2,6 +2,7 @@ package mtree
 
 import (
 	"container/heap"
+	"fmt"
 	"os"
 	"sort"
 
@@ -23,7 +24,12 @@ func Update(root string, dh *DirectoryHierarchy, keywords []Keyword, fs FsEval) 
 	creator := dhCreator{DH: dh}
 	curDir, err := os.Getwd()
 	if err == nil {
-		defer os.Chdir(curDir)
+		defer func() {
+			err := os.Chdir(curDir)
+			if err != nil {
+				logrus.Warn(fmt.Errorf("failed to change directory to %q: %w", curDir, err))
+			}
+		}()
 	}
 
 	if err := os.Chdir(root); err != nil {

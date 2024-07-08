@@ -8,7 +8,7 @@ github.com/apex/log/handlers/cli
 # github.com/blang/semver/v4 v4.0.0
 ## explicit; go 1.14
 github.com/blang/semver/v4
-# github.com/cpuguy83/go-md2man/v2 v2.0.2
+# github.com/cpuguy83/go-md2man/v2 v2.0.4
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/cyphar/filepath-securejoin v0.2.5
@@ -20,8 +20,8 @@ github.com/davecgh/go-spew/spew
 # github.com/docker/go-units v0.5.0
 ## explicit
 github.com/docker/go-units
-# github.com/fatih/color v1.13.0
-## explicit; go 1.13
+# github.com/fatih/color v1.17.0
+## explicit; go 1.17
 github.com/fatih/color
 # github.com/klauspost/compress v1.11.3
 ## explicit; go 1.13
@@ -36,11 +36,11 @@ github.com/klauspost/compress/zstd/internal/xxhash
 github.com/klauspost/pgzip
 # github.com/kr/text v0.2.0
 ## explicit
-# github.com/mattn/go-colorable v0.1.12
-## explicit; go 1.13
+# github.com/mattn/go-colorable v0.1.13
+## explicit; go 1.15
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.14
-## explicit; go 1.12
+# github.com/mattn/go-isatty v0.0.20
+## explicit; go 1.15
 github.com/mattn/go-isatty
 # github.com/moby/sys/user v0.1.0
 ## explicit; go 1.17
@@ -72,7 +72,7 @@ github.com/rootless-containers/proto/go-proto
 # github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
-# github.com/sirupsen/logrus v1.9.0
+# github.com/sirupsen/logrus v1.9.3
 ## explicit; go 1.13
 github.com/sirupsen/logrus
 # github.com/stretchr/testify v1.8.4
@@ -81,13 +81,13 @@ github.com/stretchr/testify/assert
 # github.com/urfave/cli v1.22.12
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/vbatts/go-mtree v0.5.3
+# github.com/vbatts/go-mtree v0.5.4
 ## explicit; go 1.17
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
-# golang.org/x/crypto v0.8.0
-## explicit; go 1.17
+# golang.org/x/crypto v0.24.0
+## explicit; go 1.18
 golang.org/x/crypto/ripemd160
 # golang.org/x/sys v0.22.0
 ## explicit; go 1.18

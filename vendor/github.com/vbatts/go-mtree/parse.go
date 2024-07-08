@@ -72,28 +72,35 @@ func ParseSpec(r io.Reader) (*DirectoryHierarchy, error) {
 					break
 				}
 			}
+
 			// parse the options
 			f := strings.Fields(str)
-			e.Name = filepath.Clean(f[0])
+			e.Name = f[0]
+			e.Keywords = StringToKeyVals(f[1:])
+			// TODO: gather keywords if using tar stream
+			var isDir bool
+			for _, kv := range e.Keywords {
+				if kv.Keyword() == "type" {
+					isDir = kv.Value() == "dir"
+				}
+			}
 			if strings.Contains(e.Name, "/") {
 				e.Type = FullType
 			} else {
 				e.Type = RelativeType
-			}
-			e.Keywords = StringToKeyVals(f[1:])
-			// TODO: gather keywords if using tar stream
-			e.Parent = creator.curDir
-			for i := range e.Keywords {
-				kv := KeyVal(e.Keywords[i])
-				if kv.Keyword() == "type" {
-					if kv.Value() == "dir" {
-						creator.curDir = &e
-					} else {
-						creator.curEnt = &e
-					}
+				e.Parent = creator.curDir
+				if isDir {
+					creator.curDir = &e
 				}
 			}
+			if !isDir {
+				creator.curEnt = &e
+			}
 			e.Set = creator.curSet
+			// we need to clean the filepath at the end because '/'s can be
+			// stripped, which would cause FullTypes to be treated as
+			// RelativeTypes above
+			e.Name = filepath.Clean(e.Name)
 		default:
 			// TODO(vbatts) log a warning?
 			continue
