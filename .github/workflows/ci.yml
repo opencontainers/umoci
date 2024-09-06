@@ -99,7 +99,7 @@ jobs:
           echo "date-dayfmt=$(date '+%Y%m%d')" >>"$GITHUB_OUTPUT"
       - name: fetch cached ci image
         id: fetch-ci-image
-        uses: actions/cache@v3
+        uses: actions/cache@v4
         with:
           path: ${{ github.workspace }}/.cache/ci-image.tar.zst
           key: ${{ github.workflow }}-image-${{ steps.date.outputs.date-weekfmt }}-${{ hashFiles('Dockerfile') }}-${{ github.sha }}-${{ steps.date.outputs.date-dayfmt }}-${{ github.run_id }}
