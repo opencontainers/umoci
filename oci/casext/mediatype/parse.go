@@ -27,21 +27,22 @@ import (
 	"github.com/pkg/errors"
 )
 
+// ErrNilReader is returned by the parsers in this package when they are called
+// with a nil Reader. You may use this error for the same purpose if you wish,
+// but it's not required.
+var ErrNilReader = errors.New("")
+
 // ParseFunc is a parser that is registered for a given mediatype and called
 // to parse a blob if it is encountered. If possible, the blob should be
 // represented as a native Go object (with all Descriptors represented as
 // ispec.Descriptor objects) -- this will allow umoci to recursively discover
 // blob dependencies.
 //
-// Currently, we require the returned interface{} to be a raw struct
-// (unexpected behaviour may occur otherwise).
-//
-// NOTE: Your ParseFunc must be able to accept a nil Reader (the error
-//
-//	value is not relevant). This is used during registration in order to
-//	determine the type of the struct (thus you must return a struct that
-//	you would return in a non-nil reader scenario). Go doesn't have a way
-//	for us to enforce this.
+// NOTE: Your ParseFunc must be able to accept a nil Reader (the error value is
+// not relevant) and must return a struct. This is used during registration in
+// order to determine the type of the struct (thus you must return the same
+// struct you would return in a non-nil reader scenario). Go doesn't have a way
+// for us to enforce this.
 type ParseFunc func(io.Reader) (interface{}, error)
 
 var (
@@ -80,12 +81,21 @@ func GetParser(mediaType string) ParseFunc {
 
 // RegisterParser registers a new ParseFunc to be used when the given
 // media-type is encountered during parsing or recursive walks of blobs. See
-// the documentation of ParseFunc for more detail.
+// the documentation of ParseFunc for more detail. The returned ParseFunc must
+// return a struct.
 func RegisterParser(mediaType string, parser ParseFunc) {
 	// Get the return type so we know what packages are white-listed for
 	// recursion. #nosec G104
 	v, _ := parser(nil)
 	t := reflect.TypeOf(v)
+
+	// Ensure the returned type is actually a struct. Ideally we would detect
+	// this with generics but this seems to not be possible with Go generics
+	// (circa Go 1.20).
+	if t.Kind() != reflect.Struct {
+		// This should never happen, and is a programmer bug.
+		panic("parser given to RegisterParser doesn't return a struct{}")
+	}
 
 	// Register the parser and package.
 	lock.Lock()
@@ -94,8 +104,8 @@ func RegisterParser(mediaType string, parser ParseFunc) {
 	packages[t.PkgPath()] = struct{}{}
 	lock.Unlock()
 
-	// This should never happen, and is a programmer bug.
 	if old {
+		// This should never happen, and is a programmer bug.
 		panic("RegisterParser() called with already-registered media-type: " + mediaType)
 	}
 }
@@ -125,40 +135,39 @@ func RegisterTarget(mediaType string) {
 	lock.Unlock()
 }
 
-// CustomJSONParser creates a custom ParseFunc which JSON-decodes blob data
-// into the type of the given value (which *must* be a struct, otherwise
-// CustomJSONParser will panic). This is intended to make ergonomic use of
-// RegisterParser much simpler.
-func CustomJSONParser(v interface{}) ParseFunc {
-	t := reflect.TypeOf(v)
-	// These should never happen and are programmer bugs.
-	if t == nil {
-		panic("CustomJSONParser() called with nil interface!")
+// JSONParser is a minimal wrapper around
+//
+//	var v T
+//	return json.NewDecoder(rdr).Decode(&v)
+//
+// But also handling the rdr == nil case which is needed for RegisterParser to
+// correctly detect what type T is. T must be a struct (this is verified by
+// RegisterParser).
+func JSONParser[T any](rdr io.Reader) (_ interface{}, err error) {
+	var v T
+	if rdr != nil {
+		err = json.NewDecoder(rdr).Decode(&v)
+	} else {
+		// must not return a nil interface{}
+		err = ErrNilReader
 	}
-	if t.Kind() != reflect.Struct {
-		panic("CustomJSONParser() called with non-struct kind!")
-	}
-	return func(rdr io.Reader) (_ interface{}, err error) {
-		ptr := reflect.New(t)
-		if rdr != nil {
-			err = json.NewDecoder(rdr).Decode(ptr.Interface())
-		}
-		ret := reflect.Indirect(ptr)
-		return ret.Interface(), err
-	}
+	return v, err
 }
 
 func indexParser(rdr io.Reader) (interface{}, error) {
-	// Construct a fake struct which contains bad fields. CVE-2021-41190
+	// Construct a fake struct which contains fields that shouldn't exist, to
+	// detect images that have maliciously-inserted fields. CVE-2021-41190
 	var index struct {
 		ispec.Index
 		Config json.RawMessage `json:"config,omitempty"`
 		Layers json.RawMessage `json:"layers,omitempty"`
 	}
-	if rdr != nil {
-		if err := json.NewDecoder(rdr).Decode(&index); err != nil {
-			return nil, err
-		}
+	if rdr == nil {
+		// must not return a nil interface{}
+		return index, ErrNilReader
+	}
+	if err := json.NewDecoder(rdr).Decode(&index); err != nil {
+		return nil, err
 	}
 	if index.MediaType != "" && index.MediaType != ispec.MediaTypeImageIndex {
 		return nil, errors.Errorf("malicious image detected: index contained incorrect mediaType: %s", index.MediaType)
@@ -173,15 +182,18 @@ func indexParser(rdr io.Reader) (interface{}, error) {
 }
 
 func manifestParser(rdr io.Reader) (interface{}, error) {
-	// Construct a fake struct which contains bad fields. CVE-2021-41190
+	// Construct a fake struct which contains fields that shouldn't exist, to
+	// detect images that have maliciously-inserted fields. CVE-2021-41190
 	var manifest struct {
 		ispec.Manifest
 		Manifests json.RawMessage `json:"manifests,omitempty"`
 	}
-	if rdr != nil {
-		if err := json.NewDecoder(rdr).Decode(&manifest); err != nil {
-			return nil, err
-		}
+	if rdr == nil {
+		// must not return a nil interface{}
+		return manifest, ErrNilReader
+	}
+	if err := json.NewDecoder(rdr).Decode(&manifest); err != nil {
+		return nil, err
 	}
 	if manifest.MediaType != "" && manifest.MediaType != ispec.MediaTypeImageManifest {
 		return nil, errors.Errorf("malicious manifest detected: manifest contained incorrect mediaType: %s", manifest.MediaType)
@@ -194,9 +206,9 @@ func manifestParser(rdr io.Reader) (interface{}, error) {
 
 // Register the core image-spec types.
 func init() {
-	RegisterParser(ispec.MediaTypeDescriptor, CustomJSONParser(ispec.Descriptor{}))
+	RegisterParser(ispec.MediaTypeDescriptor, JSONParser[ispec.Descriptor])
 	RegisterParser(ispec.MediaTypeImageIndex, indexParser)
-	RegisterParser(ispec.MediaTypeImageConfig, CustomJSONParser(ispec.Image{}))
+	RegisterParser(ispec.MediaTypeImageConfig, JSONParser[ispec.Image])
 
 	RegisterTarget(ispec.MediaTypeImageManifest)
 	RegisterParser(ispec.MediaTypeImageManifest, manifestParser)
