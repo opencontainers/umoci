@@ -9,7 +9,7 @@ require (
 	github.com/cyphar/filepath-securejoin v0.2.5
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
-	github.com/klauspost/pgzip v1.2.5
+	github.com/klauspost/pgzip v1.2.6
 	github.com/moby/sys/user v0.3.0
 	github.com/mohae/deepcopy v0.0.0-20170929034955-c48cc78d4826
 	github.com/opencontainers/go-digest v1.0.0
