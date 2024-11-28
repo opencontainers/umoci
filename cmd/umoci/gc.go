@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,10 +19,11 @@ package main
 
 import (
 	"context"
+	"errors"
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -42,10 +43,10 @@ root set of references. All other blobs will be removed.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 0 {
-			return errors.Errorf("invalid number of positional arguments: expected none")
+			return errors.New("invalid number of positional arguments: expected none")
 		}
 		if _, ok := ctx.App.Metadata["--image-path"]; !ok {
-			return errors.Errorf("missing mandatory argument: --layout")
+			return errors.New("missing mandatory argument: --layout")
 		}
 		return nil
 	},
@@ -59,11 +60,11 @@ func gc(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Run the GC.
-	return errors.Wrap(engineExt.GC(context.Background()), "gc")
+	return fmtcompat.Errorf("gc: %w", engineExt.GC(context.Background()))
 }

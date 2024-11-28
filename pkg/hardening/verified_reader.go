@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 package hardening
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -25,16 +26,15 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 )
 
 // Exported errors for verification issues that occur during processing within
-// VerifiedReadCloser. Note that you will need to use
-// "github.com/pkg/errors".Cause to get these exported errors in most cases.
+// VerifiedReadCloser.
 var (
-	ErrDigestMismatch = errors.Errorf("verified reader digest mismatch")
-	ErrSizeMismatch   = errors.Errorf("verified reader size mismatch")
+	ErrDigestMismatch = errors.New("verified reader digest mismatch")
+	ErrSizeMismatch   = errors.New("verified reader size mismatch")
 )
 
 // VerifiedReadCloser is a basic io.ReadCloser which allows for simple
@@ -90,17 +90,17 @@ func (v *VerifiedReadCloser) isNoop() bool {
 func (v *VerifiedReadCloser) verify(nilErr error) error {
 	// Digest mismatch (always takes precedence)?
 	if actualDigest := v.digester.Digest(); actualDigest != v.ExpectedDigest {
-		return errors.Wrapf(ErrDigestMismatch, "expected %s not %s", v.ExpectedDigest, actualDigest)
+		return fmtcompat.Errorf("expected %s not %s: %w", v.ExpectedDigest, actualDigest, ErrDigestMismatch)
 	}
 	// Do we need to check the size for mismatches?
 	if v.ExpectedSize >= 0 {
 		switch {
 		// Not enough bytes in the stream.
 		case v.currentSize < v.ExpectedSize:
-			return errors.Wrapf(ErrSizeMismatch, "expected %d bytes (only %d bytes in stream)", v.ExpectedSize, v.currentSize)
+			return fmtcompat.Errorf("expected %d bytes (only %d bytes in stream): %w", v.ExpectedSize, v.currentSize, ErrSizeMismatch)
 		// We don't read the entire blob, so the message needs to be slightly adjusted.
 		case v.currentSize > v.ExpectedSize:
-			return errors.Wrapf(ErrSizeMismatch, "expected %d bytes (extra bytes in stream)", v.ExpectedSize)
+			return fmtcompat.Errorf("expected %d bytes (extra bytes in stream): %w", v.ExpectedSize, ErrSizeMismatch)
 		}
 	}
 	// Forward the provided error.
@@ -155,7 +155,7 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 		}
 	}
 	// We have finished reading -- let's verify the state!
-	if errors.Cause(err) == io.EOF {
+	if errors.Is(err, io.EOF) {
 		err = v.verify(err)
 	}
 	return n, err
@@ -184,7 +184,7 @@ func (v *VerifiedReadCloser) Close() error {
 	// end of the stream. VerifiedReadCloser.Read will not read past
 	// ExpectedSize+1, so we don't need to add a limit here.
 	if n, err := system.Copy(ioutil.Discard, v); err != nil {
-		return errors.Wrap(err, "consume remaining unverified stream")
+		return fmtcompat.Errorf("consume remaining unverified stream: %w", err)
 	} else if n != 0 {
 		// If there's trailing bytes being discarded at this point, that
 		// indicates whatever you used to generate this blob is adding trailing

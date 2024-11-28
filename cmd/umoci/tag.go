@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,13 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 
 	"github.com/apex/log"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -43,13 +44,13 @@ the tag and "<new-tag>" is the new name of the tag.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return errors.Errorf("invalid number of positional arguments: expected <new-tag>")
+			return errors.New("invalid number of positional arguments: expected <new-tag>")
 		}
 		if ctx.Args().First() == "" {
-			return errors.Errorf("new tag cannot be empty")
+			return errors.New("new tag cannot be empty")
 		}
 		if !casext.IsValidReferenceName(ctx.Args().First()) {
-			return errors.Errorf("new tag is an invalid reference")
+			return errors.New("new tag is an invalid reference")
 		}
 		ctx.App.Metadata["new-tag"] = ctx.Args().First()
 		return nil
@@ -64,7 +65,7 @@ func tagAdd(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
@@ -72,20 +73,20 @@ func tagAdd(ctx *cli.Context) error {
 	// Get original descriptor.
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", fromName)
+		return fmtcompat.Errorf("tag not found: %s", fromName)
 	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
+		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
 	}
 	descriptor := descriptorPaths[0].Descriptor()
 
 	// Add it.
 	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
-		return errors.Wrap(err, "put reference")
+		return fmtcompat.Errorf("put reference: %w", err)
 	}
 
 	log.Infof("created new tag: %q -> %q", tagName, fromName)
@@ -107,7 +108,7 @@ tag to remove.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 0 {
-			return errors.Errorf("invalid number of positional arguments: expected none")
+			return errors.New("invalid number of positional arguments: expected none")
 		}
 		return nil
 	},
@@ -122,14 +123,14 @@ func tagRemove(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Remove it.
 	if err := engineExt.DeleteReference(context.Background(), tagName); err != nil {
-		return errors.Wrap(err, "delete reference")
+		return fmtcompat.Errorf("delete reference: %w", err)
 	}
 
 	log.Infof("removed tag: %s", tagName)
@@ -152,7 +153,7 @@ line. See umoci-stat(1) to get more information about each tagged image.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 0 {
-			return errors.Errorf("invalid number of positional arguments: expected none")
+			return errors.New("invalid number of positional arguments: expected none")
 		}
 		return nil
 	},
@@ -166,14 +167,14 @@ func tagList(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	names, err := engineExt.ListReferences(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "list references")
+		return fmtcompat.Errorf("list references: %w", err)
 	}
 
 	for _, name := range names {

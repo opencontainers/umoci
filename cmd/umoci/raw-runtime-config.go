@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"os"
 
 	"github.com/apex/log"
@@ -28,7 +28,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -61,10 +61,10 @@ Note that the results of this may not agree with umoci-unpack(1) because the
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return errors.Errorf("invalid number of positional arguments: expected <config.json>")
+			return errors.New("invalid number of positional arguments: expected <config.json>")
 		}
 		if ctx.Args().First() == "" {
-			return errors.Errorf("config.json path cannot be empty")
+			return errors.New("config.json path cannot be empty")
 		}
 		ctx.App.Metadata["config"] = ctx.Args().First()
 		return nil
@@ -88,52 +88,52 @@ func rawConfig(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", fromName)
+		return fmtcompat.Errorf("tag not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
+		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
 	}
 	meta.From = fromDescriptorPaths[0]
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
-		return errors.Wrap(err, "get manifest")
+		return fmtcompat.Errorf("get manifest: %w", err)
 	}
 	defer manifestBlob.Close()
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType), "invalid --image tag")
+		return fmtcompat.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Get the manifest.
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Generate the configuration.
 	configFile, err := os.Create(configPath)
 	if err != nil {
-		return errors.Wrap(err, "opening config path")
+		return fmtcompat.Errorf("opening config path: %w", err)
 	}
 	defer configFile.Close()
 
 	// Write out the generated config.
 	log.Info("generating config.json")
 	if err := layer.UnpackRuntimeJSON(context.Background(), engineExt, configFile, ctx.String("rootfs"), manifest, &meta.MapOptions); err != nil {
-		return errors.Wrap(err, "generate config")
+		return fmtcompat.Errorf("generate config: %w", err)
 	}
 	return nil
 }

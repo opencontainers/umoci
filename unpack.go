@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,6 @@ package umoci
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"strings"
 
@@ -27,8 +26,8 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/pkg/errors"
 )
 
 // Unpack unpacks an image to the specified bundle path.
@@ -40,25 +39,25 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return errors.Errorf("tag is not found: %s", fromName)
+		return fmtcompat.Errorf("tag is not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
+		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
 	}
 	meta.From = fromDescriptorPaths[0]
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
-		return errors.Wrap(err, "get manifest")
+		return fmtcompat.Errorf("get manifest: %w", err)
 	}
 	defer manifestBlob.Close()
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType), "invalid --image tag")
+		return fmtcompat.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
@@ -72,18 +71,18 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
-		return errors.Wrap(err, "create bundle path")
+		return fmtcompat.Errorf("create bundle path: %w", err)
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
 	log.Info("unpacking bundle ...")
 	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &unpackOptions); err != nil {
-		return errors.Wrap(err, "create runtime bundle")
+		return fmtcompat.Errorf("create runtime bundle: %w", err)
 	}
 	log.Info("... done")
 
@@ -93,7 +92,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	}
 
 	if err := GenerateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
-		return errors.Wrap(err, "write mtree")
+		return fmtcompat.Errorf("write mtree: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -103,7 +102,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	}).Debugf("umoci: saving Meta metadata")
 
 	if err := WriteBundleMeta(bundlePath, meta); err != nil {
-		return errors.Wrap(err, "write umoci.json metadata")
+		return fmtcompat.Errorf("write umoci.json metadata: %w", err)
 	}
 
 	log.Infof("unpacked image bundle: %s", bundlePath)

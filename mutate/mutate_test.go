@@ -35,6 +35,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	casdir "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // These come from just running the code.
@@ -541,7 +542,7 @@ func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.De
 	}
 
 	if foundPath == nil {
-		return casext.DescriptorPath{}, fmt.Errorf("count not find manifest from %s", root.Digest)
+		return casext.DescriptorPath{}, fmtcompat.Errorf("count not find manifest from %s", root.Digest)
 	}
 	return *foundPath, nil
 }

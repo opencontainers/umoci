@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,13 @@
 package main
 
 import (
+	"errors"
+
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -53,10 +55,10 @@ creation with umoci-repack(1).`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return errors.Errorf("invalid number of positional arguments: expected <bundle>")
+			return errors.New("invalid number of positional arguments: expected <bundle>")
 		}
 		if ctx.Args().First() == "" {
-			return errors.Errorf("bundle path cannot be empty")
+			return errors.New("bundle path cannot be empty")
 		}
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
@@ -84,7 +86,7 @@ func unpack(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()

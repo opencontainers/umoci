@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -25,8 +25,8 @@ import (
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/idtools"
-	"github.com/pkg/errors"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
@@ -58,11 +58,11 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		var err error
 		newUID, err = idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
 		if err != nil {
-			return errors.Wrap(err, "map uid to container")
+			return fmtcompat.Errorf("map uid to container: %w", err)
 		}
 		newGID, err = idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
 		if err != nil {
-			return errors.Wrap(err, "map gid to container")
+			return fmtcompat.Errorf("map gid to container: %w", err)
 		}
 	}
 
@@ -81,7 +81,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	} else {
 		var payload rootlesscontainers.Resource
 		if err := proto.Unmarshal([]byte(value), &payload); err != nil {
-			return errors.Wrap(err, "unmarshal rootlesscontainers payload")
+			return fmtcompat.Errorf("unmarshal rootlesscontainers payload: %w", err)
 		}
 
 		// If the payload isn't uint32(-1) we apply it. The xattr includes the
@@ -152,7 +152,7 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		if !rootlesscontainers.IsDefault(payload) {
 			valueBytes, err := proto.Marshal(payload)
 			if err != nil {
-				return errors.Wrap(err, "marshal rootlesscontainers payload")
+				return fmtcompat.Errorf("marshal rootlesscontainers payload: %w", err)
 			}
 			// While the payload is almost certainly not UTF-8, Go strings can
 			// actually be arbitrary bytes (in case you didn't know this and
@@ -167,11 +167,11 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 
 	newUID, err := idtools.ToHost(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
-		return errors.Wrap(err, "map uid to host")
+		return fmtcompat.Errorf("map uid to host: %w", err)
 	}
 	newGID, err := idtools.ToHost(hdr.Gid, mapOptions.GIDMappings)
 	if err != nil {
-		return errors.Wrap(err, "map gid to host")
+		return fmtcompat.Errorf("map gid to host: %w", err)
 	}
 
 	hdr.Uid = newUID
@@ -211,23 +211,6 @@ func CleanPath(path string) string {
 	return filepath.Clean(path)
 }
 
-// InnerErrno returns the "real" system error from an error that originally
-// came from the "os" package. The returned error can be compared directly with
-// unix.* (or syscall.*) errno values. If the type could not be detected we just return
-func InnerErrno(err error) error {
-	// All of the os.* cases as well as an explicit
-	errno := errors.Cause(err)
-	switch err := errno.(type) {
-	case *os.PathError:
-		errno = err.Err
-	case *os.LinkError:
-		errno = err.Err
-	case *os.SyscallError:
-		errno = err.Err
-	}
-	return errno
-}
-
 // isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
 // whiteout (i.e. mknod c 0 0) and false otherwise.
 func isOverlayWhiteout(info os.FileInfo) (bool, error) {
@@ -240,7 +223,7 @@ func isOverlayWhiteout(info os.FileInfo) (bool, error) {
 		major = unix.Major(uint64(stat.Rdev))
 		minor = unix.Minor(uint64(stat.Rdev))
 	default:
-		return false, errors.Errorf("[internal error] unknown stat info type %T", info.Sys())
+		return false, fmtcompat.Errorf("[internal error] unknown stat info type %T", info.Sys())
 	}
 
 	return major == 0 && minor == 0 &&

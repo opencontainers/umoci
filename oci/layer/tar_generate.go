@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,16 +19,17 @@ package layer
 
 import (
 	"archive/tar"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -127,7 +128,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	// of the tar archive. While this might seem paranoid, it is a legitimate
 	// concern.
 	if "/"+path != filepath.Join("/", path) {
-		return "", errors.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
+		return "", fmtcompat.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
 	}
 
 	// With some other tar formats, you needed to have a '/' at the end of a
@@ -147,19 +148,19 @@ func normalise(rawPath string, isDir bool) (string, error) {
 func (tg *tarGenerator) AddFile(name, path string) error {
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
-		return errors.Wrap(err, "add file lstat")
+		return fmtcompat.Errorf("add file lstat: %w", err)
 	}
 
 	linkname := ""
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		if linkname, err = tg.fsEval.Readlink(path); err != nil {
-			return errors.Wrap(err, "add file readlink")
+			return fmtcompat.Errorf("add file readlink: %w", err)
 		}
 	}
 
 	hdr, err := tar.FileInfoHeader(fi, linkname)
 	if err != nil {
-		return errors.Wrap(err, "convert fi to hdr")
+		return fmtcompat.Errorf("convert fi to hdr: %w", err)
 	}
 	hdr.Xattrs = map[string]string{}
 	// Usually incorrect for containers and was added in Go 1.10 causing
@@ -169,7 +170,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {
-		return errors.Wrap(err, "normalise path")
+		return fmtcompat.Errorf("normalise path: %w", err)
 	}
 	hdr.Name = name
 
@@ -177,7 +178,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// will almost certainly confuse some users (unfortunately) but there's
 	// nothing we can do to store such files on-disk.
 	if strings.HasPrefix(filepath.Base(name), whPrefix) {
-		return errors.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+		return fmtcompat.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
 	}
 
 	// FIXME: Do we need to ensure that the parent paths have all been added to
@@ -193,7 +194,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// by us.
 	statx, err := tg.fsEval.Lstatx(path)
 	if err != nil {
-		return errors.Wrapf(err, "lstatx %q", path)
+		return fmtcompat.Errorf("lstatx %q: %w", path, err)
 	}
 	updateHeader(hdr, statx)
 
@@ -202,8 +203,8 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// XXX: This should probably be moved to a function in tar_unix.go.
 	names, err := tg.fsEval.Llistxattr(path)
 	if err != nil {
-		if errors.Cause(err) != unix.EOPNOTSUPP {
-			return errors.Wrap(err, "get xattr list")
+		if !errors.Is(err, unix.EOPNOTSUPP) {
+			return fmtcompat.Errorf("get xattr list: %w", err)
 		}
 		names = []string{}
 	}
@@ -219,13 +220,13 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		//       (we'd need to use libcap to parse it).
 		value, err := tg.fsEval.Lgetxattr(path, name)
 		if err != nil {
-			v := errors.Cause(err)
-			log.Debugf("failure reading xattr from list on %q: %q", name, v)
-			if v != unix.EOPNOTSUPP && v != unix.ENODATA {
+			// TODO: Should we use errors.As?
+			log.Debugf("failure reading xattr from list on %q: %q", name, err)
+			if !errors.Is(err, unix.EOPNOTSUPP) && !errors.Is(err, unix.ENODATA) {
 				// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
 				//      fail with EPERM. If it can, we should ignore it (like when
 				//      we try to clear xattrs).
-				return errors.Wrapf(err, "get xattr: %s", name)
+				return fmtcompat.Errorf("get xattr: %s: %w", name, err)
 			}
 		}
 		// https://golang.org/issues/20698 -- We don't just error out here
@@ -255,26 +256,26 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Apply any header mappings.
 	if err := mapHeader(hdr, tg.mapOptions); err != nil {
-		return errors.Wrap(err, "map header")
+		return fmtcompat.Errorf("map header: %w", err)
 	}
 	if err := tg.tw.WriteHeader(hdr); err != nil {
-		return errors.Wrap(err, "write header")
+		return fmtcompat.Errorf("write header: %w", err)
 	}
 
 	// Write the contents of regular files.
 	if hdr.Typeflag == tar.TypeReg {
 		fh, err := tg.fsEval.Open(path)
 		if err != nil {
-			return errors.Wrap(err, "open file")
+			return fmtcompat.Errorf("open file: %w", err)
 		}
 		defer fh.Close()
 
 		n, err := system.Copy(tg.tw, fh)
 		if err != nil {
-			return errors.Wrap(err, "copy to layer")
+			return fmtcompat.Errorf("copy to layer: %w", err)
 		}
 		if n != hdr.Size {
-			return errors.Wrap(io.ErrShortWrite, "copy to layer")
+			return fmtcompat.Errorf("copy to layer: %w", io.ErrShortWrite)
 		}
 	}
 
@@ -297,13 +298,13 @@ const whOpaque = whPrefix + whPrefix + ".opq"
 func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	name, err := normalise(name, false)
 	if err != nil {
-		return errors.Wrap(err, "normalise path")
+		return fmtcompat.Errorf("normalise path: %w", err)
 	}
 
 	// Disallow having a whiteout of a whiteout, purely for our own sanity.
 	dir, file := filepath.Split(name)
 	if strings.HasPrefix(file, whPrefix) {
-		return errors.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+		return fmtcompat.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
 	}
 
 	// Figure out the whiteout name.
@@ -313,10 +314,7 @@ func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	}
 
 	// Add a dummy header for the whiteout file.
-	return errors.Wrap(tg.tw.WriteHeader(&tar.Header{
-		Name: whiteout,
-		Size: 0,
-	}), "write whiteout header")
+	return fmtcompat.Errorf("write whiteout header: %w", tg.tw.WriteHeader(&tar.Header{Name: whiteout, Size: 0}))
 }
 
 // AddWhiteout creates a whiteout for the provided path.

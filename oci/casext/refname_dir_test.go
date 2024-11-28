@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -38,6 +38,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -78,10 +79,10 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 			Size:     int64(size),
 			Typeflag: tar.TypeReg,
 		}); err != nil {
-			return fmt.Errorf("randomTarData WriteHeader %d", n)
+			return fmtcompat.Errorf("randomTarData WriteHeader %d", n)
 		}
 		if _, err := io.CopyN(tw, crand.Reader, int64(size)); err != nil {
-			return fmt.Errorf("randomTarData Write %d", n)
+			return fmtcompat.Errorf("randomTarData Write %d", n)
 		}
 	}
 	return nil

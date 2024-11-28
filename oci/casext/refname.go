@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,7 +24,7 @@ import (
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // refnameRegex is a regex that only matches reference names that are valid
@@ -61,12 +61,12 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return nil, errors.Errorf("refusing to resolve invalid reference %q", refname)
+		return nil, fmtcompat.Errorf("refusing to resolve invalid reference %q", refname)
 	}
 
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "get top-level index")
+		return nil, fmtcompat.Errorf("get top-level index: %w", err)
 	}
 
 	// Set of root links that match the given refname.
@@ -100,7 +100,7 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 			}
 			return nil
 		}); err != nil {
-			return nil, errors.Wrapf(err, "walk %s", root.Digest)
+			return nil, fmtcompat.Errorf("walk %s: %w", root.Digest, err)
 		}
 	}
 
@@ -123,13 +123,13 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return errors.Errorf("refusing to update invalid reference %q", refname)
+		return fmtcompat.Errorf("refusing to update invalid reference %q", refname)
 	}
 
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return errors.Wrap(err, "get top-level index")
+		return fmtcompat.Errorf("get top-level index: %w", err)
 	}
 
 	// TODO: Handle refname = "".
@@ -154,7 +154,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	// Commit to image.
 	index.Manifests = newIndex
 	if err := e.PutIndex(ctx, index); err != nil {
-		return errors.Wrap(err, "replace index")
+		return fmtcompat.Errorf("replace index: %w", err)
 	}
 	return nil
 }
@@ -166,13 +166,13 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return errors.Errorf("refusing to delete invalid reference %q", refname)
+		return fmtcompat.Errorf("refusing to delete invalid reference %q", refname)
 	}
 
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return errors.Wrap(err, "get top-level index")
+		return fmtcompat.Errorf("get top-level index: %w", err)
 	}
 
 	// TODO: Handle refname = "".
@@ -190,7 +190,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	// Commit to image.
 	index.Manifests = newIndex
 	if err := e.PutIndex(ctx, index); err != nil {
-		return errors.Wrap(err, "replace index")
+		return fmtcompat.Errorf("replace index: %w", err)
 	}
 	return nil
 }
@@ -202,7 +202,7 @@ func (e Engine) ListReferences(ctx context.Context) ([]string, error) {
 	// Get index.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return nil, errors.Wrap(err, "get top-level index")
+		return nil, fmtcompat.Errorf("get top-level index: %w", err)
 	}
 
 	var refs []string

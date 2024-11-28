@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,12 +19,13 @@ package mediatype
 
 import (
 	"encoding/json"
+	"errors"
 	"io"
 	"reflect"
 	"sync"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // ErrNilReader is returned by the parsers in this package when they are called
@@ -170,7 +171,7 @@ func indexParser(rdr io.Reader) (interface{}, error) {
 		return nil, err
 	}
 	if index.MediaType != "" && index.MediaType != ispec.MediaTypeImageIndex {
-		return nil, errors.Errorf("malicious image detected: index contained incorrect mediaType: %s", index.MediaType)
+		return nil, fmtcompat.Errorf("malicious image detected: index contained incorrect mediaType: %s", index.MediaType)
 	}
 	if len(index.Config) != 0 {
 		return nil, errors.New("malicious image detected: index contained forbidden 'config' field")
@@ -196,7 +197,7 @@ func manifestParser(rdr io.Reader) (interface{}, error) {
 		return nil, err
 	}
 	if manifest.MediaType != "" && manifest.MediaType != ispec.MediaTypeImageManifest {
-		return nil, errors.Errorf("malicious manifest detected: manifest contained incorrect mediaType: %s", manifest.MediaType)
+		return nil, fmtcompat.Errorf("malicious manifest detected: manifest contained incorrect mediaType: %s", manifest.MediaType)
 	}
 	if len(manifest.Manifests) != 0 {
 		return nil, errors.New("malicious manifest detected: manifest contained forbidden 'manifests' field")

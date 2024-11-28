@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package unpriv
 
 import (
 	"archive/tar"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -26,8 +27,8 @@ import (
 	"time"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -72,7 +73,7 @@ type WrapFunc func(path string) error
 // trickery is reverted when this function returns (which is when fn returns).
 func Wrap(path string, fn WrapFunc) error {
 	// FIXME: Should we be calling fn() here first?
-	if err := fn(path); err == nil || !os.IsPermission(errors.Cause(err)) {
+	if err := fn(path); err == nil || !errors.Is(err, os.ErrPermission) {
 		return err
 	}
 
@@ -89,9 +90,9 @@ func Wrap(path string, fn WrapFunc) error {
 			// We've hit the first element we can chown.
 			break
 		}
-		if !os.IsPermission(err) {
+		if !errors.Is(err, os.ErrPermission) {
 			// This is a legitimate error.
-			return errors.Wrapf(err, "unpriv.wrap: lstat parent: %s", current)
+			return fmtcompat.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
 		}
 		start--
 	}
@@ -100,12 +101,12 @@ func Wrap(path string, fn WrapFunc) error {
 		current := filepath.Join(parts[:i]...)
 		fi, err := os.Lstat(current)
 		if err != nil {
-			return errors.Wrapf(err, "unpriv.wrap: lstat parent: %s", current)
+			return fmtcompat.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
 		}
 		// Add +rwx permissions to directories. If we have the access to change
 		// the mode at all then we are the user owner (not just a group owner).
 		if err := os.Chmod(current, fi.Mode()|0700); err != nil {
-			return errors.Wrapf(err, "unpriv.wrap: chmod parent: %s", current)
+			return fmtcompat.Errorf("unpriv.wrap: chmod parent: %s: %w", current, err)
 		}
 		defer fiRestore(current, fi)
 	}
@@ -126,13 +127,13 @@ func Open(path string) (*os.File, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return errors.Wrap(err, "lstat file")
+			return fmtcompat.Errorf("lstat file: %w", err)
 		}
 
 		if fi.Mode()&0400 != 0400 {
 			// Add +r permissions to the file.
 			if err := os.Chmod(path, fi.Mode()|0400); err != nil {
-				return errors.Wrap(err, "chmod +r")
+				return fmtcompat.Errorf("chmod +r: %w", err)
 			}
 			defer fiRestore(path, fi)
 		}
@@ -141,7 +142,7 @@ func Open(path string) (*os.File, error) {
 		fh, err = os.Open(path)
 		return err
 	})
-	return fh, errors.Wrap(err, "unpriv.open")
+	return fh, fmtcompat.Errorf("unpriv.open: %w", err)
 }
 
 // Create is a wrapper around os.Create which has been wrapped with unpriv.Wrap
@@ -156,7 +157,7 @@ func Create(path string) (*os.File, error) {
 		fh, err = os.Create(path)
 		return err
 	})
-	return fh, errors.Wrap(err, "unpriv.create")
+	return fh, fmtcompat.Errorf("unpriv.create: %w", err)
 }
 
 // Readdir is a wrapper around (*os.File).Readdir which has been wrapper with
@@ -171,19 +172,19 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return errors.Wrap(err, "lstat dir")
+			return fmtcompat.Errorf("lstat dir: %w", err)
 		}
 
 		// Add +rx permissions to the file.
 		if err := os.Chmod(path, fi.Mode()|0500); err != nil {
-			return errors.Wrap(err, "chmod +rx")
+			return fmtcompat.Errorf("chmod +rx: %w", err)
 		}
 		defer fiRestore(path, fi)
 
 		// Open the damn thing.
 		fh, err := os.Open(path)
 		if err != nil {
-			return errors.Wrap(err, "opendir")
+			return fmtcompat.Errorf("opendir: %w", err)
 		}
 		defer fh.Close()
 
@@ -191,7 +192,7 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		infos, err = fh.Readdir(-1)
 		return err
 	})
-	return infos, errors.Wrap(err, "unpriv.readdir")
+	return infos, fmtcompat.Errorf("unpriv.readdir: %w", err)
 }
 
 // Lstat is a wrapper around os.Lstat which has been wrapped with unpriv.Wrap
@@ -207,7 +208,7 @@ func Lstat(path string) (os.FileInfo, error) {
 		fi, err = os.Lstat(path)
 		return err
 	})
-	return fi, errors.Wrap(err, "unpriv.lstat")
+	return fi, fmtcompat.Errorf("unpriv.lstat: %w", err)
 }
 
 // Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead
@@ -216,7 +217,7 @@ func Lstatx(path string) (unix.Stat_t, error) {
 	err := Wrap(path, func(path string) error {
 		return unix.Lstat(path, &s)
 	})
-	return s, errors.Wrap(err, "unpriv.lstatx")
+	return s, fmtcompat.Errorf("unpriv.lstatx: %w", err)
 }
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
@@ -232,7 +233,7 @@ func Readlink(path string) (string, error) {
 		target, err = os.Readlink(path)
 		return err
 	})
-	return target, errors.Wrap(err, "unpriv.readlink")
+	return target, fmtcompat.Errorf("unpriv.readlink: %w", err)
 }
 
 // Symlink is a wrapper around os.Symlink which has been wrapped with
@@ -241,9 +242,11 @@ func Readlink(path string) (string, error) {
 // may not have resolve access after this function returns because all of the
 // trickery is reverted by unpriv.Wrap.
 func Symlink(target, linkname string) error {
-	return errors.Wrap(Wrap(linkname, func(linkname string) error {
-		return os.Symlink(target, linkname)
-	}), "unpriv.symlink")
+	err := Wrap(linkname, func(linkname string) error { return os.Symlink(target, linkname) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.symlink: %w", err)
+	}
+	return nil
 }
 
 // Link is a wrapper around unix.Link(..., 0) which has been wrapped with
@@ -252,53 +255,71 @@ func Symlink(target, linkname string) error {
 // you may not have resolve access after this function returns because all of
 // the trickery is reverted by unpriv.Wrap.
 func Link(target, linkname string) error {
-	return errors.Wrap(Wrap(linkname, func(linkname string) error {
+	err := Wrap(linkname, func(linkname string) error {
 		// We have to double-wrap this, because you need search access to the
 		// linkname. This is safe because any common ancestors will be reverted
 		// in reverse call stack order.
-		return errors.Wrap(Wrap(target, func(target string) error {
+		err := Wrap(target, func(target string) error {
 			// We need to explicitly pass 0 as a flag because POSIX allows the
 			// default behaviour of link(2) when it comes to target being a
 			// symlink to be implementation-defined. Only linkat(2) allows us
 			// to guarantee the right behaviour.
 			//  <https://pubs.opengroup.org/onlinepubs/9699919799/functions/link.html>
 			return unix.Linkat(unix.AT_FDCWD, target, unix.AT_FDCWD, linkname, 0)
-		}), "unpriv.wrap target")
-	}), "unpriv.link")
+		})
+		if err != nil {
+			return fmtcompat.Errorf("unpriv.wrap target: %w", err)
+		}
+		return nil
+	})
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.link: %w", err)
+	}
+	return nil
 }
 
 // Chmod is a wrapper around os.Chmod which has been wrapped with unpriv.Wrap
 // to make it possible to change the permission bits of a path even if you do
 // not currently have the required access bits to access the path.
 func Chmod(path string, mode os.FileMode) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return os.Chmod(path, mode)
-	}), "unpriv.chmod")
+	err := Wrap(path, func(path string) error { return os.Chmod(path, mode) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.chmod: %w", err)
+	}
+	return nil
 }
 
 // Chtimes is a wrapper around os.Chtimes which has been wrapped with
 // unpriv.Wrap to make it possible to change the modified times of a path even
 // if you do not currently have the required access bits to access the path.
 func Chtimes(path string, atime, mtime time.Time) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return os.Chtimes(path, atime, mtime)
-	}), "unpriv.chtimes")
+	err := Wrap(path, func(path string) error { return os.Chtimes(path, atime, mtime) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.chtimes: %w", err)
+	}
+	return nil
 }
 
 // Lutimes is a wrapper around system.Lutimes which has been wrapped with
 // unpriv.Wrap to make it possible to change the modified times of a path even
 // if you do no currently have the required access bits to access the path.
 func Lutimes(path string, atime, mtime time.Time) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Lutimes(path, atime, mtime)
-	}), "unpriv.lutimes")
+	err := Wrap(path, func(path string) error { return system.Lutimes(path, atime, mtime) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.lutimes: %w", err)
+	}
+	return nil
 }
 
 // Remove is a wrapper around os.Remove which has been wrapped with unpriv.Wrap
 // to make it possible to remove a path even if you do not currently have the
 // required access bits to modify or resolve the path.
 func Remove(path string) error {
-	return errors.Wrap(Wrap(path, os.Remove), "unpriv.remove")
+	err := Wrap(path, os.Remove)
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.remove: %w", err)
+	}
+	return nil
 }
 
 // foreachSubpath executes WrapFunc for each child of the given path (not
@@ -310,7 +331,7 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 	// Is the path a directory?
 	fi, err := os.Lstat(path)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	if !fi.IsDir() {
 		return nil
@@ -319,7 +340,7 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 	// Open the directory.
 	fd, err := Open(path)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 	defer fd.Close()
 
@@ -332,7 +353,7 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 	names, err := fd.Readdirnames(-1)
 	fiRestore(path, fi)
 	if err != nil {
-		return errors.WithStack(err)
+		return err
 	}
 
 	// Make iteration order consistent.
@@ -353,10 +374,10 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 // wrapped with unpriv.Wrap to make it possible to remove a path (even if it
 // has child paths) even if you do not currently have enough access bits.
 func RemoveAll(path string) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
+	err := Wrap(path, func(path string) error {
 		// If remove works, we're done.
 		err := os.Remove(path)
-		if err == nil || os.IsNotExist(errors.Cause(err)) {
+		if err == nil || errors.Is(err, os.ErrNotExist) {
 			return nil
 		}
 
@@ -364,17 +385,16 @@ func RemoveAll(path string) error {
 		fi, serr := os.Lstat(path)
 		if serr != nil {
 			// Use securejoin's IsNotExist to handle ENOTDIR sanely.
-			if securejoin.IsNotExist(errors.Cause(serr)) {
-				serr = nil
+			if !securejoin.IsNotExist(serr) {
+				return fmtcompat.Errorf("lstat: %w", serr)
 			}
-			return errors.Wrap(serr, "lstat")
+			return nil
 		}
 		// Return error from remove if it's not a directory.
 		if !fi.IsDir() {
-			return errors.Wrap(err, "remove non-directory")
+			return fmtcompat.Errorf("remove non-directory: %w", err)
 		}
 		err = nil
-
 		err1 := foreachSubpath(path, func(subpath string) error {
 			err2 := RemoveAll(subpath)
 			if err == nil {
@@ -384,38 +404,44 @@ func RemoveAll(path string) error {
 		})
 		if err1 != nil {
 			// We must have hit a race, but we don't care.
-			if os.IsNotExist(errors.Cause(err1)) {
+			if errors.Is(err1, os.ErrNotExist) {
 				err1 = nil
 			}
-			return errors.Wrap(err1, "foreach subpath")
+			return fmtcompat.Errorf("foreach subpath: %w", err1)
 		}
 
 		// Remove the directory. This should now work.
 		err1 = os.Remove(path)
-		if err1 == nil || os.IsNotExist(errors.Cause(err1)) {
+		if err1 == nil || errors.Is(err1, os.ErrNotExist) {
 			return nil
 		}
 		if err == nil {
 			err = err1
 		}
-		return errors.Wrap(err, "remove")
-	}), "unpriv.removeall")
+		return fmtcompat.Errorf("remove: %w", err)
+	})
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.removeall: %w", err)
+	}
+	return nil
 }
 
 // Mkdir is a wrapper around os.Mkdir which has been wrapped with unpriv.Wrap
 // to make it possible to remove a path even if you do not currently have the
 // required access bits to modify or resolve the path.
 func Mkdir(path string, perm os.FileMode) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return os.Mkdir(path, perm)
-	}), "unpriv.mkdir")
+	err := Wrap(path, func(path string) error { return os.Mkdir(path, perm) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.mkdir: %w", err)
+	}
+	return nil
 }
 
 // MkdirAll is similar to os.MkdirAll but in order to implement it properly all
 // of the internal functions were wrapped with unpriv.Wrap to make it possible
 // to create a path even if you do not currently have enough access bits.
 func MkdirAll(path string, perm os.FileMode) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
+	err := Wrap(path, func(path string) error {
 		// Check whether the path already exists.
 		fi, err := os.Stat(path)
 		if err == nil {
@@ -445,16 +471,22 @@ func MkdirAll(path string, perm os.FileMode) error {
 			return err
 		}
 		return nil
-	}), "unpriv.mkdirall")
+	})
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.mkdirall: %w", err)
+	}
+	return nil
 }
 
 // Mknod is a wrapper around unix.Mknod which has been wrapped with unpriv.Wrap
 // to make it possible to remove a path even if you do not currently have the
 // required access bits to modify or resolve the path.
 func Mknod(path string, mode os.FileMode, dev uint64) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return system.Mknod(path, uint32(mode), dev)
-	}), "unpriv.mknod")
+	err := Wrap(path, func(path string) error { return system.Mknod(path, uint32(mode), dev) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.mknod: %w", err)
+	}
+	return nil
 }
 
 // Llistxattr is a wrapper around system.Llistxattr which has been wrapped with
@@ -467,25 +499,29 @@ func Llistxattr(path string) ([]string, error) {
 		xattrs, err = system.Llistxattr(path)
 		return err
 	})
-	return xattrs, errors.Wrap(err, "unpriv.llistxattr")
+	return xattrs, fmtcompat.Errorf("unpriv.llistxattr: %w", err)
 }
 
 // Lremovexattr is a wrapper around system.Lremovexattr which has been wrapped
 // with unpriv.Wrap to make it possible to remove a path even if you do not
 // currently have the required access bits to resolve the path.
 func Lremovexattr(path, name string) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return unix.Lremovexattr(path, name)
-	}), "unpriv.lremovexattr")
+	err := Wrap(path, func(path string) error { return unix.Lremovexattr(path, name) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.lremovexattr: %w", err)
+	}
+	return nil
 }
 
 // Lsetxattr is a wrapper around system.Lsetxattr which has been wrapped
 // with unpriv.Wrap to make it possible to set a path even if you do not
 // currently have the required access bits to resolve the path.
 func Lsetxattr(path, name string, value []byte, flags int) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
-		return unix.Lsetxattr(path, name, value, flags)
-	}), "unpriv.lsetxattr")
+	err := Wrap(path, func(path string) error { return unix.Lsetxattr(path, name, value, flags) })
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.lsetxattr: %w", err)
+	}
+	return nil
 }
 
 // Lgetxattr is a wrapper around system.Lgetxattr which has been wrapped
@@ -498,7 +534,7 @@ func Lgetxattr(path, name string) ([]byte, error) {
 		value, err = system.Lgetxattr(path, name)
 		return err
 	})
-	return value, errors.Wrap(err, "unpriv.lgetxattr")
+	return value, fmtcompat.Errorf("unpriv.lgetxattr: %w", err)
 }
 
 // Lclearxattrs is similar to system.Lclearxattrs but in order to implement it
@@ -506,7 +542,7 @@ func Lgetxattr(path, name string) ([]byte, error) {
 // it possible to create a path even if you do not currently have enough access
 // bits.
 func Lclearxattrs(path string, except map[string]struct{}) error {
-	return errors.Wrap(Wrap(path, func(path string) error {
+	err := Wrap(path, func(path string) error {
 		names, err := Llistxattr(path)
 		if err != nil {
 			return err
@@ -520,14 +556,18 @@ func Lclearxattrs(path string, except map[string]struct{}) error {
 				// security reasons), so we don't clear xattrs if attempting to
 				// clear them causes an EPERM. This EPERM will not be due to
 				// resolution issues (Llistxattr already has done that for us).
-				if os.IsPermission(errors.Cause(err)) {
+				if errors.Is(err, os.ErrPermission) {
 					continue
 				}
 				return err
 			}
 		}
 		return nil
-	}), "unpriv.lclearxattrs")
+	})
+	if err != nil {
+		return fmtcompat.Errorf("unpriv.lclearxattrs: %w", err)
+	}
+	return nil
 }
 
 // walk is the inner implementation of Walk.
@@ -546,14 +586,14 @@ func walk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 			// If it doesn't exist, just pass it directly to walkFn.
 			if err := walkFn(subpath, info, err); err != nil {
 				// Ignore SkipDir.
-				if errors.Cause(err) != filepath.SkipDir {
+				if errors.Is(err, filepath.SkipDir) {
 					return err
 				}
 			}
 		} else {
 			if err := walk(subpath, info, walkFn); err != nil {
 				// Ignore error if it's SkipDir and subpath is a directory.
-				if !(info.IsDir() && errors.Cause(err) == filepath.SkipDir) {
+				if !(info.IsDir() && errors.Is(err, filepath.SkipDir)) {
 					return err
 				}
 			}
@@ -575,9 +615,9 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 		} else {
 			err = walk(root, info, walkFn)
 		}
-		if errors.Cause(err) == filepath.SkipDir {
-			err = nil
+		if !errors.Is(err, filepath.SkipDir) {
+			return fmtcompat.Errorf("unpriv.walk: %w", err)
 		}
-		return errors.Wrap(err, "unpriv.walk")
+		return nil
 	})
 }

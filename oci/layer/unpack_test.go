@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -216,7 +217,7 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 	}
 
 	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
-	if err == nil || !os.IsNotExist(err) {
+	if err == nil || !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("test file present? %+v\n", err)
 	}
 }

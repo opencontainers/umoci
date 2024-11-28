@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // Used by walkState.mark() to determine which struct members are descriptors to
@@ -60,7 +60,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 			P := V
 			if !P.CanSet() {
 				// This is a programmer error.
-				return errors.Errorf("[internal error] cannot apply map function to %v: %v is not settable!", P, P.Type())
+				return fmtcompat.Errorf("[internal error] cannot apply map function to %v: %v is not settable", P, P.Type())
 			}
 			P.Set(reflect.ValueOf(new))
 		}
@@ -75,14 +75,14 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 			return nil
 		}
 		err := mapDescriptors(V.Elem(), mapFunc)
-		return errors.Wrapf(err, "%v", V.Type())
+		return fmtcompat.Errorf("%v: %w", V.Type(), err)
 
 	case reflect.Slice, reflect.Array:
 		// Iterate over each element.
 		for idx := 0; idx < V.Len(); idx++ {
 			err := mapDescriptors(V.Index(idx), mapFunc)
 			if err != nil {
-				return errors.Wrapf(err, "%v[%d]->%v", V.Type(), idx, V.Index(idx).Type())
+				return fmtcompat.Errorf("%v[%d]->%v: %w", V.Type(), idx, V.Index(idx).Type(), err)
 			}
 		}
 		return nil
@@ -101,7 +101,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 		for idx := 0; idx < V.NumField(); idx++ {
 			err := mapDescriptors(V.Field(idx), mapFunc)
 			if err != nil {
-				return errors.Wrapf(err, "%v[%d=%s]->%v", V.Type(), idx, V.Type().Field(idx).Name, V.Field(idx).Type())
+				return fmtcompat.Errorf("%v[%d=%s]->%v: %w", V.Type(), idx, V.Type().Field(idx).Name, V.Field(idx).Type(), err)
 			}
 		}
 		return nil

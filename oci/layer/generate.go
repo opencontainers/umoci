@@ -25,8 +25,8 @@ import (
 	"sort"
 
 	"github.com/apex/log"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/unpriv"
-	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -58,7 +58,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				log.Warnf("could not generate layer: %v", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
+			_ = writer.CloseWithError(fmtcompat.Errorf("generate layer: %w", Err))
 		}()
 
 		// We can't just dump all of the file contents into a tar file. We need
@@ -85,7 +85,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				if packOptions.TranslateOverlayWhiteouts {
 					fi, err := os.Stat(fullPath)
 					if err != nil {
-						return errors.Wrapf(err, "couldn't determine overlay whiteout for %s", fullPath)
+						return fmtcompat.Errorf("couldn't determine overlay whiteout for %s: %w", fullPath, err)
 					}
 
 					whiteout, err := isOverlayWhiteout(fi)
@@ -94,26 +94,26 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 					}
 					if whiteout {
 						if err := tg.AddWhiteout(fullPath); err != nil {
-							return errors.Wrap(err, "generate whiteout from overlayfs")
+							return fmtcompat.Errorf("generate whiteout from overlayfs: %w", err)
 						}
 					}
 					continue
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
 					log.Warnf("generate layer: could not add file %q: %s", name, err)
-					return errors.Wrap(err, "generate layer file")
+					return fmtcompat.Errorf("generate layer file: %w", err)
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
 					log.Warnf("generate layer: could not add whiteout %q: %s", name, err)
-					return errors.Wrap(err, "generate whiteout layer file")
+					return fmtcompat.Errorf("generate whiteout layer file: %w", err)
 				}
 			}
 		}
 
 		if err := tg.tw.Close(); err != nil {
 			log.Warnf("generate layer: could not close tar.Writer: %s", err)
-			return errors.Wrap(err, "close tar writer")
+			return fmtcompat.Errorf("close tar writer: %w", err)
 		}
 
 		return nil
@@ -141,7 +141,7 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 				log.Warnf("could not generate insert layer: %v", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(errors.Wrap(Err, "generate insert layer"))
+			_ = writer.CloseWithError(fmtcompat.Errorf("generate insert layer: %w", Err))
 		}()
 
 		tg := newTarGenerator(writer, packOptions.MapOptions)

@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,10 @@ package system
 
 import (
 	"bytes"
+	"errors"
 	"os"
 
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"golang.org/x/sys/unix"
 )
 
@@ -101,7 +102,7 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 func Lclearxattrs(path string, except map[string]struct{}) error {
 	names, err := Llistxattr(path)
 	if err != nil {
-		return errors.Wrap(err, "lclearxattrs: get list")
+		return fmtcompat.Errorf("lclearxattrs: get list: %w", err)
 	}
 	for _, name := range names {
 		if _, skip := except[name]; skip {
@@ -110,10 +111,10 @@ func Lclearxattrs(path string, except map[string]struct{}) error {
 		if err := unix.Lremovexattr(path, name); err != nil {
 			// Ignore permission errors, because hitting a permission error
 			// means that it's a security.* xattr label or something similar.
-			if os.IsPermission(errors.Cause(err)) {
+			if errors.Is(err, os.ErrPermission) {
 				continue
 			}
-			return errors.Wrap(err, "lclearxattrs: remove xattr")
+			return fmtcompat.Errorf("lclearxattrs: remove xattr: %w", err)
 		}
 	}
 	return nil

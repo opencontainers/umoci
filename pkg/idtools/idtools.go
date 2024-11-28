@@ -22,7 +22,7 @@ import (
 	"strings"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // ToHost translates a remapped container ID to an unmapped host ID using the
@@ -39,7 +39,7 @@ func ToHost(contID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, errors.Errorf("container id %d cannot be mapped to a host id", contID)
+	return -1, fmtcompat.Errorf("container id %d cannot be mapped to a host id", contID)
 }
 
 // ToContainer takes an unmapped host ID and translates it to a remapped
@@ -57,7 +57,7 @@ func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, errors.Errorf("host id %d cannot be mapped to a container id", hostID)
+	return -1, fmtcompat.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
 // Helper to return a uint32 from strconv.ParseUint type-safely.
@@ -78,22 +78,22 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	case 3:
 		size, err = parseUint32(parts[2])
 		if err != nil {
-			return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid size in mapping")
+			return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid size in mapping: %w", err)
 		}
 	case 2:
 		size = 1
 	default:
-		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
+		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
 	}
 
 	contID, err = parseUint32(parts[0])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
+		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid containerID in mapping: %w", err)
 	}
 
 	hostID, err = parseUint32(parts[1])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
+		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid hostID in mapping: %w", err)
 	}
 
 	return rspec.LinuxIDMapping{

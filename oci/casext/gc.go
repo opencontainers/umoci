@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,7 +23,7 @@ import (
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // GCPolicy is a policy function that returns 'true' if a blob can be GC'ed
@@ -49,7 +49,7 @@ func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return errors.Wrap(err, "get top-level index")
+		return fmtcompat.Errorf("get top-level index: %w", err)
 	}
 
 	for _, descriptor := range index.Manifests {
@@ -68,7 +68,7 @@ func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 
 		reachables, err := e.reachable(ctx, descriptor)
 		if err != nil {
-			return errors.Wrapf(err, "getting reachables from root %d", idx)
+			return fmtcompat.Errorf("getting reachables from root %d: %w", idx, err)
 		}
 		for _, reachable := range reachables {
 			black[reachable] = struct{}{}
@@ -78,7 +78,7 @@ func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 	// Sweep all blobs in the white set.
 	blobs, err := e.ListBlobs(ctx)
 	if err != nil {
-		return errors.Wrap(err, "get blob list")
+		return fmtcompat.Errorf("get blob list: %w", err)
 	}
 
 	n := 0
@@ -92,7 +92,7 @@ sweep:
 		for i, policy := range policies {
 			ok, err := policy(ctx, digest)
 			if err != nil {
-				return errors.Wrapf(err, "invoking policy %d failed", i)
+				return fmtcompat.Errorf("invoking policy %d failed: %w", i, err)
 			}
 
 			if !ok {
@@ -104,14 +104,14 @@ sweep:
 		log.Debugf("garbage collecting blob: %s", digest)
 
 		if err := e.DeleteBlob(ctx, digest); err != nil {
-			return errors.Wrapf(err, "remove unmarked blob %s", digest)
+			return fmtcompat.Errorf("remove unmarked blob %s: %w", digest, err)
 		}
 		n++
 	}
 
 	// Finally, tell CAS to GC it.
 	if err := e.Clean(ctx); err != nil {
-		return errors.Wrapf(err, "clean engine")
+		return fmtcompat.Errorf("clean engine: %w", err)
 	}
 
 	log.Debugf("garbage collected %d blobs", n)

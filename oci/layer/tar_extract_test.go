@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -32,7 +33,6 @@ import (
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -277,7 +277,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			}
 
 			// Make sure that the path is gone.
-			if _, err := os.Lstat(filepath.Join(dir, test.path)); !os.IsNotExist(err) {
+			if _, err := os.Lstat(filepath.Join(dir, test.path)); !errors.Is(err, os.ErrNotExist) {
 				if err != nil {
 					t.Fatalf("unexpected error checking whiteout out path: %s", err)
 				}
@@ -533,7 +533,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 				fullPath := filepath.Join(whiteoutRoot, ph.path)
 				_, err := te.fsEval.Lstat(fullPath)
-				if err != nil && !os.IsNotExist(errors.Cause(err)) {
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
 					t.Errorf("unexpected lstat error of %s: %v", ph.path, err)
 				} else if ph.upper && err != nil {
 					t.Errorf("expected upper %s to exist: got %v", ph.path, err)
@@ -546,7 +546,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 			// Make sure the whiteoutRoot still exists.
 			if fi, err := te.fsEval.Lstat(whiteoutRoot); err != nil {
-				if os.IsNotExist(errors.Cause(err)) {
+				if errors.Is(err, os.ErrNotExist) {
 					t.Errorf("expected whiteout root to still exist: %v", err)
 				} else {
 					t.Errorf("unexpected error in lstat of whiteout root: %v", err)

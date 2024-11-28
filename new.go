@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -27,7 +27,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // NewImage creates a new empty image (tag) in the existing layout.
@@ -55,7 +55,7 @@ func NewImage(engineExt casext.Engine, tagName string) error {
 	config := g.Image()
 	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
 	if err != nil {
-		return errors.Wrap(err, "put config blob")
+		return fmtcompat.Errorf("put config blob: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -80,7 +80,7 @@ func NewImage(engineExt casext.Engine, tagName string) error {
 
 	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
 	if err != nil {
-		return errors.Wrap(err, "put manifest blob")
+		return fmtcompat.Errorf("put manifest blob: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -101,7 +101,7 @@ func NewImage(engineExt casext.Engine, tagName string) error {
 	log.Infof("new image manifest created: %s", descriptor.Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
-		return errors.Wrap(err, "add new tag")
+		return fmtcompat.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)

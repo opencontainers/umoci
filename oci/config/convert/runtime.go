@@ -27,7 +27,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // Annotations described by the OCI image-spec document (these represent fields
@@ -60,12 +60,12 @@ func ToRuntimeSpec(rootfs string, image ispec.Image) (rspec.Spec, error) {
 func parseEnv(env string) (string, string, error) {
 	parts := strings.SplitN(env, "=", 2)
 	if len(parts) != 2 {
-		return "", "", errors.Errorf("environment variable must contain '=': %s", env)
+		return "", "", fmtcompat.Errorf("environment variable must contain '=': %s", env)
 	}
 
 	name, value := parts[0], parts[1]
 	if name == "" {
-		return "", "", errors.Errorf("environment variable must have non-empty name: %s", env)
+		return "", "", fmtcompat.Errorf("environment variable must have non-empty name: %s", env)
 	}
 	return name, value, nil
 }
@@ -108,11 +108,11 @@ func allocateNilStruct(spec *rspec.Spec) {
 func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error {
 	ig, err := igen.NewFromImage(image)
 	if err != nil {
-		return errors.Wrap(err, "creating image generator")
+		return fmtcompat.Errorf("creating image generator: %w", err)
 	}
 
 	if ig.OS() != "linux" {
-		return errors.Errorf("unsupported OS: %s", image.OS)
+		return fmtcompat.Errorf("unsupported OS: %s", image.OS)
 	}
 
 	allocateNilStruct(spec)
@@ -127,13 +127,13 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	// might drop fields that the user finds important).
 	oldVersion, err := semver.Parse(spec.Version)
 	if err != nil {
-		return errors.Wrap(err, "parsing original runtime-spec config version")
+		return fmtcompat.Errorf("parsing original runtime-spec config version: %w", err)
 	}
 	if oldVersion.GT(curSpecVersion) {
-		return errors.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
+		return fmtcompat.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
 	}
 	if oldVersion.Major != curSpecVersion.Major {
-		return errors.Errorf("original runtime-spec config version %s is incompatible with version %s: mismatching major number", oldVersion, curSpecVersion)
+		return fmtcompat.Errorf("original runtime-spec config version %s is incompatible with version %s: mismatching major number", oldVersion, curSpecVersion)
 	}
 
 	// Set verbatim fields
@@ -149,7 +149,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	for _, env := range ig.ConfigEnv() {
 		name, value, err := parseEnv(env)
 		if err != nil {
-			return errors.Wrap(err, "parsing image.Config.Env")
+			return fmtcompat.Errorf("parsing image.Config.Env: %w", err)
 		}
 		appendEnv(&spec.Process.Env, name, value)
 	}
@@ -185,7 +185,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		// We only log an error if were not given a rootfs, and we set execUser
 		// to the "default" (root:root).
 		if rootfs != "" {
-			return errors.Wrapf(err, "cannot parse user spec: %q", ig.ConfigUser())
+			return fmtcompat.Errorf("cannot parse user spec: %q: %w", ig.ConfigUser(), err)
 		}
 		log.Warnf("could not parse user spec %q without a rootfs -- defaulting to root:root", ig.ConfigUser())
 		execUser = new(user.ExecUser)

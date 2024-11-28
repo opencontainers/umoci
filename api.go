@@ -20,7 +20,7 @@ package umoci
 import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // OpenLayout opens an existing OCI image layout, and fails if it does not
@@ -29,7 +29,7 @@ func OpenLayout(imagePath string) (casext.Engine, error) {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return casext.Engine{}, errors.Wrap(err, "open CAS")
+		return casext.Engine{}, fmtcompat.Errorf("open CAS: %w", err)
 	}
 
 	return casext.NewEngine(engine), nil

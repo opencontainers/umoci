@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,7 +19,7 @@ package main
 
 import (
 	"context"
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/apex/log"
@@ -29,8 +29,8 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -80,10 +80,10 @@ manifest and configuration information uses the new diff atop the old manifest.`
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return errors.Errorf("invalid number of positional arguments: expected <bundle>")
+			return errors.New("invalid number of positional arguments: expected <bundle>")
 		}
 		if ctx.Args().First() == "" {
-			return errors.Errorf("bundle path cannot be empty")
+			return errors.New("bundle path cannot be empty")
 		}
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
@@ -98,7 +98,7 @@ func repack(ctx *cli.Context) error {
 	// Read the metadata first.
 	meta, err := umoci.ReadBundleMeta(bundlePath)
 	if err != nil {
-		return errors.Wrap(err, "read umoci.json metadata")
+		return fmtcompat.Errorf("read umoci.json metadata: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -108,13 +108,13 @@ func repack(ctx *cli.Context) error {
 	}).Debugf("umoci: loaded Meta metadata")
 
 	if meta.From.Descriptor().MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.Descriptor().MediaType), "invalid saved from descriptor")
+		return fmtcompat.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.Descriptor().MediaType)
 	}
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
@@ -122,13 +122,13 @@ func repack(ctx *cli.Context) error {
 	// Create the mutator.
 	mutator, err := mutate.New(engineExt, meta.From)
 	if err != nil {
-		return errors.Wrap(err, "create mutator for base image")
+		return fmtcompat.Errorf("create mutator for base image: %w", err)
 	}
 
 	// We need to mask config.Volumes.
 	config, err := mutator.Config(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "get config")
+		return fmtcompat.Errorf("get config: %w", err)
 	}
 
 	maskedPaths := ctx.StringSlice("mask-path")
@@ -140,7 +140,7 @@ func repack(ctx *cli.Context) error {
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "get image metadata")
+		return fmtcompat.Errorf("get image metadata: %w", err)
 	}
 
 	var history *ispec.History
@@ -163,7 +163,7 @@ func repack(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return errors.Wrap(err, "parsing --history.created")
+				return fmtcompat.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}

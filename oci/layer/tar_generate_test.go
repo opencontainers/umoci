@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,7 +20,6 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -28,6 +27,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 func TestTarGenerateAddFileNormal(t *testing.T) {
@@ -305,7 +306,7 @@ func parseWhiteout(path string) (string, error) {
 	path = filepath.Clean(path)
 	dir, file := filepath.Split(path)
 	if !strings.HasPrefix(file, whPrefix) {
-		return "", fmt.Errorf("not a whiteout path: %s", path)
+		return "", fmtcompat.Errorf("not a whiteout path: %s", path)
 	}
 	return filepath.Join(dir, strings.TrimPrefix(file, whPrefix)), nil
 }

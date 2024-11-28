@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"os"
 	"time"
 
@@ -29,7 +30,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/pkg/errors"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -56,10 +57,10 @@ only supports uncompressed archives.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
-			return errors.Errorf("invalid number of positional arguments: expected <newlayer.tar>")
+			return errors.New("invalid number of positional arguments: expected <newlayer.tar>")
 		}
 		if ctx.Args().First() == "" {
-			return errors.Errorf("<new-layer.tar> path cannot be empty")
+			return errors.New("<new-layer.tar> path cannot be empty")
 		}
 		ctx.App.Metadata["newlayer"] = ctx.Args().First()
 		return nil
@@ -83,45 +84,45 @@ func rawAddLayer(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmtcompat.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", fromName)
+		return fmtcompat.Errorf("tag not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
+		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
 	}
 	meta.From = fromDescriptorPaths[0]
 
 	// Create the mutator.
 	mutator, err := mutate.New(engine, meta.From)
 	if err != nil {
-		return errors.Wrap(err, "create mutator for base image")
+		return fmtcompat.Errorf("create mutator for base image: %w", err)
 	}
 
 	newLayer, err := os.Open(newLayerPath)
 	if err != nil {
-		return errors.Wrap(err, "open new layer archive")
+		return fmtcompat.Errorf("open new layer archive: %w", err)
 	}
 	if fi, err := newLayer.Stat(); err != nil {
-		return errors.Wrap(err, "stat new layer archive")
+		return fmtcompat.Errorf("stat new layer archive: %w", err)
 	} else if fi.IsDir() {
-		return errors.Errorf("new layer archive is a directory")
+		return errors.New("new layer archive is a directory")
 	}
 	// TODO: Verify that the layer is actually uncompressed.
 	defer newLayer.Close()
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "get image metadata")
+		return fmtcompat.Errorf("get image metadata: %w", err)
 	}
 
 	var history *ispec.History
@@ -144,7 +145,7 @@ func rawAddLayer(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return errors.Wrap(err, "parsing --history.created")
+				return fmtcompat.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
@@ -156,18 +157,18 @@ func rawAddLayer(ctx *cli.Context) error {
 	// TODO: We should add a flag to allow for a new layer to be made
 	//       non-distributable.
 	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, mutate.GzipCompressor, nil); err != nil {
-		return errors.Wrap(err, "add diff layer")
+		return fmtcompat.Errorf("add diff layer: %w", err)
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "commit mutated image")
+		return fmtcompat.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return errors.Wrap(err, "add new tag")
+		return fmtcompat.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)

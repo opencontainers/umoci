@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 package system
 
 import (
+	"errors"
 	"io/ioutil"
 	"os"
 	"testing"
 
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -58,7 +58,7 @@ func TestClearxattrFilter(t *testing.T) {
 		}
 
 		if err := unix.Lsetxattr(path, xattr.name, []byte(xattr.value), 0); err != nil {
-			if errors.Cause(err) == unix.ENOTSUP {
+			if errors.Is(err, unix.ENOTSUP) {
 				t.Skip("xattrs unsupported on backing filesystem")
 			}
 			t.Fatalf("unexpected error setting %v=%v on %v: %v", xattr.name, xattr.value, path, err)

@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package hardening
 import (
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,7 +30,6 @@ import (
 	_ "crypto/sha256"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 )
 
 func TestValid(t *testing.T) {
@@ -142,12 +142,12 @@ func TestInvalidDigest(t *testing.T) {
 			}
 
 			// Make sure everything if we copy-to-EOF we get the right error.
-			if _, err := io.Copy(ioutil.Discard, verifiedReader); errors.Cause(err) != ErrDigestMismatch {
+			if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrDigestMismatch) {
 				t.Errorf("expected digest to be invalid on EOF: got wrong error: %v", err)
 			}
 
 			// And on close we should get the error.
-			if err := verifiedReader.Close(); errors.Cause(err) != ErrDigestMismatch {
+			if err := verifiedReader.Close(); !errors.Is(err, ErrDigestMismatch) {
 				t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
 			}
 		})
@@ -187,7 +187,7 @@ func TestInvalidDigest_Trailing(t *testing.T) {
 				}
 
 				// And on close we should get the error.
-				if err := verifiedReader.Close(); errors.Cause(err) != ErrDigestMismatch {
+				if err := verifiedReader.Close(); !errors.Is(err, ErrDigestMismatch) {
 					t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
 				}
 			})
@@ -217,12 +217,12 @@ func TestInvalidSize_Short(t *testing.T) {
 				}
 
 				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); errors.Cause(err) != ErrSizeMismatch {
+				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
 				}
 
 				// And on close we should get the error.
-				if err := verifiedReader.Close(); errors.Cause(err) != ErrSizeMismatch {
+				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
 				}
 			})
@@ -253,12 +253,12 @@ func TestInvalidSize_LongBuffer(t *testing.T) {
 				}
 
 				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); errors.Cause(err) != ErrSizeMismatch {
+				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
 				}
 
 				// And on close we should get the error.
-				if err := verifiedReader.Close(); errors.Cause(err) != ErrSizeMismatch {
+				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
 				}
 			})
@@ -285,12 +285,12 @@ func TestInvalidSize_Long(t *testing.T) {
 				}
 
 				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); errors.Cause(err) != ErrSizeMismatch {
+				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
 				}
 
 				// And on close we should get the error.
-				if err := verifiedReader.Close(); errors.Cause(err) != ErrSizeMismatch {
+				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
 					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
 				}
 			})

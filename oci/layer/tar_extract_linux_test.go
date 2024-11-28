@@ -22,6 +22,7 @@ package layer
 
 import (
 	"archive/tar"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -35,7 +36,7 @@ func canMknod(dir string) (bool, error) {
 	testNode := filepath.Join(dir, "test")
 	err := system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
 	if err != nil {
-		if os.IsPermission(err) {
+		if errors.Is(err, os.ErrPermission) {
 			return false, nil
 		}
 

@@ -34,8 +34,8 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/idtools"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 )
@@ -106,12 +106,12 @@ func (m Meta) WriteTo(w io.Writer) (int64, error) {
 func WriteBundleMeta(bundle string, meta Meta) error {
 	fh, err := os.Create(filepath.Join(bundle, MetaName))
 	if err != nil {
-		return errors.Wrap(err, "create metadata")
+		return fmtcompat.Errorf("create metadata: %w", err)
 	}
 	defer fh.Close()
 
 	_, err = meta.WriteTo(fh)
-	return errors.Wrap(err, "write metadata")
+	return fmtcompat.Errorf("write metadata: %w", err)
 }
 
 // ReadBundleMeta reads and parses the umoci.json file from a given bundle path.
@@ -120,17 +120,17 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 
 	fh, err := os.Open(filepath.Join(bundle, MetaName))
 	if err != nil {
-		return meta, errors.Wrap(err, "open metadata")
+		return meta, fmtcompat.Errorf("open metadata: %w", err)
 	}
 	defer fh.Close()
 
 	err = json.NewDecoder(fh).Decode(&meta)
 	if meta.Version != MetaVersion {
 		if err == nil {
-			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
+			err = fmtcompat.Errorf("unsupported umoci.json version: %s", meta.Version)
 		}
 	}
-	return meta, errors.Wrap(err, "decode metadata")
+	return meta, fmtcompat.Errorf("decode metadata: %w", err)
 }
 
 // ManifestStat has information about a given OCI manifest.
@@ -200,7 +200,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	var stat ManifestStat
 
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return stat, errors.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type %q", manifestDescriptor.MediaType)
+		return stat, fmtcompat.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type %q", manifestDescriptor.MediaType)
 	}
 
 	// We have to get the actual manifest.
@@ -211,18 +211,18 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, errors.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return stat, fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Now get the config.
 	configBlob, err := engine.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return stat, errors.Wrap(err, "stat")
+		return stat, fmtcompat.Errorf("stat: %w", err)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, errors.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return stat, fmtcompat.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	// TODO: This should probably be moved into separate functions.
@@ -267,21 +267,21 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	log.Info("computing filesystem manifest ...")
 	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
 	if err != nil {
-		return errors.Wrap(err, "generate mtree spec")
+		return fmtcompat.Errorf("generate mtree spec: %w", err)
 	}
 	log.Info("... done")
 
 	flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
 	fh, err := os.OpenFile(mtreePath, flags, 0644)
 	if err != nil {
-		return errors.Wrap(err, "open mtree")
+		return fmtcompat.Errorf("open mtree: %w", err)
 	}
 	defer fh.Close()
 
 	log.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
-		return errors.Wrap(err, "write mtree")
+		return fmtcompat.Errorf("write mtree: %w", err)
 	}
 
 	return nil
@@ -296,13 +296,13 @@ func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 		if !ctx.IsSet("uid-map") {
 			if err := ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid())); err != nil {
 				// Should _never_ be reached.
-				return errors.Wrap(err, "[internal error] failure auto-setting rootless --uid-map")
+				return fmtcompat.Errorf("[internal error] failure auto-setting rootless --uid-map: %w", err)
 			}
 		}
 		if !ctx.IsSet("gid-map") {
 			if err := ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid())); err != nil {
 				// Should _never_ be reached.
-				return errors.Wrap(err, "[internal error] failure auto-setting rootless --gid-map")
+				return fmtcompat.Errorf("[internal error] failure auto-setting rootless --gid-map: %w", err)
 			}
 		}
 	}
@@ -310,14 +310,14 @@ func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
-			return errors.Wrapf(err, "failure parsing --uid-map %s", uidmap)
+			return fmtcompat.Errorf("failure parsing --uid-map %s: %w", uidmap, err)
 		}
 		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
 	}
 	for _, gidmap := range ctx.StringSlice("gid-map") {
 		idMap, err := idtools.ParseMapping(gidmap)
 		if err != nil {
-			return errors.Wrapf(err, "failure parsing --gid-map %s", gidmap)
+			return fmtcompat.Errorf("failure parsing --gid-map %s: %w", gidmap, err)
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}
