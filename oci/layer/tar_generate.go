@@ -27,7 +27,6 @@ import (
 	"strings"
 
 	"github.com/apex/log"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/pkg/testutils"
@@ -315,7 +314,10 @@ func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	}
 
 	// Add a dummy header for the whiteout file.
-	return fmtcompat.Errorf("write whiteout header: %w", tg.tw.WriteHeader(&tar.Header{Name: whiteout, Size: 0}))
+	if err := tg.tw.WriteHeader(&tar.Header{Name: whiteout, Size: 0}); err != nil {
+		return fmt.Errorf("write whiteout header: %w", err)
+	}
+	return nil
 }
 
 // AddWhiteout creates a whiteout for the provided path.

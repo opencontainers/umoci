@@ -24,7 +24,6 @@ import (
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // Used by walkState.mark() to determine which struct members are descriptors to
@@ -75,8 +74,10 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 		if V.IsNil() {
 			return nil
 		}
-		err := mapDescriptors(V.Elem(), mapFunc)
-		return fmtcompat.Errorf("%v: %w", V.Type(), err)
+		if err := mapDescriptors(V.Elem(), mapFunc); err != nil {
+			return fmt.Errorf("%v: %w", V.Type(), err)
+		}
+		return nil
 
 	case reflect.Slice, reflect.Array:
 		// Iterate over each element.

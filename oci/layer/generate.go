@@ -26,7 +26,6 @@ import (
 	"sort"
 
 	"github.com/apex/log"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
 )
@@ -55,11 +54,13 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	go func() (Err error) {
 		// Close with the returned error.
 		defer func() {
+			var closeErr error
 			if Err != nil {
 				log.Warnf("could not generate layer: %v", Err)
+				closeErr = fmt.Errorf("generate layer: %w", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(fmtcompat.Errorf("generate layer: %w", Err))
+			_ = writer.CloseWithError(closeErr)
 		}()
 
 		// We can't just dump all of the file contents into a tar file. We need
@@ -138,11 +139,13 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 
 	go func() (Err error) {
 		defer func() {
+			var closeErr error
 			if Err != nil {
 				log.Warnf("could not generate insert layer: %v", Err)
+				closeErr = fmt.Errorf("generate insert layer: %w", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(fmtcompat.Errorf("generate insert layer: %w", Err))
+			_ = writer.CloseWithError(closeErr)
 		}()
 
 		tg := newTarGenerator(writer, packOptions.MapOptions)

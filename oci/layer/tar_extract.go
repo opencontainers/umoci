@@ -30,7 +30,6 @@ import (
 
 	"github.com/apex/log"
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/third_party/shared"
@@ -321,7 +320,7 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 	// we iterate over any children and try again. The only difference
 	// between opaque whiteouts and regular whiteouts is that we don't
 	// delete the directory itself with opaque whiteouts.
-	err := te.fsEval.Walk(path, func(subpath string, info os.FileInfo, err error) error {
+	if err := te.fsEval.Walk(path, func(subpath string, info os.FileInfo, err error) error {
 		// If we are passed an error, bail unless it's ENOENT.
 		if err != nil {
 			// If something was deleted outside of our knowledge it's not
@@ -352,15 +351,18 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 			// Purge the path. We skip anything underneath (if it's a
 			// directory) since we just purged it -- and we don't want to
 			// hit ENOENT during iteration for no good reason.
-			err := fmtcompat.Errorf("whiteout subpath: %w", te.fsEval.RemoveAll(subpath))
-			if err == nil && info.IsDir() {
-				err = filepath.SkipDir
+			if err := te.fsEval.RemoveAll(subpath); err != nil {
+				return fmt.Errorf("whiteout subpath: %w", err)
 			}
-			return err
+			if info.IsDir() {
+				return filepath.SkipDir
+			}
 		}
 		return nil
-	})
-	return fmtcompat.Errorf("whiteout remove: %w", err)
+	}); err != nil {
+		return fmt.Errorf("whiteout remove: %w", err)
+	}
+	return nil
 }
 
 func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
@@ -368,8 +370,10 @@ func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
 
 	// if this is an opaque whiteout, whiteout the directory
 	if isOpaque {
-		err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0)
-		return fmtcompat.Errorf("couldn't set overlayfs whiteout attr for %s: %w", dir, err)
+		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
+			return fmt.Errorf("couldn't set overlayfs whiteout attr for %s: %w", dir, err)
+		}
+		return nil
 	}
 
 	// otherwise, white out the file itself.
@@ -378,8 +382,10 @@ func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
 		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
 	}
 
-	err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	return fmtcompat.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+	if err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+	}
+	return nil
 }
 
 // UnpackEntry extracts the given tar.Header to the provided root, ensuring

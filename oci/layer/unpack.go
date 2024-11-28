@@ -40,7 +40,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/opencontainers/umoci/pkg/system"
@@ -374,5 +373,8 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	// Save the config.json.
 	enc := json.NewEncoder(configFile)
 	enc.SetIndent("", "\t")
-	return fmtcompat.Errorf("write config.json: %w", enc.Encode(spec))
+	if err := enc.Encode(spec); err != nil {
+		return fmt.Errorf("write config.json: %w", err)
+	}
+	return nil
 }

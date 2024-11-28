@@ -28,7 +28,6 @@ import (
 	"time"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/system"
 	"golang.org/x/sys/unix"
 )
@@ -143,7 +142,10 @@ func Open(path string) (*os.File, error) {
 		fh, err = os.Open(path)
 		return err
 	})
-	return fh, fmtcompat.Errorf("unpriv.open: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.open: %w", err)
+	}
+	return fh, nil
 }
 
 // Create is a wrapper around os.Create which has been wrapped with unpriv.Wrap
@@ -158,7 +160,10 @@ func Create(path string) (*os.File, error) {
 		fh, err = os.Create(path)
 		return err
 	})
-	return fh, fmtcompat.Errorf("unpriv.create: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.create: %w", err)
+	}
+	return fh, nil
 }
 
 // Readdir is a wrapper around (*os.File).Readdir which has been wrapper with
@@ -193,7 +198,10 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		infos, err = fh.Readdir(-1)
 		return err
 	})
-	return infos, fmtcompat.Errorf("unpriv.readdir: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.readdir: %w", err)
+	}
+	return infos, nil
 }
 
 // Lstat is a wrapper around os.Lstat which has been wrapped with unpriv.Wrap
@@ -209,7 +217,10 @@ func Lstat(path string) (os.FileInfo, error) {
 		fi, err = os.Lstat(path)
 		return err
 	})
-	return fi, fmtcompat.Errorf("unpriv.lstat: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.lstat: %w", err)
+	}
+	return fi, nil
 }
 
 // Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead
@@ -218,7 +229,10 @@ func Lstatx(path string) (unix.Stat_t, error) {
 	err := Wrap(path, func(path string) error {
 		return unix.Lstat(path, &s)
 	})
-	return s, fmtcompat.Errorf("unpriv.lstatx: %w", err)
+	if err != nil {
+		return s, fmt.Errorf("unpriv.lstatx: %w", err)
+	}
+	return s, nil
 }
 
 // Readlink is a wrapper around os.Readlink which has been wrapped with
@@ -234,7 +248,10 @@ func Readlink(path string) (string, error) {
 		target, err = os.Readlink(path)
 		return err
 	})
-	return target, fmtcompat.Errorf("unpriv.readlink: %w", err)
+	if err != nil {
+		return "", fmt.Errorf("unpriv.readlink: %w", err)
+	}
+	return target, nil
 }
 
 // Symlink is a wrapper around os.Symlink which has been wrapped with
@@ -500,7 +517,10 @@ func Llistxattr(path string) ([]string, error) {
 		xattrs, err = system.Llistxattr(path)
 		return err
 	})
-	return xattrs, fmtcompat.Errorf("unpriv.llistxattr: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.llistxattr: %w", err)
+	}
+	return xattrs, nil
 }
 
 // Lremovexattr is a wrapper around system.Lremovexattr which has been wrapped
@@ -535,7 +555,10 @@ func Lgetxattr(path, name string) ([]byte, error) {
 		value, err = system.Lgetxattr(path, name)
 		return err
 	})
-	return value, fmtcompat.Errorf("unpriv.lgetxattr: %w", err)
+	if err != nil {
+		return nil, fmt.Errorf("unpriv.lgetxattr: %w", err)
+	}
+	return value, nil
 }
 
 // Lclearxattrs is similar to system.Lclearxattrs but in order to implement it
@@ -616,9 +639,9 @@ func Walk(root string, walkFn filepath.WalkFunc) error {
 		} else {
 			err = walk(root, info, walkFn)
 		}
-		if !errors.Is(err, filepath.SkipDir) {
-			return fmtcompat.Errorf("unpriv.walk: %w", err)
+		if err == nil || errors.Is(err, filepath.SkipDir) {
+			return nil
 		}
-		return nil
+		return fmt.Errorf("unpriv.walk: %w", err)
 	})
 }

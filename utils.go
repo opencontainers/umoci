@@ -34,7 +34,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -110,8 +109,10 @@ func WriteBundleMeta(bundle string, meta Meta) error {
 	}
 	defer fh.Close()
 
-	_, err = meta.WriteTo(fh)
-	return fmtcompat.Errorf("write metadata: %w", err)
+	if _, err := meta.WriteTo(fh); err != nil {
+		return fmt.Errorf("write metadata: %w", err)
+	}
+	return nil
 }
 
 // ReadBundleMeta reads and parses the umoci.json file from a given bundle path.
@@ -130,7 +131,10 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
 		}
 	}
-	return meta, fmtcompat.Errorf("decode metadata: %w", err)
+	if err != nil {
+		return meta, fmt.Errorf("decode metadata: %w", err)
+	}
+	return meta, nil
 }
 
 // ManifestStat has information about a given OCI manifest.

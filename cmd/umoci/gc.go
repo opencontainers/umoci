@@ -24,7 +24,6 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -67,5 +66,8 @@ func gc(ctx *cli.Context) error {
 	defer engine.Close()
 
 	// Run the GC.
-	return fmtcompat.Errorf("gc: %w", engineExt.GC(context.Background()))
+	if err := engineExt.GC(context.Background()); err != nil {
+		return fmt.Errorf("gc: %w", err)
+	}
+	return nil
 }
