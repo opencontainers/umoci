@@ -43,6 +43,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   didn't occur before. #437
 - Quite a few changes were made to CI to try to avoid issues with fragility.
   #452
+- umoci will now return an explicit error if you pass invalid uid or gid values
+  to `--uid-map` and `--gid-map` rather than silently truncating the value.
 
 ## [0.4.7] - 2021-04-05 ##
 

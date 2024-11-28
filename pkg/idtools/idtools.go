@@ -60,6 +60,12 @@ func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 	return -1, errors.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
+// Helper to return a uint32 from strconv.ParseUint type-safely.
+func parseUint32(str string) (uint32, error) {
+	val, err := strconv.ParseUint(str, 10, 32)
+	return uint32(val), err
+}
+
 // ParseMapping takes a mapping string of the form "container:host[:size]" and
 // returns the corresponding rspec.LinuxIDMapping. An error is returned if not
 // enough fields are provided or are otherwise invalid. The default size is 1.
@@ -67,10 +73,10 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	parts := strings.Split(spec, ":")
 
 	var err error
-	var hostID, contID, size int
+	var hostID, contID, size uint32
 	switch len(parts) {
 	case 3:
-		size, err = strconv.Atoi(parts[2])
+		size, err = parseUint32(parts[2])
 		if err != nil {
 			return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid size in mapping")
 		}
@@ -80,19 +86,19 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
 	}
 
-	contID, err = strconv.Atoi(parts[0])
+	contID, err = parseUint32(parts[0])
 	if err != nil {
 		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
 	}
 
-	hostID, err = strconv.Atoi(parts[1])
+	hostID, err = parseUint32(parts[1])
 	if err != nil {
 		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
 	}
 
 	return rspec.LinuxIDMapping{
-		HostID:      uint32(hostID),
-		ContainerID: uint32(contID),
-		Size:        uint32(size),
+		HostID:      hostID,
+		ContainerID: contID,
+		Size:        size,
 	}, nil
 }
