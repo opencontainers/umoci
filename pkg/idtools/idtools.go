@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -83,7 +83,7 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	case 2:
 		size = 1
 	default:
-		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
+		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
 	}
 
 	contID, err = parseUint32(parts[0])

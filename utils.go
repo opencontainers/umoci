@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -200,7 +200,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	var stat ManifestStat
 
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return stat, errors.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type '%s'", manifestDescriptor.MediaType)
+		return stat, errors.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type %q", manifestDescriptor.MediaType)
 	}
 
 	// We have to get the actual manifest.

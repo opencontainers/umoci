@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -261,7 +261,7 @@ func TestMutateAdd(t *testing.T) {
 		t.Errorf("manifest.Layers[1].Annotations['hello'] was not set correctly!: %+v", mutator.manifest.Layers[1].Annotations)
 	}
 	if mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation] != fmt.Sprintf("%d", bufferSize) {
-		t.Errorf("manifest.Layers[1].Annotations['%s'] was not set correctly!: %q, expected %d",
+		t.Errorf("manifest.Layers[1].Annotations[%q] was not set correctly!: %q, expected %d",
 			UmociUncompressedBlobSizeAnnotation,
 			mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation],
 			bufferSize)

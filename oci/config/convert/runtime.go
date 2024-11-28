@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -185,9 +185,9 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		// We only log an error if were not given a rootfs, and we set execUser
 		// to the "default" (root:root).
 		if rootfs != "" {
-			return errors.Wrapf(err, "cannot parse user spec: '%s'", ig.ConfigUser())
+			return errors.Wrapf(err, "cannot parse user spec: %q", ig.ConfigUser())
 		}
-		log.Warnf("could not parse user spec '%s' without a rootfs -- defaulting to root:root", ig.ConfigUser())
+		log.Warnf("could not parse user spec %q without a rootfs -- defaulting to root:root", ig.ConfigUser())
 		execUser = new(user.ExecUser)
 	}
 

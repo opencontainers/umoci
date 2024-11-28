@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -103,7 +103,7 @@ func uxTag(cmd cli.Command) cli.Command {
 		if ctx.IsSet("tag") {
 			tag := ctx.String("tag")
 			if !casext.IsValidReferenceName(tag) {
-				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --tag")
+				return errors.Wrap(fmt.Errorf("tag contains invalid characters: %q", tag), "invalid --tag")
 			}
 			if tag == "" {
 				return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --tag")
@@ -155,7 +155,7 @@ func uxImage(cmd cli.Command) cli.Command {
 
 			// Verify tag value.
 			if !casext.IsValidReferenceName(tag) {
-				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --image")
+				return errors.Wrap(fmt.Errorf("tag contains invalid characters: %q", tag), "invalid --image")
 			}
 			if tag == "" {
 				return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --image")
@@ -191,7 +191,7 @@ func uxLayout(cmd cli.Command) cli.Command {
 
 			// Verify directory value.
 			if strings.Contains(layout, ":") {
-				return errors.Wrap(fmt.Errorf("path contains ':' character: '%s'", layout), "invalid --layout")
+				return errors.Wrap(fmt.Errorf("path contains ':' character: %q", layout), "invalid --layout")
 			}
 			if layout == "" {
 				return errors.Wrap(fmt.Errorf("path is empty"), "invalid --layout")

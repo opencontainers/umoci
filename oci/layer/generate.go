@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -100,12 +100,12 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 					continue
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
-					log.Warnf("generate layer: could not add file '%s': %s", name, err)
+					log.Warnf("generate layer: could not add file %q: %s", name, err)
 					return errors.Wrap(err, "generate layer file")
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
-					log.Warnf("generate layer: could not add whiteout '%s': %s", name, err)
+					log.Warnf("generate layer: could not add whiteout %q: %s", name, err)
 					return errors.Wrap(err, "generate whiteout layer file")
 				}
 			}

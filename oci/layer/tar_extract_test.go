@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,10 +84,10 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	}
 
 	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
 	}
 	if !bytes.Equal(hostValue, hostValueGot) {
-		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected='%s' got='%s'", string(hostValue), string(hostValueGot))
+		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected=%q got=%q", string(hostValue), string(hostValueGot))
 	}
 }
 
@@ -197,7 +197,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	}
 
 	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
 	}
 }
 
@@ -294,10 +294,10 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				}
 
 				if !hdr.ModTime.Equal(testMtime) {
-					t.Errorf("mtime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testMtime)
+					t.Errorf("mtime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testMtime)
 				}
 				if !hdr.AccessTime.Equal(testAtime) {
-					t.Errorf("atime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testAtime)
+					t.Errorf("atime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testAtime)
 				}
 			}
 		})
