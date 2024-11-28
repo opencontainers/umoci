@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,12 @@ import (
 	"github.com/pkg/errors"
 )
 
+// UmociUncompressedBlobSizeAnnotation is an umoci-specific annotation to
+// provide information in descriptors to compressed blobs about the size of the
+// underlying uncompressed blob for users that need that information. Note that
+// this annotation value should be treated as a hint -- an attacker could
+// create an image that has a dummy UmociUncompressedBlobSizeAnnotation value
+// for a zip-bomb blob.
 const UmociUncompressedBlobSizeAnnotation = "ci.umo.uncompressed_blob_size"
 
 func configPtr(c ispec.Image) *ispec.Image         { return &c }
