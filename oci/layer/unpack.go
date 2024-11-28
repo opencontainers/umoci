@@ -66,10 +66,10 @@ func UnpackLayer(root string, layer io.Reader, opt *UnpackOptions) error {
 			break
 		}
 		if err != nil {
-			return fmtcompat.Errorf("read next entry: %w", err)
+			return fmt.Errorf("read next entry: %w", err)
 		}
 		if err := te.UnpackEntry(root, hdr, tr); err != nil {
-			return fmtcompat.Errorf("unpack entry: %s: %w", hdr.Name, err)
+			return fmt.Errorf("unpack entry: %s: %w", hdr.Name, err)
 		}
 	}
 	return nil
@@ -100,14 +100,14 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
 	if err := os.MkdirAll(bundle, 0755); err != nil {
-		return fmtcompat.Errorf("mkdir bundle: %w", err)
+		return fmt.Errorf("mkdir bundle: %w", err)
 	}
 	// We change the mode of the bundle directory to 0700. A user can easily
 	// change this after-the-fact, but we do this explicitly to avoid cases
 	// where an unprivileged user could recurse into an otherwise unsafe image
 	// (giving them potential root access through setuid binaries for example).
 	if err := os.Chmod(bundle, 0700); err != nil {
-		return fmtcompat.Errorf("chmod bundle 0700: %w", err)
+		return fmt.Errorf("chmod bundle 0700: %w", err)
 	}
 
 	configPath := filepath.Join(bundle, "config.json")
@@ -141,18 +141,18 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
 	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt); err != nil {
-		return fmtcompat.Errorf("unpack rootfs: %w", err)
+		return fmt.Errorf("unpack rootfs: %w", err)
 	}
 
 	// Generate a runtime configuration file from ispec.Image.
 	configFile, err := os.Create(configPath)
 	if err != nil {
-		return fmtcompat.Errorf("open config.json: %w", err)
+		return fmt.Errorf("open config.json: %w", err)
 	}
 	defer configFile.Close()
 
 	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &opt.MapOptions); err != nil {
-		return fmtcompat.Errorf("unpack config.json: %w", err)
+		return fmt.Errorf("unpack config.json: %w", err)
 	}
 	return nil
 }
@@ -184,14 +184,14 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// Make sure that the owner is correct.
 	rootUID, err := idtools.ToHost(0, opt.MapOptions.UIDMappings)
 	if err != nil {
-		return fmtcompat.Errorf("ensure rootuid has mapping: %w", err)
+		return fmt.Errorf("ensure rootuid has mapping: %w", err)
 	}
 	rootGID, err := idtools.ToHost(0, opt.MapOptions.GIDMappings)
 	if err != nil {
-		return fmtcompat.Errorf("ensure rootgid has mapping: %w", err)
+		return fmt.Errorf("ensure rootgid has mapping: %w", err)
 	}
 	if err := os.Lchown(rootfsPath, rootUID, rootGID); err != nil {
-		return fmtcompat.Errorf("chown rootfs: %w", err)
+		return fmt.Errorf("chown rootfs: %w", err)
 	}
 
 	// Currently, many different images in the wild don't specify what the
@@ -201,7 +201,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// (which is as good of an arbitrary choice as any).
 	epoch := time.Unix(0, 0)
 	if err := system.Lutimes(rootfsPath, epoch, epoch); err != nil {
-		return fmtcompat.Errorf("set initial root time: %w", err)
+		return fmt.Errorf("set initial root time: %w", err)
 	}
 
 	// In order to verify the DiffIDs as we extract layers, we have to get the
@@ -209,7 +209,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// config) until after we have the full rootfs generated.
 	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return fmtcompat.Errorf("get config blob: %w", err)
+		return fmt.Errorf("get config blob: %w", err)
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
@@ -239,7 +239,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 
 		layerBlob, err := engineExt.FromDescriptor(ctx, layerDescriptor)
 		if err != nil {
-			return fmtcompat.Errorf("get layer blob: %w", err)
+			return fmt.Errorf("get layer blob: %w", err)
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.Descriptor.MediaType) {
@@ -258,7 +258,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			// sha256 sum of the *uncompressed* layer).
 			layerRaw, err = gzip.NewReader(layerData)
 			if err != nil {
-				return fmtcompat.Errorf("create gzip reader: %w", err)
+				return fmt.Errorf("create gzip reader: %w", err)
 			}
 		}
 
@@ -266,7 +266,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		layer := io.TeeReader(layerRaw, layerDigester.Hash())
 
 		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
-			return fmtcompat.Errorf("unpack layer: %w", err)
+			return fmt.Errorf("unpack layer: %w", err)
 		}
 		// Different tar implementations can have different levels of redundant
 		// padding and other similar weird behaviours. While on paper they are
@@ -293,7 +293,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			log.Warnf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the blob stream -- this may indicate a bug in the tool which built this image", layerDescriptor.Digest, n)
 		}
 		if err := layerData.Close(); err != nil {
-			return fmtcompat.Errorf("close layer data: %w", err)
+			return fmt.Errorf("close layer data: %w", err)
 		}
 
 		layerDigest := layerDigester.Digest()
@@ -333,7 +333,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	// config) until after we have the full rootfs generated.
 	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return fmtcompat.Errorf("get config blob: %w", err)
+		return fmt.Errorf("get config blob: %w", err)
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
@@ -347,7 +347,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 
 	spec, err := iconv.ToRuntimeSpec(rootfs, config)
 	if err != nil {
-		return fmtcompat.Errorf("generate config.json: %w", err)
+		return fmt.Errorf("generate config.json: %w", err)
 	}
 
 	// Add UIDMapping / GIDMapping options.
@@ -367,7 +367,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	spec.Linux.GIDMappings = mapOptions.GIDMappings
 	if mapOptions.Rootless {
 		if err := iconv.ToRootless(&spec); err != nil {
-			return fmtcompat.Errorf("convert spec to rootless: %w", err)
+			return fmt.Errorf("convert spec to rootless: %w", err)
 		}
 	}
 

@@ -149,7 +149,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 func (tg *tarGenerator) AddFile(name, path string) error {
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
-		return fmtcompat.Errorf("add file lstat: %w", err)
+		return fmt.Errorf("add file lstat: %w", err)
 	}
 
 	linkname := ""
@@ -161,7 +161,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	hdr, err := tar.FileInfoHeader(fi, linkname)
 	if err != nil {
-		return fmtcompat.Errorf("convert fi to hdr: %w", err)
+		return fmt.Errorf("convert fi to hdr: %w", err)
 	}
 	hdr.Xattrs = map[string]string{}
 	// Usually incorrect for containers and was added in Go 1.10 causing
@@ -171,7 +171,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {
-		return fmtcompat.Errorf("normalise path: %w", err)
+		return fmt.Errorf("normalise path: %w", err)
 	}
 	hdr.Name = name
 
@@ -195,7 +195,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// by us.
 	statx, err := tg.fsEval.Lstatx(path)
 	if err != nil {
-		return fmtcompat.Errorf("lstatx %q: %w", path, err)
+		return fmt.Errorf("lstatx %q: %w", path, err)
 	}
 	updateHeader(hdr, statx)
 
@@ -257,23 +257,23 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 
 	// Apply any header mappings.
 	if err := mapHeader(hdr, tg.mapOptions); err != nil {
-		return fmtcompat.Errorf("map header: %w", err)
+		return fmt.Errorf("map header: %w", err)
 	}
 	if err := tg.tw.WriteHeader(hdr); err != nil {
-		return fmtcompat.Errorf("write header: %w", err)
+		return fmt.Errorf("write header: %w", err)
 	}
 
 	// Write the contents of regular files.
 	if hdr.Typeflag == tar.TypeReg {
 		fh, err := tg.fsEval.Open(path)
 		if err != nil {
-			return fmtcompat.Errorf("open file: %w", err)
+			return fmt.Errorf("open file: %w", err)
 		}
 		defer fh.Close()
 
 		n, err := system.Copy(tg.tw, fh)
 		if err != nil {
-			return fmtcompat.Errorf("copy to layer: %w", err)
+			return fmt.Errorf("copy to layer: %w", err)
 		}
 		if n != hdr.Size {
 			return fmtcompat.Errorf("copy to layer: %w", io.ErrShortWrite)
@@ -299,7 +299,7 @@ const whOpaque = whPrefix + whPrefix + ".opq"
 func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	name, err := normalise(name, false)
 	if err != nil {
-		return fmtcompat.Errorf("normalise path: %w", err)
+		return fmt.Errorf("normalise path: %w", err)
 	}
 
 	// Disallow having a whiteout of a whiteout, purely for our own sanity.

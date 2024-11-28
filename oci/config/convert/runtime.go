@@ -109,7 +109,7 @@ func allocateNilStruct(spec *rspec.Spec) {
 func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error {
 	ig, err := igen.NewFromImage(image)
 	if err != nil {
-		return fmtcompat.Errorf("creating image generator: %w", err)
+		return fmt.Errorf("creating image generator: %w", err)
 	}
 
 	if ig.OS() != "linux" {
@@ -128,7 +128,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	// might drop fields that the user finds important).
 	oldVersion, err := semver.Parse(spec.Version)
 	if err != nil {
-		return fmtcompat.Errorf("parsing original runtime-spec config version: %w", err)
+		return fmt.Errorf("parsing original runtime-spec config version: %w", err)
 	}
 	if oldVersion.GT(curSpecVersion) {
 		return fmt.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
@@ -150,7 +150,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	for _, env := range ig.ConfigEnv() {
 		name, value, err := parseEnv(env)
 		if err != nil {
-			return fmtcompat.Errorf("parsing image.Config.Env: %w", err)
+			return fmt.Errorf("parsing image.Config.Env: %w", err)
 		}
 		appendEnv(&spec.Process.Env, name, value)
 	}

@@ -1,6 +1,7 @@
 package mutate
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"runtime"
@@ -57,7 +58,7 @@ func (gz *gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 	gzw := gzip.NewWriter(pipeWriter)
 	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
-		return nil, fmtcompat.Errorf("set concurrency level to %v blocks: %w", 2*runtime.NumCPU(), err)
+		return nil, fmt.Errorf("set concurrency level to %v blocks: %w", 2*runtime.NumCPU(), err)
 	}
 	go func() {
 		bytesRead, err := system.Copy(gzw, reader)

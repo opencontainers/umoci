@@ -19,13 +19,13 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
 	"github.com/opencontainers/umoci"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -78,22 +78,22 @@ func Main(args []string) error {
 			}
 			if err := ctx.GlobalSet("log", "info"); err != nil {
 				// Should _never_ be reached.
-				return fmtcompat.Errorf("[internal error] failure auto-setting --log=info: %w", err)
+				return fmt.Errorf("[internal error] failure auto-setting --log=info: %w", err)
 			}
 		}
 		level, err := log.ParseLevel(ctx.GlobalString("log"))
 		if err != nil {
-			return fmtcompat.Errorf("parsing log level: %w", err)
+			return fmt.Errorf("parsing log level: %w", err)
 		}
 		log.SetLevel(level)
 
 		if path := ctx.GlobalString("cpu-profile"); path != "" {
 			fh, err := os.Create(path)
 			if err != nil {
-				return fmtcompat.Errorf("opening cpu-profile path: %w", err)
+				return fmt.Errorf("opening cpu-profile path: %w", err)
 			}
 			if err := pprof.StartCPUProfile(fh); err != nil {
-				return fmtcompat.Errorf("start cpu-profile: %w", err)
+				return fmt.Errorf("start cpu-profile: %w", err)
 			}
 		}
 		return nil

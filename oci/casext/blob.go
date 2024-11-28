@@ -20,6 +20,7 @@ package casext
 import (
 	"context"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 
@@ -64,7 +65,7 @@ func (b *Blob) Close() error {
 func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (_ *Blob, Err error) {
 	reader, err := e.GetVerifiedBlob(ctx, descriptor)
 	if err != nil {
-		return nil, fmtcompat.Errorf("get blob: %w", err)
+		return nil, fmt.Errorf("get blob: %w", err)
 	}
 
 	blob := Blob{
@@ -84,7 +85,7 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 
 		data, err := fn(reader)
 		if err != nil {
-			return nil, fmtcompat.Errorf("parse %s: %w", descriptor.MediaType, err)
+			return nil, fmt.Errorf("parse %s: %w", descriptor.MediaType, err)
 		}
 		blob.Data = data
 	}

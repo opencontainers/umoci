@@ -18,11 +18,11 @@
 package convert
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/blang/semver/v4"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // FIXME: We currently use an unreleased version of the runtime-spec and so we
@@ -248,7 +248,7 @@ func ToRootless(spec *rspec.Spec) error {
 	// thus cannot change any flags that are locked.
 	unprivOpts, err := getUnprivilegedMountFlags(resolvConf)
 	if err != nil {
-		return fmtcompat.Errorf("inspecting mount flags of %s: %w", resolvConf, err)
+		return fmt.Errorf("inspecting mount flags of %s: %w", resolvConf, err)
 	}
 	mounts = append(mounts, rspec.Mount{
 		// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.

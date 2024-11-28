@@ -125,14 +125,14 @@ func insert(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", fromName)
@@ -145,7 +145,7 @@ func insert(ctx *cli.Context) error {
 	// Create the mutator.
 	mutator, err := mutate.New(engine, descriptorPaths[0])
 	if err != nil {
-		return fmtcompat.Errorf("create mutator for base image: %w", err)
+		return fmt.Errorf("create mutator for base image: %w", err)
 	}
 
 	var meta umoci.Meta
@@ -180,7 +180,7 @@ func insert(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return fmtcompat.Errorf("parsing --history.created: %w", err)
+				return fmt.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
@@ -197,13 +197,13 @@ func insert(ctx *cli.Context) error {
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("commit mutated image: %w", err)
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return fmtcompat.Errorf("add new tag: %w", err)
+		return fmt.Errorf("add new tag: %w", err)
 	}
 	log.Infof("updated tag for image manifest: %s", tagName)
 	return nil

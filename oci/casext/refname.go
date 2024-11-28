@@ -25,7 +25,6 @@ import (
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // refnameRegex is a regex that only matches reference names that are valid
@@ -67,7 +66,7 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return nil, fmtcompat.Errorf("get top-level index: %w", err)
+		return nil, fmt.Errorf("get top-level index: %w", err)
 	}
 
 	// Set of root links that match the given refname.
@@ -91,7 +90,6 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 		// descriptor.
 		if err := e.Walk(ctx, root, func(descriptorPath DescriptorPath) error {
 			descriptor := descriptorPath.Descriptor()
-
 			// If the media-type should be treated as a "target media-type" for
 			// reference resolution, we stop resolution here and add it to the
 			// set of resolved paths.
@@ -101,7 +99,7 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 			}
 			return nil
 		}); err != nil {
-			return nil, fmtcompat.Errorf("walk %s: %w", root.Digest, err)
+			return nil, fmt.Errorf("walk %s: %w", root.Digest, err)
 		}
 	}
 
@@ -130,7 +128,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return fmtcompat.Errorf("get top-level index: %w", err)
+		return fmt.Errorf("get top-level index: %w", err)
 	}
 
 	// TODO: Handle refname = "".
@@ -155,7 +153,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	// Commit to image.
 	index.Manifests = newIndex
 	if err := e.PutIndex(ctx, index); err != nil {
-		return fmtcompat.Errorf("replace index: %w", err)
+		return fmt.Errorf("replace index: %w", err)
 	}
 	return nil
 }
@@ -173,7 +171,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	// Get index to modify.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return fmtcompat.Errorf("get top-level index: %w", err)
+		return fmt.Errorf("get top-level index: %w", err)
 	}
 
 	// TODO: Handle refname = "".
@@ -191,7 +189,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	// Commit to image.
 	index.Manifests = newIndex
 	if err := e.PutIndex(ctx, index); err != nil {
-		return fmtcompat.Errorf("replace index: %w", err)
+		return fmt.Errorf("replace index: %w", err)
 	}
 	return nil
 }
@@ -203,7 +201,7 @@ func (e Engine) ListReferences(ctx context.Context) ([]string, error) {
 	// Get index.
 	index, err := e.GetIndex(ctx)
 	if err != nil {
-		return nil, fmtcompat.Errorf("get top-level index: %w", err)
+		return nil, fmt.Errorf("get top-level index: %w", err)
 	}
 
 	var refs []string

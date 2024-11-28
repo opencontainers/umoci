@@ -106,7 +106,7 @@ func (m Meta) WriteTo(w io.Writer) (int64, error) {
 func WriteBundleMeta(bundle string, meta Meta) error {
 	fh, err := os.Create(filepath.Join(bundle, MetaName))
 	if err != nil {
-		return fmtcompat.Errorf("create metadata: %w", err)
+		return fmt.Errorf("create metadata: %w", err)
 	}
 	defer fh.Close()
 
@@ -120,7 +120,7 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 
 	fh, err := os.Open(filepath.Join(bundle, MetaName))
 	if err != nil {
-		return meta, fmtcompat.Errorf("open metadata: %w", err)
+		return meta, fmt.Errorf("open metadata: %w", err)
 	}
 	defer fh.Close()
 
@@ -217,7 +217,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	// Now get the config.
 	configBlob, err := engine.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return stat, fmtcompat.Errorf("stat: %w", err)
+		return stat, fmt.Errorf("stat: %w", err)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
@@ -267,14 +267,14 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	log.Info("computing filesystem manifest ...")
 	dh, err := mtree.Walk(fullRootfsPath, nil, MtreeKeywords, fsEval)
 	if err != nil {
-		return fmtcompat.Errorf("generate mtree spec: %w", err)
+		return fmt.Errorf("generate mtree spec: %w", err)
 	}
 	log.Info("... done")
 
 	flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
 	fh, err := os.OpenFile(mtreePath, flags, 0644)
 	if err != nil {
-		return fmtcompat.Errorf("open mtree: %w", err)
+		return fmt.Errorf("open mtree: %w", err)
 	}
 	defer fh.Close()
 
@@ -296,13 +296,13 @@ func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 		if !ctx.IsSet("uid-map") {
 			if err := ctx.Set("uid-map", fmt.Sprintf("0:%d:1", os.Geteuid())); err != nil {
 				// Should _never_ be reached.
-				return fmtcompat.Errorf("[internal error] failure auto-setting rootless --uid-map: %w", err)
+				return fmt.Errorf("[internal error] failure auto-setting rootless --uid-map: %w", err)
 			}
 		}
 		if !ctx.IsSet("gid-map") {
 			if err := ctx.Set("gid-map", fmt.Sprintf("0:%d:1", os.Getegid())); err != nil {
 				// Should _never_ be reached.
-				return fmtcompat.Errorf("[internal error] failure auto-setting rootless --gid-map: %w", err)
+				return fmt.Errorf("[internal error] failure auto-setting rootless --gid-map: %w", err)
 			}
 		}
 	}
@@ -310,14 +310,14 @@ func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 	for _, uidmap := range ctx.StringSlice("uid-map") {
 		idMap, err := idtools.ParseMapping(uidmap)
 		if err != nil {
-			return fmtcompat.Errorf("failure parsing --uid-map %s: %w", uidmap, err)
+			return fmt.Errorf("failure parsing --uid-map %s: %w", uidmap, err)
 		}
 		meta.MapOptions.UIDMappings = append(meta.MapOptions.UIDMappings, idMap)
 	}
 	for _, gidmap := range ctx.StringSlice("gid-map") {
 		idMap, err := idtools.ParseMapping(gidmap)
 		if err != nil {
-			return fmtcompat.Errorf("failure parsing --gid-map %s: %w", gidmap, err)
+			return fmt.Errorf("failure parsing --gid-map %s: %w", gidmap, err)
 		}
 		meta.MapOptions.GIDMappings = append(meta.MapOptions.GIDMappings, idMap)
 	}

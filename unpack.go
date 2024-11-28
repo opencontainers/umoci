@@ -27,7 +27,6 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 )
 
@@ -40,7 +39,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
 		return fmt.Errorf("tag is not found: %s", fromName)
@@ -53,7 +52,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
-		return fmtcompat.Errorf("get manifest: %w", err)
+		return fmt.Errorf("get manifest: %w", err)
 	}
 	defer manifestBlob.Close()
 
@@ -77,13 +76,13 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 
 	// Unpack the runtime bundle.
 	if err := os.MkdirAll(bundlePath, 0755); err != nil {
-		return fmtcompat.Errorf("create bundle path: %w", err)
+		return fmt.Errorf("create bundle path: %w", err)
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
 
 	log.Info("unpacking bundle ...")
 	if err := layer.UnpackManifest(context.Background(), engineExt, bundlePath, manifest, &unpackOptions); err != nil {
-		return fmtcompat.Errorf("create runtime bundle: %w", err)
+		return fmt.Errorf("create runtime bundle: %w", err)
 	}
 	log.Info("... done")
 
@@ -93,7 +92,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	}
 
 	if err := GenerateBundleManifest(mtreeName, bundlePath, fsEval); err != nil {
-		return fmtcompat.Errorf("write mtree: %w", err)
+		return fmt.Errorf("write mtree: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -103,7 +102,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	}).Debugf("umoci: saving Meta metadata")
 
 	if err := WriteBundleMeta(bundlePath, meta); err != nil {
-		return fmtcompat.Errorf("write umoci.json metadata: %w", err)
+		return fmt.Errorf("write umoci.json metadata: %w", err)
 	}
 
 	log.Infof("unpacked image bundle: %s", bundlePath)

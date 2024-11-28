@@ -21,9 +21,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // PutBlobJSON adds a new JSON blob to the image (marshalled from the given
@@ -40,7 +40,7 @@ import (
 func (e Engine) PutBlobJSON(ctx context.Context, data interface{}) (digest.Digest, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
-		return "", -1, fmtcompat.Errorf("encode JSON: %w", err)
+		return "", -1, fmt.Errorf("encode JSON: %w", err)
 	}
 	return e.PutBlob(ctx, &buffer)
 }

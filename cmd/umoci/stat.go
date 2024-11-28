@@ -28,7 +28,6 @@ import (
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -71,14 +70,14 @@ func stat(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	manifestDescriptorPaths, err := engineExt.ResolveReference(context.Background(), tagName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(manifestDescriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", tagName)
@@ -97,18 +96,18 @@ func stat(ctx *cli.Context) error {
 	// Get stat information.
 	ms, err := umoci.Stat(context.Background(), engineExt, manifestDescriptor)
 	if err != nil {
-		return fmtcompat.Errorf("stat: %w", err)
+		return fmt.Errorf("stat: %w", err)
 	}
 
 	// Output the stat information.
 	if ctx.Bool("json") {
 		// Use JSON.
 		if err := json.NewEncoder(os.Stdout).Encode(ms); err != nil {
-			return fmtcompat.Errorf("encoding stat: %w", err)
+			return fmt.Errorf("encoding stat: %w", err)
 		}
 	} else {
 		if err := ms.Format(os.Stdout); err != nil {
-			return fmtcompat.Errorf("format stat: %w", err)
+			return fmt.Errorf("format stat: %w", err)
 		}
 	}
 

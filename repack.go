@@ -19,6 +19,7 @@ package umoci
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -49,13 +50,13 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 
 	mfh, err := os.Open(mtreePath)
 	if err != nil {
-		return fmtcompat.Errorf("open mtree: %w", err)
+		return fmt.Errorf("open mtree: %w", err)
 	}
 	defer mfh.Close()
 
 	spec, err := mtree.ParseSpec(mfh)
 	if err != nil {
-		return fmtcompat.Errorf("parse mtree: %w", err)
+		return fmt.Errorf("parse mtree: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -70,7 +71,7 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 	log.Info("computing filesystem diff ...")
 	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
 	if err != nil {
-		return fmtcompat.Errorf("check mtree: %w", err)
+		return fmt.Errorf("check mtree: %w", err)
 	}
 	log.Info("... done")
 
@@ -108,7 +109,7 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		}
 		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &packOptions)
 		if err != nil {
-			return fmtcompat.Errorf("generate diff layer: %w", err)
+			return fmt.Errorf("generate diff layer: %w", err)
 		}
 		defer reader.Close()
 
@@ -121,13 +122,13 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("commit mutated image: %w", err)
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return fmtcompat.Errorf("add new tag: %w", err)
+		return fmt.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)
@@ -135,14 +136,14 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 	if refreshBundle {
 		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
 		if err := GenerateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
-			return fmtcompat.Errorf("write mtree metadata: %w", err)
+			return fmt.Errorf("write mtree metadata: %w", err)
 		}
 		if err := os.Remove(mtreePath); err != nil {
-			return fmtcompat.Errorf("remove old mtree metadata: %w", err)
+			return fmt.Errorf("remove old mtree metadata: %w", err)
 		}
 		meta.From = newDescriptorPath
 		if err := WriteBundleMeta(bundlePath, meta); err != nil {
-			return fmtcompat.Errorf("write umoci.json metadata: %w", err)
+			return fmt.Errorf("write umoci.json metadata: %w", err)
 		}
 	}
 	return nil

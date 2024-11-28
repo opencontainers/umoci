@@ -26,7 +26,6 @@ import (
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
@@ -59,11 +58,11 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		var err error
 		newUID, err = idtools.ToContainer(hdr.Uid, mapOptions.UIDMappings)
 		if err != nil {
-			return fmtcompat.Errorf("map uid to container: %w", err)
+			return fmt.Errorf("map uid to container: %w", err)
 		}
 		newGID, err = idtools.ToContainer(hdr.Gid, mapOptions.GIDMappings)
 		if err != nil {
-			return fmtcompat.Errorf("map gid to container: %w", err)
+			return fmt.Errorf("map gid to container: %w", err)
 		}
 	}
 
@@ -82,7 +81,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	} else {
 		var payload rootlesscontainers.Resource
 		if err := proto.Unmarshal([]byte(value), &payload); err != nil {
-			return fmtcompat.Errorf("unmarshal rootlesscontainers payload: %w", err)
+			return fmt.Errorf("unmarshal rootlesscontainers payload: %w", err)
 		}
 
 		// If the payload isn't uint32(-1) we apply it. The xattr includes the
@@ -153,7 +152,7 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		if !rootlesscontainers.IsDefault(payload) {
 			valueBytes, err := proto.Marshal(payload)
 			if err != nil {
-				return fmtcompat.Errorf("marshal rootlesscontainers payload: %w", err)
+				return fmt.Errorf("marshal rootlesscontainers payload: %w", err)
 			}
 			// While the payload is almost certainly not UTF-8, Go strings can
 			// actually be arbitrary bytes (in case you didn't know this and
@@ -168,11 +167,11 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 
 	newUID, err := idtools.ToHost(hdr.Uid, mapOptions.UIDMappings)
 	if err != nil {
-		return fmtcompat.Errorf("map uid to host: %w", err)
+		return fmt.Errorf("map uid to host: %w", err)
 	}
 	newGID, err := idtools.ToHost(hdr.Gid, mapOptions.GIDMappings)
 	if err != nil {
-		return fmtcompat.Errorf("map gid to host: %w", err)
+		return fmt.Errorf("map gid to host: %w", err)
 	}
 
 	hdr.Uid = newUID

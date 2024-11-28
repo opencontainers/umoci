@@ -18,6 +18,7 @@
 package layer
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -85,7 +86,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				if packOptions.TranslateOverlayWhiteouts {
 					fi, err := os.Stat(fullPath)
 					if err != nil {
-						return fmtcompat.Errorf("couldn't determine overlay whiteout for %s: %w", fullPath, err)
+						return fmt.Errorf("couldn't determine overlay whiteout for %s: %w", fullPath, err)
 					}
 
 					whiteout, err := isOverlayWhiteout(fi)
@@ -94,7 +95,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 					}
 					if whiteout {
 						if err := tg.AddWhiteout(fullPath); err != nil {
-							return fmtcompat.Errorf("generate whiteout from overlayfs: %w", err)
+							return fmt.Errorf("generate whiteout from overlayfs: %w", err)
 						}
 					}
 					continue

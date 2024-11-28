@@ -85,14 +85,14 @@ func rawAddLayer(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", fromName)
@@ -106,12 +106,12 @@ func rawAddLayer(ctx *cli.Context) error {
 	// Create the mutator.
 	mutator, err := mutate.New(engine, meta.From)
 	if err != nil {
-		return fmtcompat.Errorf("create mutator for base image: %w", err)
+		return fmt.Errorf("create mutator for base image: %w", err)
 	}
 
 	newLayer, err := os.Open(newLayerPath)
 	if err != nil {
-		return fmtcompat.Errorf("open new layer archive: %w", err)
+		return fmt.Errorf("open new layer archive: %w", err)
 	}
 	if fi, err := newLayer.Stat(); err != nil {
 		return fmtcompat.Errorf("stat new layer archive: %w", err)
@@ -123,7 +123,7 @@ func rawAddLayer(ctx *cli.Context) error {
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get image metadata: %w", err)
+		return fmt.Errorf("get image metadata: %w", err)
 	}
 
 	var history *ispec.History
@@ -146,7 +146,7 @@ func rawAddLayer(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return fmtcompat.Errorf("parsing --history.created: %w", err)
+				return fmt.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
@@ -163,13 +163,13 @@ func rawAddLayer(ctx *cli.Context) error {
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("commit mutated image: %w", err)
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return fmtcompat.Errorf("add new tag: %w", err)
+		return fmt.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)

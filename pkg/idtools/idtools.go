@@ -23,7 +23,6 @@ import (
 	"strings"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // ToHost translates a remapped container ID to an unmapped host ID using the
@@ -79,7 +78,7 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	case 3:
 		size, err = parseUint32(parts[2])
 		if err != nil {
-			return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid size in mapping: %w", err)
+			return rspec.LinuxIDMapping{}, fmt.Errorf("invalid size in mapping: %w", err)
 		}
 	case 2:
 		size = 1
@@ -89,12 +88,12 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 
 	contID, err = parseUint32(parts[0])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid containerID in mapping: %w", err)
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid containerID in mapping: %w", err)
 	}
 
 	hostID, err = parseUint32(parts[1])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid hostID in mapping: %w", err)
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid hostID in mapping: %w", err)
 	}
 
 	return rspec.LinuxIDMapping{

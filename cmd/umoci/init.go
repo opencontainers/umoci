@@ -63,7 +63,7 @@ func initLayout(ctx *cli.Context) error {
 	}
 
 	if err := dir.Create(imagePath); err != nil {
-		return fmtcompat.Errorf("image layout creation: %w", err)
+		return fmt.Errorf("image layout creation: %w", err)
 	}
 
 	log.Infof("created new OCI image: %s", imagePath)

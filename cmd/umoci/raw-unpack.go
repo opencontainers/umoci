@@ -28,7 +28,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -87,14 +86,14 @@ func rawUnpack(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
 		return fmt.Errorf("tag is not found: %s", fromName)
@@ -107,7 +106,7 @@ func rawUnpack(ctx *cli.Context) error {
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
-		return fmtcompat.Errorf("get manifest: %w", err)
+		return fmt.Errorf("get manifest: %w", err)
 	}
 	defer manifestBlob.Close()
 
@@ -130,7 +129,7 @@ func rawUnpack(ctx *cli.Context) error {
 
 	log.Warnf("unpacking rootfs ...")
 	if err := layer.UnpackRootfs(context.Background(), engineExt, rootfsPath, manifest, &unpackOptions); err != nil {
-		return fmtcompat.Errorf("create rootfs: %w", err)
+		return fmt.Errorf("create rootfs: %w", err)
 	}
 	log.Warnf("... done")
 

@@ -29,7 +29,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -89,14 +88,14 @@ func rawConfig(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", fromName)
@@ -109,7 +108,7 @@ func rawConfig(ctx *cli.Context) error {
 
 	manifestBlob, err := engineExt.FromDescriptor(context.Background(), meta.From.Descriptor())
 	if err != nil {
-		return fmtcompat.Errorf("get manifest: %w", err)
+		return fmt.Errorf("get manifest: %w", err)
 	}
 	defer manifestBlob.Close()
 
@@ -127,14 +126,14 @@ func rawConfig(ctx *cli.Context) error {
 	// Generate the configuration.
 	configFile, err := os.Create(configPath)
 	if err != nil {
-		return fmtcompat.Errorf("opening config path: %w", err)
+		return fmt.Errorf("opening config path: %w", err)
 	}
 	defer configFile.Close()
 
 	// Write out the generated config.
 	log.Info("generating config.json")
 	if err := layer.UnpackRuntimeJSON(context.Background(), engineExt, configFile, ctx.String("rootfs"), manifest, &meta.MapOptions); err != nil {
-		return fmtcompat.Errorf("generate config: %w", err)
+		return fmt.Errorf("generate config: %w", err)
 	}
 	return nil
 }

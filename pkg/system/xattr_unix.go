@@ -20,6 +20,7 @@ package system
 import (
 	"bytes"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/opencontainers/umoci/pkg/fmtcompat"
@@ -102,7 +103,7 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 func Lclearxattrs(path string, except map[string]struct{}) error {
 	names, err := Llistxattr(path)
 	if err != nil {
-		return fmtcompat.Errorf("lclearxattrs: get list: %w", err)
+		return fmt.Errorf("lclearxattrs: get list: %w", err)
 	}
 	for _, name := range names {
 		if _, skip := except[name]; skip {

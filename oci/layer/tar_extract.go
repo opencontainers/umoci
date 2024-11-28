@@ -117,7 +117,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	if !te.mapOptions.Rootless {
 		// NOTE: This is not done through fsEval.
 		if err := os.Lchown(path, hdr.Uid, hdr.Gid); err != nil {
-			return fmtcompat.Errorf("restore chown metadata: %s: %w", path, err)
+			return fmt.Errorf("restore chown metadata: %s: %w", path, err)
 		}
 	}
 
@@ -127,7 +127,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// owner (in rootless we don't care because we're always the owner).
 	if !isSymlink {
 		if err := te.fsEval.Chmod(path, fi.Mode()); err != nil {
-			return fmtcompat.Errorf("restore chmod metadata: %s: %w", path, err)
+			return fmt.Errorf("restore chmod metadata: %s: %w", path, err)
 		}
 	}
 
@@ -215,7 +215,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	}
 
 	if err := te.fsEval.Lutimes(path, atime, mtime); err != nil {
-		return fmtcompat.Errorf("restore lutimes metadata: %s: %w", path, err)
+		return fmt.Errorf("restore lutimes metadata: %s: %w", path, err)
 	}
 
 	return nil
@@ -229,7 +229,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 	// Modify the header.
 	if err := unmapHeader(hdr, te.mapOptions); err != nil {
-		return fmtcompat.Errorf("unmap header: %w", err)
+		return fmt.Errorf("unmap header: %w", err)
 	}
 
 	// Restore it on the filesystme.
@@ -250,7 +250,7 @@ func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	// Technically a string.TrimPrefix would also work...
 	unsafePath, err := filepath.Rel(root, path)
 	if err != nil {
-		return false, fmtcompat.Errorf("get relative-to-root path: %w", err)
+		return false, fmt.Errorf("get relative-to-root path: %w", err)
 	}
 
 	// It should be noted that SecureJoin will evaluate all symlinks in the
@@ -338,7 +338,7 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 		// te.upperPaths.
 		upperPath, err := filepath.Rel(root, subpath)
 		if err != nil {
-			return fmtcompat.Errorf("find relative-to-root [should never happen]: %w", err)
+			return fmt.Errorf("find relative-to-root [should never happen]: %w", err)
 		}
 
 		// Remove the path only if it hasn't been touched.
@@ -413,7 +413,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	}
 	dir, err := securejoin.SecureJoinVFS(root, unsafeDir, te.fsEval)
 	if err != nil {
-		return fmtcompat.Errorf("sanitise symlinks in root: %w", err)
+		return fmt.Errorf("sanitise symlinks in root: %w", err)
 	}
 	path := filepath.Join(dir, file)
 
@@ -429,7 +429,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		link, _ := te.fsEval.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
-			return fmtcompat.Errorf("convert dirFi to dirHdr: %w", err)
+			return fmt.Errorf("convert dirFi to dirHdr: %w", err)
 		}
 
 		// More faking to trick restoreMetadata to actually restore the directory.
@@ -460,7 +460,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			for _, xattr := range xattrs {
 				value, err := te.fsEval.Lgetxattr(dir, xattr)
 				if err != nil {
-					return fmtcompat.Errorf("get xattr: %w", err)
+					return fmt.Errorf("get xattr: %w", err)
 				}
 				dirHdr.Xattrs[xattr] = string(value)
 			}
@@ -512,7 +512,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
 	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
-		return fmtcompat.Errorf("mkdir parent: %w", err)
+		return fmt.Errorf("mkdir parent: %w", err)
 	}
 
 	isDirlink := false
@@ -549,12 +549,12 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			fi.Mode()&os.ModeSymlink == os.ModeSymlink && hdr.Typeflag == tar.TypeDir {
 			isDirlink, err = te.isDirlink(root, path)
 			if err != nil {
-				return fmtcompat.Errorf("check is dirlink: %w", err)
+				return fmt.Errorf("check is dirlink: %w", err)
 			}
 		}
 		if !(isDirlink && te.keepDirlinks) {
 			if err := te.fsEval.RemoveAll(path); err != nil {
-				return fmtcompat.Errorf("clobber old path: %w", err)
+				return fmt.Errorf("clobber old path: %w", err)
 			}
 		}
 	}
@@ -569,7 +569,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Create a new file, then just copy the data.
 		fh, err := te.fsEval.Create(path)
 		if err != nil {
-			return fmtcompat.Errorf("create regular: %w", err)
+			return fmt.Errorf("create regular: %w", err)
 		}
 		defer fh.Close()
 
@@ -583,12 +583,12 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			}
 		}
 		if err != nil {
-			return fmtcompat.Errorf("unpack to regular file: %w", err)
+			return fmt.Errorf("unpack to regular file: %w", err)
 		}
 
 		// Force close here so that we don't affect the metadata.
 		if err := fh.Close(); err != nil {
-			return fmtcompat.Errorf("close unpacked regular file: %w", err)
+			return fmt.Errorf("close unpacked regular file: %w", err)
 		}
 
 	// directory
@@ -601,7 +601,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
 		if err := te.fsEval.MkdirAll(path, 0777); err != nil {
-			return fmtcompat.Errorf("mkdirall: %w", err)
+			return fmt.Errorf("mkdirall: %w", err)
 		}
 
 	// hard link, symbolic link
@@ -622,7 +622,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			unsafeLinkDir, linkFile := filepath.Split(CleanPath(linkname))
 			linkDir, err := securejoin.SecureJoinVFS(root, unsafeLinkDir, te.fsEval)
 			if err != nil {
-				return fmtcompat.Errorf("sanitise hardlink target in root: %w", err)
+				return fmt.Errorf("sanitise hardlink target in root: %w", err)
 			}
 			linkname = filepath.Join(linkDir, linkFile)
 		case tar.TypeSymlink:
@@ -637,7 +637,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			//        way of handling this is to delay link creation until the
 			//        very end. Unfortunately this won't work with symlinks
 			//        (which can link to directories).
-			return fmtcompat.Errorf("link: %w", err)
+			return fmt.Errorf("link: %w", err)
 		}
 
 	// character device node, block device node
@@ -654,11 +654,11 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			log.Warnf("rootless{%s} creating empty file in place of device %d:%d", hdr.Name, hdr.Devmajor, hdr.Devminor)
 			fh, err := te.fsEval.Create(path)
 			if err != nil {
-				return fmtcompat.Errorf("create rootless block: %w", err)
+				return fmt.Errorf("create rootless block: %w", err)
 			}
 			defer fh.Close()
 			if err := fh.Chmod(0); err != nil {
-				return fmtcompat.Errorf("chmod 0 rootless block: %w", err)
+				return fmt.Errorf("chmod 0 rootless block: %w", err)
 			}
 			goto out
 		}
@@ -676,7 +676,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		// Create the node.
 		if err := te.fsEval.Mknod(path, os.FileMode(int64(mode)|hdr.Mode), dev); err != nil {
-			return fmtcompat.Errorf("mknod: %w", err)
+			return fmt.Errorf("mknod: %w", err)
 		}
 
 	// We should never hit any other headers (Go abstracts them away from us),
@@ -691,7 +691,7 @@ out:
 	// metadata from their link (and the tar headers might not be filled).
 	if hdr.Typeflag != tar.TypeLink {
 		if err := te.applyMetadata(path, hdr); err != nil {
-			return fmtcompat.Errorf("apply hdr metadata: %w", err)
+			return fmt.Errorf("apply hdr metadata: %w", err)
 		}
 	}
 
@@ -701,7 +701,7 @@ out:
 	upperPath, err := filepath.Rel(root, path)
 	if err != nil {
 		// Really shouldn't happen because of the guarantees of SecureJoinVFS.
-		return fmtcompat.Errorf("find relative-to-root [should never happen]: %w", err)
+		return fmt.Errorf("find relative-to-root [should never happen]: %w", err)
 	}
 	for pth := upperPath; pth != filepath.Dir(pth); pth = filepath.Dir(pth) {
 		te.upperPaths[pth] = struct{}{}

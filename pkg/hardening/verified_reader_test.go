@@ -191,7 +191,6 @@ func TestInvalidDigest_Trailing(t *testing.T) {
 					t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
 				}
 			})
-
 		}
 	}
 }
@@ -226,7 +225,6 @@ func TestInvalidSize_Short(t *testing.T) {
 					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
 				}
 			})
-
 		}
 	}
 }

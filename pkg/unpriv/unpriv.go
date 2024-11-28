@@ -20,6 +20,7 @@ package unpriv
 import (
 	"archive/tar"
 	"errors"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -101,12 +102,12 @@ func Wrap(path string, fn WrapFunc) error {
 		current := filepath.Join(parts[:i]...)
 		fi, err := os.Lstat(current)
 		if err != nil {
-			return fmtcompat.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
+			return fmt.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
 		}
 		// Add +rwx permissions to directories. If we have the access to change
 		// the mode at all then we are the user owner (not just a group owner).
 		if err := os.Chmod(current, fi.Mode()|0700); err != nil {
-			return fmtcompat.Errorf("unpriv.wrap: chmod parent: %s: %w", current, err)
+			return fmt.Errorf("unpriv.wrap: chmod parent: %s: %w", current, err)
 		}
 		defer fiRestore(current, fi)
 	}
@@ -127,13 +128,13 @@ func Open(path string) (*os.File, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return fmtcompat.Errorf("lstat file: %w", err)
+			return fmt.Errorf("lstat file: %w", err)
 		}
 
 		if fi.Mode()&0400 != 0400 {
 			// Add +r permissions to the file.
 			if err := os.Chmod(path, fi.Mode()|0400); err != nil {
-				return fmtcompat.Errorf("chmod +r: %w", err)
+				return fmt.Errorf("chmod +r: %w", err)
 			}
 			defer fiRestore(path, fi)
 		}
@@ -172,19 +173,19 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
-			return fmtcompat.Errorf("lstat dir: %w", err)
+			return fmt.Errorf("lstat dir: %w", err)
 		}
 
 		// Add +rx permissions to the file.
 		if err := os.Chmod(path, fi.Mode()|0500); err != nil {
-			return fmtcompat.Errorf("chmod +rx: %w", err)
+			return fmt.Errorf("chmod +rx: %w", err)
 		}
 		defer fiRestore(path, fi)
 
 		// Open the damn thing.
 		fh, err := os.Open(path)
 		if err != nil {
-			return fmtcompat.Errorf("opendir: %w", err)
+			return fmt.Errorf("opendir: %w", err)
 		}
 		defer fh.Close()
 
@@ -244,7 +245,7 @@ func Readlink(path string) (string, error) {
 func Symlink(target, linkname string) error {
 	err := Wrap(linkname, func(linkname string) error { return os.Symlink(target, linkname) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.symlink: %w", err)
+		return fmt.Errorf("unpriv.symlink: %w", err)
 	}
 	return nil
 }
@@ -268,12 +269,12 @@ func Link(target, linkname string) error {
 			return unix.Linkat(unix.AT_FDCWD, target, unix.AT_FDCWD, linkname, 0)
 		})
 		if err != nil {
-			return fmtcompat.Errorf("unpriv.wrap target: %w", err)
+			return fmt.Errorf("unpriv.wrap target: %w", err)
 		}
 		return nil
 	})
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.link: %w", err)
+		return fmt.Errorf("unpriv.link: %w", err)
 	}
 	return nil
 }
@@ -284,7 +285,7 @@ func Link(target, linkname string) error {
 func Chmod(path string, mode os.FileMode) error {
 	err := Wrap(path, func(path string) error { return os.Chmod(path, mode) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.chmod: %w", err)
+		return fmt.Errorf("unpriv.chmod: %w", err)
 	}
 	return nil
 }
@@ -295,7 +296,7 @@ func Chmod(path string, mode os.FileMode) error {
 func Chtimes(path string, atime, mtime time.Time) error {
 	err := Wrap(path, func(path string) error { return os.Chtimes(path, atime, mtime) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.chtimes: %w", err)
+		return fmt.Errorf("unpriv.chtimes: %w", err)
 	}
 	return nil
 }
@@ -306,7 +307,7 @@ func Chtimes(path string, atime, mtime time.Time) error {
 func Lutimes(path string, atime, mtime time.Time) error {
 	err := Wrap(path, func(path string) error { return system.Lutimes(path, atime, mtime) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.lutimes: %w", err)
+		return fmt.Errorf("unpriv.lutimes: %w", err)
 	}
 	return nil
 }
@@ -317,7 +318,7 @@ func Lutimes(path string, atime, mtime time.Time) error {
 func Remove(path string) error {
 	err := Wrap(path, os.Remove)
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.remove: %w", err)
+		return fmt.Errorf("unpriv.remove: %w", err)
 	}
 	return nil
 }
@@ -421,7 +422,7 @@ func RemoveAll(path string) error {
 		return fmtcompat.Errorf("remove: %w", err)
 	})
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.removeall: %w", err)
+		return fmt.Errorf("unpriv.removeall: %w", err)
 	}
 	return nil
 }
@@ -432,7 +433,7 @@ func RemoveAll(path string) error {
 func Mkdir(path string, perm os.FileMode) error {
 	err := Wrap(path, func(path string) error { return os.Mkdir(path, perm) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.mkdir: %w", err)
+		return fmt.Errorf("unpriv.mkdir: %w", err)
 	}
 	return nil
 }
@@ -473,7 +474,7 @@ func MkdirAll(path string, perm os.FileMode) error {
 		return nil
 	})
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.mkdirall: %w", err)
+		return fmt.Errorf("unpriv.mkdirall: %w", err)
 	}
 	return nil
 }
@@ -484,7 +485,7 @@ func MkdirAll(path string, perm os.FileMode) error {
 func Mknod(path string, mode os.FileMode, dev uint64) error {
 	err := Wrap(path, func(path string) error { return system.Mknod(path, uint32(mode), dev) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.mknod: %w", err)
+		return fmt.Errorf("unpriv.mknod: %w", err)
 	}
 	return nil
 }
@@ -508,7 +509,7 @@ func Llistxattr(path string) ([]string, error) {
 func Lremovexattr(path, name string) error {
 	err := Wrap(path, func(path string) error { return unix.Lremovexattr(path, name) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.lremovexattr: %w", err)
+		return fmt.Errorf("unpriv.lremovexattr: %w", err)
 	}
 	return nil
 }
@@ -519,7 +520,7 @@ func Lremovexattr(path, name string) error {
 func Lsetxattr(path, name string, value []byte, flags int) error {
 	err := Wrap(path, func(path string) error { return unix.Lsetxattr(path, name, value, flags) })
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.lsetxattr: %w", err)
+		return fmt.Errorf("unpriv.lsetxattr: %w", err)
 	}
 	return nil
 }
@@ -565,7 +566,7 @@ func Lclearxattrs(path string, except map[string]struct{}) error {
 		return nil
 	})
 	if err != nil {
-		return fmtcompat.Errorf("unpriv.lclearxattrs: %w", err)
+		return fmt.Errorf("unpriv.lclearxattrs: %w", err)
 	}
 	return nil
 }

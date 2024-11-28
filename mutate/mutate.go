@@ -34,7 +34,6 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // UmociUncompressedBlobSizeAnnotation is an umoci-specific annotation to
@@ -103,7 +102,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 	if m.manifest == nil {
 		blob, err := m.engine.FromDescriptor(ctx, m.source.Descriptor())
 		if err != nil {
-			return fmtcompat.Errorf("cache source manifest: %w", err)
+			return fmt.Errorf("cache source manifest: %w", err)
 		}
 		defer blob.Close()
 
@@ -120,7 +119,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 	if m.config == nil {
 		blob, err := m.engine.FromDescriptor(ctx, m.manifest.Config)
 		if err != nil {
-			return fmtcompat.Errorf("cache source config: %w", err)
+			return fmt.Errorf("cache source config: %w", err)
 		}
 		defer blob.Close()
 
@@ -156,7 +155,7 @@ func New(engine cas.Engine, src casext.DescriptorPath) (*Mutator, error) {
 // Set.
 func (m *Mutator) Config(ctx context.Context) (ispec.Image, error) {
 	if err := m.cache(ctx); err != nil {
-		return ispec.Image{}, fmtcompat.Errorf("getting cache failed: %w", err)
+		return ispec.Image{}, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	return *m.config, nil
@@ -167,7 +166,7 @@ func (m *Mutator) Config(ctx context.Context) (ispec.Image, error) {
 // Commit()ed if no further changes are made.
 func (m *Mutator) Manifest(ctx context.Context) (ispec.Manifest, error) {
 	if err := m.cache(ctx); err != nil {
-		return ispec.Manifest{}, fmtcompat.Errorf("getting cache failed: %w", err)
+		return ispec.Manifest{}, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	return *m.manifest, nil
@@ -177,7 +176,7 @@ func (m *Mutator) Manifest(ctx context.Context) (ispec.Manifest, error) {
 // the source for any modifications of the configuration using Set.
 func (m *Mutator) Meta(ctx context.Context) (Meta, error) {
 	if err := m.cache(ctx); err != nil {
-		return Meta{}, fmtcompat.Errorf("getting cache failed: %w", err)
+		return Meta{}, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	var created time.Time
@@ -198,7 +197,7 @@ func (m *Mutator) Meta(ctx context.Context) (Meta, error) {
 // Set.
 func (m *Mutator) Annotations(ctx context.Context) (map[string]string, error) {
 	if err := m.cache(ctx); err != nil {
-		return nil, fmtcompat.Errorf("getting cache failed: %w", err)
+		return nil, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	annotations := map[string]string{}
@@ -213,7 +212,7 @@ func (m *Mutator) Annotations(ctx context.Context) (map[string]string, error) {
 // correspond to what operations were made to the configuration.
 func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, annotations map[string]string, history *ispec.History) error {
 	if err := m.cache(ctx); err != nil {
-		return fmtcompat.Errorf("getting cache failed: %w", err)
+		return fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	// Ensure the mediatype is correct.
@@ -260,7 +259,7 @@ func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Dige
 // layer (which is compressed by us).
 func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History, compressor Compressor) (digest.Digest, int64, error) {
 	if err := m.cache(ctx); err != nil {
-		return "", -1, fmtcompat.Errorf("getting cache failed: %w", err)
+		return "", -1, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	diffidDigester := cas.BlobAlgorithm.Digester()
@@ -268,13 +267,13 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 
 	compressed, err := compressor.Compress(hashReader)
 	if err != nil {
-		return "", -1, fmtcompat.Errorf("couldn't create compression for blob: %w", err)
+		return "", -1, fmt.Errorf("couldn't create compression for blob: %w", err)
 	}
 	defer compressed.Close()
 
 	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
 	if err != nil {
-		return "", -1, fmtcompat.Errorf("put layer blob: %w", err)
+		return "", -1, fmt.Errorf("put layer blob: %w", err)
 	}
 
 	// Add DiffID to configuration.
@@ -291,12 +290,12 @@ func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.Hist
 func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (ispec.Descriptor, error) {
 	desc := ispec.Descriptor{}
 	if err := m.cache(ctx); err != nil {
-		return desc, fmtcompat.Errorf("getting cache failed: %w", err)
+		return desc, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	digest, size, err := m.add(ctx, r, history, compressor)
 	if err != nil {
-		return desc, fmtcompat.Errorf("add layer: %w", err)
+		return desc, fmt.Errorf("add layer: %w", err)
 	}
 
 	compressedMediaType := mediaType
@@ -327,7 +326,7 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 // validate the DiffID.
 func (m *Mutator) AddExisting(ctx context.Context, desc ispec.Descriptor, history *ispec.History, diffID digest.Digest) error {
 	if err := m.cache(ctx); err != nil {
-		return fmtcompat.Errorf("getting cache failed: %w", err)
+		return fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	m.appendToConfig(history, diffID)
@@ -341,13 +340,13 @@ func (m *Mutator) AddExisting(ctx context.Context, desc ispec.Descriptor, histor
 // New).
 func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 	if err := m.cache(ctx); err != nil {
-		return casext.DescriptorPath{}, fmtcompat.Errorf("getting cache failed: %w", err)
+		return casext.DescriptorPath{}, fmt.Errorf("getting cache failed: %w", err)
 	}
 
 	// We first have to commit the configuration blob.
 	configDigest, configSize, err := m.engine.PutBlobJSON(ctx, m.config)
 	if err != nil {
-		return casext.DescriptorPath{}, fmtcompat.Errorf("commit mutated config blob: %w", err)
+		return casext.DescriptorPath{}, fmt.Errorf("commit mutated config blob: %w", err)
 	}
 
 	m.manifest.Config = ispec.Descriptor{
@@ -359,7 +358,7 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 	// Now commit the manifest.
 	manifestDigest, manifestSize, err := m.engine.PutBlobJSON(ctx, m.manifest)
 	if err != nil {
-		return casext.DescriptorPath{}, fmtcompat.Errorf("commit mutated manifest blob: %w", err)
+		return casext.DescriptorPath{}, fmt.Errorf("commit mutated manifest blob: %w", err)
 	}
 
 	// We now have to create a new DescriptorPath that replaces the one we were
@@ -381,7 +380,7 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 		// Get the blob of the parent.
 		parentBlob, err := m.engine.FromDescriptor(ctx, newPath.Walk[idx-1])
 		if err != nil {
-			return casext.DescriptorPath{}, fmtcompat.Errorf("get parent-%d blob: %w", idx, err)
+			return casext.DescriptorPath{}, fmt.Errorf("get parent-%d blob: %w", idx, err)
 		}
 		defer parentBlob.Close()
 
@@ -395,7 +394,7 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 			}
 			return d
 		}); err != nil {
-			return casext.DescriptorPath{}, fmtcompat.Errorf("rewrite parent-%d blob: %w", idx, err)
+			return casext.DescriptorPath{}, fmt.Errorf("rewrite parent-%d blob: %w", idx, err)
 		}
 
 		// Re-commit the blob.
@@ -403,7 +402,7 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 		//       possible to write a modified blob through the blob API.
 		blobDigest, blobSize, err := m.engine.PutBlobJSON(ctx, parentBlob.Data)
 		if err != nil {
-			return casext.DescriptorPath{}, fmtcompat.Errorf("put json parent-%d blob: %w", idx, err)
+			return casext.DescriptorPath{}, fmt.Errorf("put json parent-%d blob: %w", idx, err)
 		}
 
 		// Update the key parts of the descriptor.

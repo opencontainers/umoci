@@ -30,7 +30,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -151,14 +150,14 @@ func config(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", fromName)
@@ -170,27 +169,27 @@ func config(ctx *cli.Context) error {
 
 	mutator, err := mutate.New(engine, fromDescriptorPaths[0])
 	if err != nil {
-		return fmtcompat.Errorf("create mutator for manifest: %w", err)
+		return fmt.Errorf("create mutator for manifest: %w", err)
 	}
 
 	config, err := mutator.Config(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get base config: %w", err)
+		return fmt.Errorf("get base config: %w", err)
 	}
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get base metadata: %w", err)
+		return fmt.Errorf("get base metadata: %w", err)
 	}
 
 	annotations, err := mutator.Annotations(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get base annotations: %w", err)
+		return fmt.Errorf("get base annotations: %w", err)
 	}
 
 	g, err := igen.NewFromImage(toImage(config.Config, imageMeta))
 	if err != nil {
-		return fmtcompat.Errorf("create new generator: %w", err)
+		return fmt.Errorf("create new generator: %w", err)
 	}
 
 	if ctx.IsSet("clear") {
@@ -223,7 +222,7 @@ func config(ctx *cli.Context) error {
 		// How do we handle other formats?
 		created, err := time.Parse(igen.ISO8601, ctx.String("created"))
 		if err != nil {
-			return fmtcompat.Errorf("parse --created: %w", err)
+			return fmt.Errorf("parse --created: %w", err)
 		}
 		g.SetCreated(created)
 	}
@@ -254,7 +253,7 @@ func config(ctx *cli.Context) error {
 		for _, env := range ctx.StringSlice("config.env") {
 			name, value, err := parseKV(env)
 			if err != nil {
-				return fmtcompat.Errorf("config.env: %w", err)
+				return fmt.Errorf("config.env: %w", err)
 			}
 			g.AddConfigEnv(name, value)
 		}
@@ -276,7 +275,7 @@ func config(ctx *cli.Context) error {
 		for _, label := range ctx.StringSlice("config.label") {
 			name, value, err := parseKV(label)
 			if err != nil {
-				return fmtcompat.Errorf("config.label: %w", err)
+				return fmt.Errorf("config.label: %w", err)
 			}
 			g.AddConfigLabel(name, value)
 		}
@@ -311,7 +310,7 @@ func config(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return fmtcompat.Errorf("parsing --history.created: %w", err)
+				return fmt.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
@@ -322,18 +321,18 @@ func config(ctx *cli.Context) error {
 
 	newConfig, newMeta := fromImage(g.Image())
 	if err := mutator.Set(context.Background(), newConfig, newMeta, annotations, history); err != nil {
-		return fmtcompat.Errorf("set modified configuration: %w", err)
+		return fmt.Errorf("set modified configuration: %w", err)
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("commit mutated image: %w", err)
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return fmtcompat.Errorf("add new tag: %w", err)
+		return fmt.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)

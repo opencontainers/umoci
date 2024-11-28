@@ -83,7 +83,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 		for idx := 0; idx < V.Len(); idx++ {
 			err := mapDescriptors(V.Index(idx), mapFunc)
 			if err != nil {
-				return fmtcompat.Errorf("%v[%d]->%v: %w", V.Type(), idx, V.Index(idx).Type(), err)
+				return fmt.Errorf("%v[%d]->%v: %w", V.Type(), idx, V.Index(idx).Type(), err)
 			}
 		}
 		return nil
@@ -102,7 +102,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 		for idx := 0; idx < V.NumField(); idx++ {
 			err := mapDescriptors(V.Field(idx), mapFunc)
 			if err != nil {
-				return fmtcompat.Errorf("%v[%d=%s]->%v: %w", V.Type(), idx, V.Type().Field(idx).Name, V.Field(idx).Type(), err)
+				return fmt.Errorf("%v[%d=%s]->%v: %w", V.Type(), idx, V.Type().Field(idx).Name, V.Field(idx).Type(), err)
 			}
 		}
 		return nil

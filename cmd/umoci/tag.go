@@ -25,7 +25,6 @@ import (
 	"github.com/apex/log"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -65,7 +64,7 @@ func tagAdd(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
@@ -73,7 +72,7 @@ func tagAdd(ctx *cli.Context) error {
 	// Get original descriptor.
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return fmtcompat.Errorf("get descriptor: %w", err)
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
 		return fmt.Errorf("tag not found: %s", fromName)
@@ -86,7 +85,7 @@ func tagAdd(ctx *cli.Context) error {
 
 	// Add it.
 	if err := engineExt.UpdateReference(context.Background(), tagName, descriptor); err != nil {
-		return fmtcompat.Errorf("put reference: %w", err)
+		return fmt.Errorf("put reference: %w", err)
 	}
 
 	log.Infof("created new tag: %q -> %q", tagName, fromName)
@@ -123,14 +122,14 @@ func tagRemove(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	// Remove it.
 	if err := engineExt.DeleteReference(context.Background(), tagName); err != nil {
-		return fmtcompat.Errorf("delete reference: %w", err)
+		return fmt.Errorf("delete reference: %w", err)
 	}
 
 	log.Infof("removed tag: %s", tagName)
@@ -167,14 +166,14 @@ func tagList(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	names, err := engineExt.ListReferences(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("list references: %w", err)
+		return fmt.Errorf("list references: %w", err)
 	}
 
 	for _, name := range names {

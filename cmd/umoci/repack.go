@@ -30,7 +30,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 	"github.com/urfave/cli"
 )
@@ -99,7 +98,7 @@ func repack(ctx *cli.Context) error {
 	// Read the metadata first.
 	meta, err := umoci.ReadBundleMeta(bundlePath)
 	if err != nil {
-		return fmtcompat.Errorf("read umoci.json metadata: %w", err)
+		return fmt.Errorf("read umoci.json metadata: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -115,7 +114,7 @@ func repack(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return fmtcompat.Errorf("open CAS: %w", err)
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
@@ -123,13 +122,13 @@ func repack(ctx *cli.Context) error {
 	// Create the mutator.
 	mutator, err := mutate.New(engineExt, meta.From)
 	if err != nil {
-		return fmtcompat.Errorf("create mutator for base image: %w", err)
+		return fmt.Errorf("create mutator for base image: %w", err)
 	}
 
 	// We need to mask config.Volumes.
 	config, err := mutator.Config(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get config: %w", err)
+		return fmt.Errorf("get config: %w", err)
 	}
 
 	maskedPaths := ctx.StringSlice("mask-path")
@@ -141,7 +140,7 @@ func repack(ctx *cli.Context) error {
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {
-		return fmtcompat.Errorf("get image metadata: %w", err)
+		return fmt.Errorf("get image metadata: %w", err)
 	}
 
 	var history *ispec.History
@@ -164,7 +163,7 @@ func repack(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return fmtcompat.Errorf("parsing --history.created: %w", err)
+				return fmt.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
