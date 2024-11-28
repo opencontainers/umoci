@@ -110,7 +110,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 		manifest, ok := blob.Data.(ispec.Manifest)
 		if !ok {
 			// Should _never_ be reached.
-			return fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", blob.Descriptor.MediaType)
+			return fmt.Errorf("[internal error] unknown manifest blob type: %s", blob.Descriptor.MediaType)
 		}
 
 		// Make a copy of the manifest.
@@ -127,7 +127,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 		config, ok := blob.Data.(ispec.Image)
 		if !ok {
 			// Should _never_ be reached.
-			return fmtcompat.Errorf("[internal error] unknown config blob type: %s", blob.Descriptor.MediaType)
+			return fmt.Errorf("[internal error] unknown config blob type: %s", blob.Descriptor.MediaType)
 		}
 
 		// Make a copy of the config and configDescriptor.
@@ -142,7 +142,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 func New(engine cas.Engine, src casext.DescriptorPath) (*Mutator, error) {
 	// We currently only support changing a given manifest through a walk.
 	if mt := src.Descriptor().MediaType; mt != ispec.MediaTypeImageManifest {
-		return nil, fmtcompat.Errorf("unsupported source type: %s", mt)
+		return nil, fmt.Errorf("unsupported source type: %s", mt)
 	}
 
 	return &Mutator{

@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/apex/log"
@@ -87,11 +88,11 @@ Some examples:
 			numArgs = 1
 		}
 		if ctx.NArg() != numArgs {
-			return fmtcompat.Errorf("invalid number of positional arguments: expected %d", numArgs)
+			return fmt.Errorf("invalid number of positional arguments: expected %d", numArgs)
 		}
 		for idx, args := range ctx.Args() {
 			if args == "" {
-				return fmtcompat.Errorf("invalid positional argument %d: arguments cannot be empty", idx)
+				return fmt.Errorf("invalid positional argument %d: arguments cannot be empty", idx)
 			}
 		}
 
@@ -134,11 +135,11 @@ func insert(ctx *cli.Context) error {
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag not found: %s", fromName)
+		return fmt.Errorf("tag not found: %s", fromName)
 	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 
 	// Create the mutator.

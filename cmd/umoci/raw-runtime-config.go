@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/apex/log"
@@ -98,11 +99,11 @@ func rawConfig(ctx *cli.Context) error {
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag not found: %s", fromName)
+		return fmt.Errorf("tag not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 	meta.From = fromDescriptorPaths[0]
 
@@ -113,14 +114,14 @@ func rawConfig(ctx *cli.Context) error {
 	defer manifestBlob.Close()
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
-		return fmtcompat.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
+		return fmt.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Get the manifest.
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Generate the configuration.

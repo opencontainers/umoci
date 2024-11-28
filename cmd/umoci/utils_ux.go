@@ -18,10 +18,11 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"strings"
 
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -72,7 +73,7 @@ func uxHistory(cmd cli.Command) cli.Command {
 				if name := flag.GetName(); name == "no-history" {
 					continue
 				} else if ctx.IsSet(name) {
-					return fmtcompat.Errorf("--no-history and --%s may not be specified together", name)
+					return fmt.Errorf("--no-history and --%s may not be specified together", name)
 				}
 			}
 		}
@@ -102,10 +103,10 @@ func uxTag(cmd cli.Command) cli.Command {
 		if ctx.IsSet("tag") {
 			tag := ctx.String("tag")
 			if !casext.IsValidReferenceName(tag) {
-				return fmtcompat.Errorf("invalid --tag: tag contains invalid characters: %q", tag)
+				return fmt.Errorf("invalid --tag: tag contains invalid characters: %q", tag)
 			}
 			if tag == "" {
-				return fmtcompat.Errorf("invalid --tag: tag is empty")
+				return errors.New("invalid --tag: tag is empty")
 			}
 			ctx.App.Metadata["--tag"] = tag
 		}
@@ -149,15 +150,15 @@ func uxImage(cmd cli.Command) cli.Command {
 
 			// Verify directory value.
 			if dir == "" {
-				return fmtcompat.Errorf("invalid --image: path is empty")
+				return errors.New("invalid --image: path is empty")
 			}
 
 			// Verify tag value.
 			if !casext.IsValidReferenceName(tag) {
-				return fmtcompat.Errorf("invalid --image: tag contains invalid characters: %q", tag)
+				return fmt.Errorf("invalid --image: tag contains invalid characters: %q", tag)
 			}
 			if tag == "" {
-				return fmtcompat.Errorf("invalid --image: tag is empty")
+				return errors.New("invalid --image: tag is empty")
 			}
 
 			ctx.App.Metadata["--image-path"] = dir
@@ -190,10 +191,10 @@ func uxLayout(cmd cli.Command) cli.Command {
 
 			// Verify directory value.
 			if strings.Contains(layout, ":") {
-				return fmtcompat.Errorf("invalid --layout: path contains ':' character: %q", layout)
+				return fmt.Errorf("invalid --layout: path contains ':' character: %q", layout)
 			}
 			if layout == "" {
-				return fmtcompat.Errorf("invalid --layout: path is empty")
+				return errors.New("invalid --layout: path is empty")
 			}
 
 			ctx.App.Metadata["--image-path"] = layout

@@ -127,7 +127,7 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 	err = json.NewDecoder(fh).Decode(&meta)
 	if meta.Version != MetaVersion {
 		if err == nil {
-			err = fmtcompat.Errorf("unsupported umoci.json version: %s", meta.Version)
+			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
 		}
 	}
 	return meta, fmtcompat.Errorf("decode metadata: %w", err)
@@ -200,7 +200,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	var stat ManifestStat
 
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return stat, fmtcompat.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type %q", manifestDescriptor.MediaType)
+		return stat, fmt.Errorf("stat: cannot stat a non-manifest descriptor: invalid media type %q", manifestDescriptor.MediaType)
 	}
 
 	// We have to get the actual manifest.
@@ -211,7 +211,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return stat, fmt.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Now get the config.
@@ -222,7 +222,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return stat, fmtcompat.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return stat, fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	// TODO: This should probably be moved into separate functions.

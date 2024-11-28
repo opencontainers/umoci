@@ -38,7 +38,6 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -79,10 +78,10 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 			Size:     int64(size),
 			Typeflag: tar.TypeReg,
 		}); err != nil {
-			return fmtcompat.Errorf("randomTarData WriteHeader %d", n)
+			return fmt.Errorf("randomTarData WriteHeader %d", n)
 		}
 		if _, err := io.CopyN(tw, crand.Reader, int64(size)); err != nil {
-			return fmtcompat.Errorf("randomTarData Write %d", n)
+			return fmt.Errorf("randomTarData Write %d", n)
 		}
 	}
 	return nil

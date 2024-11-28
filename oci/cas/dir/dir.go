@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -67,7 +68,7 @@ func blobPath(digest digest.Digest) (string, error) {
 	hash := digest.Hex()
 
 	if algo != cas.BlobAlgorithm {
-		return "", fmtcompat.Errorf("unsupported algorithm: %q", algo)
+		return "", fmt.Errorf("unsupported algorithm: %q", algo)
 	}
 
 	return filepath.Join(blobDirectory, algo.String(), hash), nil

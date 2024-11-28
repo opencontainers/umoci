@@ -18,6 +18,7 @@
 package casext
 
 import (
+	"fmt"
 	"reflect"
 
 	"github.com/apex/log"
@@ -60,7 +61,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 			P := V
 			if !P.CanSet() {
 				// This is a programmer error.
-				return fmtcompat.Errorf("[internal error] cannot apply map function to %v: %v is not settable", P, P.Type())
+				return fmt.Errorf("[internal error] cannot apply map function to %v: %v is not settable", P, P.Type())
 			}
 			P.Set(reflect.ValueOf(new))
 		}

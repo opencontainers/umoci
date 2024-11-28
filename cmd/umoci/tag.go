@@ -76,11 +76,11 @@ func tagAdd(ctx *cli.Context) error {
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag not found: %s", fromName)
+		return fmt.Errorf("tag not found: %s", fromName)
 	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 	descriptor := descriptorPaths[0].Descriptor()
 

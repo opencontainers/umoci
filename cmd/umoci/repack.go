@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"time"
 
 	"github.com/apex/log"
@@ -108,7 +109,7 @@ func repack(ctx *cli.Context) error {
 	}).Debugf("umoci: loaded Meta metadata")
 
 	if meta.From.Descriptor().MediaType != ispec.MediaTypeImageManifest {
-		return fmtcompat.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.Descriptor().MediaType)
+		return fmt.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", meta.From.Descriptor().MediaType)
 	}
 
 	// Get a reference to the CAS.

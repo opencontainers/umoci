@@ -18,6 +18,7 @@
 package idtools
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -39,7 +40,7 @@ func ToHost(contID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, fmtcompat.Errorf("container id %d cannot be mapped to a host id", contID)
+	return -1, fmt.Errorf("container id %d cannot be mapped to a host id", contID)
 }
 
 // ToContainer takes an unmapped host ID and translates it to a remapped
@@ -57,7 +58,7 @@ func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, fmtcompat.Errorf("host id %d cannot be mapped to a container id", hostID)
+	return -1, fmt.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
 // Helper to return a uint32 from strconv.ParseUint type-safely.
@@ -83,7 +84,7 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	case 2:
 		size = 1
 	default:
-		return rspec.LinuxIDMapping{}, fmtcompat.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
 	}
 
 	contID, err = parseUint32(parts[0])

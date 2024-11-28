@@ -20,6 +20,7 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -27,8 +28,6 @@ import (
 	"strings"
 	"testing"
 	"time"
-
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 func TestTarGenerateAddFileNormal(t *testing.T) {
@@ -306,7 +305,7 @@ func parseWhiteout(path string) (string, error) {
 	path = filepath.Clean(path)
 	dir, file := filepath.Split(path)
 	if !strings.HasPrefix(file, whPrefix) {
-		return "", fmtcompat.Errorf("not a whiteout path: %s", path)
+		return "", fmt.Errorf("not a whiteout path: %s", path)
 	}
 	return filepath.Join(dir, strings.TrimPrefix(file, whPrefix)), nil
 }

@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"errors"
+	"fmt"
 	"strings"
 	"time"
 
@@ -127,12 +128,12 @@ func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 func parseKV(input string) (string, string, error) {
 	parts := strings.SplitN(input, "=", 2)
 	if len(parts) != 2 {
-		return "", "", fmtcompat.Errorf("must contain '=': %s", input)
+		return "", "", fmt.Errorf("must contain '=': %s", input)
 	}
 
 	name, value := parts[0], parts[1]
 	if name == "" {
-		return "", "", fmtcompat.Errorf("must have non-empty name: %s", input)
+		return "", "", fmt.Errorf("must have non-empty name: %s", input)
 	}
 	return name, value, nil
 }
@@ -160,11 +161,11 @@ func config(ctx *cli.Context) error {
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag not found: %s", fromName)
+		return fmt.Errorf("tag not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 
 	mutator, err := mutate.New(engine, fromDescriptorPaths[0])
@@ -213,7 +214,7 @@ func config(ctx *cli.Context) error {
 			case "config.entrypoint":
 				g.ClearConfigEntrypoint()
 			default:
-				return fmtcompat.Errorf("unknown key to --clear: %s", key)
+				return fmt.Errorf("unknown key to --clear: %s", key)
 			}
 		}
 	}

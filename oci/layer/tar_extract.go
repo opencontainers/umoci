@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -490,7 +491,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		case OverlayFSWhiteout:
 			return te.overlayFSWhiteout(dir, file)
 		default:
-			return fmtcompat.Errorf("unknown whiteout mode %d", te.whiteoutMode)
+			return fmt.Errorf("unknown whiteout mode %d", te.whiteoutMode)
 		}
 	}
 
@@ -681,7 +682,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// We should never hit any other headers (Go abstracts them away from us),
 	// and we can't handle any custom Tar extensions. So just error out.
 	default:
-		return fmtcompat.Errorf("unpack entry: %s: unknown typeflag '\\x%x'", hdr.Name, hdr.Typeflag)
+		return fmt.Errorf("unpack entry: %s: unknown typeflag '\\x%x'", hdr.Name, hdr.Typeflag)
 	}
 
 out:

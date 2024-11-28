@@ -22,6 +22,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -114,7 +115,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if _, err := os.Lstat(configPath); !errors.Is(err, os.ErrNotExist) {
 		if err == nil {
-			return fmtcompat.Errorf("config.json already exists in %s", bundle)
+			return fmt.Errorf("config.json already exists in %s", bundle)
 		}
 		return fmtcompat.Errorf("problem accessing bundle config: %w", err)
 	}
@@ -133,7 +134,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 	if _, err := os.Lstat(rootfsPath); !errors.Is(err, os.ErrNotExist) && opt.StartFrom.MediaType == "" {
 		if err == nil {
-			err = fmtcompat.Errorf("%s already exists", rootfsPath)
+			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
 		return fmtcompat.Errorf("detecting rootfs: %w", err)
 	}
@@ -212,17 +213,17 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
-		return fmtcompat.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
+		return fmt.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return fmtcompat.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
-		return fmtcompat.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
+		return fmt.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
 	// Layer extraction.
@@ -242,7 +243,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.Descriptor.MediaType) {
-			return fmtcompat.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
+			return fmt.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
 		}
 		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
@@ -297,7 +298,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 
 		layerDigest := layerDigester.Digest()
 		if layerDigest != layerDiffID {
-			return fmtcompat.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
+			return fmt.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}
 
 		if opt.AfterLayerUnpack != nil {
@@ -336,12 +337,12 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
-		return fmtcompat.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
+		return fmt.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return fmtcompat.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	spec, err := iconv.ToRuntimeSpec(rootfs, config)

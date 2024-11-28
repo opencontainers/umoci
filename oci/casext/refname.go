@@ -19,6 +19,7 @@ package casext
 
 import (
 	"context"
+	"fmt"
 	"regexp"
 
 	"github.com/apex/log"
@@ -61,7 +62,7 @@ func (e Engine) ResolveReference(ctx context.Context, refname string) ([]Descrip
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return nil, fmtcompat.Errorf("refusing to resolve invalid reference %q", refname)
+		return nil, fmt.Errorf("refusing to resolve invalid reference %q", refname)
 	}
 
 	index, err := e.GetIndex(ctx)
@@ -123,7 +124,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return fmtcompat.Errorf("refusing to update invalid reference %q", refname)
+		return fmt.Errorf("refusing to update invalid reference %q", refname)
 	}
 
 	// Get index to modify.
@@ -166,7 +167,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	//      dealing with an image that abuses the image specification in some
 	//      way.
 	if !IsValidReferenceName(refname) {
-		return fmtcompat.Errorf("refusing to delete invalid reference %q", refname)
+		return fmt.Errorf("refusing to delete invalid reference %q", refname)
 	}
 
 	// Get index to modify.

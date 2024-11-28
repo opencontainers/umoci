@@ -19,6 +19,7 @@ package main
 
 import (
 	"errors"
+	"fmt"
 	"os"
 
 	"github.com/apex/log"
@@ -56,7 +57,7 @@ func initLayout(ctx *cli.Context) error {
 
 	if _, err := os.Stat(imagePath); !errors.Is(err, os.ErrNotExist) {
 		if err == nil {
-			err = fmtcompat.Errorf("path already exists: %s", imagePath)
+			err = fmt.Errorf("path already exists: %s", imagePath)
 		}
 		return fmtcompat.Errorf("image layout creation: %w", err)
 	}

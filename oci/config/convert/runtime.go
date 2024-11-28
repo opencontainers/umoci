@@ -18,6 +18,7 @@
 package convert
 
 import (
+	"fmt"
 	"path/filepath"
 	"strings"
 
@@ -60,12 +61,12 @@ func ToRuntimeSpec(rootfs string, image ispec.Image) (rspec.Spec, error) {
 func parseEnv(env string) (string, string, error) {
 	parts := strings.SplitN(env, "=", 2)
 	if len(parts) != 2 {
-		return "", "", fmtcompat.Errorf("environment variable must contain '=': %s", env)
+		return "", "", fmt.Errorf("environment variable must contain '=': %s", env)
 	}
 
 	name, value := parts[0], parts[1]
 	if name == "" {
-		return "", "", fmtcompat.Errorf("environment variable must have non-empty name: %s", env)
+		return "", "", fmt.Errorf("environment variable must have non-empty name: %s", env)
 	}
 	return name, value, nil
 }
@@ -112,7 +113,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	}
 
 	if ig.OS() != "linux" {
-		return fmtcompat.Errorf("unsupported OS: %s", image.OS)
+		return fmt.Errorf("unsupported OS: %s", image.OS)
 	}
 
 	allocateNilStruct(spec)
@@ -130,10 +131,10 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		return fmtcompat.Errorf("parsing original runtime-spec config version: %w", err)
 	}
 	if oldVersion.GT(curSpecVersion) {
-		return fmtcompat.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
+		return fmt.Errorf("original runtime-spec config version %s is unsupported: %s > %s", oldVersion, oldVersion, curSpecVersion)
 	}
 	if oldVersion.Major != curSpecVersion.Major {
-		return fmtcompat.Errorf("original runtime-spec config version %s is incompatible with version %s: mismatching major number", oldVersion, curSpecVersion)
+		return fmt.Errorf("original runtime-spec config version %s is incompatible with version %s: mismatching major number", oldVersion, curSpecVersion)
 	}
 
 	// Set verbatim fields

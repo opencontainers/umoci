@@ -20,6 +20,7 @@ package layer
 import (
 	"archive/tar"
 	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -128,7 +129,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 	// of the tar archive. While this might seem paranoid, it is a legitimate
 	// concern.
 	if "/"+path != filepath.Join("/", path) {
-		return "", fmtcompat.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
+		return "", fmt.Errorf("escape warning: generated path is outside tar root: %s", rawPath)
 	}
 
 	// With some other tar formats, you needed to have a '/' at the end of a
@@ -178,7 +179,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// will almost certainly confuse some users (unfortunately) but there's
 	// nothing we can do to store such files on-disk.
 	if strings.HasPrefix(filepath.Base(name), whPrefix) {
-		return fmtcompat.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+		return fmt.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
 	}
 
 	// FIXME: Do we need to ensure that the parent paths have all been added to
@@ -304,7 +305,7 @@ func (tg *tarGenerator) addWhiteout(name string, opaque bool) error {
 	// Disallow having a whiteout of a whiteout, purely for our own sanity.
 	dir, file := filepath.Split(name)
 	if strings.HasPrefix(file, whPrefix) {
-		return fmtcompat.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
+		return fmt.Errorf("invalid path has whiteout prefix %q: %s", whPrefix, name)
 	}
 
 	// Figure out the whiteout name.

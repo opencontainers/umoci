@@ -21,6 +21,7 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"fmt"
 	"os"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -80,17 +81,17 @@ func stat(ctx *cli.Context) error {
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(manifestDescriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag not found: %s", tagName)
+		return fmt.Errorf("tag not found: %s", tagName)
 	}
 	if len(manifestDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", tagName)
+		return fmt.Errorf("tag is ambiguous: %s", tagName)
 	}
 	manifestDescriptor := manifestDescriptorPaths[0].Descriptor()
 
 	// FIXME: Implement support for manifest lists.
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return fmtcompat.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType)
+		return fmt.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType)
 	}
 
 	// Get stat information.

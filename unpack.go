@@ -19,6 +19,7 @@ package umoci
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"strings"
 
@@ -42,11 +43,11 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 		return fmtcompat.Errorf("get descriptor: %w", err)
 	}
 	if len(fromDescriptorPaths) == 0 {
-		return fmtcompat.Errorf("tag is not found: %s", fromName)
+		return fmt.Errorf("tag is not found: %s", fromName)
 	}
 	if len(fromDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return fmtcompat.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 	meta.From = fromDescriptorPaths[0]
 
@@ -57,7 +58,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	defer manifestBlob.Close()
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
-		return fmtcompat.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
+		return fmt.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
@@ -71,7 +72,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	manifest, ok := manifestBlob.Data.(ispec.Manifest)
 	if !ok {
 		// Should _never_ be reached.
-		return fmtcompat.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
 	}
 
 	// Unpack the runtime bundle.

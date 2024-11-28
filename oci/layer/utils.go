@@ -19,6 +19,7 @@ package layer
 
 import (
 	"archive/tar"
+	"fmt"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -223,7 +224,7 @@ func isOverlayWhiteout(info os.FileInfo) (bool, error) {
 		major = unix.Major(uint64(stat.Rdev))
 		minor = unix.Minor(uint64(stat.Rdev))
 	default:
-		return false, fmtcompat.Errorf("[internal error] unknown stat info type %T", info.Sys())
+		return false, fmt.Errorf("[internal error] unknown stat info type %T", info.Sys())
 	}
 
 	return major == 0 && minor == 0 &&
