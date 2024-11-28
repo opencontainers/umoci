@@ -151,7 +151,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	err := te.fsEval.Lclearxattrs(path, ignoreXattrs)
 	if err != nil {
 		if !errors.Is(err, unix.ENOTSUP) {
-			return fmtcompat.Errorf("clear xattr metadata: %s: %w", path, err)
+			return fmt.Errorf("clear xattr metadata: %s: %w", path, err)
 		}
 		if !te.enotsupWarned {
 			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
@@ -210,7 +210,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 				}
 				continue
 			}
-			return fmtcompat.Errorf("restore xattr metadata: %s: %w", path, err)
+			return fmt.Errorf("restore xattr metadata: %s: %w", path, err)
 		}
 	}
 
@@ -244,7 +244,7 @@ func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	// Make sure it exists and is a symlink.
 	if _, err := te.fsEval.Readlink(path); err != nil {
-		return false, fmtcompat.Errorf("read dirlink: %w", err)
+		return false, fmt.Errorf("read dirlink: %w", err)
 	}
 
 	// Technically a string.TrimPrefix would also work...
@@ -264,7 +264,7 @@ func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 		if errors.Is(err, unix.ELOOP) {
 			return false, nil
 		}
-		return false, fmtcompat.Errorf("sanitize old target: %w", err)
+		return false, fmt.Errorf("sanitize old target: %w", err)
 	}
 
 	targetInfo, err := te.fsEval.Lstat(targetPath)
@@ -312,7 +312,7 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 		if securejoin.IsNotExist(err) {
 			return nil
 		}
-		return fmtcompat.Errorf("check whiteout target: %w", err)
+		return fmt.Errorf("check whiteout target: %w", err)
 	}
 
 	// Walk over the path to remove it. We remove a given path as soon as
@@ -375,7 +375,7 @@ func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
 	// otherwise, white out the file itself.
 	p := filepath.Join(dir, strings.TrimPrefix(file, whPrefix))
 	if err := os.RemoveAll(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmtcompat.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
 	}
 
 	err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
@@ -445,7 +445,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		xattrs, err := te.fsEval.Llistxattr(dir)
 		if err != nil {
 			if !errors.Is(err, unix.ENOTSUP) {
-				return fmtcompat.Errorf("get dirHdr.Xattrs: %w", err)
+				return fmt.Errorf("get dirHdr.Xattrs: %w", err)
 			}
 			if !te.enotsupWarned {
 				log.Warnf("xattr{%s} ignoring ENOTSUP on llistxattr", dir)
@@ -473,7 +473,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			// Only overwrite the error if there wasn't one already.
 			if err := te.restoreMetadata(dir, dirHdr); err != nil {
 				if Err == nil {
-					Err = fmtcompat.Errorf("restore parent directory: %w", err)
+					Err = fmt.Errorf("restore parent directory: %w", err)
 				}
 			}
 		}()
@@ -577,7 +577,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		n, err := system.Copy(fh, r)
 		if int64(n) != hdr.Size {
 			if err != nil {
-				err = fmtcompat.Errorf("short write: %w", err)
+				err = fmt.Errorf("short write: %w", err)
 			} else {
 				err = io.ErrShortWrite
 			}

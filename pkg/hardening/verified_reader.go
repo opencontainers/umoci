@@ -26,7 +26,6 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -90,17 +89,17 @@ func (v *VerifiedReadCloser) isNoop() bool {
 func (v *VerifiedReadCloser) verify(nilErr error) error {
 	// Digest mismatch (always takes precedence)?
 	if actualDigest := v.digester.Digest(); actualDigest != v.ExpectedDigest {
-		return fmtcompat.Errorf("expected %s not %s: %w", v.ExpectedDigest, actualDigest, ErrDigestMismatch)
+		return fmt.Errorf("expected %s not %s: %w", v.ExpectedDigest, actualDigest, ErrDigestMismatch)
 	}
 	// Do we need to check the size for mismatches?
 	if v.ExpectedSize >= 0 {
 		switch {
 		// Not enough bytes in the stream.
 		case v.currentSize < v.ExpectedSize:
-			return fmtcompat.Errorf("expected %d bytes (only %d bytes in stream): %w", v.ExpectedSize, v.currentSize, ErrSizeMismatch)
+			return fmt.Errorf("expected %d bytes (only %d bytes in stream): %w", v.ExpectedSize, v.currentSize, ErrSizeMismatch)
 		// We don't read the entire blob, so the message needs to be slightly adjusted.
 		case v.currentSize > v.ExpectedSize:
-			return fmtcompat.Errorf("expected %d bytes (extra bytes in stream): %w", v.ExpectedSize, ErrSizeMismatch)
+			return fmt.Errorf("expected %d bytes (extra bytes in stream): %w", v.ExpectedSize, ErrSizeMismatch)
 		}
 	}
 	// Forward the provided error.
@@ -184,7 +183,7 @@ func (v *VerifiedReadCloser) Close() error {
 	// end of the stream. VerifiedReadCloser.Read will not read past
 	// ExpectedSize+1, so we don't need to add a limit here.
 	if n, err := system.Copy(ioutil.Discard, v); err != nil {
-		return fmtcompat.Errorf("consume remaining unverified stream: %w", err)
+		return fmt.Errorf("consume remaining unverified stream: %w", err)
 	} else if n != 0 {
 		// If there's trailing bytes being discarded at this point, that
 		// indicates whatever you used to generate this blob is adding trailing

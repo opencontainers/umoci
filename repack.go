@@ -29,7 +29,6 @@ import (
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 	"github.com/vbatts/go-mtree"
@@ -116,7 +115,7 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		// TODO: We should add a flag to allow for a new layer to be made
 		//       non-distributable.
 		if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, mutate.GzipCompressor, nil); err != nil {
-			return fmtcompat.Errorf("add diff layer: %w", err)
+			return fmt.Errorf("add diff layer: %w", err)
 		}
 	}
 

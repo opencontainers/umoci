@@ -117,7 +117,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if err == nil {
 			return fmt.Errorf("config.json already exists in %s", bundle)
 		}
-		return fmtcompat.Errorf("problem accessing bundle config: %w", err)
+		return fmt.Errorf("problem accessing bundle config: %w", err)
 	}
 
 	defer func() {
@@ -136,7 +136,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		if err == nil {
 			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
-		return fmtcompat.Errorf("detecting rootfs: %w", err)
+		return fmt.Errorf("detecting rootfs: %w", err)
 	}
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
@@ -163,7 +163,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	engineExt := casext.NewEngine(engine)
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
-		return fmtcompat.Errorf("mkdir rootfs: %w", err)
+		return fmt.Errorf("mkdir rootfs: %w", err)
 	}
 
 	// In order to avoid having a broken rootfs in the case of an error, we
@@ -276,7 +276,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// the whole uncompressed stream). Just blindly consume anything left
 		// in the layer.
 		if n, err := system.Copy(ioutil.Discard, layer); err != nil {
-			return fmtcompat.Errorf("discard trailing archive bits: %w", err)
+			return fmt.Errorf("discard trailing archive bits: %w", err)
 		} else if n != 0 {
 			log.Debugf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the tar stream -- probably from GNU tar", layerDescriptor.Digest, n)
 		}
@@ -288,7 +288,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// WriteTo, which causes havoc with system.Copy. Ideally we would use
 		// layerRaw. See <https://github.com/klauspost/pgzip/issues/38>.
 		if n, err := system.Copy(ioutil.Discard, layerData); err != nil {
-			return fmtcompat.Errorf("discard trailing raw bits: %w", err)
+			return fmt.Errorf("discard trailing raw bits: %w", err)
 		} else if n != 0 {
 			log.Warnf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the blob stream -- this may indicate a bug in the tool which built this image", layerDescriptor.Digest, n)
 		}

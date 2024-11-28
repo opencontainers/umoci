@@ -102,19 +102,19 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
 					log.Warnf("generate layer: could not add file %q: %s", name, err)
-					return fmtcompat.Errorf("generate layer file: %w", err)
+					return fmt.Errorf("generate layer file: %w", err)
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
 					log.Warnf("generate layer: could not add whiteout %q: %s", name, err)
-					return fmtcompat.Errorf("generate whiteout layer file: %w", err)
+					return fmt.Errorf("generate whiteout layer file: %w", err)
 				}
 			}
 		}
 
 		if err := tg.tw.Close(); err != nil {
 			log.Warnf("generate layer: could not close tar.Writer: %s", err)
-			return fmtcompat.Errorf("close tar writer: %w", err)
+			return fmt.Errorf("close tar writer: %w", err)
 		}
 
 		return nil

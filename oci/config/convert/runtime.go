@@ -28,7 +28,6 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 )
 
 // Annotations described by the OCI image-spec document (these represent fields
@@ -186,7 +185,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		// We only log an error if were not given a rootfs, and we set execUser
 		// to the "default" (root:root).
 		if rootfs != "" {
-			return fmtcompat.Errorf("cannot parse user spec: %q: %w", ig.ConfigUser(), err)
+			return fmt.Errorf("cannot parse user spec: %q: %w", ig.ConfigUser(), err)
 		}
 		log.Warnf("could not parse user spec %q without a rootfs -- defaulting to root:root", ig.ConfigUser())
 		execUser = new(user.ExecUser)

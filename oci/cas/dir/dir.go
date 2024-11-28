@@ -32,7 +32,6 @@ import (
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/cas"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/opencontainers/umoci/pkg/system"
 	"golang.org/x/sys/unix"
@@ -111,7 +110,7 @@ func (e *dirEngine) validate() error {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return fmtcompat.Errorf("read oci-layout: %w", err)
+		return fmt.Errorf("read oci-layout: %w", err)
 	}
 
 	var ociLayout ispec.ImageLayout
@@ -122,7 +121,7 @@ func (e *dirEngine) validate() error {
 	// XXX: Currently the meaning of this field is not adequately defined by
 	//      the spec, nor is the "official" value determined by the spec.
 	if ociLayout.Version != ImageLayoutVersion {
-		return fmtcompat.Errorf("layout version is not supported: %w", cas.ErrInvalid)
+		return fmt.Errorf("layout version is not supported: %w", cas.ErrInvalid)
 	}
 
 	// Check that "blobs" and "index.json" exist in the image.
@@ -133,18 +132,18 @@ func (e *dirEngine) validate() error {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return fmtcompat.Errorf("check blobdir: %w", err)
+		return fmt.Errorf("check blobdir: %w", err)
 	} else if !fi.IsDir() {
-		return fmtcompat.Errorf("blobdir is not a directory: %w", cas.ErrInvalid)
+		return fmt.Errorf("blobdir is not a directory: %w", cas.ErrInvalid)
 	}
 
 	if fi, err := os.Stat(filepath.Join(e.path, indexFile)); err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return fmtcompat.Errorf("check index: %w", err)
+		return fmt.Errorf("check index: %w", err)
 	} else if fi.IsDir() {
-		return fmtcompat.Errorf("index is a directory: %w", cas.ErrInvalid)
+		return fmt.Errorf("index is a directory: %w", cas.ErrInvalid)
 	}
 
 	return nil
@@ -292,7 +291,7 @@ func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return ispec.Index{}, fmtcompat.Errorf("read index: %w", err)
+		return ispec.Index{}, fmt.Errorf("read index: %w", err)
 	}
 
 	var index ispec.Index
@@ -314,7 +313,7 @@ func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error 
 
 	err = os.Remove(filepath.Join(e.path, path))
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmtcompat.Errorf("remove blob: %w", err)
+		return fmt.Errorf("remove blob: %w", err)
 	}
 	return nil
 }
@@ -362,7 +361,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
 	cfh, err := os.Open(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmtcompat.Errorf("open for locking: %w", err)
+		return fmt.Errorf("open for locking: %w", err)
 	}
 	defer cfh.Close()
 

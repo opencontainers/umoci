@@ -281,7 +281,7 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	log.Debugf("umoci: saving mtree manifest")
 
 	if _, err := dh.WriteTo(fh); err != nil {
-		return fmtcompat.Errorf("write mtree: %w", err)
+		return fmt.Errorf("write mtree: %w", err)
 	}
 
 	return nil

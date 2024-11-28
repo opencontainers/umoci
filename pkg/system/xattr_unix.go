@@ -23,7 +23,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"golang.org/x/sys/unix"
 )
 
@@ -115,7 +114,7 @@ func Lclearxattrs(path string, except map[string]struct{}) error {
 			if errors.Is(err, os.ErrPermission) {
 				continue
 			}
-			return fmtcompat.Errorf("lclearxattrs: remove xattr: %w", err)
+			return fmt.Errorf("lclearxattrs: remove xattr: %w", err)
 		}
 	}
 	return nil

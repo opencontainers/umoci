@@ -93,7 +93,7 @@ func Wrap(path string, fn WrapFunc) error {
 		}
 		if !errors.Is(err, os.ErrPermission) {
 			// This is a legitimate error.
-			return fmtcompat.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
+			return fmt.Errorf("unpriv.wrap: lstat parent: %s: %w", current, err)
 		}
 		start--
 	}
@@ -387,13 +387,13 @@ func RemoveAll(path string) error {
 		if serr != nil {
 			// Use securejoin's IsNotExist to handle ENOTDIR sanely.
 			if !securejoin.IsNotExist(serr) {
-				return fmtcompat.Errorf("lstat: %w", serr)
+				return fmt.Errorf("lstat: %w", serr)
 			}
 			return nil
 		}
 		// Return error from remove if it's not a directory.
 		if !fi.IsDir() {
-			return fmtcompat.Errorf("remove non-directory: %w", err)
+			return fmt.Errorf("remove non-directory: %w", err)
 		}
 		err = nil
 		err1 := foreachSubpath(path, func(subpath string) error {
@@ -408,7 +408,7 @@ func RemoveAll(path string) error {
 			if errors.Is(err1, os.ErrNotExist) {
 				err1 = nil
 			}
-			return fmtcompat.Errorf("foreach subpath: %w", err1)
+			return fmt.Errorf("foreach subpath: %w", err1)
 		}
 
 		// Remove the directory. This should now work.
@@ -419,7 +419,7 @@ func RemoveAll(path string) error {
 		if err == nil {
 			err = err1
 		}
-		return fmtcompat.Errorf("remove: %w", err)
+		return fmt.Errorf("remove: %w", err)
 	})
 	if err != nil {
 		return fmt.Errorf("unpriv.removeall: %w", err)

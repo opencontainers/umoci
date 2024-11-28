@@ -155,7 +155,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	linkname := ""
 	if fi.Mode()&os.ModeSymlink == os.ModeSymlink {
 		if linkname, err = tg.fsEval.Readlink(path); err != nil {
-			return fmtcompat.Errorf("add file readlink: %w", err)
+			return fmt.Errorf("add file readlink: %w", err)
 		}
 	}
 
@@ -205,7 +205,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	names, err := tg.fsEval.Llistxattr(path)
 	if err != nil {
 		if !errors.Is(err, unix.EOPNOTSUPP) {
-			return fmtcompat.Errorf("get xattr list: %w", err)
+			return fmt.Errorf("get xattr list: %w", err)
 		}
 		names = []string{}
 	}
@@ -227,7 +227,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 				// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
 				//      fail with EPERM. If it can, we should ignore it (like when
 				//      we try to clear xattrs).
-				return fmtcompat.Errorf("get xattr: %s: %w", name, err)
+				return fmt.Errorf("get xattr: %s: %w", name, err)
 			}
 		}
 		// https://golang.org/issues/20698 -- We don't just error out here
@@ -276,7 +276,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 			return fmt.Errorf("copy to layer: %w", err)
 		}
 		if n != hdr.Size {
-			return fmtcompat.Errorf("copy to layer: %w", io.ErrShortWrite)
+			return fmt.Errorf("copy to layer: %w", io.ErrShortWrite)
 		}
 	}
 

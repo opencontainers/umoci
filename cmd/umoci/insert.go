@@ -31,7 +31,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -192,7 +191,7 @@ func insert(ctx *cli.Context) error {
 	// TODO: We should add a flag to allow for a new layer to be made
 	//       non-distributable.
 	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, mutate.GzipCompressor, nil); err != nil {
-		return fmtcompat.Errorf("add diff layer: %w", err)
+		return fmt.Errorf("add diff layer: %w", err)
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())

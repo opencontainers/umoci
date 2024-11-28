@@ -24,7 +24,6 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/umoci/oci/cas/dir"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/urfave/cli"
 )
 
@@ -59,7 +58,7 @@ func initLayout(ctx *cli.Context) error {
 		if err == nil {
 			err = fmt.Errorf("path already exists: %s", imagePath)
 		}
-		return fmtcompat.Errorf("image layout creation: %w", err)
+		return fmt.Errorf("image layout creation: %w", err)
 	}
 
 	if err := dir.Create(imagePath); err != nil {

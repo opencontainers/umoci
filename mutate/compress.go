@@ -9,7 +9,6 @@ import (
 	"github.com/apex/log"
 	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
-	"github.com/opencontainers/umoci/pkg/fmtcompat"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -65,14 +64,14 @@ func (gz *gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		if err != nil {
 			log.Warnf("gzip compress: could not compress layer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(fmtcompat.Errorf("compressing layer: %w", err))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("compressing layer: %w", err))
 			return
 		}
 		gz.bytesRead = bytesRead
 		if err := gzw.Close(); err != nil {
 			log.Warnf("gzip compress: could not close gzip writer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(fmtcompat.Errorf("close gzip writer: %w", err))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("close gzip writer: %w", err))
 			return
 		}
 		if err := pipeWriter.Close(); err != nil {
@@ -112,14 +111,14 @@ func (zs *zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		if err != nil {
 			log.Warnf("zstd compress: could not compress layer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(fmtcompat.Errorf("compressing layer: %w", err))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("compressing layer: %w", err))
 			return
 		}
 		zs.bytesRead = bytesRead
 		if err := zw.Close(); err != nil {
 			log.Warnf("zstd compress: could not close gzip writer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(fmtcompat.Errorf("close zstd writer: %w", err))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("close zstd writer: %w", err))
 			return
 		}
 		if err := pipeWriter.Close(); err != nil {
