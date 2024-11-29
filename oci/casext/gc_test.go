@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"fmt"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -210,7 +210,7 @@ func gcSkipFunc(t *testing.T, expectedDigest digest.Digest) GCPolicy {
 }
 
 func errFunc(ctx context.Context, digest digest.Digest) (bool, error) {
-	return false, fmt.Errorf("err policy")
+	return false, errors.New("err policy")
 }
 
 func TestGCWithPolicy(t *testing.T) {

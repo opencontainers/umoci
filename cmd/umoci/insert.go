@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  * Copyright (C) 2018 Cisco Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -20,6 +20,7 @@ package main
 
 import (
 	"context"
+	"fmt"
 	"time"
 
 	"github.com/apex/log"
@@ -30,7 +31,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -87,11 +87,11 @@ Some examples:
 			numArgs = 1
 		}
 		if ctx.NArg() != numArgs {
-			return errors.Errorf("invalid number of positional arguments: expected %d", numArgs)
+			return fmt.Errorf("invalid number of positional arguments: expected %d", numArgs)
 		}
 		for idx, args := range ctx.Args() {
 			if args == "" {
-				return errors.Errorf("invalid positional argument %d: arguments cannot be empty", idx)
+				return fmt.Errorf("invalid positional argument %d: arguments cannot be empty", idx)
 			}
 		}
 
@@ -124,27 +124,27 @@ func insert(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(descriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", fromName)
+		return fmt.Errorf("tag not found: %s", fromName)
 	}
 	if len(descriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", fromName)
+		return fmt.Errorf("tag is ambiguous: %s", fromName)
 	}
 
 	// Create the mutator.
 	mutator, err := mutate.New(engine, descriptorPaths[0])
 	if err != nil {
-		return errors.Wrap(err, "create mutator for base image")
+		return fmt.Errorf("create mutator for base image: %w", err)
 	}
 
 	var meta umoci.Meta
@@ -179,7 +179,7 @@ func insert(ctx *cli.Context) error {
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
-				return errors.Wrap(err, "parsing --history.created")
+				return fmt.Errorf("parsing --history.created: %w", err)
 			}
 			history.Created = &created
 		}
@@ -191,18 +191,18 @@ func insert(ctx *cli.Context) error {
 	// TODO: We should add a flag to allow for a new layer to be made
 	//       non-distributable.
 	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, mutate.GzipCompressor, nil); err != nil {
-		return errors.Wrap(err, "add diff layer")
+		return fmt.Errorf("add diff layer: %w", err)
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "commit mutated image")
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return errors.Wrap(err, "add new tag")
+		return fmt.Errorf("add new tag: %w", err)
 	}
 	log.Infof("updated tag for image manifest: %s", tagName)
 	return nil

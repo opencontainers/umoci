@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +21,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"fmt"
 
 	"github.com/opencontainers/go-digest"
-	"github.com/pkg/errors"
 )
 
 // PutBlobJSON adds a new JSON blob to the image (marshalled from the given
@@ -40,7 +40,7 @@ import (
 func (e Engine) PutBlobJSON(ctx context.Context, data interface{}) (digest.Digest, int64, error) {
 	var buffer bytes.Buffer
 	if err := json.NewEncoder(&buffer).Encode(data); err != nil {
-		return "", -1, errors.Wrap(err, "encode JSON")
+		return "", -1, fmt.Errorf("encode JSON: %w", err)
 	}
 	return e.PutBlob(ctx, &buffer)
 }

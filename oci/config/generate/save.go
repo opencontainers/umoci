@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,9 +19,8 @@ package generate
 
 import (
 	"encoding/json"
+	"fmt"
 	"io"
-
-	"github.com/pkg/errors"
 )
 
 // fakeBuffer implements the io.Writer interface but just counts the number of
@@ -48,7 +47,7 @@ func (g *Generator) WriteTo(w io.Writer) (n int64, err error) {
 	w = io.MultiWriter(w, &fb)
 
 	if err := json.NewEncoder(w).Encode(g.image); err != nil {
-		return fb.n, errors.Wrap(err, "encode image")
+		return fb.n, fmt.Errorf("encode image: %w", err)
 	}
 
 	return fb.n, nil

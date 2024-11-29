@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 package idtools
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
 )
 
 // ToHost translates a remapped container ID to an unmapped host ID using the
@@ -39,7 +39,7 @@ func ToHost(contID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, errors.Errorf("container id %d cannot be mapped to a host id", contID)
+	return -1, fmt.Errorf("container id %d cannot be mapped to a host id", contID)
 }
 
 // ToContainer takes an unmapped host ID and translates it to a remapped
@@ -57,7 +57,7 @@ func ToContainer(hostID int, idMap []rspec.LinuxIDMapping) (int, error) {
 		}
 	}
 
-	return -1, errors.Errorf("host id %d cannot be mapped to a container id", hostID)
+	return -1, fmt.Errorf("host id %d cannot be mapped to a container id", hostID)
 }
 
 // Helper to return a uint32 from strconv.ParseUint type-safely.
@@ -78,22 +78,22 @@ func ParseMapping(spec string) (rspec.LinuxIDMapping, error) {
 	case 3:
 		size, err = parseUint32(parts[2])
 		if err != nil {
-			return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid size in mapping")
+			return rspec.LinuxIDMapping{}, fmt.Errorf("invalid size in mapping: %w", err)
 		}
 	case 2:
 		size = 1
 	default:
-		return rspec.LinuxIDMapping{}, errors.Errorf("invalid number of fields in mapping '%s': %d", spec, len(parts))
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid number of fields in mapping %q: %d", spec, len(parts))
 	}
 
 	contID, err = parseUint32(parts[0])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid containerID in mapping")
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid containerID in mapping: %w", err)
 	}
 
 	hostID, err = parseUint32(parts[1])
 	if err != nil {
-		return rspec.LinuxIDMapping{}, errors.Wrap(err, "invalid hostID in mapping")
+		return rspec.LinuxIDMapping{}, fmt.Errorf("invalid hostID in mapping: %w", err)
 	}
 
 	return rspec.LinuxIDMapping{

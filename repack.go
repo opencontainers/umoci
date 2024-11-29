@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +19,7 @@ package umoci
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -30,7 +31,6 @@ import (
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
-	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -49,13 +49,13 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 
 	mfh, err := os.Open(mtreePath)
 	if err != nil {
-		return errors.Wrap(err, "open mtree")
+		return fmt.Errorf("open mtree: %w", err)
 	}
 	defer mfh.Close()
 
 	spec, err := mtree.ParseSpec(mfh)
 	if err != nil {
-		return errors.Wrap(err, "parse mtree")
+		return fmt.Errorf("parse mtree: %w", err)
 	}
 
 	log.WithFields(log.Fields{
@@ -70,7 +70,7 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 	log.Info("computing filesystem diff ...")
 	diffs, err := mtree.Check(fullRootfsPath, spec, MtreeKeywords, fsEval)
 	if err != nil {
-		return errors.Wrap(err, "check mtree")
+		return fmt.Errorf("check mtree: %w", err)
 	}
 	log.Info("... done")
 
@@ -108,26 +108,26 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 		}
 		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &packOptions)
 		if err != nil {
-			return errors.Wrap(err, "generate diff layer")
+			return fmt.Errorf("generate diff layer: %w", err)
 		}
 		defer reader.Close()
 
 		// TODO: We should add a flag to allow for a new layer to be made
 		//       non-distributable.
 		if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, mutate.GzipCompressor, nil); err != nil {
-			return errors.Wrap(err, "add diff layer")
+			return fmt.Errorf("add diff layer: %w", err)
 		}
 	}
 
 	newDescriptorPath, err := mutator.Commit(context.Background())
 	if err != nil {
-		return errors.Wrap(err, "commit mutated image")
+		return fmt.Errorf("commit mutated image: %w", err)
 	}
 
 	log.Infof("new image manifest created: %s->%s", newDescriptorPath.Root().Digest, newDescriptorPath.Descriptor().Digest)
 
 	if err := engineExt.UpdateReference(context.Background(), tagName, newDescriptorPath.Root()); err != nil {
-		return errors.Wrap(err, "add new tag")
+		return fmt.Errorf("add new tag: %w", err)
 	}
 
 	log.Infof("created new tag for image manifest: %s", tagName)
@@ -135,14 +135,14 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 	if refreshBundle {
 		newMtreeName := strings.Replace(newDescriptorPath.Descriptor().Digest.String(), ":", "_", 1)
 		if err := GenerateBundleManifest(newMtreeName, bundlePath, fsEval); err != nil {
-			return errors.Wrap(err, "write mtree metadata")
+			return fmt.Errorf("write mtree metadata: %w", err)
 		}
 		if err := os.Remove(mtreePath); err != nil {
-			return errors.Wrap(err, "remove old mtree metadata")
+			return fmt.Errorf("remove old mtree metadata: %w", err)
 		}
 		meta.From = newDescriptorPath
 		if err := WriteBundleMeta(bundlePath, meta); err != nil {
-			return errors.Wrap(err, "write umoci.json metadata")
+			return fmt.Errorf("write umoci.json metadata: %w", err)
 		}
 	}
 	return nil

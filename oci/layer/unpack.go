@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -42,7 +43,6 @@ import (
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 )
 
 // AfterLayerUnpackCallback is called after each layer is unpacked.
@@ -65,10 +65,10 @@ func UnpackLayer(root string, layer io.Reader, opt *UnpackOptions) error {
 			break
 		}
 		if err != nil {
-			return errors.Wrap(err, "read next entry")
+			return fmt.Errorf("read next entry: %w", err)
 		}
 		if err := te.UnpackEntry(root, hdr, tr); err != nil {
-			return errors.Wrapf(err, "unpack entry: %s", hdr.Name)
+			return fmt.Errorf("unpack entry: %s: %w", hdr.Name, err)
 		}
 	}
 	return nil
@@ -99,24 +99,24 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
 	if err := os.MkdirAll(bundle, 0755); err != nil {
-		return errors.Wrap(err, "mkdir bundle")
+		return fmt.Errorf("mkdir bundle: %w", err)
 	}
 	// We change the mode of the bundle directory to 0700. A user can easily
 	// change this after-the-fact, but we do this explicitly to avoid cases
 	// where an unprivileged user could recurse into an otherwise unsafe image
 	// (giving them potential root access through setuid binaries for example).
 	if err := os.Chmod(bundle, 0700); err != nil {
-		return errors.Wrap(err, "chmod bundle 0700")
+		return fmt.Errorf("chmod bundle 0700: %w", err)
 	}
 
 	configPath := filepath.Join(bundle, "config.json")
 	rootfsPath := filepath.Join(bundle, RootfsName)
 
-	if _, err := os.Lstat(configPath); !os.IsNotExist(err) {
+	if _, err := os.Lstat(configPath); !errors.Is(err, os.ErrNotExist) {
 		if err == nil {
-			return errors.Errorf("config.json already exists in %s", bundle)
+			return fmt.Errorf("config.json already exists in %s", bundle)
 		}
-		return errors.Wrap(err, "problem accessing bundle config")
+		return fmt.Errorf("problem accessing bundle config: %w", err)
 	}
 
 	defer func() {
@@ -131,27 +131,27 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 		}
 	}()
 
-	if _, err := os.Lstat(rootfsPath); !os.IsNotExist(err) && opt.StartFrom.MediaType == "" {
+	if _, err := os.Lstat(rootfsPath); !errors.Is(err, os.ErrNotExist) && opt.StartFrom.MediaType == "" {
 		if err == nil {
 			err = fmt.Errorf("%s already exists", rootfsPath)
 		}
-		return errors.Wrapf(err, "detecting rootfs")
+		return fmt.Errorf("detecting rootfs: %w", err)
 	}
 
 	log.Infof("unpack rootfs: %s", rootfsPath)
 	if err := UnpackRootfs(ctx, engine, rootfsPath, manifest, opt); err != nil {
-		return errors.Wrap(err, "unpack rootfs")
+		return fmt.Errorf("unpack rootfs: %w", err)
 	}
 
 	// Generate a runtime configuration file from ispec.Image.
 	configFile, err := os.Create(configPath)
 	if err != nil {
-		return errors.Wrap(err, "open config.json")
+		return fmt.Errorf("open config.json: %w", err)
 	}
 	defer configFile.Close()
 
 	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &opt.MapOptions); err != nil {
-		return errors.Wrap(err, "unpack config.json")
+		return fmt.Errorf("unpack config.json: %w", err)
 	}
 	return nil
 }
@@ -162,7 +162,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	engineExt := casext.NewEngine(engine)
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
-		return errors.Wrap(err, "mkdir rootfs")
+		return fmt.Errorf("mkdir rootfs: %w", err)
 	}
 
 	// In order to avoid having a broken rootfs in the case of an error, we
@@ -183,14 +183,14 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// Make sure that the owner is correct.
 	rootUID, err := idtools.ToHost(0, opt.MapOptions.UIDMappings)
 	if err != nil {
-		return errors.Wrap(err, "ensure rootuid has mapping")
+		return fmt.Errorf("ensure rootuid has mapping: %w", err)
 	}
 	rootGID, err := idtools.ToHost(0, opt.MapOptions.GIDMappings)
 	if err != nil {
-		return errors.Wrap(err, "ensure rootgid has mapping")
+		return fmt.Errorf("ensure rootgid has mapping: %w", err)
 	}
 	if err := os.Lchown(rootfsPath, rootUID, rootGID); err != nil {
-		return errors.Wrap(err, "chown rootfs")
+		return fmt.Errorf("chown rootfs: %w", err)
 	}
 
 	// Currently, many different images in the wild don't specify what the
@@ -200,7 +200,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// (which is as good of an arbitrary choice as any).
 	epoch := time.Unix(0, 0)
 	if err := system.Lutimes(rootfsPath, epoch, epoch); err != nil {
-		return errors.Wrap(err, "set initial root time")
+		return fmt.Errorf("set initial root time: %w", err)
 	}
 
 	// In order to verify the DiffIDs as we extract layers, we have to get the
@@ -208,21 +208,21 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// config) until after we have the full rootfs generated.
 	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return errors.Wrap(err, "get config blob")
+		return fmt.Errorf("get config blob: %w", err)
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
-		return errors.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
+		return fmt.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	// We can't understand non-layer images.
 	if config.RootFS.Type != "layers" {
-		return errors.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
+		return fmt.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
 	// Layer extraction.
@@ -238,16 +238,16 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 
 		layerBlob, err := engineExt.FromDescriptor(ctx, layerDescriptor)
 		if err != nil {
-			return errors.Wrap(err, "get layer blob")
+			return fmt.Errorf("get layer blob: %w", err)
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.Descriptor.MediaType) {
-			return errors.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
+			return fmt.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
 		}
 		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
 			// Should _never_ be reached.
-			return errors.Errorf("[internal error] layerBlob was not an io.ReadCloser")
+			return errors.New("[internal error] layerBlob was not an io.ReadCloser")
 		}
 
 		layerRaw := layerData
@@ -257,7 +257,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			// sha256 sum of the *uncompressed* layer).
 			layerRaw, err = gzip.NewReader(layerData)
 			if err != nil {
-				return errors.Wrap(err, "create gzip reader")
+				return fmt.Errorf("create gzip reader: %w", err)
 			}
 		}
 
@@ -265,7 +265,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		layer := io.TeeReader(layerRaw, layerDigester.Hash())
 
 		if err := UnpackLayer(rootfsPath, layer, opt); err != nil {
-			return errors.Wrap(err, "unpack layer")
+			return fmt.Errorf("unpack layer: %w", err)
 		}
 		// Different tar implementations can have different levels of redundant
 		// padding and other similar weird behaviours. While on paper they are
@@ -275,7 +275,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// the whole uncompressed stream). Just blindly consume anything left
 		// in the layer.
 		if n, err := system.Copy(ioutil.Discard, layer); err != nil {
-			return errors.Wrap(err, "discard trailing archive bits")
+			return fmt.Errorf("discard trailing archive bits: %w", err)
 		} else if n != 0 {
 			log.Debugf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the tar stream -- probably from GNU tar", layerDescriptor.Digest, n)
 		}
@@ -287,17 +287,17 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// WriteTo, which causes havoc with system.Copy. Ideally we would use
 		// layerRaw. See <https://github.com/klauspost/pgzip/issues/38>.
 		if n, err := system.Copy(ioutil.Discard, layerData); err != nil {
-			return errors.Wrap(err, "discard trailing raw bits")
+			return fmt.Errorf("discard trailing raw bits: %w", err)
 		} else if n != 0 {
 			log.Warnf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the blob stream -- this may indicate a bug in the tool which built this image", layerDescriptor.Digest, n)
 		}
 		if err := layerData.Close(); err != nil {
-			return errors.Wrap(err, "close layer data")
+			return fmt.Errorf("close layer data: %w", err)
 		}
 
 		layerDigest := layerDigester.Digest()
 		if layerDigest != layerDiffID {
-			return errors.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
+			return fmt.Errorf("unpack manifest: layer %s: diffid mismatch: got %s expected %s", layerDescriptor.Digest, layerDigest, layerDiffID)
 		}
 
 		if opt.AfterLayerUnpack != nil {
@@ -332,21 +332,21 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	// config) until after we have the full rootfs generated.
 	configBlob, err := engineExt.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
-		return errors.Wrap(err, "get config blob")
+		return fmt.Errorf("get config blob: %w", err)
 	}
 	defer configBlob.Close()
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
-		return errors.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
+		return fmt.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}
 	config, ok := configBlob.Data.(ispec.Image)
 	if !ok {
 		// Should _never_ be reached.
-		return errors.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+		return fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
 	}
 
 	spec, err := iconv.ToRuntimeSpec(rootfs, config)
 	if err != nil {
-		return errors.Wrap(err, "generate config.json")
+		return fmt.Errorf("generate config.json: %w", err)
 	}
 
 	// Add UIDMapping / GIDMapping options.
@@ -366,12 +366,15 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	spec.Linux.GIDMappings = mapOptions.GIDMappings
 	if mapOptions.Rootless {
 		if err := iconv.ToRootless(&spec); err != nil {
-			return errors.Wrap(err, "convert spec to rootless")
+			return fmt.Errorf("convert spec to rootless: %w", err)
 		}
 	}
 
 	// Save the config.json.
 	enc := json.NewEncoder(configFile)
 	enc.SetIndent("", "\t")
-	return errors.Wrap(enc.Encode(spec), "write config.json")
+	if err := enc.Encode(spec); err != nil {
+		return fmt.Errorf("write config.json: %w", err)
+	}
+	return nil
 }

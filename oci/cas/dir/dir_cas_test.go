@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package dir
 import (
 	"bytes"
 	"context"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -28,7 +29,6 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"github.com/pkg/errors"
 )
 
 // NOTE: These tests aren't really testing OCI-style manifests. It's all just
@@ -135,7 +135,7 @@ func TestEngineBlob(t *testing.T) {
 			t.Errorf("DeleteBlob: unexpected error: %+v", err)
 		}
 
-		if br, err := engine.GetBlob(ctx, digest); !os.IsNotExist(errors.Cause(err)) {
+		if br, err := engine.GetBlob(ctx, digest); !errors.Is(err, os.ErrNotExist) {
 			if err == nil {
 				br.Close()
 				t.Errorf("GetBlob: still got blob contents after DeleteBlob!")
@@ -384,7 +384,7 @@ func TestEngineGCLocking(t *testing.T) {
 	} {
 		if _, err := os.Lstat(path); err == nil {
 			t.Errorf("expected %s to not exist after GC", path)
-		} else if !os.IsNotExist(errors.Cause(err)) {
+		} else if !errors.Is(err, os.ErrNotExist) {
 			t.Errorf("expected IsNotExist for %s after GC: %+v", path, err)
 		}
 	}

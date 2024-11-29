@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 package convert
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/blang/semver/v4"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/pkg/errors"
 )
 
 // FIXME: We currently use an unreleased version of the runtime-spec and so we
@@ -248,7 +248,7 @@ func ToRootless(spec *rspec.Spec) error {
 	// thus cannot change any flags that are locked.
 	unprivOpts, err := getUnprivilegedMountFlags(resolvConf)
 	if err != nil {
-		return errors.Wrapf(err, "inspecting mount flags of %s", resolvConf)
+		return fmt.Errorf("inspecting mount flags of %s: %w", resolvConf, err)
 	}
 	mounts = append(mounts, rspec.Mount{
 		// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.

@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,6 +18,7 @@
 package layer
 
 import (
+	"fmt"
 	"io"
 	"os"
 	"path"
@@ -26,7 +27,6 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/umoci/pkg/unpriv"
-	"github.com/pkg/errors"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -54,11 +54,13 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	go func() (Err error) {
 		// Close with the returned error.
 		defer func() {
+			var closeErr error
 			if Err != nil {
 				log.Warnf("could not generate layer: %v", Err)
+				closeErr = fmt.Errorf("generate layer: %w", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(errors.Wrap(Err, "generate layer"))
+			_ = writer.CloseWithError(closeErr)
 		}()
 
 		// We can't just dump all of the file contents into a tar file. We need
@@ -85,7 +87,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				if packOptions.TranslateOverlayWhiteouts {
 					fi, err := os.Stat(fullPath)
 					if err != nil {
-						return errors.Wrapf(err, "couldn't determine overlay whiteout for %s", fullPath)
+						return fmt.Errorf("couldn't determine overlay whiteout for %s: %w", fullPath, err)
 					}
 
 					whiteout, err := isOverlayWhiteout(fi)
@@ -94,26 +96,26 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 					}
 					if whiteout {
 						if err := tg.AddWhiteout(fullPath); err != nil {
-							return errors.Wrap(err, "generate whiteout from overlayfs")
+							return fmt.Errorf("generate whiteout from overlayfs: %w", err)
 						}
 					}
 					continue
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
-					log.Warnf("generate layer: could not add file '%s': %s", name, err)
-					return errors.Wrap(err, "generate layer file")
+					log.Warnf("generate layer: could not add file %q: %s", name, err)
+					return fmt.Errorf("generate layer file: %w", err)
 				}
 			case mtree.Missing:
 				if err := tg.AddWhiteout(name); err != nil {
-					log.Warnf("generate layer: could not add whiteout '%s': %s", name, err)
-					return errors.Wrap(err, "generate whiteout layer file")
+					log.Warnf("generate layer: could not add whiteout %q: %s", name, err)
+					return fmt.Errorf("generate whiteout layer file: %w", err)
 				}
 			}
 		}
 
 		if err := tg.tw.Close(); err != nil {
 			log.Warnf("generate layer: could not close tar.Writer: %s", err)
-			return errors.Wrap(err, "close tar writer")
+			return fmt.Errorf("close tar writer: %w", err)
 		}
 
 		return nil
@@ -137,11 +139,13 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 
 	go func() (Err error) {
 		defer func() {
+			var closeErr error
 			if Err != nil {
 				log.Warnf("could not generate insert layer: %v", Err)
+				closeErr = fmt.Errorf("generate insert layer: %w", Err)
 			}
 			// #nosec G104
-			_ = writer.CloseWithError(errors.Wrap(Err, "generate insert layer"))
+			_ = writer.CloseWithError(closeErr)
 		}()
 
 		tg := newTarGenerator(writer, packOptions.MapOptions)

@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -59,7 +59,7 @@ func TestValidateRefname(t *testing.T) {
 	} {
 		valid := IsValidReferenceName(test.refname)
 		if valid != test.valid {
-			t.Errorf("incorrectly determined validity of refname '%s': expected %v got %v", test.refname, test.valid, valid)
+			t.Errorf("incorrectly determined validity of refname %q: expected %v got %v", test.refname, test.valid, valid)
 		}
 	}
 }

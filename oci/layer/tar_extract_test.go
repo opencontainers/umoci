@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +21,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/rand"
+	"errors"
 	"io"
 	"io/ioutil"
 	"os"
@@ -32,7 +33,6 @@ import (
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -84,10 +84,10 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	}
 
 	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
 	}
 	if !bytes.Equal(hostValue, hostValueGot) {
-		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected='%s' got='%s'", string(hostValue), string(hostValueGot))
+		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected=%q got=%q", string(hostValue), string(hostValueGot))
 	}
 }
 
@@ -197,7 +197,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	}
 
 	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected='%s' got='%s'", string(ctrValue), string(ctrValueGot))
+		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
 	}
 }
 
@@ -277,7 +277,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			}
 
 			// Make sure that the path is gone.
-			if _, err := os.Lstat(filepath.Join(dir, test.path)); !os.IsNotExist(err) {
+			if _, err := os.Lstat(filepath.Join(dir, test.path)); !errors.Is(err, os.ErrNotExist) {
 				if err != nil {
 					t.Fatalf("unexpected error checking whiteout out path: %s", err)
 				}
@@ -294,10 +294,10 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				}
 
 				if !hdr.ModTime.Equal(testMtime) {
-					t.Errorf("mtime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testMtime)
+					t.Errorf("mtime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testMtime)
 				}
 				if !hdr.AccessTime.Equal(testAtime) {
-					t.Errorf("atime of parent directory changed after whiteout: got='%s' expected='%s'", hdr.ModTime, testAtime)
+					t.Errorf("atime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testAtime)
 				}
 			}
 		})
@@ -533,7 +533,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 				fullPath := filepath.Join(whiteoutRoot, ph.path)
 				_, err := te.fsEval.Lstat(fullPath)
-				if err != nil && !os.IsNotExist(errors.Cause(err)) {
+				if err != nil && !errors.Is(err, os.ErrNotExist) {
 					t.Errorf("unexpected lstat error of %s: %v", ph.path, err)
 				} else if ph.upper && err != nil {
 					t.Errorf("expected upper %s to exist: got %v", ph.path, err)
@@ -546,7 +546,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 			// Make sure the whiteoutRoot still exists.
 			if fi, err := te.fsEval.Lstat(whiteoutRoot); err != nil {
-				if os.IsNotExist(errors.Cause(err)) {
+				if errors.Is(err, os.ErrNotExist) {
 					t.Errorf("expected whiteout root to still exist: %v", err)
 				} else {
 					t.Errorf("unexpected error in lstat of whiteout root: %v", err)

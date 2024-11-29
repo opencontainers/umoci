@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,8 @@ package dir
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
@@ -32,7 +34,6 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 	"golang.org/x/sys/unix"
 )
 
@@ -59,14 +60,14 @@ const (
 // of the OCI image. The digest must be of the form algorithm:hex.
 func blobPath(digest digest.Digest) (string, error) {
 	if err := digest.Validate(); err != nil {
-		return "", errors.Wrapf(err, "invalid digest: %q", digest)
+		return "", fmt.Errorf("invalid digest: %q: %w", digest, err)
 	}
 
 	algo := digest.Algorithm()
 	hash := digest.Hex()
 
 	if algo != cas.BlobAlgorithm {
-		return "", errors.Errorf("unsupported algorithm: %q", algo)
+		return "", fmt.Errorf("unsupported algorithm: %q", algo)
 	}
 
 	return filepath.Join(blobDirectory, algo.String(), hash), nil
@@ -82,7 +83,7 @@ func (e *dirEngine) ensureTempDir() error {
 	if e.temp == "" {
 		tempDir, err := ioutil.TempDir(e.path, ".umoci-")
 		if err != nil {
-			return errors.Wrap(err, "create tempdir")
+			return fmt.Errorf("create tempdir: %w", err)
 		}
 
 		// We get an advisory lock to ensure that GC() won't delete our
@@ -91,10 +92,10 @@ func (e *dirEngine) ensureTempDir() error {
 
 		e.tempFile, err = os.Open(tempDir)
 		if err != nil {
-			return errors.Wrap(err, "open tempdir for lock")
+			return fmt.Errorf("open tempdir for lock: %w", err)
 		}
 		if err := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
-			return errors.Wrap(err, "lock tempdir")
+			return fmt.Errorf("lock tempdir: %w", err)
 		}
 
 		e.temp = tempDir
@@ -106,21 +107,21 @@ func (e *dirEngine) ensureTempDir() error {
 func (e *dirEngine) validate() error {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return errors.Wrap(err, "read oci-layout")
+		return fmt.Errorf("read oci-layout: %w", err)
 	}
 
 	var ociLayout ispec.ImageLayout
 	if err := json.Unmarshal(content, &ociLayout); err != nil {
-		return errors.Wrap(err, "parse oci-layout")
+		return fmt.Errorf("parse oci-layout: %w", err)
 	}
 
 	// XXX: Currently the meaning of this field is not adequately defined by
 	//      the spec, nor is the "official" value determined by the spec.
 	if ociLayout.Version != ImageLayoutVersion {
-		return errors.Wrap(cas.ErrInvalid, "layout version is not supported")
+		return fmt.Errorf("layout version is not supported: %w", cas.ErrInvalid)
 	}
 
 	// Check that "blobs" and "index.json" exist in the image.
@@ -128,21 +129,21 @@ func (e *dirEngine) validate() error {
 	//        directory (with no subdirectories) and that refs *only* contains
 	//        files (optionally also making sure they're all JSON descriptors).
 	if fi, err := os.Stat(filepath.Join(e.path, blobDirectory)); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return errors.Wrap(err, "check blobdir")
+		return fmt.Errorf("check blobdir: %w", err)
 	} else if !fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "blobdir is not a directory")
+		return fmt.Errorf("blobdir is not a directory: %w", cas.ErrInvalid)
 	}
 
 	if fi, err := os.Stat(filepath.Join(e.path, indexFile)); err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return errors.Wrap(err, "check index")
+		return fmt.Errorf("check index: %w", err)
 	} else if fi.IsDir() {
-		return errors.Wrap(cas.ErrInvalid, "index is a directory")
+		return fmt.Errorf("index is a directory: %w", cas.ErrInvalid)
 	}
 
 	return nil
@@ -153,7 +154,7 @@ func (e *dirEngine) validate() error {
 // of this PutBlob() call".
 func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
 	if err := e.ensureTempDir(); err != nil {
-		return "", -1, errors.Wrap(err, "ensure tempdir")
+		return "", -1, fmt.Errorf("ensure tempdir: %w", err)
 	}
 
 	digester := cas.BlobAlgorithm.Digester()
@@ -162,7 +163,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	// but also to avoid half-writing an invalid blob.
 	fh, err := ioutil.TempFile(e.temp, "blob-")
 	if err != nil {
-		return "", -1, errors.Wrap(err, "create temporary blob")
+		return "", -1, fmt.Errorf("create temporary blob: %w", err)
 	}
 	tempPath := fh.Name()
 	defer fh.Close()
@@ -170,22 +171,22 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 	writer := io.MultiWriter(fh, digester.Hash())
 	size, err := system.Copy(writer, reader)
 	if err != nil {
-		return "", -1, errors.Wrap(err, "copy to temporary blob")
+		return "", -1, fmt.Errorf("copy to temporary blob: %w", err)
 	}
 	if err := fh.Close(); err != nil {
-		return "", -1, errors.Wrap(err, "close temporary blob")
+		return "", -1, fmt.Errorf("close temporary blob: %w", err)
 	}
 
 	// Get the digest.
 	path, err := blobPath(digester.Digest())
 	if err != nil {
-		return "", -1, errors.Wrap(err, "compute blob name")
+		return "", -1, fmt.Errorf("compute blob name: %w", err)
 	}
 
 	// Move the blob to its correct path.
 	path = filepath.Join(e.path, path)
 	if err := os.Rename(tempPath, path); err != nil {
-		return "", -1, errors.Wrap(err, "rename temporary blob")
+		return "", -1, fmt.Errorf("rename temporary blob: %w", err)
 	}
 
 	return digester.Digest(), int64(size), nil
@@ -205,14 +206,17 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
-		return nil, errors.Wrap(err, "compute blob path")
+		return nil, fmt.Errorf("compute blob path: %w", err)
 	}
 	fh, err := os.Open(filepath.Join(e.path, path))
+	if err != nil {
+		return nil, fmt.Errorf("open blob: %w", err)
+	}
 	return &hardening.VerifiedReadCloser{
 		Reader:         fh,
 		ExpectedDigest: digest,
 		ExpectedSize:   int64(-1), // We don't know the expected size.
-	}, errors.Wrap(err, "open blob")
+	}, nil
 }
 
 // StatBlob returns whether the specified blob exists in the image. Returns
@@ -223,14 +227,14 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, error) {
 	path, err := blobPath(digest)
 	if err != nil {
-		return false, errors.Wrap(err, "compute blob path")
+		return false, fmt.Errorf("compute blob path: %w", err)
 	}
 	_, err = os.Stat(path)
-	if os.IsNotExist(err) {
+	if errors.Is(err, os.ErrNotExist) {
 		return false, nil
 	}
 	if err != nil {
-		return false, errors.Wrap(err, "stat blob path")
+		return false, fmt.Errorf("stat blob path: %w", err)
 	}
 	return true, nil
 }
@@ -241,7 +245,7 @@ func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, e
 // new or old index.
 func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 	if err := e.ensureTempDir(); err != nil {
-		return errors.Wrap(err, "ensure tempdir")
+		return fmt.Errorf("ensure tempdir: %w", err)
 	}
 
 	// Make sure the index has the mediatype field set.
@@ -251,23 +255,23 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 	// operation.
 	fh, err := ioutil.TempFile(e.temp, "index-")
 	if err != nil {
-		return errors.Wrap(err, "create temporary index")
+		return fmt.Errorf("create temporary index: %w", err)
 	}
 	tempPath := fh.Name()
 	defer fh.Close()
 
 	// Encode the index.
 	if err := json.NewEncoder(fh).Encode(index); err != nil {
-		return errors.Wrap(err, "write temporary index")
+		return fmt.Errorf("write temporary index: %w", err)
 	}
 	if err := fh.Close(); err != nil {
-		return errors.Wrap(err, "close temporary index")
+		return fmt.Errorf("close temporary index: %w", err)
 	}
 
 	// Move the blob to its correct path.
 	path := filepath.Join(e.path, indexFile)
 	if err := os.Rename(tempPath, path); err != nil {
-		return errors.Wrap(err, "rename temporary index")
+		return fmt.Errorf("rename temporary index: %w", err)
 	}
 	return nil
 }
@@ -284,15 +288,15 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 	content, err := ioutil.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
-		if os.IsNotExist(err) {
+		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
 		}
-		return ispec.Index{}, errors.Wrap(err, "read index")
+		return ispec.Index{}, fmt.Errorf("read index: %w", err)
 	}
 
 	var index ispec.Index
 	if err := json.Unmarshal(content, &index); err != nil {
-		return ispec.Index{}, errors.Wrap(err, "parse index")
+		return ispec.Index{}, fmt.Errorf("parse index: %w", err)
 	}
 
 	return index, nil
@@ -304,12 +308,12 @@ func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error {
 	path, err := blobPath(digest)
 	if err != nil {
-		return errors.Wrap(err, "compute blob path")
+		return fmt.Errorf("compute blob path: %w", err)
 	}
 
 	err = os.Remove(filepath.Join(e.path, path))
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "remove blob")
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("remove blob: %w", err)
 	}
 	return nil
 }
@@ -324,13 +328,12 @@ func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
 		if path == blobDir {
 			return nil
 		}
-
 		// XXX: Do we need to handle multiple-directory-deep cases?
 		digest := digest.NewDigestFromHex(cas.BlobAlgorithm.String(), filepath.Base(path))
 		digests = append(digests, digest)
 		return nil
 	}); err != nil {
-		return nil, errors.Wrap(err, "walk blobdir")
+		return nil, fmt.Errorf("walk blobdir: %w", err)
 	}
 
 	return digests, nil
@@ -343,7 +346,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	// Remove every .umoci directory that isn't flocked.
 	matches, err := filepath.Glob(filepath.Join(e.path, ".umoci-*"))
 	if err != nil {
-		return errors.Wrap(err, "glob .umoci-*")
+		return fmt.Errorf("glob .umoci-*: %w", err)
 	}
 	for _, path := range matches {
 		err = e.cleanPath(ctx, path)
@@ -357,8 +360,8 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 
 func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
 	cfh, err := os.Open(path)
-	if err != nil && !os.IsNotExist(err) {
-		return errors.Wrap(err, "open for locking")
+	if err != nil && !errors.Is(err, os.ErrNotExist) {
+		return fmt.Errorf("open for locking: %w", err)
 	}
 	defer cfh.Close()
 
@@ -369,7 +372,7 @@ func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
 	}
 	defer unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
 
-	if err := os.RemoveAll(path); os.IsNotExist(err) {
+	if err := os.RemoveAll(path); errors.Is(err, os.ErrNotExist) {
 		return nil // somebody else beat us to it
 	} else if err != nil {
 		log.Warnf("failed to remove %s: %v", path, err)
@@ -385,13 +388,13 @@ func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
 func (e *dirEngine) Close() error {
 	if e.temp != "" {
 		if err := unix.Flock(int(e.tempFile.Fd()), unix.LOCK_UN); err != nil {
-			return errors.Wrap(err, "unlock tempdir")
+			return fmt.Errorf("unlock tempdir: %w", err)
 		}
 		if err := e.tempFile.Close(); err != nil {
-			return errors.Wrap(err, "close tempdir")
+			return fmt.Errorf("close tempdir: %w", err)
 		}
 		if err := os.RemoveAll(e.temp); err != nil {
-			return errors.Wrap(err, "remove tempdir")
+			return fmt.Errorf("remove tempdir: %w", err)
 		}
 	}
 	return nil
@@ -406,7 +409,7 @@ func Open(path string) (cas.Engine, error) {
 	}
 
 	if err := engine.validate(); err != nil {
-		return nil, errors.Wrap(err, "validate")
+		return nil, fmt.Errorf("validate: %w", err)
 	}
 
 	return engine, nil
@@ -421,24 +424,24 @@ func Create(path string) error {
 	dir := filepath.Dir(path)
 	if dir != "." {
 		if err := os.MkdirAll(dir, 0755); err != nil {
-			return errors.Wrap(err, "mkdir parent")
+			return fmt.Errorf("mkdir parent: %w", err)
 		}
 	}
 	if err := os.Mkdir(path, 0755); err != nil {
-		return errors.Wrap(err, "mkdir")
+		return fmt.Errorf("mkdir: %w", err)
 	}
 
 	// Create the necessary directories and "oci-layout" file.
 	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
-		return errors.Wrap(err, "mkdir blobdir")
+		return fmt.Errorf("mkdir blobdir: %w", err)
 	}
 	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0755); err != nil {
-		return errors.Wrap(err, "mkdir algorithm")
+		return fmt.Errorf("mkdir algorithm: %w", err)
 	}
 
 	indexFh, err := os.Create(filepath.Join(path, indexFile))
 	if err != nil {
-		return errors.Wrap(err, "create index.json")
+		return fmt.Errorf("create index.json: %w", err)
 	}
 	defer indexFh.Close()
 
@@ -449,12 +452,12 @@ func Create(path string) error {
 		MediaType: ispec.MediaTypeImageIndex,
 	}
 	if err := json.NewEncoder(indexFh).Encode(defaultIndex); err != nil {
-		return errors.Wrap(err, "encode index.json")
+		return fmt.Errorf("encode index.json: %w", err)
 	}
 
 	layoutFh, err := os.Create(filepath.Join(path, layoutFile))
 	if err != nil {
-		return errors.Wrap(err, "create oci-layout")
+		return fmt.Errorf("create oci-layout: %w", err)
 	}
 	defer layoutFh.Close()
 
@@ -462,7 +465,7 @@ func Create(path string) error {
 		Version: ImageLayoutVersion,
 	}
 	if err := json.NewEncoder(layoutFh).Encode(ociLayout); err != nil {
-		return errors.Wrap(err, "encode oci-layout")
+		return fmt.Errorf("encode oci-layout: %w", err)
 	}
 
 	// Everything is now set up.

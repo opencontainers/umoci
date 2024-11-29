@@ -1,6 +1,7 @@
 package mutate
 
 import (
+	"fmt"
 	"io"
 	"io/ioutil"
 	"runtime"
@@ -9,7 +10,6 @@ import (
 	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 )
 
 // Compressor is an interface which users can use to implement different
@@ -57,21 +57,21 @@ func (gz *gzipCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 
 	gzw := gzip.NewWriter(pipeWriter)
 	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
-		return nil, errors.Wrapf(err, "set concurrency level to %v blocks", 2*runtime.NumCPU())
+		return nil, fmt.Errorf("set concurrency level to %v blocks: %w", 2*runtime.NumCPU(), err)
 	}
 	go func() {
 		bytesRead, err := system.Copy(gzw, reader)
 		if err != nil {
 			log.Warnf("gzip compress: could not compress layer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("compressing layer: %w", err))
 			return
 		}
 		gz.bytesRead = bytesRead
 		if err := gzw.Close(); err != nil {
 			log.Warnf("gzip compress: could not close gzip writer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close gzip writer"))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("close gzip writer: %w", err))
 			return
 		}
 		if err := pipeWriter.Close(); err != nil {
@@ -111,14 +111,14 @@ func (zs *zstdCompressor) Compress(reader io.Reader) (io.ReadCloser, error) {
 		if err != nil {
 			log.Warnf("zstd compress: could not compress layer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "compressing layer"))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("compressing layer: %w", err))
 			return
 		}
 		zs.bytesRead = bytesRead
 		if err := zw.Close(); err != nil {
 			log.Warnf("zstd compress: could not close gzip writer: %v", err)
 			// #nosec G104
-			_ = pipeWriter.CloseWithError(errors.Wrap(err, "close zstd writer"))
+			_ = pipeWriter.CloseWithError(fmt.Errorf("close zstd writer: %w", err))
 			return
 		}
 		if err := pipeWriter.Close(); err != nil {

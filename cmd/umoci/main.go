@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,13 +18,14 @@
 package main
 
 import (
+	"errors"
+	"fmt"
 	"os"
 	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
 	"github.com/opencontainers/umoci"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -77,22 +78,22 @@ func Main(args []string) error {
 			}
 			if err := ctx.GlobalSet("log", "info"); err != nil {
 				// Should _never_ be reached.
-				return errors.Wrap(err, "[internal error] failure auto-setting --log=info")
+				return fmt.Errorf("[internal error] failure auto-setting --log=info: %w", err)
 			}
 		}
 		level, err := log.ParseLevel(ctx.GlobalString("log"))
 		if err != nil {
-			return errors.Wrap(err, "parsing log level")
+			return fmt.Errorf("parsing log level: %w", err)
 		}
 		log.SetLevel(level)
 
 		if path := ctx.GlobalString("cpu-profile"); path != "" {
 			fh, err := os.Create(path)
 			if err != nil {
-				return errors.Wrap(err, "opening cpu-profile path")
+				return fmt.Errorf("opening cpu-profile path: %w", err)
 			}
 			if err := pprof.StartCPUProfile(fh); err != nil {
-				return errors.Wrap(err, "start cpu-profile")
+				return fmt.Errorf("start cpu-profile: %w", err)
 			}
 		}
 		return nil
@@ -129,10 +130,10 @@ func Main(args []string) error {
 			oldBefore := cmd.Before
 			cmd.Before = func(ctx *cli.Context) error {
 				if _, ok := ctx.App.Metadata["--image-path"]; !ok {
-					return errors.Errorf("missing mandatory argument: --image")
+					return errors.New("missing mandatory argument: --image")
 				}
 				if _, ok := ctx.App.Metadata["--image-tag"]; !ok {
-					return errors.Errorf("missing mandatory argument: --image")
+					return errors.New("missing mandatory argument: --image")
 				}
 				if oldBefore != nil {
 					return oldBefore(ctx)
@@ -144,7 +145,7 @@ func Main(args []string) error {
 			oldBefore := cmd.Before
 			cmd.Before = func(ctx *cli.Context) error {
 				if _, ok := ctx.App.Metadata["--image-path"]; !ok {
-					return errors.Errorf("missing mandatory argument: --layout")
+					return errors.New("missing mandatory argument: --layout")
 				}
 				if oldBefore != nil {
 					return oldBefore(ctx)
@@ -160,7 +161,7 @@ func Main(args []string) error {
 		// If an error is a permission based error, give a hint to the user
 		// that --rootless might help. We probably should only be doing this if
 		// we're an unprivileged user.
-		if os.IsPermission(errors.Cause(err)) {
+		if errors.Is(err, os.ErrPermission) {
 			log.Warn("umoci encountered a permission error: maybe --rootless will help?")
 		}
 		log.Debugf("%+v", err)

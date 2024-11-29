@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -18,11 +18,11 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"strings"
 
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -73,7 +73,7 @@ func uxHistory(cmd cli.Command) cli.Command {
 				if name := flag.GetName(); name == "no-history" {
 					continue
 				} else if ctx.IsSet(name) {
-					return errors.Errorf("--no-history and --%s may not be specified together", name)
+					return fmt.Errorf("--no-history and --%s may not be specified together", name)
 				}
 			}
 		}
@@ -103,10 +103,10 @@ func uxTag(cmd cli.Command) cli.Command {
 		if ctx.IsSet("tag") {
 			tag := ctx.String("tag")
 			if !casext.IsValidReferenceName(tag) {
-				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --tag")
+				return fmt.Errorf("invalid --tag: tag contains invalid characters: %q", tag)
 			}
 			if tag == "" {
-				return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --tag")
+				return errors.New("invalid --tag: tag is empty")
 			}
 			ctx.App.Metadata["--tag"] = tag
 		}
@@ -150,15 +150,15 @@ func uxImage(cmd cli.Command) cli.Command {
 
 			// Verify directory value.
 			if dir == "" {
-				return errors.Wrap(fmt.Errorf("path is empty"), "invalid --image")
+				return errors.New("invalid --image: path is empty")
 			}
 
 			// Verify tag value.
 			if !casext.IsValidReferenceName(tag) {
-				return errors.Wrap(fmt.Errorf("tag contains invalid characters: '%s'", tag), "invalid --image")
+				return fmt.Errorf("invalid --image: tag contains invalid characters: %q", tag)
 			}
 			if tag == "" {
-				return errors.Wrap(fmt.Errorf("tag is empty"), "invalid --image")
+				return errors.New("invalid --image: tag is empty")
 			}
 
 			ctx.App.Metadata["--image-path"] = dir
@@ -191,10 +191,10 @@ func uxLayout(cmd cli.Command) cli.Command {
 
 			// Verify directory value.
 			if strings.Contains(layout, ":") {
-				return errors.Wrap(fmt.Errorf("path contains ':' character: '%s'", layout), "invalid --layout")
+				return fmt.Errorf("invalid --layout: path contains ':' character: %q", layout)
 			}
 			if layout == "" {
-				return errors.Wrap(fmt.Errorf("path is empty"), "invalid --layout")
+				return errors.New("invalid --layout: path is empty")
 			}
 
 			ctx.App.Metadata["--image-path"] = layout

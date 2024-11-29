@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -67,13 +67,13 @@ func TestLutimesFile(t *testing.T) {
 		t.Errorf("atime was not changed at all!")
 	}
 	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected='%s' got='%s' old='%s'", atime, atimeNew, atimeOld)
+		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
 	}
 	if mtimeOld.Equal(mtimeNew) {
 		t.Errorf("mtime was not changed at all!")
 	}
 	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected='%s' got='%s' old='%s'", mtime, mtimeNew, mtimeOld)
+		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
 	}
 }
 
@@ -116,13 +116,13 @@ func TestLutimesDirectory(t *testing.T) {
 		t.Errorf("atime was not changed at all!")
 	}
 	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected='%s' got='%s' old='%s'", atime, atimeNew, atimeOld)
+		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
 	}
 	if mtimeOld.Equal(mtimeNew) {
 		t.Errorf("mtime was not changed at all!")
 	}
 	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected='%s' got='%s' old='%s'", mtime, mtimeNew, mtimeOld)
+		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
 	}
 }
 
@@ -171,13 +171,13 @@ func TestLutimesSymlink(t *testing.T) {
 		t.Errorf("atime was not changed at all!")
 	}
 	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected='%s' got='%s' old='%s'", atime, atimeNew, atimeOld)
+		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
 	}
 	if mtimeOld.Equal(mtimeNew) {
 		t.Errorf("mtime was not changed at all!")
 	}
 	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected='%s' got='%s' old='%s'", mtime, mtimeNew, mtimeOld)
+		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
 	}
 
 	// Make sure that the parent directory was unchanged.
@@ -187,10 +187,10 @@ func TestLutimesSymlink(t *testing.T) {
 	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
 
 	if !atimeParentOld.Equal(atimeParentNew) {
-		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
+		t.Errorf("parent directory atime was changed! old=%q new=%q", atimeParentOld, atimeParentNew)
 	}
 	if !mtimeParentOld.Equal(mtimeParentNew) {
-		t.Errorf("parent directory mtime was changed! old='%s' new='%s'", mtimeParentOld, mtimeParentNew)
+		t.Errorf("parent directory mtime was changed! old=%q new=%q", mtimeParentOld, mtimeParentNew)
 	}
 }
 
@@ -249,13 +249,13 @@ func TestLutimesRelative(t *testing.T) {
 		t.Errorf("atime was not changed at all!")
 	}
 	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected='%s' got='%s' old='%s'", atime, atimeNew, atimeOld)
+		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
 	}
 	if mtimeOld.Equal(mtimeNew) {
 		t.Errorf("mtime was not changed at all!")
 	}
 	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected='%s' got='%s' old='%s'", mtime, mtimeNew, mtimeOld)
+		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
 	}
 
 	// Make sure that the parent directory was unchanged.
@@ -265,9 +265,9 @@ func TestLutimesRelative(t *testing.T) {
 	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
 
 	if !atimeParentOld.Equal(atimeParentNew) {
-		t.Errorf("parent directory atime was changed! old='%s' new='%s'", atimeParentOld, atimeParentNew)
+		t.Errorf("parent directory atime was changed! old=%q new=%q", atimeParentOld, atimeParentNew)
 	}
 	if !mtimeParentOld.Equal(mtimeParentNew) {
-		t.Errorf("parent directory mtime was changed! old='%s' new='%s'", mtimeParentOld, mtimeParentNew)
+		t.Errorf("parent directory mtime was changed! old=%q new=%q", mtimeParentOld, mtimeParentNew)
 	}
 }

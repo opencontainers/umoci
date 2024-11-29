@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"os"
 
@@ -27,7 +28,6 @@ import (
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/pkg/errors"
 	"github.com/urfave/cli"
 )
 
@@ -48,7 +48,7 @@ humans to read, and might change in future versions.`,
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 0 {
-			return errors.Errorf("invalid number of positional arguments: expected none")
+			return errors.New("invalid number of positional arguments: expected none")
 		}
 		return nil
 	},
@@ -70,44 +70,44 @@ func stat(ctx *cli.Context) error {
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
-		return errors.Wrap(err, "open CAS")
+		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close()
 
 	manifestDescriptorPaths, err := engineExt.ResolveReference(context.Background(), tagName)
 	if err != nil {
-		return errors.Wrap(err, "get descriptor")
+		return fmt.Errorf("get descriptor: %w", err)
 	}
 	if len(manifestDescriptorPaths) == 0 {
-		return errors.Errorf("tag not found: %s", tagName)
+		return fmt.Errorf("tag not found: %s", tagName)
 	}
 	if len(manifestDescriptorPaths) != 1 {
 		// TODO: Handle this more nicely.
-		return errors.Errorf("tag is ambiguous: %s", tagName)
+		return fmt.Errorf("tag is ambiguous: %s", tagName)
 	}
 	manifestDescriptor := manifestDescriptorPaths[0].Descriptor()
 
 	// FIXME: Implement support for manifest lists.
 	if manifestDescriptor.MediaType != ispec.MediaTypeImageManifest {
-		return errors.Wrap(fmt.Errorf("descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType), "invalid saved from descriptor")
+		return fmt.Errorf("invalid saved from descriptor: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestDescriptor.MediaType)
 	}
 
 	// Get stat information.
 	ms, err := umoci.Stat(context.Background(), engineExt, manifestDescriptor)
 	if err != nil {
-		return errors.Wrap(err, "stat")
+		return fmt.Errorf("stat: %w", err)
 	}
 
 	// Output the stat information.
 	if ctx.Bool("json") {
 		// Use JSON.
 		if err := json.NewEncoder(os.Stdout).Encode(ms); err != nil {
-			return errors.Wrap(err, "encoding stat")
+			return fmt.Errorf("encoding stat: %w", err)
 		}
 	} else {
 		if err := ms.Format(os.Stdout); err != nil {
-			return errors.Wrap(err, "format stat")
+			return fmt.Errorf("format stat: %w", err)
 		}
 	}
 

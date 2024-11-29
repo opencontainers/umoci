@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +19,14 @@ package casext
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 	"io/ioutil"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/pkg/errors"
 )
 
 // Blob represents a "parsed" blob in an OCI image's blob store. MediaType
@@ -63,7 +64,7 @@ func (b *Blob) Close() error {
 func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (_ *Blob, Err error) {
 	reader, err := e.GetVerifiedBlob(ctx, descriptor)
 	if err != nil {
-		return nil, errors.Wrap(err, "get blob")
+		return nil, fmt.Errorf("get blob: %w", err)
 	}
 
 	blob := Blob{
@@ -73,22 +74,22 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 
 	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
 		defer func() {
-			if _, err := system.Copy(ioutil.Discard, reader); Err == nil {
-				Err = errors.Wrapf(err, "discard trailing %q blob", descriptor.MediaType)
+			if _, err := system.Copy(ioutil.Discard, reader); Err == nil && err != nil {
+				Err = fmt.Errorf("discard trailing %q blob: %w", descriptor.MediaType, err)
 			}
-			if err := reader.Close(); Err == nil {
-				Err = errors.Wrapf(err, "close %q blob", descriptor.MediaType)
+			if err := reader.Close(); Err == nil && err != nil {
+				Err = fmt.Errorf("close %q blob: %w", descriptor.MediaType, err)
 			}
 		}()
 
 		data, err := fn(reader)
 		if err != nil {
-			return nil, errors.Wrapf(err, "parse %s", descriptor.MediaType)
+			return nil, fmt.Errorf("parse %s: %w", descriptor.MediaType, err)
 		}
 		blob.Data = data
 	}
 	if blob.Data == nil {
-		return nil, errors.Errorf("[internal error] b.Data was nil after parsing")
+		return nil, errors.New("[internal error] b.Data was nil after parsing")
 	}
 	return &blob, nil
 }

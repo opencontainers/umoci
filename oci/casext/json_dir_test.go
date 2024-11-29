@@ -1,6 +1,6 @@
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2024 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -20,6 +20,7 @@ package casext
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -28,7 +29,6 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"github.com/pkg/errors"
 )
 
 func TestEngineBlobJSON(t *testing.T) {
@@ -92,7 +92,7 @@ func TestEngineBlobJSON(t *testing.T) {
 			t.Errorf("DeleteBlob: unexpected error: %+v", err)
 		}
 
-		if br, err := engine.GetBlob(ctx, digest); !os.IsNotExist(errors.Cause(err)) {
+		if br, err := engine.GetBlob(ctx, digest); !errors.Is(err, os.ErrNotExist) {
 			if err == nil {
 				br.Close()
 				t.Errorf("GetBlob: still got blob contents after DeleteBlob!")
