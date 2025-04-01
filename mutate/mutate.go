@@ -29,11 +29,13 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/iohelpers"
+
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/opencontainers/umoci/oci/cas"
-	"github.com/opencontainers/umoci/oci/casext"
 )
 
 // UmociUncompressedBlobSizeAnnotation is an umoci-specific annotation to
@@ -265,8 +267,10 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 		return desc, fmt.Errorf("getting cache failed: %w", err)
 	}
 
+	countReader := iohelpers.CountReader(r)
+
 	diffidDigester := cas.BlobAlgorithm.Digester()
-	hashReader := io.TeeReader(r, diffidDigester.Hash())
+	hashReader := io.TeeReader(countReader, diffidDigester.Hash())
 
 	compressed, err := compressor.Compress(hashReader)
 	if err != nil {
@@ -290,8 +294,8 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	if compressor.BytesRead() >= 0 {
-		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", compressor.BytesRead())
+	if plainSize := countReader.BytesRead(); plainSize != layerSize {
+		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", plainSize)
 	}
 
 	// Append to layers.
