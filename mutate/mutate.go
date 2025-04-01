@@ -254,34 +254,6 @@ func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Dige
 	}
 }
 
-// add adds the given layer to the CAS, and mutates the configuration to
-// include the diffID. The returned string is the digest of the *compressed*
-// layer (which is compressed by us).
-func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History, compressor Compressor) (digest.Digest, int64, error) {
-	if err := m.cache(ctx); err != nil {
-		return "", -1, fmt.Errorf("getting cache failed: %w", err)
-	}
-
-	diffidDigester := cas.BlobAlgorithm.Digester()
-	hashReader := io.TeeReader(reader, diffidDigester.Hash())
-
-	compressed, err := compressor.Compress(hashReader)
-	if err != nil {
-		return "", -1, fmt.Errorf("couldn't create compression for blob: %w", err)
-	}
-	defer compressed.Close()
-
-	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
-	if err != nil {
-		return "", -1, fmt.Errorf("put layer blob: %w", err)
-	}
-
-	// Add DiffID to configuration.
-	layerDiffID := diffidDigester.Digest()
-	m.appendToConfig(history, layerDiffID)
-	return layerDigest, layerSize, nil
-}
-
 // Add adds a layer to the image, by reading the layer changeset blob from the
 // provided reader. The stream must not be compressed, as it is used to
 // generate the DiffIDs for the image metatadata. The provided history entry is
@@ -293,14 +265,26 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 		return desc, fmt.Errorf("getting cache failed: %w", err)
 	}
 
-	digest, size, err := m.add(ctx, r, history, compressor)
+	diffidDigester := cas.BlobAlgorithm.Digester()
+	hashReader := io.TeeReader(r, diffidDigester.Hash())
+
+	compressed, err := compressor.Compress(hashReader)
 	if err != nil {
-		return desc, fmt.Errorf("add layer: %w", err)
+		return desc, fmt.Errorf("couldn't create compression for blob: %w", err)
+	}
+	defer compressed.Close()
+
+	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
+	if err != nil {
+		return desc, fmt.Errorf("put layer blob: %w", err)
 	}
 
-	compressedMediaType := mediaType
+	// Add DiffID to configuration.
+	m.appendToConfig(history, diffidDigester.Digest())
+
+	// Build the descriptor.
 	if compressor.MediaTypeSuffix() != "" {
-		compressedMediaType = compressedMediaType + "+" + compressor.MediaTypeSuffix()
+		mediaType += "+" + compressor.MediaTypeSuffix()
 	}
 
 	if annotations == nil {
@@ -312,9 +296,9 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 
 	// Append to layers.
 	desc = ispec.Descriptor{
-		MediaType:   compressedMediaType,
-		Digest:      digest,
-		Size:        size,
+		MediaType:   mediaType,
+		Digest:      layerDigest,
+		Size:        layerSize,
 		Annotations: annotations,
 	}
 	m.manifest.Layers = append(m.manifest.Layers, desc)
