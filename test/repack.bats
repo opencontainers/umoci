@@ -876,3 +876,176 @@ function teardown() {
 	layers1=$(cat "${IMAGE}/oci/blobs/sha256/$manifest1" | jq -r .layers)
 	[ "$layers0" == "$layers1" ]
 }
+
+OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
+
+@test "umoci repack --compress=gzip" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file"
+	# Add layer to the image.
+	umoci repack --image "${IMAGE}:${TAG}" --compress=gzip "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+gzip"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-gzip"* ]]
+}
+
+@test "umoci repack --compress=zstd" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file"
+	# Add layer to the image.
+	umoci repack --image "${IMAGE}:${TAG}" --compress=zstd "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}
+
+@test "umoci repack --compress=none" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file"
+	# Add layer to the image.
+	umoci repack --image "${IMAGE}:${TAG}" --compress=none "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-tar"* ]] # x-tar means no compression
+}
+
+@test "umoci repack --refresh-bundle --compress=auto" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file1"
+	# Add zstd layer to the image.
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file2"
+	# Add another zstd layer to the image, by making use of the auto selection.
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=auto "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Make sure we make a new tar layer.
+	touch "$ROOTFS/new-file3"
+	# Add yet another zstd layer to the image, to show that --compress=auto is
+	# the default.
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}

@@ -8,6 +8,7 @@ umoci insert - insert content into an OCI image
 **umoci insert**
 **--image**=*image*[:*tag*]
 [**--tag**=*new-tag*]
+[**--compress**=*compression-type*]
 [**--opaque**]
 [**--rootless**]
 [**--uid-map**=*value*]
@@ -59,6 +60,21 @@ The global options are defined in **umoci**(1).
 **--tag**=*new-tag*
   Tag name for the modified image, if unspecified then the original tag
   provided to **--image** will be clobbered.
+
+**--compress**=*compression-type*
+  Specify the compression type to use when creating a new layer. Supported
+  compression types are *none*, *gzip*, and *zstd*. **umoci-unpack**(1)
+  transparently supports all compression methods you can specify with
+  **--compress**.
+  <!-- paragraph break -->
+  The special value *auto* will cause **umoci**(1) to auto-select the most
+  appropriate compression algorithm based on what previous layers are
+  compressed with (it will try to use the most recent layer's compression
+  algorithm which it supports). Note that *auto* will never select *none*
+  compression automatically, as not compressing **tar**(1) archives is really
+  not advisable.
+  <!-- paragraph break -->
+  If no *compression-type* is provided, it defaults to *auto*.
 
 **--opaque**
   (Assuming *target* is a directory.) Add an opaque whiteout entry for *target*

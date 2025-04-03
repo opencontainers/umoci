@@ -7,6 +7,7 @@ umoci repack - Repacks an OCI runtime bundle into an image tag
 # SYNOPSIS
 **umoci repack**
 **--image**=*image*[:*tag*]
+[**--compress**=*compression-type*]
 [**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
@@ -44,6 +45,21 @@ The global options are defined in **umoci**(1).
   the *bundle*) and *tag* must be a valid tag name. If another tag already has
   the same name as *tag* it will be overwritten. If *tag* is not provided it
   defaults to "latest".
+
+**--compress**=*compression-type*
+  Specify the compression type to use when creating a new layer. Supported
+  compression types are *none*, *gzip*, and *zstd*. **umoci-unpack**(1)
+  transparently supports all compression methods you can specify with
+  **--compress**.
+  <!-- paragraph break -->
+  The special value *auto* will cause **umoci**(1) to auto-select the most
+  appropriate compression algorithm based on what previous layers are
+  compressed with (it will try to use the most recent layer's compression
+  algorithm which it supports). Note that *auto* will never select *none*
+  compression automatically, as not compressing **tar**(1) archives is really
+  not advisable.
+  <!-- paragraph break -->
+  If no *compression-type* is provided, it defaults to *auto*.
 
 **--no-history**
   Causes no history entry to be added for this operation. **This is not

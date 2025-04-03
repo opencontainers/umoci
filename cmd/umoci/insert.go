@@ -29,12 +29,13 @@ import (
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/urfave/cli"
 )
 
-var insertCommand = uxRemap(uxHistory(uxTag(cli.Command{
+var insertCommand = uxCompress(uxRemap(uxHistory(uxTag(cli.Command{
 	Name:  "insert",
 	Usage: "insert content into an OCI image",
 	ArgsUsage: `--image <image-path>[:<tag>] [--opaque] <source> <target>
@@ -107,13 +108,18 @@ Some examples:
 		ctx.App.Metadata["--target-path"] = targetPath
 		return nil
 	},
-})))
+}))))
 
 func insert(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	sourcePath := ctx.App.Metadata["--source-path"].(string)
 	targetPath := ctx.App.Metadata["--target-path"].(string)
+
+	var compressAlgo blobcompress.Algorithm
+	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+		compressAlgo = algo
+	}
 
 	// By default we clobber the old tag.
 	tagName := fromName
@@ -188,7 +194,7 @@ func insert(ctx *cli.Context) error {
 		}
 	}
 
-	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, nil, nil); err != nil {
+	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, compressAlgo, nil); err != nil {
 		return fmt.Errorf("add diff layer: %w", err)
 	}
 

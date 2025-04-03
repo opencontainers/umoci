@@ -29,12 +29,13 @@ import (
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 	"github.com/urfave/cli"
 )
 
-var repackCommand = uxHistory(cli.Command{
+var repackCommand = uxCompress(uxHistory(cli.Command{
 	Name:  "repack",
 	Usage: "repacks an OCI runtime bundle into a reference",
 	ArgsUsage: `--image <image-path>[:<new-tag>] <bundle>
@@ -88,12 +89,17 @@ manifest and configuration information uses the new diff atop the old manifest.`
 		ctx.App.Metadata["bundle"] = ctx.Args().First()
 		return nil
 	},
-})
+}))
 
 func repack(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
+
+	var compressAlgo blobcompress.Algorithm
+	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+		compressAlgo = algo
+	}
 
 	// Read the metadata first.
 	meta, err := umoci.ReadBundleMeta(bundlePath)
@@ -176,5 +182,5 @@ func repack(ctx *cli.Context) error {
 		mtreefilter.MaskFilter(maskedPaths),
 	}
 
-	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator, nil)
+	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator, compressAlgo)
 }

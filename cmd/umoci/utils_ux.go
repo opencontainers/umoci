@@ -23,6 +23,7 @@ import (
 	"strings"
 
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	"github.com/urfave/cli"
 )
 
@@ -77,6 +78,45 @@ func uxHistory(cmd cli.Command) cli.Command {
 				}
 			}
 		}
+
+		// Include any old befores set.
+		if oldBefore != nil {
+			return oldBefore(ctx)
+		}
+		return nil
+	}
+
+	return cmd
+}
+
+// uxCompress adds the --compress flag to the given cli.Command as well as
+// adding relevant validation logic to the .Before of the command. The value
+// will be stored in ctx.Metadata["--compress"] as a string (or nil if --tag
+// was not specified).
+func uxCompress(cmd cli.Command) cli.Command {
+	cmd.Flags = append(cmd.Flags, cli.StringFlag{
+		Name:  "compress",
+		Usage: "compression algorithm for newly created layer blobs",
+		Value: "auto",
+	})
+
+	oldBefore := cmd.Before
+	cmd.Before = func(ctx *cli.Context) error {
+		// Verify compression algorithm value.
+		var layerCompressor blobcompress.Algorithm
+		if ctx.IsSet("compress") {
+			compressType := ctx.String("compress")
+			if compressType == "none" {
+				compressType = ""
+			}
+			if compressType != "auto" {
+				layerCompressor = blobcompress.GetAlgorithm(compressType)
+				if layerCompressor == nil {
+					return fmt.Errorf("invalid --compress: unknown layer compression type %q", ctx.String("compress"))
+				}
+			}
+		}
+		ctx.App.Metadata["--compress"] = layerCompressor
 
 		// Include any old befores set.
 		if oldBefore != nil {
