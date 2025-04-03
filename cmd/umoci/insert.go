@@ -188,7 +188,7 @@ func insert(ctx *cli.Context) error {
 		}
 	}
 
-	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, mutate.GzipCompressor, nil); err != nil {
+	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, nil, nil); err != nil {
 		return fmt.Errorf("add diff layer: %w", err)
 	}
 

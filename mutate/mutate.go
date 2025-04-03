@@ -31,6 +31,8 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/umoci/pkg/iohelpers"
 
 	"github.com/apex/log"
@@ -256,6 +258,30 @@ func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Dige
 	}
 }
 
+// PickDefaultCompressAlgorithm returns the best option for the compression
+// algorithm for new layers. The main preference is to use re-use whatever the
+// most recent layer's compression algorithm is (for those we support). As a
+// final fallback, we use blobcompress.Default.
+func (m *Mutator) PickDefaultCompressAlgorithm(ctx context.Context) (Compressor, error) {
+	if err := m.cache(ctx); err != nil {
+		return nil, fmt.Errorf("getting cache failed: %w", err)
+	}
+	layers := m.manifest.Layers
+	for i := len(layers) - 1; i >= 0; i-- {
+		_, compressType := mediatype.SplitMediaTypeSuffix(layers[i].MediaType)
+		// Don't generate an uncompressed layer even if the previous one is --
+		// there is no reason to automatically generate uncompressed blobs.
+		if compressType != "" {
+			candidate := blobcompress.GetAlgorithm(compressType)
+			if candidate != nil {
+				return candidate, nil
+			}
+		}
+	}
+	// No supported, non-plain algorithm found. Just use the default.
+	return blobcompress.Default, nil
+}
+
 // Add adds a layer to the image, by reading the layer changeset blob from the
 // provided reader. The stream must not be compressed, as it is used to
 // generate the DiffIDs for the image metatadata. The provided history entry is
@@ -272,6 +298,14 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	diffidDigester := cas.BlobAlgorithm.Digester()
 	hashReader := io.TeeReader(countReader, diffidDigester.Hash())
 
+	if compressor == nil {
+		bestCompressor, err := m.PickDefaultCompressAlgorithm(ctx)
+		if err != nil {
+			return desc, fmt.Errorf("find best default layer compression algorithm: %w", err)
+		}
+		compressor = bestCompressor
+	}
+
 	compressed, err := compressor.Compress(hashReader)
 	if err != nil {
 		return desc, fmt.Errorf("couldn't create compression for blob: %w", err)
@@ -287,8 +321,8 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	m.appendToConfig(history, diffidDigester.Digest())
 
 	// Build the descriptor.
-	if compressor.MediaTypeSuffix() != "" {
-		mediaType += "+" + compressor.MediaTypeSuffix()
+	if suffix := compressor.MediaTypeSuffix(); suffix != "" {
+		mediaType += "+" + suffix
 	}
 
 	if annotations == nil {

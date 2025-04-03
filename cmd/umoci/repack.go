@@ -176,5 +176,5 @@ func repack(ctx *cli.Context) error {
 		mtreefilter.MaskFilter(maskedPaths),
 	}
 
-	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator)
+	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator, nil)
 }
