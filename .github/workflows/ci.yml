@@ -149,7 +149,7 @@ jobs:
       matrix:
         image:
           - opensuse/leap:latest
-          - centos:latest
+          - almalinux:latest
           - debian:latest
           - ubuntu:latest
           - fedora:latest
