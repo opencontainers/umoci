@@ -35,6 +35,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	casdir "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 )
 
 // These come from just running the code.
@@ -220,7 +221,7 @@ func TestMutateAdd(t *testing.T) {
 	annotations := map[string]string{"hello": "world"}
 	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor, annotations)
+	}, blobcompress.Gzip, annotations)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
@@ -325,7 +326,7 @@ func TestMutateAddExisting(t *testing.T) {
 	// Add a new layer.
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor, nil)
+	}, blobcompress.Gzip, nil)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}

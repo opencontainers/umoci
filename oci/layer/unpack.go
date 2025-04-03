@@ -33,12 +33,12 @@ import (
 	_ "crypto/sha256"
 
 	"github.com/apex/log"
-	gzip "github.com/klauspost/pgzip"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
@@ -255,7 +255,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			// We have to extract a gzip'd version of the above layer. Also note
 			// that we have to check the DiffID we're extracting (which is the
 			// sha256 sum of the *uncompressed* layer).
-			layerRaw, err = gzip.NewReader(layerData)
+			layerRaw, err = blobcompress.Gzip.Decompress(layerData)
 			if err != nil {
 				return fmt.Errorf("create gzip reader: %w", err)
 			}
