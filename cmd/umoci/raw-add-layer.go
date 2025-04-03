@@ -154,8 +154,6 @@ func rawAddLayer(ctx *cli.Context) error {
 		}
 	}
 
-	// TODO: We should add a flag to allow for a new layer to be made
-	//       non-distributable.
 	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, mutate.GzipCompressor, nil); err != nil {
 		return fmt.Errorf("add diff layer: %w", err)
 	}
