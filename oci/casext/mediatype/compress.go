@@ -17,9 +17,30 @@
 
 package mediatype
 
+import (
+	"strings"
+)
+
 const (
 	// GzipSuffix is the standard media-type suffix for gzip compressed blobs.
 	GzipSuffix = "gzip"
 	// ZstdSuffix is the standard media-type suffix for zstd compressed blobs.
 	ZstdSuffix = "zstd"
 )
+
+// SplitMediaTypeSuffix takes an OCI-style MIME media-type and splits it into a
+// base type and a "+" suffix. For layer blobs, this is usually the compression
+// algorithm ("+gzip", "+zstd"). For JSON blobs this is usually "+json".
+//
+// The returned media-type suffix does not contain a "+", and media-types not
+// containing a "+" are treated as having an empty suffix.
+//
+// While this usage is technically sanctioned by by RFC 6838, this method
+// should only be used for OCI media-types, where this behaviour is
+// well-defined.
+func SplitMediaTypeSuffix(mediaType string) (baseType, suffix string) {
+	if suffixStart := strings.Index(mediaType, "+"); suffixStart >= 0 {
+		return mediaType[:suffixStart], mediaType[suffixStart+1:]
+	}
+	return mediaType, ""
+}

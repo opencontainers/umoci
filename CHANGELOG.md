@@ -21,6 +21,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   had no real impact on umoci but for safety we implemented the now-recommended
   media-type embedding and verification. CVE-2021-41190
 
+### Added ###
+- `umoci unpack` now supports handling layers compressed with zstd. This is
+  something that was added in image-spec v1.2 (which we do not yet support
+  fully) but at least this will allow users to operate on zstd-compressed
+  images, which are slowly becoming more common.
+
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.
 - The runtime-spec version of the `config.json` version we generate is no

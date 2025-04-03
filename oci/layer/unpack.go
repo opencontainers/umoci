@@ -39,6 +39,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/idtools"
@@ -78,15 +79,25 @@ func UnpackLayer(root string, layer io.Reader, opt *UnpackOptions) error {
 // generated.
 const RootfsName = "rootfs"
 
-// isLayerType returns if the given MediaType is the media type of an image
-// layer blob. This includes both distributable and non-distributable images.
 func isLayerType(mediaType string) bool {
-	return mediaType == ispec.MediaTypeImageLayer || mediaType == ispec.MediaTypeImageLayerNonDistributable ||
-		mediaType == ispec.MediaTypeImageLayerGzip || mediaType == ispec.MediaTypeImageLayerNonDistributableGzip
+	layerMediaType, _ := mediatype.SplitMediaTypeSuffix(mediaType)
+	switch layerMediaType {
+	case ispec.MediaTypeImageLayerNonDistributable:
+		log.Infof("image contains layers using the deprecated 'non-distributable' media type %q", layerMediaType)
+		fallthrough
+	case ispec.MediaTypeImageLayer:
+		return true
+	}
+	return false
 }
 
-func needsGunzip(mediaType string) bool {
-	return mediaType == ispec.MediaTypeImageLayerGzip || mediaType == ispec.MediaTypeImageLayerNonDistributableGzip
+func getLayerCompressAlgorithm(mediaType string) (string, blobcompress.Algorithm, error) {
+	_, compressType := mediatype.SplitMediaTypeSuffix(mediaType)
+	algorithm := blobcompress.GetAlgorithm(compressType)
+	if algorithm == nil {
+		return "", nil, fmt.Errorf("unsupported layer media type %q: compression method %q unsupported", mediaType, compressType)
+	}
+	return compressType, algorithm, nil
 }
 
 // UnpackManifest extracts all of the layers in the given manifest, as well as
@@ -242,7 +253,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		}
 		defer layerBlob.Close()
 		if !isLayerType(layerBlob.Descriptor.MediaType) {
-			return fmt.Errorf("unpack rootfs: layer %s: blob is not correct mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
+			return fmt.Errorf("unpack rootfs: layer %s: layer data is an unsupported mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
 		}
 		layerData, ok := layerBlob.Data.(io.ReadCloser)
 		if !ok {
@@ -251,13 +262,17 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		}
 
 		layerRaw := layerData
-		if needsGunzip(layerBlob.Descriptor.MediaType) {
-			// We have to extract a gzip'd version of the above layer. Also note
-			// that we have to check the DiffID we're extracting (which is the
-			// sha256 sum of the *uncompressed* layer).
-			layerRaw, err = blobcompress.Gzip.Decompress(layerData)
+
+		// Pick the decompression algorithm based on the media-type.
+		if compressType, compressAlgo, err := getLayerCompressAlgorithm(layerBlob.Descriptor.MediaType); err != nil {
+			return fmt.Errorf("unpack rootfs: layer %s: could not decompress layer: %w", layerBlob.Descriptor.Digest, err)
+		} else if compressAlgo != nil {
+			// We have to extract a compressed version of the above layer. Also
+			// note that we have to check the DiffID we're extracting (which is
+			// the sha256 sum of the *uncompressed* layer).
+			layerRaw, err = compressAlgo.Decompress(layerData)
 			if err != nil {
-				return fmt.Errorf("create gzip reader: %w", err)
+				return fmt.Errorf("create %s reader: %w", compressType, err)
 			}
 		}
 
