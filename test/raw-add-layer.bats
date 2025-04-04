@@ -328,4 +328,9 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR"
 	[ "$status" -ne 0 ]
 	image-verify "${IMAGE}"
+
+	# --compress=... has to be a valid value.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=invalid "$LAYERFILE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }

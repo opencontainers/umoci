@@ -193,6 +193,11 @@ function teardown() {
 	umoci insert --image "${IMAGE}:${TAG}" --whiteout /foo/bar/.wh.invalid-whiteout
 	[ "$status" -ne 0 ]
 	image-verify "${IMAGE}"
+
+	# --compress=... has to be a valid value.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=invalid "$INSERTDIR" /foo/bar
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci insert --opaque" {

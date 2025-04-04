@@ -34,6 +34,8 @@ import (
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
+	"github.com/stretchr/testify/assert"
 )
 
 func mustDecodeString(s string) []byte {
@@ -219,5 +221,40 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
 	if err == nil || !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("test file present? %+v\n", err)
+	}
+}
+
+func TestLayerCompressionCheck(t *testing.T) {
+	for _, test := range []struct {
+		name, mediaType   string
+		expectedIsLayer   bool
+		expectedAlgorithm blobcompress.Algorithm
+	}{
+		{"layer.v1.tar", ispec.MediaTypeImageLayer, true, blobcompress.Noop},
+		{"layer.v1.tar+gzip", ispec.MediaTypeImageLayerGzip, true, blobcompress.Gzip},
+		{"layer.v1.tar+zstd", ispec.MediaTypeImageLayer + "+zstd", true, blobcompress.Zstd},
+		{"layer.v1.tar+invalid", ispec.MediaTypeImageLayer + "+invalid", true, nil},
+		{"layer.nondistributable.v1.tar", ispec.MediaTypeImageLayerNonDistributable, true, blobcompress.Noop},
+		{"layer.nondistributable.v1.tar+gzip", ispec.MediaTypeImageLayerNonDistributableGzip, true, blobcompress.Gzip},
+		{"layer.nondistributable.v1.tar+zstd", ispec.MediaTypeImageLayerNonDistributable + "+zstd", true, blobcompress.Zstd},
+		{"layer.nondistributable.v1.tar+invalid", ispec.MediaTypeImageLayerNonDistributable + "+invalid", true, nil},
+		{"application/json", "application/json", false, nil},
+		{"application/gzip", "application/gzip", false, nil},
+	} {
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			assert.Equalf(t, isLayerType(test.mediaType), test.expectedIsLayer, "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
+
+			if test.expectedIsLayer {
+				gotAlgoName, gotAlgo, err := getLayerCompressAlgorithm(test.mediaType)
+				if test.expectedAlgorithm == nil {
+					assert.Errorf(t, err, "getLayerCompressAlgorithm(%q) should be unsupported", test.mediaType)
+				} else {
+					assert.NoErrorf(t, err, "getLayerCompressAlgorithm(%q) should succeed", test.mediaType)
+					assert.Equalf(t, gotAlgoName, test.expectedAlgorithm.MediaTypeSuffix(), "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
+					assert.Equalf(t, gotAlgo, test.expectedAlgorithm, "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
+				}
+			}
+		})
 	}
 }

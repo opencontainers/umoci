@@ -175,6 +175,11 @@ function teardown() {
 		--history.created "invalid date" "$BUNDLE"
 	[ "$status" -ne 0 ]
 	image-verify "${IMAGE}"
+
+	# --compress=... has to be a valid value.
+	umoci repack --image "${IMAGE}:${TAG}" --compress=invalid "$BUNDLE"
+	[ "$status" -ne 0 ]
+	image-verify "${IMAGE}"
 }
 
 @test "umoci repack [whiteout]" {
