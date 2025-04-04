@@ -31,16 +31,16 @@ import (
 
 	"github.com/apex/log"
 	securejoin "github.com/cyphar/filepath-securejoin"
+	"github.com/moby/sys/userns"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/opencontainers/umoci/third_party/shared"
 	"golang.org/x/sys/unix"
 )
 
-// inUserNamespace is a cached return value of shared.RunningInUserNS(). We
+// inUserNamespace is a cached return value of userns.RunningInUserNS(). We
 // compute this once globally rather than for each unpack. It won't change (we
 // would hope) after we check it the first time.
-var inUserNamespace = shared.RunningInUserNS()
+var inUserNamespace = userns.RunningInUserNS()
 
 // TarExtractor represents a tar file to be extracted.
 type TarExtractor struct {
