@@ -26,6 +26,7 @@ import (
 
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"

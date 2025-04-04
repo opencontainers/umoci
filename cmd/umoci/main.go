@@ -26,8 +26,9 @@ import (
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
-	"github.com/opencontainers/umoci"
 	"github.com/urfave/cli"
+
+	"github.com/opencontainers/umoci"
 )
 
 const (

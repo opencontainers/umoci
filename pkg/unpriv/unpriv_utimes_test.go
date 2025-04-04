@@ -25,8 +25,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 func TestLutimesFile(t *testing.T) {

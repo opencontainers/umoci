@@ -24,9 +24,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opencontainers/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/unpriv"
 )
 
 // Rootless is an FsEval implementation that uses "umoci/pkg/unpriv".*

@@ -28,10 +28,11 @@ import (
 	"strings"
 
 	"github.com/apex/log"
+	"golang.org/x/sys/unix"
+
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/opencontainers/umoci/pkg/testutils"
-	"golang.org/x/sys/unix"
 )
 
 // ignoreXattrs is a list of xattr names that should be ignored when

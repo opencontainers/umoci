@@ -30,8 +30,9 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/opencontainers/umoci/pkg/system"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func canMknod(dir string) (bool, error) {

@@ -23,9 +23,10 @@ import (
 	"errors"
 	"fmt"
 
+	"github.com/urfave/cli"
+
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/urfave/cli"
 )
 
 var gcCommand = cli.Command{

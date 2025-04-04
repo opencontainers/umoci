@@ -27,10 +27,11 @@ import (
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/idtools"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
+
+	"github.com/opencontainers/umoci/pkg/idtools"
 )
 
 // MapOptions specifies the UID and GID mappings used when unpacking and

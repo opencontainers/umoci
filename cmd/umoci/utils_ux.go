@@ -23,9 +23,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/urfave/cli"
+
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
-	"github.com/urfave/cli"
 )
 
 func flattenCommands(cmds []cli.Command) []*cli.Command {

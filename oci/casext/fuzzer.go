@@ -23,10 +23,11 @@ package casext
 
 import (
 	"context"
-	"github.com/opencontainers/umoci/oci/cas/dir"
 	"io/ioutil"
 	"os"
 	"path/filepath"
+
+	"github.com/opencontainers/umoci/oci/cas/dir"
 )
 
 // Fuzz fuzzes the implementation of dirEngine.{PutBlobJSON,GetBlob}.

@@ -26,10 +26,11 @@ import (
 	"os"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/urfave/cli"
+
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
-	"github.com/urfave/cli"
 )
 
 var statCommand = cli.Command{

@@ -33,8 +33,9 @@ import (
 	"time"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/testutils"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.

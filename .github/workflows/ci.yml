@@ -56,6 +56,7 @@ jobs:
           # TODO: Move this to 'make fetch-deps'.
           go install github.com/cpuguy83/go-md2man/v2@latest
           go install golang.org/x/lint/golint@latest
+          go install golang.org/x/tools/cmd/goimports@latest
           go install github.com/securego/gosec/cmd/gosec@latest
           go install github.com/client9/misspell/cmd/misspell@latest
       - run: |

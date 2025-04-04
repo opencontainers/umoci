@@ -23,9 +23,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // Default is the "identity" form of FsEval. In particular, it does not do any

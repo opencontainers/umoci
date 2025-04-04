@@ -29,11 +29,12 @@ import (
 	"path"
 	"testing"
 
-	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/stretchr/testify/assert"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {

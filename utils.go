@@ -32,12 +32,13 @@ import (
 	"github.com/apex/log"
 	"github.com/docker/go-units"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/urfave/cli"
+	"github.com/vbatts/go-mtree"
+
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/idtools"
-	"github.com/urfave/cli"
-	"github.com/vbatts/go-mtree"
 )
 
 // FIXME: This should be moved to a library. Too much of this code is in the

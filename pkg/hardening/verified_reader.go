@@ -27,6 +27,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
+
 	"github.com/opencontainers/umoci/pkg/system"
 )
 

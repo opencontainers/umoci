@@ -32,9 +32,10 @@ import (
 	"github.com/apex/log"
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/moby/sys/userns"
+	"golang.org/x/sys/unix"
+
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
-	"golang.org/x/sys/unix"
 )
 
 // inUserNamespace is a cached return value of userns.RunningInUserNS(). We

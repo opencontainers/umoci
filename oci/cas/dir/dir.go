@@ -32,10 +32,11 @@ import (
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"golang.org/x/sys/unix"
+
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/opencontainers/umoci/pkg/system"
-	"golang.org/x/sys/unix"
 )
 
 const (

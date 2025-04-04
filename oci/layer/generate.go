@@ -27,8 +27,9 @@ import (
 	"sort"
 
 	"github.com/apex/log"
-	"github.com/opencontainers/umoci/pkg/unpriv"
 	"github.com/vbatts/go-mtree"
+
+	"github.com/opencontainers/umoci/pkg/unpriv"
 )
 
 // inodeDeltas is a wrapper around []mtree.InodeDelta that allows for sorting

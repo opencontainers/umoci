@@ -24,8 +24,9 @@ import (
 	"os"
 
 	"github.com/apex/log"
-	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/urfave/cli"
+
+	"github.com/opencontainers/umoci/oci/cas/dir"
 )
 
 var initCommand = cli.Command{

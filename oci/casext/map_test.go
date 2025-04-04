@@ -28,6 +28,7 @@ import (
 	"github.com/mohae/deepcopy"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 

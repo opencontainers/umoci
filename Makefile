@@ -145,6 +145,8 @@ local-validate-go:
 	test -z "$$(gofmt -s -l . | grep -vE '^vendor/' | tee /dev/stderr)"
 	@type golint    >/dev/null 2>/dev/null || (echo "ERROR: golint not found." && false)
 	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/' | tee /dev/stderr)"
+	@type goimports >/dev/null 2>/dev/null || (echo "ERROR: goimports not found." && false)
+	test -z "$$(goimports -local $(PROJECT) -l . | grep -vE '^vendor/' | tee /dev/stderr)"
 	@go doc cmd/vet >/dev/null 2>/dev/null || (echo "ERROR: go vet not found." && false)
 	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/') 2>&1 | tee /dev/stderr)"
 	@type gosec     >/dev/null 2>/dev/null || (echo "ERROR: gosec not found." && false)

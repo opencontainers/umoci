@@ -29,8 +29,9 @@ import (
 	"time"
 
 	securejoin "github.com/cyphar/filepath-securejoin"
-	"github.com/opencontainers/umoci/pkg/system"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given
