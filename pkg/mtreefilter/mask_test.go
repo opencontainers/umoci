@@ -47,22 +47,22 @@ func TestMaskDeltas(t *testing.T) {
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some files.
-	if err != ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0644) {
+	if err := ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err != ioutil.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0644) {
+	if err := ioutil.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err != os.MkdirAll(filepath.Join(dir, "dir", "child"), 0755) {
+	if err := os.MkdirAll(filepath.Join(dir, "dir", "child"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err != os.MkdirAll(filepath.Join(dir, "dir", "child2"), 0755) {
+	if err := os.MkdirAll(filepath.Join(dir, "dir", "child2"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err != ioutil.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0644) {
+	if err := ioutil.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0644); err != nil {
 		t.Fatal(err)
 	}
-	if err != ioutil.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0644) {
+	if err := ioutil.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
@@ -135,10 +135,10 @@ func TestSimplifyFilter(t *testing.T) {
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some nested directories we can remove.
-	if err != os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0755) {
+	if err := os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0755); err != nil {
 		t.Fatal(err)
 	}
-	if err != ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0644) {
+	if err := ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0644); err != nil {
 		t.Fatal(err)
 	}
 
