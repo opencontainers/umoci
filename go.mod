@@ -17,7 +17,7 @@
 
 module github.com/opencontainers/umoci
 
-go 1.18
+go 1.21
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1

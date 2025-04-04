@@ -50,7 +50,7 @@ jobs:
           # kind of lint checker that doesn't fail the CI completely and
           # instead just gives us nice warnings but for now just pin a Go
           # version.
-          go-version: '1.20.x'
+          go-version: '1.24.x'
       - name: install dependencies
         run: |
           # TODO: Move this to 'make fetch-deps'.
