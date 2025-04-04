@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -33,6 +32,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
@@ -87,9 +87,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		t.Fatal(err)
 	}
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	engineExt := casext.NewEngine(engine)
 
 	// Set up the CAS and an image from the above layers.
@@ -103,9 +101,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		// DiffIDs.
 		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
 		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		layerDigests = append(layerDigests, layer.digest)
 		layerDescriptors = append(layerDescriptors, ispec.Descriptor{
@@ -173,12 +169,9 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 		called = true
 		return nil
 	}
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
-		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
-	}
-	if !called {
-		t.Errorf("callback not called")
-	}
+	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	require.NoError(t, err, "UnpackManifest")
+	assert.True(t, called, "UnpackManifest callback should have been called")
 }
 
 func TestUnpackStartFromDescriptor(t *testing.T) {
@@ -200,14 +193,11 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 		Rootless: os.Geteuid() != 0,
 	}}
 	unpackOptions.StartFrom = manifest.Layers[1]
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
-		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
-	}
+	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	require.NoError(t, err, "UnpackManifest")
 
-	_, err := os.Stat(filepath.Join(bundle, "rootfs/test_file"))
-	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("test file present? %+v\n", err)
-	}
+	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
+	assert.ErrorIs(t, err, os.ErrNotExist, "test file should not be present")
 }
 
 func TestLayerCompressionCheck(t *testing.T) {

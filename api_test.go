@@ -22,6 +22,9 @@ package umoci
 import (
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateExistingFails(t *testing.T) {
@@ -29,28 +32,20 @@ func TestCreateExistingFails(t *testing.T) {
 
 	// opening a bad layout should fail
 	_, err := OpenLayout(dir)
-	if err == nil {
-		t.Fatal("opening non-existent layout succeeded?")
-	}
+	require.Error(t, err, "open invalid layout")
 
 	// remove directory so that create can create it
-	os.RemoveAll(dir)
+	require.NoError(t, os.RemoveAll(dir))
 
 	// create should work
 	_, err = CreateLayout(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "create new layout")
 
 	// but not twice
 	_, err = CreateLayout(dir)
-	if err == nil {
-		t.Fatal("create worked twice?")
-	}
+	assert.Error(t, err, "create should not work on existing layout")
 
 	// but open should work now
 	_, err = OpenLayout(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err, "open layout")
 }

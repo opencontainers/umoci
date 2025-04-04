@@ -20,7 +20,6 @@ package layer
 
 import (
 	"archive/tar"
-	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -29,6 +28,9 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestTarGenerateAddFileNormal(t *testing.T) {
@@ -52,12 +54,10 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	if err := ioutil.WriteFile(path, data, 0777); err != nil {
-		t.Fatalf("unexpected error creating file to add: %s", err)
-	}
-	if err := te.applyMetadata(path, expectedHdr); err != nil {
-		t.Fatalf("apply metadata: %s", err)
-	}
+	err := ioutil.WriteFile(path, data, 0777)
+	require.NoError(t, err)
+	err = te.applyMetadata(path, expectedHdr)
+	require.NoError(t, err, "apply metadata")
 
 	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
@@ -65,61 +65,42 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 	// Create all of the tar entries in a goroutine so we can parse the tar
 	// entries as they're generated (io.Pipe pipes are unbuffered).
 	go func() {
-		if err := tg.AddFile(file, path); err != nil {
-			t.Errorf("AddFile: %s: unexpected error: %s", path, err)
-		}
-		if err := tg.tw.Close(); err != nil {
-			t.Errorf("tw.Close: unexpected error: %s", err)
-		}
-		if err := writer.Close(); err != nil {
-			t.Errorf("writer.Close: unexpected error: %s", err)
-		}
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
 	}()
 
 	hdr, err := tr.Next()
-	if err != nil {
-		t.Fatalf("reading tar archive: %s", err)
-	}
+	require.NoError(t, err, "read tar entry")
 
-	if hdr.Typeflag != expectedHdr.Typeflag {
-		t.Errorf("hdr.Typeflag changed: expected %d, got %d", expectedHdr.Typeflag, hdr.Typeflag)
-	}
-	if hdr.Name != expectedHdr.Name {
-		t.Errorf("hdr.Name changed: expected %s, got %s", expectedHdr.Name, hdr.Name)
-	}
-	if hdr.Uid != expectedHdr.Uid {
-		t.Errorf("hdr.Uid changed: expected %d, got %d", expectedHdr.Uid, hdr.Uid)
-	}
-	if hdr.Gid != expectedHdr.Gid {
-		t.Errorf("hdr.Gid changed: expected %d, got %d", expectedHdr.Gid, hdr.Gid)
-	}
-	if hdr.Size != expectedHdr.Size {
-		t.Errorf("hdr.Size changed: expected %d, got %d", expectedHdr.Size, hdr.Size)
-	}
-	if !hdr.ModTime.Equal(expectedHdr.ModTime) {
-		t.Errorf("hdr.ModTime changed: expected %s, got %s", expectedHdr.ModTime, hdr.ModTime)
-	}
+	// TODO: Can we switch to just doing assert.Equal for the entire header?
+	assert.Equal(t, expectedHdr.Typeflag, hdr.Typeflag, "generated tar header Typeflag")
+	assert.Equal(t, expectedHdr.Name, hdr.Name, "generated tar header Name")
+	assert.Empty(t, hdr.Linkname, "generated tar header Linkname")
+	assert.Equal(t, expectedHdr.Uid, hdr.Uid, "generated tar header Uid")
+	assert.Equal(t, expectedHdr.Gid, hdr.Gid, "generated tar header Gid")
+	assert.Equal(t, expectedHdr.Size, hdr.Size, "generated tar header Size")
+	assert.Equal(t, expectedHdr.ModTime, hdr.ModTime, "generated tar header ModTime")
+
 	// This test will always fail because of a Golang bug: https://github.com/golang/go/issues/17876.
 	// We will skip this test for now.
-	if !hdr.AccessTime.Equal(expectedHdr.AccessTime) {
-		if hdr.AccessTime.IsZero() {
-			t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
-		} else {
-			t.Errorf("hdr.AccessTime changed: expected %s, got %s", expectedHdr.AccessTime, hdr.AccessTime)
-		}
+	if hdr.AccessTime.IsZero() {
+		t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
+	} else {
+		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
 	gotBytes, err := ioutil.ReadAll(tr)
-	if err != nil {
-		t.Errorf("read all: unexpected error: %s", err)
-	}
-	if !bytes.Equal(gotBytes, data) {
-		t.Errorf("unexpected data read from tar.Reader: expected %v, got %v", data, gotBytes)
-	}
+	require.NoError(t, err, "read file data from tar reader")
+	assert.Equal(t, data, gotBytes, "file data from tar reader should match input")
 
-	if _, err := tr.Next(); err != io.EOF {
-		t.Errorf("expected only one entry, err=%s", err)
-	}
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
 }
 
 func TestTarGenerateAddFileDirectory(t *testing.T) {
@@ -142,12 +123,10 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	if err := os.Mkdir(path, 0777); err != nil {
-		t.Fatalf("unexpected error creating file to add: %s", err)
-	}
-	if err := te.applyMetadata(path, expectedHdr); err != nil {
-		t.Fatalf("apply metadata: %s", err)
-	}
+	err := os.Mkdir(path, 0777)
+	require.NoError(t, err)
+	err = te.applyMetadata(path, expectedHdr)
+	require.NoError(t, err, "apply metadata")
 
 	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
@@ -155,53 +134,42 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 	// Create all of the tar entries in a goroutine so we can parse the tar
 	// entries as they're generated (io.Pipe pipes are unbuffered).
 	go func() {
-		if err := tg.AddFile(file, path); err != nil {
-			t.Errorf("AddFile: %s: unexpected error: %s", path, err)
-		}
-		if err := tg.tw.Close(); err != nil {
-			t.Errorf("tw.Close: unexpected error: %s", err)
-		}
-		if err := writer.Close(); err != nil {
-			t.Errorf("writer.Close: unexpected error: %s", err)
-		}
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
 	}()
 
 	hdr, err := tr.Next()
-	if err != nil {
-		t.Fatalf("reading tar archive: %s", err)
-	}
+	require.NoError(t, err, "read tar entry")
 
-	if hdr.Typeflag != expectedHdr.Typeflag {
-		t.Errorf("hdr.Typeflag changed: expected %d, got %d", expectedHdr.Typeflag, hdr.Typeflag)
-	}
-	if hdr.Name != expectedHdr.Name {
-		t.Errorf("hdr.Name changed: expected %s, got %s", expectedHdr.Name, hdr.Name)
-	}
-	if hdr.Uid != expectedHdr.Uid {
-		t.Errorf("hdr.Uid changed: expected %d, got %d", expectedHdr.Uid, hdr.Uid)
-	}
-	if hdr.Gid != expectedHdr.Gid {
-		t.Errorf("hdr.Gid changed: expected %d, got %d", expectedHdr.Gid, hdr.Gid)
-	}
-	if hdr.Size != expectedHdr.Size {
-		t.Errorf("hdr.Size changed: expected %d, got %d", expectedHdr.Size, hdr.Size)
-	}
-	if !hdr.ModTime.Equal(expectedHdr.ModTime) {
-		t.Errorf("hdr.ModTime changed: expected %s, got %s", expectedHdr.ModTime, hdr.ModTime)
-	}
+	// TODO: Can we switch to just doing assert.Equal for the entire header?
+	assert.Equal(t, expectedHdr.Typeflag, hdr.Typeflag, "generated tar header Typeflag")
+	assert.Equal(t, expectedHdr.Name, hdr.Name, "generated tar header Name")
+	assert.Empty(t, hdr.Linkname, "generated tar header Linkname")
+	assert.Equal(t, expectedHdr.Uid, hdr.Uid, "generated tar header Uid")
+	assert.Equal(t, expectedHdr.Gid, hdr.Gid, "generated tar header Gid")
+	assert.Equal(t, expectedHdr.Size, hdr.Size, "generated tar header Size")
+	assert.Equal(t, expectedHdr.ModTime, hdr.ModTime, "generated tar header ModTime")
+
 	// This test will always fail because of a Golang bug: https://github.com/golang/go/issues/17876.
 	// We will skip this test for now.
-	if !hdr.AccessTime.Equal(expectedHdr.AccessTime) {
-		if hdr.AccessTime.IsZero() {
-			t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
-		} else {
-			t.Errorf("hdr.AccessTime changed: expected %s, got %s", expectedHdr.AccessTime, hdr.AccessTime)
-		}
+	if hdr.AccessTime.IsZero() {
+		t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
+	} else {
+		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
-	if _, err := tr.Next(); err != io.EOF {
-		t.Errorf("expected only one entry, err=%s", err)
-	}
+	gotBytes, err := ioutil.ReadAll(tr)
+	require.NoError(t, err, "read file data from tar reader")
+	assert.Empty(t, gotBytes, "directory should have no tar data")
+
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
 }
 
 func TestTarGenerateAddFileSymlink(t *testing.T) {
@@ -225,12 +193,10 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	if err := os.Symlink(linkname, path); err != nil {
-		t.Fatalf("unexpected error creating file to add: %s", err)
-	}
-	if err := te.applyMetadata(path, expectedHdr); err != nil {
-		t.Fatalf("apply metadata: %s", err)
-	}
+	err := os.Symlink(linkname, path)
+	require.NoError(t, err)
+	err = te.applyMetadata(path, expectedHdr)
+	require.NoError(t, err, "apply metadata")
 
 	tg := newTarGenerator(writer, MapOptions{})
 	tr := tar.NewReader(reader)
@@ -238,56 +204,42 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 	// Create all of the tar entries in a goroutine so we can parse the tar
 	// entries as they're generated (io.Pipe pipes are unbuffered).
 	go func() {
-		if err := tg.AddFile(file, path); err != nil {
-			t.Errorf("AddFile: %s: unexpected error: %s", path, err)
-		}
-		if err := tg.tw.Close(); err != nil {
-			t.Errorf("tw.Close: unexpected error: %s", err)
-		}
-		if err := writer.Close(); err != nil {
-			t.Errorf("writer.Close: unexpected error: %s", err)
-		}
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
 	}()
 
 	hdr, err := tr.Next()
-	if err != nil {
-		t.Fatalf("reading tar archive: %s", err)
-	}
+	require.NoError(t, err, "read tar entry")
 
-	if hdr.Typeflag != expectedHdr.Typeflag {
-		t.Errorf("hdr.Typeflag changed: expected %d, got %d", expectedHdr.Typeflag, hdr.Typeflag)
-	}
-	if hdr.Name != expectedHdr.Name {
-		t.Errorf("hdr.Name changed: expected %s, got %s", expectedHdr.Name, hdr.Name)
-	}
-	if hdr.Linkname != expectedHdr.Linkname {
-		t.Errorf("hdr.Name changed: expected %s, got %s", expectedHdr.Name, hdr.Name)
-	}
-	if hdr.Uid != expectedHdr.Uid {
-		t.Errorf("hdr.Uid changed: expected %d, got %d", expectedHdr.Uid, hdr.Uid)
-	}
-	if hdr.Gid != expectedHdr.Gid {
-		t.Errorf("hdr.Gid changed: expected %d, got %d", expectedHdr.Gid, hdr.Gid)
-	}
-	if hdr.Size != expectedHdr.Size {
-		t.Errorf("hdr.Size changed: expected %d, got %d", expectedHdr.Size, hdr.Size)
-	}
-	if !hdr.ModTime.Equal(expectedHdr.ModTime) {
-		t.Errorf("hdr.ModTime changed: expected %s, got %s", expectedHdr.ModTime, hdr.ModTime)
-	}
+	// TODO: Can we switch to just doing assert.Equal for the entire header?
+	assert.Equal(t, expectedHdr.Typeflag, hdr.Typeflag, "generated tar header Typeflag")
+	assert.Equal(t, expectedHdr.Name, hdr.Name, "generated tar header Name")
+	assert.Equal(t, expectedHdr.Linkname, hdr.Linkname, "generated tar header Linkname")
+	assert.Equal(t, expectedHdr.Uid, hdr.Uid, "generated tar header Uid")
+	assert.Equal(t, expectedHdr.Gid, hdr.Gid, "generated tar header Gid")
+	assert.Equal(t, expectedHdr.Size, hdr.Size, "generated tar header Size")
+	assert.Equal(t, expectedHdr.ModTime, hdr.ModTime, "generated tar header ModTime")
+
 	// This test will always fail because of a Golang bug: https://github.com/golang/go/issues/17876.
 	// We will skip this test for now.
-	if !hdr.AccessTime.Equal(expectedHdr.AccessTime) {
-		if hdr.AccessTime.IsZero() {
-			t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
-		} else {
-			t.Errorf("hdr.AccessTime changed: expected %s, got %s", expectedHdr.AccessTime, hdr.AccessTime)
-		}
+	if hdr.AccessTime.IsZero() {
+		t.Logf("hdr.AccessTime doesn't match (it is zero) -- this is a Golang bug")
+	} else {
+		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
-	if _, err := tr.Next(); err != io.EOF {
-		t.Errorf("expected only one entry, err=%s", err)
-	}
+	gotBytes, err := ioutil.ReadAll(tr)
+	require.NoError(t, err, "read file data from tar reader")
+	assert.Empty(t, gotBytes, "directory should have no tar data")
+
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
 }
 
 func parseWhiteout(path string) (string, error) {
@@ -317,16 +269,15 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 	// tar entries as they're generated (io.Pipe pipes are unbuffered).
 	go func() {
 		for _, path := range paths {
-			if err := tg.AddWhiteout(path); err != nil {
-				t.Errorf("AddWhitout: %s: unexpected error: %s", path, err)
-			}
+			err := tg.AddWhiteout(path)
+			assert.NoErrorf(t, err, "AddWhitout %s", path)
 		}
-		if err := tg.tw.Close(); err != nil {
-			t.Errorf("tw.Close: unexpected error: %s", err)
-		}
-		if err := writer.Close(); err != nil {
-			t.Errorf("writer.Close: unexpected error: %s", err)
-		}
+
+		err := tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
 	}()
 
 	idx := 0
@@ -335,28 +286,19 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 		if err == io.EOF {
 			break
 		}
-		if err != nil {
-			t.Fatalf("reading tar archive: %s", err)
-		}
+		require.NoError(t, err, "read tar archive")
+		require.Less(t, idx, len(paths), "should never get more whiteout entires than AddWhitout calls")
 
-		if idx >= len(paths) {
-			t.Fatal("got more whiteout entries than AddWhiteout calls!")
-		}
-
+		// The entries should be in the same order as the original set.
+		path := paths[idx]
 		parsed, err := parseWhiteout(hdr.Name)
-		if err != nil {
-			t.Errorf("getting whiteout for %s: %s", paths[idx], err)
-		}
-
-		cleanPath := filepath.Clean(paths[idx])
-		if parsed != cleanPath {
-			t.Errorf("whiteout entry %d is out of order: expected %s, got %s", idx, cleanPath, parsed)
+		if assert.NoErrorf(t, err, "getting whiteout for %s", path) {
+			cleanPath := filepath.Clean(path)
+			assert.Equalf(t, cleanPath, parsed, "whiteout entry %d is out of order", idx)
 		}
 
 		idx++
 	}
 
-	if idx != len(paths) {
-		t.Errorf("not all paths had a whiteout entry generated (only read %d, expected %d)!", idx, len(paths))
-	}
+	assert.Equal(t, len(paths), idx, "all paths should have a whiteout entry generated")
 }

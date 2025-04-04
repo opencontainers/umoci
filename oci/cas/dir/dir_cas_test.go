@@ -21,12 +21,14 @@ package dir
 import (
 	"bytes"
 	"context"
-	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/testutils"
@@ -38,51 +40,37 @@ import (
 func TestCreateLayout(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := Create(image)
+	require.NoError(t, err)
 
 	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	defer engine.Close()
 
 	// We should have an empty index and no blobs.
-	if index, err := engine.GetIndex(ctx); err != nil {
-		t.Errorf("unexpected error getting top-level index: %+v", err)
-	} else if len(index.Manifests) > 0 {
-		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
-	}
-	if blobs, err := engine.ListBlobs(ctx); err != nil {
-		t.Errorf("unexpected error getting list of blobs: %+v", err)
-	} else if len(blobs) > 0 {
-		t.Errorf("got blobs in a newly created image: %v", blobs)
-	}
+	index, err := engine.GetIndex(ctx)
+	require.NoError(t, err, "get index")
+	assert.Empty(t, index.Manifests, "new image should have no manifests")
+
+	blobs, err := engine.ListBlobs(ctx)
+	require.NoError(t, err, "list blobs")
+	assert.Empty(t, blobs, "new image should have no blobs")
 
 	// We should get an error if we try to create a new image atop an old one.
-	if err := Create(image); err == nil {
-		t.Errorf("expected to get a cowardly no-clobber error!")
-	}
+	err = Create(image)
+	assert.Error(t, err, "trying to clobber existing image should fail")
 }
 
 func TestEngineBlob(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := Create(image)
+	require.NoError(t, err)
 
 	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	defer engine.Close()
 
 	for _, test := range []struct {
@@ -93,182 +81,130 @@ func TestEngineBlob(t *testing.T) {
 		{[]byte("another blob")},
 	} {
 		digester := cas.BlobAlgorithm.Digester()
-		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
-			t.Fatalf("could not hash bytes: %+v", err)
-		}
+		expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes))
+		require.NoError(t, err)
+		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher")
 		expectedDigest := digester.Digest()
 
 		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
-		if err != nil {
-			t.Errorf("PutBlob: unexpected error: %+v", err)
-		}
-
-		if digest != expectedDigest {
-			t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
-		}
-		if size != int64(len(test.bytes)) {
-			t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(test.bytes), size)
-		}
+		require.NoError(t, err, "put blob")
+		assert.Equal(t, expectedDigest, digest, "put blob digest should match actual digest")
+		assert.Equal(t, expectedSize, size, "put blob size should match actual size")
 
 		blobReader, err := engine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
+		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
 		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
-		if !bytes.Equal(test.bytes, gotBytes) {
-			t.Errorf("GetBlob: bytes did not match: expected=%s got=%s", string(test.bytes), string(gotBytes))
-		}
+		require.NoError(t, err)
+		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error: %+v", err)
-		}
+		err = engine.DeleteBlob(ctx, digest)
+		require.NoError(t, err, "delete blob")
 
-		if br, err := engine.GetBlob(ctx, digest); !errors.Is(err, os.ErrNotExist) {
-			if err == nil {
-				br.Close()
-				t.Errorf("GetBlob: still got blob contents after DeleteBlob!")
-			} else {
-				t.Errorf("GetBlob: unexpected error: %+v", err)
-			}
-		}
+		blobReader2, err := engine.GetBlob(ctx, digest)
+		assert.ErrorIs(t, err, os.ErrNotExist, "get blob should fail for non-existent blob")
+		assert.Nil(t, blobReader2, "get blob should return nil blob reader for non-existent blob")
 
 		// DeleteBlob is idempotent. It shouldn't cause an error.
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error on double-delete: %+v", err)
-		}
+		err = engine.DeleteBlob(ctx, digest)
+		assert.NoError(t, err, "delete non-existent blob should still succeed")
 	}
 
 	// Should be no blobs left.
-	if blobs, err := engine.ListBlobs(ctx); err != nil {
-		t.Errorf("unexpected error getting list of blobs: %+v", err)
-	} else if len(blobs) > 0 {
-		t.Errorf("got blobs in a clean image: %v", blobs)
-	}
+	blobs, err := engine.ListBlobs(ctx)
+	require.NoError(t, err, "list blobs")
+	assert.Empty(t, blobs, "image should contain no blobs after all deletions")
 }
 
 func TestEngineValidate(t *testing.T) {
-	var (
-		engine cas.Engine
-		image  string
-		err    error
-	)
-
 	// Empty directory.
-	image = t.TempDir()
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("EmptyDir", func(t *testing.T) {
+		image := t.TempDir()
+
+		engine, err := Open(image)
+		assert.Error(t, err, "empty directory is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// Invalid oci-layout.
-	image = t.TempDir()
-	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("InvalidLayoutJSON-NonJSON", func(t *testing.T) {
+		image := t.TempDir()
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "non-json oci-layout is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// Invalid oci-layout.
-	image = t.TempDir()
-	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("InvalidLayoutJSON-Empty", func(t *testing.T) {
+		image := t.TempDir()
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "empty oci-layout is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// Missing blobdir.
-	image = t.TempDir()
-	if err := os.Remove(image); err != nil {
-		t.Fatal(err)
-	}
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
-		t.Fatalf("unexpected error deleting blobdir: %+v", err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("BlobDir-Missing", func(t *testing.T) {
+		image := filepath.Join(t.TempDir(), "image")
+		err := Create(image)
+		require.NoError(t, err, "create image")
+		require.NoError(t, os.RemoveAll(filepath.Join(image, blobDirectory)))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "missing blob directory is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// blobdir is not a directory.
-	image = t.TempDir()
-	if err := os.Remove(image); err != nil {
-		t.Fatal(err)
-	}
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-	if err := os.RemoveAll(filepath.Join(image, blobDirectory)); err != nil {
-		t.Fatalf("unexpected error deleting blobdir: %+v", err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755); err != nil {
-		t.Fatal(err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("BlobDir-File", func(t *testing.T) {
+		image := filepath.Join(t.TempDir(), "image")
+		err := Create(image)
+		require.NoError(t, err, "create image")
+		require.NoError(t, os.RemoveAll(filepath.Join(image, blobDirectory)))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "blob directory as file is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// Missing index.json.
-	image = t.TempDir()
-	if err := os.Remove(image); err != nil {
-		t.Fatal(err)
-	}
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
-		t.Fatalf("unexpected error deleting index: %+v", err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("IndexJSON-Missing", func(t *testing.T) {
+		image := filepath.Join(t.TempDir(), "image")
+		err := Create(image)
+		require.NoError(t, err, "create image")
+		require.NoError(t, os.RemoveAll(filepath.Join(image, indexFile)))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "missing index.json is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// index is not a valid file.
-	image = t.TempDir()
-	if err := os.Remove(image); err != nil {
-		t.Fatal(err)
-	}
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-	if err := os.RemoveAll(filepath.Join(image, indexFile)); err != nil {
-		t.Fatalf("unexpected error deleting index: %+v", err)
-	}
-	if err := os.Mkdir(filepath.Join(image, indexFile), 0755); err != nil {
-		t.Fatal(err)
-	}
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("IndexJSON-Dir", func(t *testing.T) {
+		image := filepath.Join(t.TempDir(), "image")
+		err := Create(image)
+		require.NoError(t, err, "create image")
+		require.NoError(t, os.RemoveAll(filepath.Join(image, indexFile)))
+		require.NoError(t, os.Mkdir(filepath.Join(image, indexFile), 0755))
+
+		engine, err := Open(image)
+		assert.Error(t, err, "index.json as directory is not a valid image")
+		assert.Nil(t, engine)
+	})
 
 	// No such directory.
-	image = filepath.Join(t.TempDir(), "non-exist")
-	engine, err = Open(image)
-	if err == nil {
-		t.Errorf("expected to get an error")
-		engine.Close()
-	}
+	t.Run("IndexJSON-Dir", func(t *testing.T) {
+		image := filepath.Join(t.TempDir(), "non-exist")
+
+		engine, err := Open(image)
+		assert.Error(t, err, "non-existent path is not a valid image")
+		assert.Nil(t, engine)
+	})
 }
 
 // Make sure that opencontainers/umoci#63 doesn't have a regression. We
@@ -276,127 +212,93 @@ func TestEngineValidate(t *testing.T) {
 func TestEngineGCLocking(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
+	image := filepath.Join(t.TempDir(), "image")
+	err := Create(image)
+	require.NoError(t, err)
 
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
-
-	content := []byte("here's some sample content")
+	engine, err := Open(image)
+	require.NoError(t, err)
+	defer engine.Close()
 
 	// Open a reference to the CAS, and make sure that it has a .temp set up.
-	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	content := []byte("here's some sample content")
 
 	digester := cas.BlobAlgorithm.Digester()
-	if _, err := io.Copy(digester.Hash(), bytes.NewReader(content)); err != nil {
-		t.Fatalf("could not hash bytes: %+v", err)
-	}
+	expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(content))
+	require.NoError(t, err)
+	assert.EqualValues(t, len(content), expectedSize, "whole blob should be written to hasher")
 	expectedDigest := digester.Digest()
 
 	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
-	if err != nil {
-		t.Errorf("PutBlob: unexpected error: %+v", err)
-	}
+	require.NoError(t, err, "put blob")
+	assert.Equal(t, expectedDigest, digest, "put blob should return same digest as content")
+	assert.Equal(t, expectedSize, size, "put blob should return same size as content")
 
-	if digest != expectedDigest {
-		t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
-	}
-	if size != int64(len(content)) {
-		t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(content), size)
-	}
+	// We need a live tmpdir that has an advisory lock set.
+	require.NotEmpty(t, engine.(*dirEngine).temp, "engine should have a tmpdir after adding a blob")
 
-	if engine.(*dirEngine).temp == "" {
-		t.Errorf("engine doesn't have a tempdir after putting a blob!")
-	}
-
-	// Create umoci and other directories and files to make sure things work.
+	// Create subpaths to make sure our GC will only clean things that we can
+	// be sure can be removed.
 	umociTestDir, err := ioutil.TempDir(image, ".umoci-dead-")
-	if err != nil {
-		t.Fatal(err)
-	}
-
+	require.NoError(t, err)
 	otherTestDir, err := ioutil.TempDir(image, "other-")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Open a new reference and GC it.
 	gcEngine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 
 	// TODO: This should be done with casext.GC...
-	if err := gcEngine.Clean(ctx); err != nil {
-		t.Fatalf("unexpected error while GCing image: %+v", err)
-	}
+	err = gcEngine.Clean(ctx)
+	require.NoError(t, err, "engine clean")
 
 	for _, path := range []string{
 		engine.(*dirEngine).temp,
 		otherTestDir,
 	} {
-		if _, err := os.Lstat(path); err != nil {
-			t.Errorf("expected %s to still exist after GC: %+v", path, err)
-		}
+		_, err := os.Lstat(path)
+		require.NoErrorf(t, err, "image subpath %q should exist after GC", path)
 	}
 
 	for _, path := range []string{
 		umociTestDir,
 	} {
-		if _, err := os.Lstat(path); err == nil {
-			t.Errorf("expected %s to not exist after GC", path)
-		} else if !errors.Is(err, os.ErrNotExist) {
-			t.Errorf("expected IsNotExist for %s after GC: %+v", path, err)
-		}
+		_, err := os.Lstat(path)
+		require.ErrorIsf(t, err, os.ErrNotExist, "image subpath %q should not exist after GC", path)
 	}
 }
 
 func TestCreateLayoutReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := Create(image)
+	require.NoError(t, err)
 
 	// make it readonly
 	testutils.MakeReadOnly(t, image)
 	defer testutils.MakeReadWrite(t, image)
 
 	engine, err := Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	defer engine.Close()
 
 	// We should have an empty index and no blobs.
-	if index, err := engine.GetIndex(ctx); err != nil {
-		t.Errorf("unexpected error getting top-level index: %+v", err)
-	} else if len(index.Manifests) > 0 {
-		t.Errorf("got manifests in top-level index in a newly created image: %v", index.Manifests)
-	}
-	if blobs, err := engine.ListBlobs(ctx); err != nil {
-		t.Errorf("unexpected error getting list of blobs: %+v", err)
-	} else if len(blobs) > 0 {
-		t.Errorf("got blobs in a newly created image: %v", blobs)
-	}
+	index, err := engine.GetIndex(ctx)
+	require.NoError(t, err, "get index")
+	assert.Empty(t, index.Manifests, "new image should have no manifests")
+
+	blobs, err := engine.ListBlobs(ctx)
+	require.NoError(t, err, "list blobs")
+	assert.Empty(t, blobs, "new image should have no blobs")
 }
 
 func TestEngineBlobReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := Create(image)
+	require.NoError(t, err)
 
 	for _, test := range []struct {
 		bytes []byte
@@ -406,64 +308,42 @@ func TestEngineBlobReadonly(t *testing.T) {
 		{[]byte("another blob")},
 	} {
 		engine, err := Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
+		require.NoError(t, err, "open read-write image")
 
 		digester := cas.BlobAlgorithm.Digester()
-		if _, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes)); err != nil {
-			t.Fatalf("could not hash bytes: %+v", err)
-		}
+		expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes))
+		require.NoError(t, err)
+		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher")
 		expectedDigest := digester.Digest()
 
 		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
-		if err != nil {
-			t.Errorf("PutBlob: unexpected error: %+v", err)
-		}
+		require.NoError(t, err, "put blob")
+		assert.Equal(t, expectedDigest, digest, "put blob digest should match actual digest")
+		assert.Equal(t, expectedSize, size, "put blob size should match actual size")
 
-		if digest != expectedDigest {
-			t.Errorf("PutBlob: digest doesn't match: expected=%s got=%s", expectedDigest, digest)
-		}
-		if size != int64(len(test.bytes)) {
-			t.Errorf("PutBlob: length doesn't match: expected=%d got=%d", len(test.bytes), size)
-		}
-
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
+		require.NoError(t, engine.Close(), "close read-write engine")
 
 		// make it readonly
 		testutils.MakeReadOnly(t, image)
 
 		newEngine, err := Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
+		require.NoError(t, err, "open read-only image")
 
-		blobReader, err := newEngine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
+		blobReader, err := engine.GetBlob(ctx, digest)
+		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
 		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
-		if !bytes.Equal(test.bytes, gotBytes) {
-			t.Errorf("GetBlob: bytes did not match: expected=%s got=%s", string(test.bytes), string(gotBytes))
-		}
+		require.NoError(t, err)
+		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 
 		// Make sure that writing again will FAIL.
 		_, _, err = newEngine.PutBlob(ctx, bytes.NewReader(test.bytes))
-		if err == nil {
-			t.Logf("PutBlob: e.temp = %s", newEngine.(*dirEngine).temp)
-			t.Errorf("PutBlob: expected error on ro image!")
-		}
+		require.Error(t, err, "put blob on read-only image should fail")
+		err = newEngine.DeleteBlob(ctx, digest)
+		require.Error(t, err, "delete blob on read-only image should fail")
 
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
+		require.NoError(t, newEngine.Close(), "close read-only engine")
 
 		// make it readwrite again.
 		testutils.MakeReadWrite(t, image)

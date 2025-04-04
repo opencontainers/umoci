@@ -44,24 +44,21 @@ func TestLutimesFile(t *testing.T) {
 
 	path := filepath.Join(dir, "some file")
 
-	if err := ioutil.WriteFile(path, []byte("some contents"), 0755); err != nil {
-		t.Fatal(err)
-	}
+	err = ioutil.WriteFile(path, []byte("some contents"), 0755)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)
 	mtime := testutils.Unix(257172893, 995216512)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoError(t, err)
 
 	if err := Lutimes(path, atime, mtime); err != nil {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoError(t, err)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
 	mtimeOld := time.Unix(fiOld.Mtim.Unix())
@@ -95,24 +92,21 @@ func TestLutimesDirectory(t *testing.T) {
 
 	path := filepath.Join(dir, " a directory  ")
 
-	if err := os.Mkdir(path, 0755); err != nil {
-		t.Fatal(err)
-	}
+	err = os.Mkdir(path, 0755)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
 	mtime := testutils.Unix(185726393, 752135712)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoError(t, err)
 
 	if err := Lutimes(path, atime, mtime); err != nil {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoError(t, err)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
 	mtimeOld := time.Unix(fiOld.Mtim.Unix())
@@ -146,30 +140,25 @@ func TestLutimesSymlink(t *testing.T) {
 
 	path := filepath.Join(dir, " !! symlink here")
 
-	if err := os.Symlink(".", path); err != nil {
-		t.Fatal(err)
-	}
+	err = os.Symlink(".", path)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
 	mtime := testutils.Unix(185726393, 752135712)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(dir, &fiParentOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoError(t, err)
+	err = unix.Lstat(dir, &fiParentOld)
+	require.NoError(t, err)
 
 	if err := Lutimes(path, atime, mtime); err != nil {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(dir, &fiParentNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoError(t, err)
+	err = unix.Lstat(dir, &fiParentNew)
+	require.NoError(t, err)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
 	mtimeOld := time.Unix(fiOld.Mtim.Unix())
@@ -215,41 +204,33 @@ func TestLutimesRelative(t *testing.T) {
 	defer RemoveAll(dir)
 
 	oldwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	os.Chdir(dir)
 	defer os.Chdir(oldwd)
 
 	path := filepath.Join("some parent", " !! symlink here")
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(".", path); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Dir(path), 0755)
+	require.NoError(t, err)
+	err = os.Symlink(".", path)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(134858232, 258921237)
 	mtime := testutils.Unix(171257291, 425815288)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(".", &fiParentOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoError(t, err)
+	err = unix.Lstat(".", &fiParentOld)
+	require.NoError(t, err)
 
 	if err := Lutimes(path, atime, mtime); err != nil {
 		t.Errorf("unexpected error with system.lutimes: %s", err)
 	}
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(".", &fiParentNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoError(t, err)
+	err = unix.Lstat(".", &fiParentNew)
+	require.NoError(t, err)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
 	mtimeOld := time.Unix(fiOld.Mtim.Unix())

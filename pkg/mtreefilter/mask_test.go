@@ -25,6 +25,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -44,73 +45,64 @@ func TestMaskDeltas(t *testing.T) {
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some files.
-	if err := ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "dir", "child"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "dir", "child2"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0644)
+	require.NoError(t, err)
+	err = os.MkdirAll(filepath.Join(dir, "dir", "child"), 0755)
+	require.NoError(t, err)
+	err = os.MkdirAll(filepath.Join(dir, "dir", "child2"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0644)
+	require.NoError(t, err)
 
 	// Generate a diff.
-	originalDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	initDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	require.NoError(t, err, "mtree walk")
 
 	// Modify the root.
-	if err := os.RemoveAll(filepath.Join(dir, "file2")); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "dir", "new"), []byte("more content"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("different contents"), 0666); err != nil {
-		t.Fatal(err)
-	}
+	err = os.RemoveAll(filepath.Join(dir, "file2"))
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "dir", "new"), []byte("more content"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("different contents"), 0666)
+	require.NoError(t, err)
 
 	// Generate the set of diffs.
-	newDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	diff, err := mtree.Compare(originalDh, newDh, mtreeKeywords)
-	if err != nil {
-		t.Fatal(err)
-	}
+	postDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	require.NoError(t, err, "mtree walk")
+
+	diff, err := mtree.Compare(initDh, postDh, mtreeKeywords)
+	require.NoError(t, err, "mtree diff generate")
 
 	for _, test := range []struct {
+		name  string
 		paths []string
 	}{
-		{nil},
-		{[]string{"/"}},
-		{[]string{"dir"}},
-		{[]string{filepath.Join("dir", "child2")}},
-		{[]string{"file2"}},
-		{[]string{"/", "file2"}},
-		{[]string{"file2", filepath.Join("dir", "child2")}},
+		{"NilFilter", nil},
+		{"EmptyFilter", []string{}},
+		{"Root", []string{"/"}},
+		{"Dir", []string{"dir"}},
+		{"UntouchedSubpath", []string{filepath.Join("dir", "child2")}},
+		{"File", []string{"file2"}},
+		{"Overlapping", []string{"/", "file2"}},
+		{"Multiple", []string{"file2", filepath.Join("dir", "child2")}},
 	} {
-		simpleDiff := FilterDeltas(diff, MaskFilter(test.paths))
-		for _, delta := range simpleDiff {
-			if len(test.paths) == 0 {
-				assert.Equal(t, diff, simpleDiff, "noop filter should not modify diff")
-			} else {
-				for _, path := range test.paths {
-					assert.Falsef(t, isParent(path, delta.Path()), "delta entry %q should not have a parent path in the filter list but %q is in the list", delta.Path(), path)
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			simpleDiff := FilterDeltas(diff, MaskFilter(test.paths))
+			for _, delta := range simpleDiff {
+				if len(test.paths) == 0 {
+					assert.Equal(t, diff, simpleDiff, "noop filter should not modify diff")
+				} else {
+					for _, path := range test.paths {
+						assert.Falsef(t, isParent(path, delta.Path()), "delta entry %q should not have a parent path in the filter list but %q is in the list", delta.Path(), path)
+					}
 				}
 			}
-		}
+		})
 	}
 }
 
@@ -120,33 +112,25 @@ func TestSimplifyFilter(t *testing.T) {
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some nested directories we can remove.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0644)
+	require.NoError(t, err)
 
 	// Generate a diff.
-	originalDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	initDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	require.NoError(t, err, "mtree walk")
 
 	// Modify the root.
-	if err := os.RemoveAll(filepath.Join(dir, "some")); err != nil {
-		t.Fatal(err)
-	}
+	err = os.RemoveAll(filepath.Join(dir, "some"))
+	require.NoError(t, err)
 
 	// Generate the set of diffs.
-	newDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	diff, err := mtree.Compare(originalDh, newDh, mtreeKeywords)
-	if err != nil {
-		t.Fatal(err)
-	}
+	postDh, err := mtree.Walk(dir, nil, mtreeKeywords, nil)
+	require.NoError(t, err, "mtree walk")
+
+	diff, err := mtree.Compare(initDh, postDh, mtreeKeywords)
+	require.NoError(t, err, "mtree diff generate")
 
 	// We expect to see a deletion for each entry.
 	var sawDeletions int
@@ -155,22 +139,16 @@ func TestSimplifyFilter(t *testing.T) {
 			sawDeletions++
 		}
 	}
-	if sawDeletions != 5 {
-		t.Errorf("expected to see 5 deletions with stock Compare, saw %v", sawDeletions)
-	}
+	assert.Equal(t, 5, sawDeletions, "should see 5 deletions with stock Compare")
 
 	// Simplify the diffs.
 	simpleDiff := FilterDeltas(diff, SimplifyFilter(diff))
-	if len(simpleDiff) >= len(diff) {
-		t.Errorf("expected simplified diff to be shorter (%v >= %v)", len(simpleDiff), len(diff))
-	}
+	require.Less(t, len(simpleDiff), len(diff), "SimplifyFilter diff should be smaller than original diff")
 	var sawSimpleDeletions int
 	for _, delta := range simpleDiff {
 		if delta.Type() == mtree.Missing {
 			sawSimpleDeletions++
 		}
 	}
-	if sawSimpleDeletions != 1 {
-		t.Errorf("expected to see 1 deletion with simplified filter, saw %v", sawSimpleDeletions)
-	}
+	assert.Equal(t, 1, sawSimpleDeletions, "should only see 1 deletion with SimplifyFilter")
 }

@@ -24,6 +24,8 @@ import (
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/proto"
 )
 
@@ -36,11 +38,11 @@ import (
 // (both for user.rootlesscontainers and the more general case).
 func TestMapRootless(t *testing.T) {
 	// Just a basic "*archive/tar.Header" that we use for testing.
-	rootUID := 1000
-	rootGID := 100
+	rootUid := 1000
+	rootGid := 100
 	mapOptions := MapOptions{
-		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUID), ContainerID: 0, Size: 1}},
-		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGID), ContainerID: 0, Size: 1}},
+		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUid), ContainerID: 0, Size: 1}},
+		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGid), ContainerID: 0, Size: 1}},
 		Rootless:    true,
 	}
 	baseHdr := tar.Header{
@@ -49,19 +51,20 @@ func TestMapRootless(t *testing.T) {
 		Xattrs:   make(map[string]string),
 	}
 
-	for idx, test := range []struct {
+	for _, test := range []struct {
+		name           string
 		uid, gid       int                          // (uid, gid) for hdr
 		proto          *rootlesscontainers.Resource // (uid, gid) for xattr
-		outUID, outGID int                          // (uid, gid) after map
+		outUid, outGid int                          // (uid, gid) after map
 		errorExpected  bool
 	}{
 		// Noop values.
-		{0, 0, nil, 0, 0, false},
-		{0, 0, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: rootlesscontainers.NoopID}, 0, 0, false},
+		{"NilMap", 0, 0, nil, 0, 0, false},
+		{"NoopMap", 0, 0, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: rootlesscontainers.NoopID}, 0, 0, false},
 		// Basic mappings.
-		{0, 0, &rootlesscontainers.Resource{Uid: 123, Gid: rootlesscontainers.NoopID}, 123, 0, false},
-		{0, 0, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: 456}, 0, 456, false},
-		{0, 0, &rootlesscontainers.Resource{Uid: 8001, Gid: 1337}, 8001, 1337, false},
+		{"OnlyUid", 0, 0, &rootlesscontainers.Resource{Uid: 123, Gid: rootlesscontainers.NoopID}, 123, 0, false},
+		{"OnlyGid", 0, 0, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: 456}, 0, 456, false},
+		{"UidGid", 0, 0, &rootlesscontainers.Resource{Uid: 8001, Gid: 1337}, 8001, 1337, false},
 		// XXX: We cannot enable these tests at the moment because we currently
 		//      just ignore the owner and always set it to 0 for rootless
 		//      containers.
@@ -69,37 +72,32 @@ func TestMapRootless(t *testing.T) {
 		//{154, 992, &rootlesscontainers.Resource{Uid: 9982, Gid: rootlesscontainers.NoopID}, 9982, 992, false},
 		//{291, 875, &rootlesscontainers.Resource{Uid: 42158, Gid: 31337}, 42158, 31337, false},
 	} {
-		// Update baseHdr.
-		baseHdr.Uid = test.uid
-		baseHdr.Gid = test.gid
-		delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
-		if test.proto != nil {
-			payload, err := proto.Marshal(test.proto)
-			if err != nil {
-				t.Errorf("test%d: failed to marshal proto in test", idx)
-				continue
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			// Update baseHdr.
+			baseHdr.Uid = test.uid
+			baseHdr.Gid = test.gid
+			delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
+			if test.proto != nil {
+				payload, err := proto.Marshal(test.proto)
+				require.NoError(t, err, "marshal proto")
+				baseHdr.Xattrs[rootlesscontainers.Keyname] = string(payload)
 			}
-			baseHdr.Xattrs[rootlesscontainers.Keyname] = string(payload)
-		}
 
-		// Map.
-		err := mapHeader(&baseHdr, mapOptions)
-		if (err != nil) != test.errorExpected {
-			t.Errorf("test%d: error value was unexpected, errorExpected=%v got err=%v", idx, test.errorExpected, err)
-			continue
-		}
+			// Map.
+			err := mapHeader(&baseHdr, mapOptions)
+			if test.errorExpected {
+				require.Error(t, err, "map header should fail")
+			} else {
+				require.NoError(t, err, "map header")
+			}
 
-		// Output header shouldn't contain "user.rootlesscontainers".
-		if value, ok := baseHdr.Xattrs[rootlesscontainers.Keyname]; ok {
-			t.Errorf("test%d: 'user.rootlesscontainers' present in output: value=%v", idx, value)
-		}
-		// Make sure that the uid and gid are what we wanted.
-		if uid := baseHdr.Uid; uid != test.outUID {
-			t.Errorf("test%d: got unexpected uid: wanted %v got %v", idx, test.outUID, uid)
-		}
-		if gid := baseHdr.Gid; gid != test.outGID {
-			t.Errorf("test%d: got unexpected gid: wanted %v got %v", idx, test.outGID, gid)
-		}
+			// Output header shouldn't contain "user.rootlesscontainers".
+			assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "user.rootlesscontainers should not be mapped")
+			// Make sure that the uid and gid are what we wanted.
+			assert.Equal(t, test.outUid, baseHdr.Uid, "mapped uid")
+			assert.Equal(t, test.outGid, baseHdr.Gid, "mapped uid")
+		})
 	}
 }
 
@@ -107,11 +105,11 @@ func TestMapRootless(t *testing.T) {
 // case (both for user.rootlesscontainers and the more general case).
 func TestUnmapRootless(t *testing.T) {
 	// Just a basic "*archive/tar.Header" that we use for testing.
-	rootUID := 1000
-	rootGID := 100
+	rootUid := 1000
+	rootGid := 100
 	mapOptions := MapOptions{
-		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUID), ContainerID: 0, Size: 1}},
-		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGID), ContainerID: 0, Size: 1}},
+		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUid), ContainerID: 0, Size: 1}},
+		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGid), ContainerID: 0, Size: 1}},
 		Rootless:    true,
 	}
 	baseHdr := tar.Header{
@@ -119,66 +117,53 @@ func TestUnmapRootless(t *testing.T) {
 		Typeflag: tar.TypeReg,
 	}
 
-	for idx, test := range []struct {
+	for _, test := range []struct {
+		name     string
 		uid, gid int                          // (uid, gid) for hdr
 		proto    *rootlesscontainers.Resource // expected "user.rootlesscontainers" payload
 	}{
 		// Basic mappings to check.
-		{0, 0, nil},
-		{521, 0, &rootlesscontainers.Resource{Uid: 521, Gid: rootlesscontainers.NoopID}},
-		{0, 942, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: 942}},
-		{333, 825, &rootlesscontainers.Resource{Uid: 333, Gid: 825}},
-		{185, 9923, &rootlesscontainers.Resource{Uid: 185, Gid: 9923}},
+		{"Root", 0, 0, nil},
+		{"RootGid", 521, 0, &rootlesscontainers.Resource{Uid: 521, Gid: rootlesscontainers.NoopID}},
+		{"RootUid", 0, 942, &rootlesscontainers.Resource{Uid: rootlesscontainers.NoopID, Gid: 942}},
+		{"NonRoot1", 333, 825, &rootlesscontainers.Resource{Uid: 333, Gid: 825}},
+		{"NonRoot2", 185, 9923, &rootlesscontainers.Resource{Uid: 185, Gid: 9923}},
 	} {
-		// Update baseHdr.
-		baseHdr.Uid = test.uid
-		baseHdr.Gid = test.gid
-		delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			// Update baseHdr.
+			baseHdr.Uid = test.uid
+			baseHdr.Gid = test.gid
+			delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
 
-		// Unmap.
-		if err := unmapHeader(&baseHdr, mapOptions); err != nil {
-			t.Errorf("test%d: unexpected error in unmapHeader: %v", idx, err)
-			continue
-		}
+			// Unmap.
+			err := unmapHeader(&baseHdr, mapOptions)
+			require.NoError(t, err, "unmapHeader")
 
-		// Check the owner.
-		if baseHdr.Uid != rootUID {
-			t.Errorf("test%d: got hdr uid %d when expected %d", idx, baseHdr.Uid, rootUID)
-		}
-		if baseHdr.Gid != rootGID {
-			t.Errorf("test%d: got hdr gid %d when expected %d", idx, baseHdr.Gid, rootGID)
-		}
+			// Check the owner.
+			assert.Equal(t, rootUid, baseHdr.Uid, "unmapped uid")
+			assert.Equal(t, rootGid, baseHdr.Gid, "unmapped uid")
 
-		// Check that the xattr is what we wanted.
-		if payload, ok := baseHdr.Xattrs[rootlesscontainers.Keyname]; (test.proto != nil) != ok {
-			// Only bad if we expected a proto...
-			t.Errorf("test%d: unexpected situation: expected xattr exist to be %v", idx, test.proto != nil)
-			continue
-		} else if ok {
-			var parsed rootlesscontainers.Resource
-			if err := proto.Unmarshal([]byte(payload), &parsed); err != nil {
-				t.Errorf("test%d: unexpected error parsing payload: %v", idx, err)
-				continue
+			// Check that the xattr is what we wanted.
+			if test.proto == nil {
+				assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping shouldn't create user.rootlesscontainers")
+			} else {
+				assert.Contains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping should create user.rootlesscontainers")
+				payload := baseHdr.Xattrs[rootlesscontainers.Keyname]
+
+				var parsed rootlesscontainers.Resource
+				err := proto.Unmarshal([]byte(payload), &parsed)
+				require.NoError(t, err, "unmarshal user.rootlesscontainers payload")
+
+				assert.Equal(t, test.proto.Uid, parsed.Uid, "user.rootlesscontainers payload uid")
+				assert.Equal(t, test.proto.Gid, parsed.Gid, "user.rootlesscontainers payload gid")
 			}
 
-			if parsed.Uid != test.proto.Uid {
-				t.Errorf("test%d: got xattr uid %d when expected %d", idx, parsed.Uid, test.proto.Uid)
-			}
-			if parsed.Gid != test.proto.Gid {
-				t.Errorf("test%d: got xattr gid %d when expected %d", idx, parsed.Gid, test.proto.Gid)
-			}
-		}
-
-		// Finally, just do a check to ensure that mapHeader returns the old values.
-		if err := mapHeader(&baseHdr, mapOptions); err != nil {
-			t.Errorf("test%d: unexpected error in mapHeader: %v", idx, err)
-			continue
-		}
-		if baseHdr.Uid != test.uid {
-			t.Errorf("test%d: round-trip of uid failed: expected %d got %d", idx, test.uid, baseHdr.Uid)
-		}
-		if baseHdr.Gid != test.gid {
-			t.Errorf("test%d: round-trip of gid failed: expected %d got %d", idx, test.gid, baseHdr.Gid)
-		}
+			// Finally, just do a check to ensure that mapHeader returns the old values.
+			err = mapHeader(&baseHdr, mapOptions)
+			require.NoError(t, err, "mapHeader")
+			assert.Equal(t, test.uid, baseHdr.Uid, "mapped uid")
+			assert.Equal(t, test.gid, baseHdr.Gid, "mapped uid")
+		})
 	}
 }

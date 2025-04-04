@@ -20,6 +20,8 @@ package casext
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateRefname(t *testing.T) {
@@ -59,8 +61,6 @@ func TestValidateRefname(t *testing.T) {
 		{"etc/passwd/123", true},
 	} {
 		valid := IsValidReferenceName(test.refname)
-		if valid != test.valid {
-			t.Errorf("incorrectly determined validity of refname %q: expected %v got %v", test.refname, test.valid, valid)
-		}
+		assert.Equalf(t, test.valid, valid, "incorrectly determined validity of refname %q", test.refname)
 	}
 }

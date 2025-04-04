@@ -28,6 +28,7 @@ import (
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 
@@ -36,13 +37,10 @@ import (
 )
 
 func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
-	assert := assert.New(t)
 	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
-	if err != nil {
-		t.Fatalf("couldn't mknod in dir: %v", err)
-	}
+	require.NoError(t, err, "check if can mknod")
 
 	if !mknodOk {
 		t.Skip("skipping overlayfs test on kernel < 5.8")
@@ -50,7 +48,7 @@ func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 
 	testNode := path.Join(dir, "test")
 	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	assert.NoError(err)
+	assert.NoError(t, err, "mknod")
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
 	reader := GenerateInsertLayer(dir, "/", false, &packOptions)
@@ -58,26 +56,23 @@ func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 
 	tr := tar.NewReader(reader)
 	hdr, err := tr.Next()
-	assert.NoError(err)
-	assert.Equal(hdr.Name, "/")
+	assert.NoError(t, err, "read next header")
+	assert.Equal(t, hdr.Name, "/", "first entry should be /")
 
 	hdr, err = tr.Next()
-	assert.NoError(err)
+	assert.NoError(t, err, "read next header")
+	assert.EqualValues(t, hdr.Typeflag, tar.TypeReg, "whiteout typeflag")
+	assert.Equal(t, hdr.Name, whPrefix+"test", "whiteout pathname prefix")
 
-	assert.Equal(int32(hdr.Typeflag), int32(tar.TypeReg))
-	assert.Equal(hdr.Name, whPrefix+"test")
 	_, err = tr.Next()
-	assert.Equal(err, io.EOF)
+	assert.ErrorIs(t, err, io.EOF, "end of archive")
 }
 
 func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
-	assert := assert.New(t)
 	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
-	if err != nil {
-		t.Fatalf("couldn't mknod in dir: %v", err)
-	}
+	require.NoError(t, err, "check if can mknod")
 
 	if !mknodOk {
 		t.Skip("skipping overlayfs test on kernel < 5.8")
@@ -85,7 +80,7 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 
 	testNode := path.Join(dir, "test")
 	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	assert.NoError(err)
+	assert.NoError(t, err, "mknod")
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
 	// something reasonable
@@ -97,19 +92,19 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 		"mode",
 	}
 	deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-	assert.NoError(err)
+	assert.NoError(t, err, "mtree check")
 
 	reader, err := GenerateLayer(dir, deltas, &packOptions)
-	assert.NoError(err)
+	assert.NoError(t, err, "generate layer")
 	defer reader.Close()
 
 	tr := tar.NewReader(reader)
 
 	hdr, err := tr.Next()
-	assert.NoError(err)
+	assert.NoError(t, err, "read next header")
+	assert.EqualValues(t, hdr.Typeflag, tar.TypeReg, "whiteout typeflag")
+	assert.Equal(t, path.Base(hdr.Name), whPrefix+"test", "whiteout pathname prefix")
 
-	assert.Equal(int32(hdr.Typeflag), int32(tar.TypeReg))
-	assert.Equal(path.Base(hdr.Name), whPrefix+"test")
 	_, err = tr.Next()
-	assert.Equal(err, io.EOF)
+	assert.ErrorIs(t, err, io.EOF, "end of archive")
 }

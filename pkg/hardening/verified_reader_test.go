@@ -21,7 +21,6 @@ package hardening
 import (
 	"bytes"
 	"crypto/rand"
-	"errors"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -31,6 +30,8 @@ import (
 	_ "crypto/sha256"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestValid(t *testing.T) {
@@ -38,9 +39,8 @@ func TestValid(t *testing.T) {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			// Fill buffer with random data.
 			buffer := new(bytes.Buffer)
-			if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-				t.Fatalf("getting random data for buffer failed: %v", err)
-			}
+			_, err := io.CopyN(buffer, rand.Reader, int64(size))
+			require.NoError(t, err, "fill buffer with random data")
 
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
@@ -50,15 +50,13 @@ func TestValid(t *testing.T) {
 				ExpectedSize:   int64(size),
 			}
 
-			// Make sure everything if we copy-to-EOF we get no errors.
-			if _, err := io.Copy(ioutil.Discard, verifiedReader); err != nil {
-				t.Errorf("expected digest+size to be correct on EOF: got an error: %v", err)
-			}
+			// Make sure if we copy-to-EOF we get no errors.
+			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			assert.NoError(t, err, "digest+size should be correct on EOF")
 
 			// And on close we shouldn't get an error either.
-			if err := verifiedReader.Close(); err != nil {
-				t.Errorf("expected digest+size to be correct on Close: got an error: %v", err)
-			}
+			err = verifiedReader.Close()
+			assert.NoError(t, err, "digest+size should be correct on Close")
 		})
 	}
 }
@@ -68,27 +66,24 @@ func TestValidIgnoreLength(t *testing.T) {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			// Fill buffer with random data.
 			buffer := new(bytes.Buffer)
-			if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-				t.Fatalf("getting random data for buffer failed: %v", err)
-			}
+			_, err := io.CopyN(buffer, rand.Reader, int64(size))
+			require.NoError(t, err, "fill buffer with random data")
 
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 			verifiedReader := &VerifiedReadCloser{
 				Reader:         ioutil.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
-				ExpectedSize:   int64(-1),
+				ExpectedSize:   -1,
 			}
 
-			// Make sure everything if we copy-to-EOF we get no errors.
-			if _, err := io.Copy(ioutil.Discard, verifiedReader); err != nil {
-				t.Errorf("expected digest+size to be correct on EOF: got an error: %v", err)
-			}
+			// Make sure if we copy-to-EOF we get no errors.
+			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			assert.NoError(t, err, "digest (size ignored) should be correct on EOF")
 
 			// And on close we shouldn't get an error either.
-			if err := verifiedReader.Close(); err != nil {
-				t.Errorf("expected digest+size to be correct on Close: got an error: %v", err)
-			}
+			err = verifiedReader.Close()
+			assert.NoError(t, err, "digest (size ignored) should be correct on Close")
 		})
 	}
 }
@@ -98,28 +93,26 @@ func TestValidTrailing(t *testing.T) {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			// Fill buffer with random data.
 			buffer := new(bytes.Buffer)
-			if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-				t.Fatalf("getting random data for buffer failed: %v", err)
-			}
+			_, err := io.CopyN(buffer, rand.Reader, int64(size))
+			require.NoError(t, err, "fill buffer with random data")
 
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 			verifiedReader := &VerifiedReadCloser{
 				Reader:         ioutil.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
-				ExpectedSize:   int64(-1),
+				ExpectedSize:   -1,
 			}
 
 			// Read *half* of the bytes, leaving some remaining. We should get
 			// no errors.
-			if _, err := io.CopyN(ioutil.Discard, verifiedReader, int64(size/2)); err != nil {
-				t.Errorf("expected no error after reading only %d bytes: got an error: %v", size/2, err)
-			}
+			_, err = io.CopyN(ioutil.Discard, verifiedReader, int64(size/2))
+			assert.NoError(t, err, "should get no errors when reading half of blob")
 
-			// And on close we shouldn't get an error either.
-			if err := verifiedReader.Close(); err != nil {
-				t.Errorf("expected digest+size to be correct on Close: got an error: %v", err)
-			}
+			// On close we shouldn't get an error, even though there are
+			// trailing bytes still in the buffer.
+			err = verifiedReader.Close()
+			assert.NoError(t, err, "digest (size ignored) should be correct on Close")
 		})
 	}
 }
@@ -129,9 +122,8 @@ func TestInvalidDigest(t *testing.T) {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			// Fill buffer with random data.
 			buffer := new(bytes.Buffer)
-			if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-				t.Fatalf("getting random data for buffer failed: %v", err)
-			}
+			_, err := io.CopyN(buffer, rand.Reader, int64(size))
+			require.NoError(t, err, "fill buffer with random data")
 
 			// Generate an *incorrect* hash.
 			fakeBytes := append(buffer.Bytes()[1:], 0x80)
@@ -142,15 +134,13 @@ func TestInvalidDigest(t *testing.T) {
 				ExpectedSize:   int64(size),
 			}
 
-			// Make sure everything if we copy-to-EOF we get the right error.
-			if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrDigestMismatch) {
-				t.Errorf("expected digest to be invalid on EOF: got wrong error: %v", err)
-			}
+			// Make sure if we copy-to-EOF we get the right error.
+			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on EOF")
 
-			// And on close we should get the error.
-			if err := verifiedReader.Close(); !errors.Is(err, ErrDigestMismatch) {
-				t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
-			}
+			// And on close we should get the same error.
+			err = verifiedReader.Close()
+			assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on Close")
 		})
 	}
 }
@@ -161,9 +151,8 @@ func TestInvalidDigest_Trailing_NoExpectedSize(t *testing.T) {
 			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
 				// Fill buffer with random data.
 				buffer := new(bytes.Buffer)
-				if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-					t.Fatalf("getting random data for buffer failed: %v", err)
-				}
+				_, err := io.CopyN(buffer, rand.Reader, int64(size))
+				require.NoError(t, err, "fill buffer with random data")
 
 				// Generate a correct hash (for a shorter buffer), but don't
 				// verify the size -- this is to make sure that we actually
@@ -176,21 +165,19 @@ func TestInvalidDigest_Trailing_NoExpectedSize(t *testing.T) {
 					ExpectedSize:   -1,
 				}
 
-				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.CopyN(ioutil.Discard, verifiedReader, int64(size-delta)); err != nil {
-					t.Errorf("expected no errors after reading N bytes: got error: %v", err)
-				}
+				// Read up to the end of the short buffer. We should get no
+				// errors.
+				_, err = io.CopyN(ioutil.Discard, verifiedReader, int64(size-delta))
+				assert.NoErrorf(t, err, "should get no errors when reading %d (%d-%d) bytes", size-delta, size, delta)
 
 				// Check that the digest does actually match right now.
 				verifiedReader.init()
-				if err := verifiedReader.verify(nil); err != nil {
-					t.Errorf("expected no errors in verify before Close: got error: %v", err)
-				}
+				err = verifiedReader.verify(nil)
+				assert.NoError(t, err, "digest check should succeed at the point we finish the subset")
 
-				// And on close we should get the error.
-				if err := verifiedReader.Close(); !errors.Is(err, ErrDigestMismatch) {
-					t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
-				}
+				// On close we should get the error.
+				err = verifiedReader.Close()
+				assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on Close")
 			})
 		}
 	}
@@ -202,13 +189,15 @@ func TestInvalidSize_LongBuffer(t *testing.T) {
 			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
 				// Fill buffer with random data.
 				buffer := new(bytes.Buffer)
-				if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-					t.Fatalf("getting random data for buffer failed: %v", err)
-				}
+				_, err := io.CopyN(buffer, rand.Reader, int64(size))
+				require.NoError(t, err, "fill buffer with random data")
 
-				// Generate a correct hash (for the full buffer), but limit the
-				// size to be smaller (so that we ensure we don't allow such
-				// actions).
+				// Create a fake digest and size for a subset of the buffer,
+				// but get the VerifiedReadCloser to read the full buffer. This
+				// will ensure that we disallow someone appending data to the
+				// end of the buffer without us noticing (and that we stop
+				// reading once we step over the expected length -- that we
+				// don't read the entire buffer!).
 				shortBuffer := buffer.Bytes()[:size-delta]
 				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
 				verifiedReader := &VerifiedReadCloser{
@@ -217,15 +206,26 @@ func TestInvalidSize_LongBuffer(t *testing.T) {
 					ExpectedSize:   int64(size - delta),
 				}
 
-				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
-				}
+				// Make sure if we try to copy-to-EOF we get the right error.
+				read, err := io.Copy(ioutil.Discard, verifiedReader)
+				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on full copy")
 
-				// And on close we should get the error.
-				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
-				}
+				// Make sure we don't actually read to the end of the buffer if
+				// there is a known size. Copy should say that it only read
+				// ExpectedSize bytes, and internally we should only read one
+				// past the end of ExpectedSize.
+				assert.EqualValues(t, verifiedReader.ExpectedSize, read, "Copy should not read past ExpectedSize")
+				assert.EqualValues(t, verifiedReader.ExpectedSize+1, verifiedReader.currentSize, "VerifiedReadCloser.Read should internally only read one byte past the ExpectedSize")
+				assert.Len(t, buffer.Bytes(), delta-1, "buffer should still have some remaining bytes after Copy")
+
+				// On close we should get the error.
+				err = verifiedReader.Close()
+				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on Close")
+
+				// Close also shouldn't read any more bytes from the buffer.
+				assert.EqualValues(t, verifiedReader.ExpectedSize, read, "VerifiedReadCloser.Close should not read past ExpectedSize")
+				assert.EqualValues(t, verifiedReader.ExpectedSize+1, verifiedReader.currentSize, "VerifiedReadCloser.Close should internally only read one byte past the ExpectedSize")
+				assert.Len(t, buffer.Bytes(), delta-1, "buffer should still have some remaining bytes after VerifiedReadCloser.Close")
 			})
 		}
 	}
@@ -237,9 +237,8 @@ func TestInvalidSize_ShortBuffer(t *testing.T) {
 			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
 				// Fill buffer with random data.
 				buffer := new(bytes.Buffer)
-				if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-					t.Fatalf("getting random data for buffer failed: %v", err)
-				}
+				_, err := io.CopyN(buffer, rand.Reader, int64(size))
+				require.NoError(t, err, "fill buffer with random data")
 
 				// Generate a correct hash, but set the size to be larger.
 				expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
@@ -249,15 +248,13 @@ func TestInvalidSize_ShortBuffer(t *testing.T) {
 					ExpectedSize:   int64(size + delta),
 				}
 
-				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
-				}
+				// Make sure if we try to copy-to-EOF we get the right error.
+				_, err = io.Copy(ioutil.Discard, verifiedReader)
+				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on full copy")
 
-				// And on close we should get the error.
-				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
-				}
+				// On close we should get the error.
+				err = verifiedReader.Close()
+				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on Close")
 			})
 		}
 	}
@@ -267,9 +264,8 @@ func TestNoop(t *testing.T) {
 	// Fill buffer with random data.
 	buffer := new(bytes.Buffer)
 	size := 256
-	if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-		t.Fatalf("getting random data for buffer failed: %v", err)
-	}
+	_, err := io.CopyN(buffer, rand.Reader, int64(size))
+	require.NoError(t, err, "fill buffer with random data")
 
 	// Get expected hash.
 	expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
@@ -305,19 +301,11 @@ func TestNoop(t *testing.T) {
 	_ = tripleWrappedReader.Close()
 
 	// Bottom-most wrapper should've been hit.
-	if verifiedReader.digester == nil {
-		t.Errorf("verifiedReader didn't digest input")
-	}
+	assert.NotNil(t, verifiedReader.digester, "verified reader digester should be active")
 	// Middle wrapper (identical to lowest) is a noop.
-	if wrappedReader.digester != nil {
-		t.Errorf("wrappedReader wasn't noop'd out")
-	}
+	assert.Nil(t, wrappedReader.digester, "wrapped reader digester should be a noop")
 	// Different-digest wrapper is *not* a noop.
-	if doubleWrappedReader.digester == nil {
-		t.Errorf("doubleWrappedReader was incorrectly noop'd out")
-	}
+	assert.NotNil(t, doubleWrappedReader.digester, "wrapper reader with different digest should be active")
 	// Different-size wrapper is *not* a noop.
-	if tripleWrappedReader.digester == nil {
-		t.Errorf("tripleWrappedReader was incorrectly noop'd out")
-	}
+	assert.NotNil(t, tripleWrappedReader.digester, "wrapper reader with different size should be active")
 }

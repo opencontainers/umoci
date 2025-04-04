@@ -22,6 +22,7 @@ import (
 	"archive/tar"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
 
@@ -39,8 +40,6 @@ func TestTarmode(t *testing.T) {
 		{tar.TypeDir, unix.S_IFDIR},
 	} {
 		mode := Tarmode(test.typeflag)
-		if mode != test.mode {
-			t.Errorf("got unexpected mode %x with tar typeflag %x, expected %x", mode, test.typeflag, test.mode)
-		}
+		assert.Equalf(t, test.mode, mode, "tar typeflag %v not converted to mode properly", test.typeflag)
 	}
 }

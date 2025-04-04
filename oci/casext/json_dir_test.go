@@ -21,12 +21,13 @@ package casext
 import (
 	"context"
 	"encoding/json"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/pkg/testutils"
@@ -35,17 +36,12 @@ import (
 func TestEngineBlobJSON(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	engineExt := NewEngine(engine)
 	defer engine.Close()
 
@@ -62,65 +58,44 @@ func TestEngineBlobJSON(t *testing.T) {
 		{object{"another value", 200}},
 	} {
 		digest, _, err := engineExt.PutBlobJSON(ctx, test.object)
-		if err != nil {
-			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
-		}
+		require.NoError(t, err, "put blob json")
 
 		blobReader, err := engine.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
+		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
 		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
+		require.NoError(t, err, "read entire blob")
 
 		var gotObject object
-		if err := json.Unmarshal(gotBytes, &gotObject); err != nil {
-			t.Errorf("GetBlob: got an invalid JSON blob: %+v", err)
-		}
-		if !reflect.DeepEqual(test.object, gotObject) {
-			t.Errorf("GetBlob: got different object to original JSON. expected=%v got=%v gotBytes=%v", test.object, gotObject, gotBytes)
-		}
+		err = json.Unmarshal(gotBytes, &gotObject)
+		require.NoError(t, err, "unmarshal blob")
+		assert.Equal(t, test.object, gotObject, "parsed json blob should match original data")
 
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error: %+v", err)
-		}
+		err = engine.DeleteBlob(ctx, digest)
+		assert.NoError(t, err, "delete blob")
 
-		if br, err := engine.GetBlob(ctx, digest); !errors.Is(err, os.ErrNotExist) {
-			if err == nil {
-				br.Close()
-				t.Errorf("GetBlob: still got blob contents after DeleteBlob!")
-			} else {
-				t.Errorf("GetBlob: unexpected error: %+v", err)
-			}
-		}
+		br, err := engine.GetBlob(ctx, digest)
+		assert.ErrorIs(t, err, os.ErrNotExist, "get blob after deleting should fail")
+		assert.Nil(t, br, "get blob after deleting should fail")
 
 		// DeleteBlob is idempotent. It shouldn't cause an error.
-		if err := engine.DeleteBlob(ctx, digest); err != nil {
-			t.Errorf("DeleteBlob: unexpected error on double-delete: %+v", err)
-		}
+		err = engine.DeleteBlob(ctx, digest)
+		assert.NoError(t, err, "delete non-existent blob")
 	}
 
 	// Should be no blobs left.
-	if blobs, err := engine.ListBlobs(ctx); err != nil {
-		t.Errorf("unexpected error getting list of blobs: %+v", err)
-	} else if len(blobs) > 0 {
-		t.Errorf("got blobs in a clean image: %v", blobs)
-	}
+	blobs, err := engine.ListBlobs(ctx)
+	require.NoError(t, err, "list blobs at end of test")
+	assert.Empty(t, blobs, "no blobs should remain at end of test")
 }
 
 func TestEngineBlobJSONReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root := t.TempDir()
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	type object struct {
 		A string `json:"A"`
@@ -135,57 +110,40 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		{object{"another value", 200}},
 	} {
 		engine, err := dir.Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
+		require.NoError(t, err, "open read-write engine")
 		engineExt := NewEngine(engine)
 
 		digest, _, err := engineExt.PutBlobJSON(ctx, test.object)
-		if err != nil {
-			t.Errorf("PutBlobJSON: unexpected error: %+v", err)
-		}
+		require.NoError(t, err, "put blob json")
 
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
+		err = engine.Close()
+		assert.NoError(t, err, "close engine")
 
 		// make it readonly
 		testutils.MakeReadOnly(t, image)
 
 		newEngine, err := dir.Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
+		require.NoError(t, err, "open read-only engine")
 		newEngineExt := NewEngine(newEngine)
 
-		blobReader, err := newEngineExt.GetBlob(ctx, digest)
-		if err != nil {
-			t.Errorf("GetBlob: unexpected error: %+v", err)
-		}
+		blobReader, err := newEngine.GetBlob(ctx, digest)
+		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
 		gotBytes, err := ioutil.ReadAll(blobReader)
-		if err != nil {
-			t.Errorf("GetBlob: failed to ReadAll: %+v", err)
-		}
+		require.NoError(t, err, "read entire blob")
 
 		var gotObject object
-		if err := json.Unmarshal(gotBytes, &gotObject); err != nil {
-			t.Errorf("GetBlob: got an invalid JSON blob: %+v", err)
-		}
-		if !reflect.DeepEqual(test.object, gotObject) {
-			t.Errorf("GetBlob: got different object to original JSON. expected=%v got=%v gotBytes=%v", test.object, gotObject, gotBytes)
-		}
+		err = json.Unmarshal(gotBytes, &gotObject)
+		require.NoError(t, err, "unmarshal blob")
+		assert.Equal(t, test.object, gotObject, "parsed json blob should match original data")
 
 		// Make sure that writing again will FAIL.
 		_, _, err = newEngineExt.PutBlobJSON(ctx, test.object)
-		if err == nil {
-			t.Errorf("PutBlob: expected error on ro image!")
-		}
+		assert.Error(t, err, "put blob with read-only engine should fail")
 
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
+		err = newEngine.Close()
+		assert.NoError(t, err, "close read-only engine")
 
 		// make it readwrite again.
 		testutils.MakeReadWrite(t, image)
