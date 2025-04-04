@@ -104,11 +104,7 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 		{"DotDotPrefix", ".."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySanitiseScoping")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
 			if err := os.Mkdir(rootfs, 0755); err != nil {
@@ -136,11 +132,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 		{"DotDotPrefix", ".."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySymlinkScoping")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
 			if err := os.Mkdir(rootfs, 0755); err != nil {
@@ -161,11 +153,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 // doesn't have its leading directories, we create all of the parent
 // directories.
 func TestUnpackEntryParentDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryParentDir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	rootfs := filepath.Join(dir, "rootfs")
 	if err := os.Mkdir(rootfs, 0755); err != nil {
@@ -224,11 +212,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			testMtime := testutils.Unix(123, 456)
 			testAtime := testutils.Unix(789, 111)
 
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryWhiteout")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rawDir, rawFile := filepath.Split(test.path)
 			wh := filepath.Join(rawDir, whPrefix+rawFile)
@@ -468,11 +452,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				},
 			}
 
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackOpaqueWhiteout")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			// We do all whiteouts in a subdirectory.
 			whiteoutDir := "test-subdir"
@@ -575,11 +555,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 // cases. In particular when it comes to hardlinks to symlinks.
 func TestUnpackHardlink(t *testing.T) {
 	// Create the files we're going to play with.
-	dir, err := ioutil.TempDir("", "umoci-TestUnpackHardlink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	var (
 		hdr *tar.Header
@@ -753,11 +729,7 @@ func TestUnpackEntryMap(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// Create the files we're going to play with.
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryMap")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			var (
 				hdrUID, hdrGID, uUID, uGID int
@@ -897,11 +869,7 @@ func TestUnpackEntryMap(t *testing.T) {
 }
 
 func TestIsDirlink(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestDirLink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	if err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755); err != nil {
 		t.Fatal(err)

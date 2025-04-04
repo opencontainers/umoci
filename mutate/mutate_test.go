@@ -25,7 +25,6 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
 	"reflect"
 	"testing"
@@ -144,11 +143,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 }
 
 func TestMutateCache(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateBasic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
@@ -203,11 +198,7 @@ func TestMutateCache(t *testing.T) {
 }
 
 func TestMutateAdd(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAdd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
@@ -418,11 +409,7 @@ func TestMutateAddCompression(t *testing.T) {
 }
 
 func TestMutateAddExisting(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAddExisting")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
@@ -503,11 +490,7 @@ func TestMutateAddExisting(t *testing.T) {
 }
 
 func TestMutateSet(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
@@ -576,11 +559,7 @@ func TestMutateSet(t *testing.T) {
 }
 
 func TestMutateSetNoHistory(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSetNoHistory")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
@@ -660,11 +639,7 @@ func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.De
 }
 
 func TestMutatePath(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, manifestDescriptor := setup(t, dir)
 	engineExt := casext.NewEngine(engine)

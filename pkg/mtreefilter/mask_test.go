@@ -39,11 +39,7 @@ func isParent(a, b string) bool {
 }
 
 func TestMaskDeltas(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestMaskDeltas-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
@@ -119,11 +115,7 @@ func TestMaskDeltas(t *testing.T) {
 }
 
 func TestSimplifyFilter(t *testing.T) {
-	dir, err := ioutil.TempDir("", "TestSimplifyFilter-")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 

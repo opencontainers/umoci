@@ -28,7 +28,9 @@ import (
 )
 
 func TestClearxattrFilter(t *testing.T) {
-	file, err := ioutil.TempFile("", "TestClearxattrFilter")
+	dir := t.TempDir()
+
+	file, err := ioutil.TempFile(dir, "TestClearxattrFilter")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,7 +62,7 @@ func TestClearxattrFilter(t *testing.T) {
 
 		if err := unix.Lsetxattr(path, xattr.name, []byte(xattr.value), 0); err != nil {
 			if errors.Is(err, unix.ENOTSUP) {
-				t.Skip("xattrs unsupported on backing filesystem")
+				t.Skipf("xattrs unsupported on %s backing filesystem", dir)
 			}
 			t.Fatalf("unexpected error setting %v=%v on %v: %v", xattr.name, xattr.value, path, err)
 		}

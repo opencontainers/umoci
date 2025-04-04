@@ -38,11 +38,7 @@ import (
 func TestCreateLayout(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestCreateLayout")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := Create(image); err != nil {
@@ -76,11 +72,7 @@ func TestCreateLayout(t *testing.T) {
 func TestEngineBlob(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlob")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := Create(image); err != nil {
@@ -160,20 +152,14 @@ func TestEngineBlob(t *testing.T) {
 }
 
 func TestEngineValidate(t *testing.T) {
-	root, err := ioutil.TempDir("", "umoci-TestEngineValidate")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	var engine cas.Engine
-	var image string
+	var (
+		engine cas.Engine
+		image  string
+		err    error
+	)
 
 	// Empty directory.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	engine, err = Open(image)
 	if err == nil {
 		t.Errorf("expected to get an error")
@@ -181,10 +167,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// Invalid oci-layout.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -195,10 +178,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// Invalid oci-layout.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644); err != nil {
 		t.Fatal(err)
 	}
@@ -209,10 +189,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// Missing blobdir.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
@@ -229,10 +206,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// blobdir is not a directory.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
@@ -252,10 +226,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// Missing index.json.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
@@ -272,10 +243,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// index is not a valid file.
-	image, err = ioutil.TempDir(root, "image")
-	if err != nil {
-		t.Fatal(err)
-	}
+	image = t.TempDir()
 	if err := os.Remove(image); err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +263,7 @@ func TestEngineValidate(t *testing.T) {
 	}
 
 	// No such directory.
-	image = filepath.Join(root, "non-exist")
+	image = filepath.Join(t.TempDir(), "non-exist")
 	engine, err = Open(image)
 	if err == nil {
 		t.Errorf("expected to get an error")
@@ -308,11 +276,7 @@ func TestEngineValidate(t *testing.T) {
 func TestEngineGCLocking(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineGCLocking")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := Create(image); err != nil {
@@ -394,11 +358,7 @@ func TestEngineGCLocking(t *testing.T) {
 func TestCreateLayoutReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestCreateLayoutReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := Create(image); err != nil {
@@ -431,11 +391,7 @@ func TestCreateLayoutReadonly(t *testing.T) {
 func TestEngineBlobReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := Create(image); err != nil {

@@ -20,20 +20,15 @@
 package umoci
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
 )
 
 func TestCreateExistingFails(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci_testCreateExistingFails")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// opening a bad layout should fail
-	_, err = OpenLayout(dir)
+	_, err := OpenLayout(dir)
 	if err == nil {
 		t.Fatal("opening non-existent layout succeeded?")
 	}

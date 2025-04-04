@@ -34,11 +34,7 @@ import (
 func TestTarGenerateAddFileNormal(t *testing.T) {
 	reader, writer := io.Pipe()
 
-	dir, err := ioutil.TempDir("", "umoci-TestTarGenerateAddFileNormal")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	file := "file"
 	data := []byte("this is a normal file")
@@ -129,11 +125,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 func TestTarGenerateAddFileDirectory(t *testing.T) {
 	reader, writer := io.Pipe()
 
-	dir, err := ioutil.TempDir("", "umoci-TestTarGenerateAddFileDirectory")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	file := "directory/"
 	path := filepath.Join(dir, file)
@@ -215,11 +207,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 func TestTarGenerateAddFileSymlink(t *testing.T) {
 	reader, writer := io.Pipe()
 
-	dir, err := ioutil.TempDir("", "umoci-TestTarGenerateAddFileSymlink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	file := "link"
 	linkname := "/test"
@@ -313,12 +301,6 @@ func parseWhiteout(path string) (string, error) {
 
 func TestTarGenerateAddWhiteout(t *testing.T) {
 	reader, writer := io.Pipe()
-
-	dir, err := ioutil.TempDir("", "umoci-TestTarGenerateAddWhiteout")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
 
 	// Paths we want to generate whiteouts for.
 	paths := []string{

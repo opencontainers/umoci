@@ -33,11 +33,7 @@ import (
 func TestLutimesFile(t *testing.T) {
 	var fiOld, fiNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesFile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, "some file")
 
@@ -82,11 +78,7 @@ func TestLutimesFile(t *testing.T) {
 func TestLutimesDirectory(t *testing.T) {
 	var fiOld, fiNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesDirectory")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, " a directory  ")
 
@@ -131,11 +123,7 @@ func TestLutimesDirectory(t *testing.T) {
 func TestLutimesSymlink(t *testing.T) {
 	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesSymlink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, "  a symlink   ")
 
@@ -199,11 +187,7 @@ func TestLutimesSymlink(t *testing.T) {
 func TestLutimesRelative(t *testing.T) {
 	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesRelative")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	oldwd, err := os.Getwd()
 	if err != nil {

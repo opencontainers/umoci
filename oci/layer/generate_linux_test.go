@@ -24,8 +24,6 @@ package layer
 import (
 	"archive/tar"
 	"io"
-	"io/ioutil"
-	"os"
 	"path"
 	"testing"
 
@@ -39,9 +37,7 @@ import (
 
 func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 	assert := assert.New(t)
-	dir, err := ioutil.TempDir("", "umoci-TestTranslateOverlayWhiteouts")
-	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
 	if err != nil {
@@ -76,9 +72,7 @@ func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 
 func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 	assert := assert.New(t)
-	dir, err := ioutil.TempDir("", "umoci-TestTranslateOverlayWhiteouts")
-	assert.NoError(err)
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
 	if err != nil {

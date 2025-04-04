@@ -31,11 +31,7 @@ import (
 )
 
 func TestGenerate(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerate")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
 	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {
@@ -139,11 +135,7 @@ func TestGenerate(t *testing.T) {
 
 // Make sure that opencontainers/umoci#33 doesn't regress.
 func TestGenerateMissingFileError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
 	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {
@@ -209,11 +201,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 
 // Make sure that opencontainers/umoci#33 doesn't regress.
 func TestGenerateWrongRootError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
 	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {

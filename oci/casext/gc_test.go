@@ -23,8 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -39,11 +37,7 @@ import (
 func TestGCWithEmptyIndex(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {
@@ -91,11 +85,7 @@ func TestGCWithEmptyIndex(t *testing.T) {
 func TestGCWithNonEmptyIndex(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {
@@ -235,11 +225,7 @@ func errFunc(ctx context.Context, digest digest.Digest) (bool, error) {
 func TestGCWithPolicy(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {

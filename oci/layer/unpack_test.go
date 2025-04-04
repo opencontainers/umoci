@@ -24,7 +24,6 @@ import (
 	"encoding/base64"
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,10 +79,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		},
 	}
 
-	root, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := t.TempDir()
 
 	// Create our image.
 	image := filepath.Join(root, "image")
@@ -157,14 +153,8 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 func TestUnpackManifestCustomLayer(t *testing.T) {
 	ctx := context.Background()
 
-	root, manifest, engineExt := makeImage(t)
-	defer os.RemoveAll(root)
-
-	bundle, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer_bundle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(bundle)
+	_, manifest, engineExt := makeImage(t)
+	bundle := t.TempDir()
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
 	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
@@ -194,14 +184,8 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 func TestUnpackStartFromDescriptor(t *testing.T) {
 	ctx := context.Background()
 
-	root, manifest, engineExt := makeImage(t)
-	defer os.RemoveAll(root)
-
-	bundle, err := ioutil.TempDir("", "umoci-TestUnpackStartFromDescriptor_bundle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(bundle)
+	_, manifest, engineExt := makeImage(t)
+	bundle := t.TempDir()
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
 	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
@@ -220,7 +204,7 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
 	}
 
-	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
+	_, err := os.Stat(filepath.Join(bundle, "rootfs/test_file"))
 	if err == nil || !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("test file present? %+v\n", err)
 	}

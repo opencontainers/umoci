@@ -35,11 +35,7 @@ import (
 func TestEngineBlobJSON(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSON")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {
@@ -119,11 +115,7 @@ func TestEngineBlobJSON(t *testing.T) {
 func TestEngineBlobJSONReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSONReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {

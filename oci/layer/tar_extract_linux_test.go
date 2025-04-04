@@ -25,7 +25,6 @@ package layer
 import (
 	"archive/tar"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -49,11 +48,7 @@ func canMknod(dir string) (bool, error) {
 }
 
 func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestOverlayFSWhiteout")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
 	if err != nil {

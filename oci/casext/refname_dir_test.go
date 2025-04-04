@@ -25,9 +25,7 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"path/filepath"
 	"reflect"
 	"runtime"
@@ -358,11 +356,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 func TestEngineReference(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {
@@ -422,11 +416,7 @@ func TestEngineReference(t *testing.T) {
 func TestEngineReferenceReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReferenceReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
+	root := t.TempDir()
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {

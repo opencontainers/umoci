@@ -28,6 +28,8 @@ import (
 	"reflect"
 	"testing"
 
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -36,10 +38,12 @@ func TestWrapNoTricks(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapNoTricks")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Make sure that no error is returned an no trickery is done if fn() works
@@ -70,10 +74,12 @@ func TestLstat(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLstat")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
@@ -153,10 +159,12 @@ func TestReadlink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReadlink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
@@ -242,10 +250,12 @@ func TestSymlink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestSymlink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
@@ -333,10 +343,12 @@ func TestOpen(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestOpen")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -470,10 +482,12 @@ func TestReaddir(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReaddir")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -593,10 +607,12 @@ func TestWrapWrite(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapWrite")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -675,10 +691,12 @@ func TestLink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -839,10 +857,12 @@ func TestChtimes(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestChtimes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -952,10 +972,12 @@ func TestLutimes(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLutimes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -1113,10 +1135,12 @@ func TestRemove(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemove")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -1195,10 +1219,12 @@ func TestRemoveAll(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemoveAll")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -1267,10 +1293,12 @@ func TestMkdir(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdir")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure.
@@ -1351,10 +1379,12 @@ func TestMkdirAll(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAll")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure.
@@ -1470,10 +1500,12 @@ func TestMkdirAllMissing(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAllMissing")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure, but with read access.
@@ -1566,10 +1598,12 @@ func TestMkdirRWPerm(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRWPerm")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -1685,10 +1719,12 @@ func TestMkdirRPerm(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRPerm")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
@@ -1780,10 +1816,12 @@ func TestWalk(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWalk")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
