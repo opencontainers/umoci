@@ -89,6 +89,171 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
+
+@test "umoci raw add-layer --compress=gzip" {
+	LAYER="$(setup_tmpdir)"
+	echo "layer" > "$LAYER/file"
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer.tar" "$LAYER" .
+
+	# Add layer to the image.
+	umoci new --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=gzip "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+gzip"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-gzip"* ]]
+}
+
+@test "umoci raw add-layer --compress=zstd" {
+	LAYER="$(setup_tmpdir)"
+	echo "layer" > "$LAYER/file"
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer.tar" "$LAYER" .
+
+	# Add layer to the image.
+	umoci new --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=zstd "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}
+
+@test "umoci raw add-layer --compress=none" {
+	LAYER="$(setup_tmpdir)"
+	echo "layer" > "$LAYER/file"
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer.tar" "$LAYER" .
+
+	# Add layer to the image.
+	umoci new --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=none "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-tar"* ]] # x-tar means no compression
+}
+
+@test "umoci raw add-layer --compress=auto" {
+	LAYER="$(setup_tmpdir)"
+	echo "layer" > "$LAYER/file"
+	sane_run tar cvfC "$UMOCI_TMPDIR/layer.tar" "$LAYER" .
+
+	# Add zstd layer to the image.
+	umoci new --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}"
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=zstd "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Add another zstd layer to the image, by making use of the auto selection.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=auto "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Add yet another zstd layer to the image, to show that --compress=auto is
+	# the default.
+	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer.tar"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}
+
 @test "umoci raw add-layer [invalid arguments]" {
 	LAYERFILE="$UMOCI_TMPDIR/file"
 	touch "$LAYERFILE"{,-extra}

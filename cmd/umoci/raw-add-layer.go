@@ -30,11 +30,12 @@ import (
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/urfave/cli"
 )
 
-var rawAddLayerCommand = uxHistory(uxTag(cli.Command{
+var rawAddLayerCommand = uxCompress(uxHistory(uxTag(cli.Command{
 	Name:  "add-layer",
 	Usage: "add a layer archive verbatim to an image",
 	ArgsUsage: `--image <image-path>[:<tag>] <new-layer.tar>
@@ -65,12 +66,17 @@ only supports uncompressed archives.`,
 		ctx.App.Metadata["newlayer"] = ctx.Args().First()
 		return nil
 	},
-}))
+})))
 
 func rawAddLayer(ctx *cli.Context) error {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	newLayerPath := ctx.App.Metadata["newlayer"].(string)
+
+	var compressAlgo blobcompress.Algorithm
+	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+		compressAlgo = algo
+	}
 
 	// Overide the from tag by default, otherwise use the one specified.
 	tagName := fromName
@@ -154,9 +160,7 @@ func rawAddLayer(ctx *cli.Context) error {
 		}
 	}
 
-	// TODO: We should add a flag to allow for a new layer to be made
-	//       non-distributable.
-	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, mutate.GzipCompressor, nil); err != nil {
+	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, compressAlgo, nil); err != nil {
 		return fmt.Errorf("add diff layer: %w", err)
 	}
 

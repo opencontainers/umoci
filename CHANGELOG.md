@@ -21,6 +21,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   had no real impact on umoci but for safety we implemented the now-recommended
   media-type embedding and verification. CVE-2021-41190
 
+### Added ###
+- `umoci unpack` now supports handling layers compressed with zstd. This is
+  something that was added in image-spec v1.2 (which we do not yet support
+  fully) but at least this will allow users to operate on zstd-compressed
+  images, which are slowly becoming more common.
+- `umoci repack` and `umoci insert` now support creating zstd-compressed
+  layers. The default behaviour (called `auto`) is to try to match the last
+  layer's compression algorithm, with a fallback to `gzip` if none of the layer
+  algorithms were supported.
+  * Users can specify their preferred compression algorithm using the new
+    `--compress` flag. You can also disable compression entirely using
+    `--compress=none` but `--compress=auto` will never automatically choose
+    `none` compression.
+
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.
 - The runtime-spec version of the `config.json` version we generate is no

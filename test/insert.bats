@@ -374,3 +374,160 @@ function teardown() {
 
 	image-verify "${IMAGE}"
 }
+
+OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
+
+@test "umoci insert --compress=gzip" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# Add layer to the image.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=gzip "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+gzip"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-gzip"* ]]
+}
+
+@test "umoci insert --compress=zstd" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# Add layer to the image.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=zstd "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}
+
+@test "umoci insert --compress=none" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# Add layer to the image.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=none "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-tar"* ]] # x-tar means no compression
+}
+
+@test "umoci insert --compress=auto" {
+	# Some things to insert.
+	INSERTDIR="$(setup_tmpdir)"
+	mkdir -p "${INSERTDIR}/etc"
+	touch "${INSERTDIR}/etc/foo"
+
+	# Add zstd layer to the image.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=zstd "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Add another zstd layer to the image, by making use of the auto selection.
+	umoci insert --image "${IMAGE}:${TAG}" --compress=auto "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+
+	# Add yet another zstd layer to the image, to show that --compress=auto is
+	# the default.
+	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/etc" /etc
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	stat_json="$output"
+
+	# Make sure that the last layer had the expected compression based on the
+	# mediatype.
+	expected_mediatype="${OCI_MEDIATYPE_LAYER}+zstd"
+	layer_mediatype="$(jq -SMr '.history[-1].layer.mediaType' <<<"$stat_json")"
+	[[ "$layer_mediatype" == "$expected_mediatype" ]]
+
+	# Make sure that the actual blob seems to be a gzip
+	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
+	sane_run file -i "$IMAGE/blobs/$layer_hash"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"application/x-zstd"* ]]
+}

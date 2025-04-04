@@ -29,11 +29,15 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
+	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/iohelpers"
+
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	"github.com/opencontainers/umoci/oci/cas"
-	"github.com/opencontainers/umoci/oci/casext"
 )
 
 // UmociUncompressedBlobSizeAnnotation is an umoci-specific annotation to
@@ -254,32 +258,28 @@ func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Dige
 	}
 }
 
-// add adds the given layer to the CAS, and mutates the configuration to
-// include the diffID. The returned string is the digest of the *compressed*
-// layer (which is compressed by us).
-func (m *Mutator) add(ctx context.Context, reader io.Reader, history *ispec.History, compressor Compressor) (digest.Digest, int64, error) {
+// PickDefaultCompressAlgorithm returns the best option for the compression
+// algorithm for new layers. The main preference is to use re-use whatever the
+// most recent layer's compression algorithm is (for those we support). As a
+// final fallback, we use blobcompress.Default.
+func (m *Mutator) PickDefaultCompressAlgorithm(ctx context.Context) (Compressor, error) {
 	if err := m.cache(ctx); err != nil {
-		return "", -1, fmt.Errorf("getting cache failed: %w", err)
+		return nil, fmt.Errorf("getting cache failed: %w", err)
 	}
-
-	diffidDigester := cas.BlobAlgorithm.Digester()
-	hashReader := io.TeeReader(reader, diffidDigester.Hash())
-
-	compressed, err := compressor.Compress(hashReader)
-	if err != nil {
-		return "", -1, fmt.Errorf("couldn't create compression for blob: %w", err)
+	layers := m.manifest.Layers
+	for i := len(layers) - 1; i >= 0; i-- {
+		_, compressType := mediatype.SplitMediaTypeSuffix(layers[i].MediaType)
+		// Don't generate an uncompressed layer even if the previous one is --
+		// there is no reason to automatically generate uncompressed blobs.
+		if compressType != "" {
+			candidate := blobcompress.GetAlgorithm(compressType)
+			if candidate != nil {
+				return candidate, nil
+			}
+		}
 	}
-	defer compressed.Close()
-
-	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
-	if err != nil {
-		return "", -1, fmt.Errorf("put layer blob: %w", err)
-	}
-
-	// Add DiffID to configuration.
-	layerDiffID := diffidDigester.Digest()
-	m.appendToConfig(history, layerDiffID)
-	return layerDigest, layerSize, nil
+	// No supported, non-plain algorithm found. Just use the default.
+	return blobcompress.Default, nil
 }
 
 // Add adds a layer to the image, by reading the layer changeset blob from the
@@ -293,28 +293,50 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 		return desc, fmt.Errorf("getting cache failed: %w", err)
 	}
 
-	digest, size, err := m.add(ctx, r, history, compressor)
-	if err != nil {
-		return desc, fmt.Errorf("add layer: %w", err)
+	countReader := iohelpers.CountReader(r)
+
+	diffidDigester := cas.BlobAlgorithm.Digester()
+	hashReader := io.TeeReader(countReader, diffidDigester.Hash())
+
+	if compressor == nil {
+		bestCompressor, err := m.PickDefaultCompressAlgorithm(ctx)
+		if err != nil {
+			return desc, fmt.Errorf("find best default layer compression algorithm: %w", err)
+		}
+		compressor = bestCompressor
 	}
 
-	compressedMediaType := mediaType
-	if compressor.MediaTypeSuffix() != "" {
-		compressedMediaType = compressedMediaType + "+" + compressor.MediaTypeSuffix()
+	compressed, err := compressor.Compress(hashReader)
+	if err != nil {
+		return desc, fmt.Errorf("couldn't create compression for blob: %w", err)
+	}
+	defer compressed.Close()
+
+	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
+	if err != nil {
+		return desc, fmt.Errorf("put layer blob: %w", err)
+	}
+
+	// Add DiffID to configuration.
+	m.appendToConfig(history, diffidDigester.Digest())
+
+	// Build the descriptor.
+	if suffix := compressor.MediaTypeSuffix(); suffix != "" {
+		mediaType += "+" + suffix
 	}
 
 	if annotations == nil {
 		annotations = make(map[string]string)
 	}
-	if compressor.BytesRead() >= 0 {
-		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", compressor.BytesRead())
+	if plainSize := countReader.BytesRead(); plainSize != layerSize {
+		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", plainSize)
 	}
 
 	// Append to layers.
 	desc = ispec.Descriptor{
-		MediaType:   compressedMediaType,
-		Digest:      digest,
-		Size:        size,
+		MediaType:   mediaType,
+		Digest:      layerDigest,
+		Size:        layerSize,
 		Annotations: annotations,
 	}
 	m.manifest.Layers = append(m.manifest.Layers, desc)

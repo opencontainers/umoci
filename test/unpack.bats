@@ -354,3 +354,63 @@ function teardown() {
 	[ "$(readlink "$ROOTFS/loop3")" = "link2/loop4" ]
 	[ "$(readlink "$ROOTFS/dir/loop4")" = "../loop1" ]
 }
+
+@test "umoci unpack [mixed compression]" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Create a few layers with different compression algorithms.
+
+	# zstd layer
+	touch "$ROOTFS/zstd1"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# gzip layer
+	touch "$ROOTFS/gzip1"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=gzip "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# plain layer
+	touch "$ROOTFS/plain1"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=none "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# zstd layer
+	touch "$ROOTFS/zstd2"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# plain layer
+	touch "$ROOTFS/plain2"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=none "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# zstd layer (auto)
+	touch "$ROOTFS/zstd3"
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+
+	# Re-extract the latest image and make sure all of the files were correctly
+	# extracted.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	[ -f "$ROOTFS/zstd1" ]
+	[ -f "$ROOTFS/gzip1" ]
+	[ -f "$ROOTFS/plain1" ]
+	[ -f "$ROOTFS/zstd2" ]
+	[ -f "$ROOTFS/plain2" ]
+	[ -f "$ROOTFS/zstd3" ]
+}

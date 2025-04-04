@@ -35,6 +35,9 @@ import (
 	"github.com/opencontainers/umoci/oci/cas"
 	casdir "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/oci/casext/blobcompress"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 // These come from just running the code.
@@ -220,7 +223,7 @@ func TestMutateAdd(t *testing.T) {
 	annotations := map[string]string{"hello": "world"}
 	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor, annotations)
+	}, blobcompress.Gzip, annotations)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
@@ -304,6 +307,114 @@ func TestMutateAdd(t *testing.T) {
 	}
 }
 
+func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, addCompressAlgo, expectedCompressAlgo blobcompress.Algorithm) {
+	// This test doesn't care about whether the layer is real.
+	fakeLayerData := `fake tar archive`
+	fakeLayerTar := bytes.NewBufferString(fakeLayerData)
+
+	newLayerDescriptor, err := mutator.Add(
+		context.Background(),
+		mediaType,
+		fakeLayerTar,
+		&ispec.History{Comment: "fake layer"},
+		addCompressAlgo,
+		nil,
+	)
+	require.NoError(t, err)
+
+	expectedMediaType := mediaType
+	if suffix := expectedCompressAlgo.MediaTypeSuffix(); suffix != "" {
+		expectedMediaType += "+" + suffix
+	}
+
+	usedCompressName := "auto"
+	if addCompressAlgo != nil {
+		if suffix := addCompressAlgo.MediaTypeSuffix(); suffix != "" {
+			usedCompressName = suffix
+		} else {
+			usedCompressName = "plain"
+		}
+	}
+
+	// The media-type should be what we expected.
+	assert.Equalf(t, newLayerDescriptor.MediaType, expectedMediaType, "unexpected media type of new layer with compression algo %q", usedCompressName)
+
+	// Double-check that the blob actually used the expected compression
+	// algorithm.
+	layerRdr, err := mutator.engine.GetVerifiedBlob(context.Background(), newLayerDescriptor)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, layerRdr.Close())
+	}()
+
+	plainLayerRdr, err := expectedCompressAlgo.Decompress(layerRdr)
+	require.NoError(t, err)
+	defer func() {
+		require.NoError(t, plainLayerRdr.Close())
+	}()
+
+	plainLayerData, err := ioutil.ReadAll(plainLayerRdr)
+	require.NoError(t, err)
+
+	assert.Equal(t, fakeLayerData, string(plainLayerData), "layer data should match after round-trip")
+}
+
+func TestMutateAddCompression(t *testing.T) {
+	dir := t.TempDir()
+
+	engine, fromDescriptor := setup(t, dir)
+	defer engine.Close()
+
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// Test that explicitly setting the compression does what you expect:
+	for _, test := range []struct {
+		name                  string
+		useAlgo, expectedAlgo blobcompress.Algorithm
+	}{
+		// The default with no previous layers should be gzip.
+		{"DefaultGzip", nil, blobcompress.Gzip},
+		// Explicitly setting the algorithms.
+		{"Noop", blobcompress.Noop, blobcompress.Noop},
+		{"Gzip", blobcompress.Gzip, blobcompress.Gzip},
+		{"Zstd", blobcompress.Zstd, blobcompress.Zstd},
+	} {
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
+		})
+	}
+
+	// Check that the auto-selection of compression works properly.
+	t.Run("Auto", func(t *testing.T) {
+		for i, test := range []struct {
+			name                  string
+			useAlgo, expectedAlgo blobcompress.Algorithm
+		}{
+			// Basic inheritance for zstd.
+			{"ExplicitZstd", blobcompress.Zstd, blobcompress.Zstd},
+			{"AutoZstd", nil, blobcompress.Zstd},
+			// Inheritance skips noop.
+			{"ExplicitNoop", blobcompress.Noop, blobcompress.Noop},
+			{"AutoZstd-SkipNoop", nil, blobcompress.Zstd},
+			// Basic inheritance for gzip.
+			{"ExplicitGzip", blobcompress.Gzip, blobcompress.Gzip},
+			{"AutoGzip", nil, blobcompress.Gzip},
+			// Inheritance skips noop.
+			{"ExplicitNoop", blobcompress.Noop, blobcompress.Noop},
+			{"AutoGzip-SkipNoop", nil, blobcompress.Gzip},
+		} {
+			test := test // copy iterator
+			t.Run(fmt.Sprintf("Step%d-%s", i, test.name), func(t *testing.T) {
+				testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
+			})
+		}
+	})
+}
+
 func TestMutateAddExisting(t *testing.T) {
 	dir, err := ioutil.TempDir("", "umoci-TestMutateAddExisting")
 	if err != nil {
@@ -325,7 +436,7 @@ func TestMutateAddExisting(t *testing.T) {
 	// Add a new layer.
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor, nil)
+	}, blobcompress.Gzip, nil)
 	if err != nil {
 		t.Fatalf("unexpected error adding layer: %+v", err)
 	}
