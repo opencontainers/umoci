@@ -1,8 +1,10 @@
 //go:build linux
 // +build linux
 
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
+ * Copyright (C) 2016-2025 SUSE LLC
  * Copyright (C) 2020 Cisco Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");

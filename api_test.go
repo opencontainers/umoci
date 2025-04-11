@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
+ * Copyright (C) 2016-2025 SUSE LLC
  * Copyright (C) 2018 Cisco Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
