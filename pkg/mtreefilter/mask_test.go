@@ -24,6 +24,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"github.com/vbatts/go-mtree"
 )
 
@@ -107,18 +108,10 @@ func TestMaskDeltas(t *testing.T) {
 		simpleDiff := FilterDeltas(diff, MaskFilter(test.paths))
 		for _, delta := range simpleDiff {
 			if len(test.paths) == 0 {
-				if len(simpleDiff) != len(diff) {
-					t.Errorf("expected diff={} to give %d got %d", len(diff), len(simpleDiff))
-				}
+				assert.Equal(t, diff, simpleDiff, "noop filter should not modify diff")
 			} else {
-				found := false
 				for _, path := range test.paths {
-					if !isParent(path, delta.Path()) {
-						found = true
-					}
-				}
-				if !found {
-					t.Errorf("expected one of %v to not be a parent of %q", test.paths, delta.Path())
+					assert.Falsef(t, isParent(path, delta.Path()), "delta entry %q should not have a parent path in the filter list but %q is in the list", delta.Path(), path)
 				}
 			}
 		}
