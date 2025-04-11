@@ -155,7 +155,7 @@ func TestInvalidDigest(t *testing.T) {
 	}
 }
 
-func TestInvalidDigest_Trailing(t *testing.T) {
+func TestInvalidDigest_Trailing_NoExpectedSize(t *testing.T) {
 	for size := 1; size <= 16384; size *= 2 {
 		for delta := 1; delta-1 <= size/2; delta *= 2 {
 			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
@@ -190,40 +190,6 @@ func TestInvalidDigest_Trailing(t *testing.T) {
 				// And on close we should get the error.
 				if err := verifiedReader.Close(); !errors.Is(err, ErrDigestMismatch) {
 					t.Errorf("expected digest to be invalid on Close: got wrong error: %v", err)
-				}
-			})
-		}
-	}
-}
-
-func TestInvalidSize_Short(t *testing.T) {
-	for size := 1; size <= 16384; size *= 2 {
-		for delta := 1; delta-1 <= size/2; delta *= 2 {
-			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
-				// Fill buffer with random data.
-				buffer := new(bytes.Buffer)
-				if _, err := io.CopyN(buffer, rand.Reader, int64(size)); err != nil {
-					t.Fatalf("getting random data for buffer failed: %v", err)
-				}
-
-				// Generate a correct hash (for a shorter buffer), but limit the
-				// size to be smaller.
-				shortBuffer := buffer.Bytes()[:buffer.Len()-delta]
-				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
-				verifiedReader := &VerifiedReadCloser{
-					Reader:         ioutil.NopCloser(buffer),
-					ExpectedDigest: expectedDigest,
-					ExpectedSize:   int64(size - delta),
-				}
-
-				// Make sure everything if we copy-to-EOF we get the right error.
-				if _, err := io.Copy(ioutil.Discard, verifiedReader); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on EOF: got wrong error: %v", err)
-				}
-
-				// And on close we should get the error.
-				if err := verifiedReader.Close(); !errors.Is(err, ErrSizeMismatch) {
-					t.Errorf("expected size to be invalid on Close: got wrong error: %v", err)
 				}
 			})
 		}
@@ -265,7 +231,7 @@ func TestInvalidSize_LongBuffer(t *testing.T) {
 	}
 }
 
-func TestInvalidSize_Long(t *testing.T) {
+func TestInvalidSize_ShortBuffer(t *testing.T) {
 	for size := 1; size <= 16384; size *= 2 {
 		for delta := 1; delta-1 <= size/2; delta *= 2 {
 			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
