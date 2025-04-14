@@ -94,8 +94,8 @@ github.com/vbatts/go-mtree/xattr
 # golang.org/x/crypto v0.24.0
 ## explicit; go 1.18
 golang.org/x/crypto/ripemd160
-# golang.org/x/sys v0.25.0
-## explicit; go 1.18
+# golang.org/x/sys v0.32.0
+## explicit; go 1.23.0
 golang.org/x/sys/unix
 golang.org/x/sys/windows
 # google.golang.org/protobuf v1.34.2
