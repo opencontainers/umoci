@@ -374,6 +374,71 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --config.user (no /etc/{passwd,group})" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Remove /etc/passwd and /etc/group.
+	rm -fv "$ROOTFS/etc/passwd" "$ROOTFS/etc/group"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Modify the user.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.user="root:root"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpacking should fail.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -ne 0 ]
+}
+
+@test "umoci config --config.user [numeric] (no /etc/{passwd,group})" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Remove /etc/passwd and /etc/group.
+	rm -fv "$ROOTFS/etc/passwd" "$ROOTFS/etc/group"
+
+	# Repack the image.
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Modify the user.
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.user="1337:8888"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Unpack the image again.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.uid' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 1337 ]
+
+	# Make sure numeric config was actually set.
+	sane_run jq -SM '.process.user.gid' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[ "$output" -eq 8888 ]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --config.workingdir" {
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.workingdir "/a/fake/directory"
