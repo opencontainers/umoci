@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import (
 	"archive/tar"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
 
@@ -38,8 +40,6 @@ func TestTarmode(t *testing.T) {
 		{tar.TypeDir, unix.S_IFDIR},
 	} {
 		mode := Tarmode(test.typeflag)
-		if mode != test.mode {
-			t.Errorf("got unexpected mode %x with tar typeflag %x, expected %x", mode, test.typeflag, test.mode)
-		}
+		assert.Equalf(t, test.mode, mode, "tar typeflag %v not converted to mode properly", test.typeflag)
 	}
 }

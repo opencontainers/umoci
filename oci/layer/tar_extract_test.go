@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,19 +22,20 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/rand"
-	"errors"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
 	"time"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.
@@ -50,9 +52,8 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	rootfs := filepath.Join(dir, "rootfs")
 
 	// Create a host file that we want to make sure doesn't get overwrittern.
-	if err := ioutil.WriteFile(filepath.Join(dir, "file"), hostValue, 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := ioutil.WriteFile(filepath.Join(dir, file), hostValue, 0644)
+	require.NoError(t, err)
 
 	// Create our header. We raw prepend the prefix because we are generating
 	// invalid tar headers.
@@ -69,26 +70,17 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-		t.Fatalf("unexpected UnpackEntry error: %s", err)
-	}
+	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-	hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, "file"))
-	if err != nil {
-		t.Fatalf("unexpected readfile error on host: %s", err)
-	}
+	hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, file))
+	require.NoError(t, err, "read host file")
 
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "file"))
-	if err != nil {
-		t.Fatalf("unexpected readfile error in ctr: %s", err)
-	}
+	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, file))
+	require.NoError(t, err, "read ctr file")
 
-	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
-	}
-	if !bytes.Equal(hostValue, hostValueGot) {
-		t.Errorf("HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE! expected=%q got=%q", string(hostValue), string(hostValueGot))
-	}
+	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
+	assert.Equal(t, hostValue, hostValueGot, "HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE!")
 }
 
 // TestUnpackEntrySanitiseScoping makes sure that path sanitisation is done
@@ -102,16 +94,11 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 		{"DotDotPrefix", ".."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySanitiseScoping")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			if err := os.Mkdir(rootfs, 0755); err != nil {
-				t.Fatal(err)
-			}
+			err := os.Mkdir(rootfs, 0755)
+			require.NoError(t, err, "mkdir rootfs")
 
 			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), test.prefix)
 		})
@@ -134,21 +121,15 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 		{"DotDotPrefix", ".."},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntrySymlinkScoping")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			if err := os.Mkdir(rootfs, 0755); err != nil {
-				t.Fatal(err)
-			}
+			err := os.Mkdir(rootfs, 0755)
+			require.NoError(t, err, "mkdir rootfs")
 
 			// Create the symlink.
-			if err := os.Symlink(test.prefix, filepath.Join(rootfs, "link")); err != nil {
-				t.Fatal(err)
-			}
+			err = os.Symlink(test.prefix, filepath.Join(rootfs, "link"))
+			require.NoError(t, err, "make symlink")
 
 			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), "link")
 		})
@@ -159,16 +140,9 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 // doesn't have its leading directories, we create all of the parent
 // directories.
 func TestUnpackEntryParentDir(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryParentDir")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
-
-	rootfs := filepath.Join(dir, "rootfs")
-	if err := os.Mkdir(rootfs, 0755); err != nil {
-		t.Fatal(err)
-	}
+	rootfs := filepath.Join(t.TempDir(), "rootfs")
+	err := os.Mkdir(rootfs, 0755)
+	require.NoError(t, err, "mkdir rootfs")
 
 	ctrValue := []byte("creating parentdirs")
 
@@ -187,18 +161,13 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	if err := te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-		t.Fatalf("unexpected UnpackEntry error: %s", err)
-	}
+
+	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
-	if err != nil {
-		t.Fatalf("unexpected readfile error: %s", err)
-	}
-
-	if !bytes.Equal(ctrValue, ctrValueGot) {
-		t.Errorf("ctr path was not updated: expected=%q got=%q", string(ctrValue), string(ctrValueGot))
-	}
+	require.NoError(t, err, "read ctr file")
+	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
 }
 
 // TestUnpackEntryWhiteout checks whether whiteout handling is done correctly,
@@ -222,48 +191,40 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			testMtime := testutils.Unix(123, 456)
 			testAtime := testutils.Unix(789, 111)
 
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryWhiteout")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			rawDir, rawFile := filepath.Split(test.path)
 			wh := filepath.Join(rawDir, whPrefix+rawFile)
 
 			// Create the parent directory.
-			if err := os.MkdirAll(filepath.Join(dir, rawDir), 0755); err != nil {
-				t.Fatal(err)
-			}
+			err := os.MkdirAll(filepath.Join(dir, rawDir), 0755)
+			require.NoError(t, err, "mkdir parent directory")
 
 			// Create the path itself.
 			if test.dir {
-				if err := os.Mkdir(filepath.Join(dir, test.path), 0755); err != nil {
-					t.Fatal(err)
-				}
+				err := os.Mkdir(filepath.Join(dir, test.path), 0755)
+				require.NoError(t, err)
+
 				// Make some subfiles and directories.
-				if err := ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0644); err != nil {
-					t.Fatal(err)
-				}
-				if err := ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0644); err != nil {
-					t.Fatal(err)
-				}
-				if err := os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0755); err != nil {
-					t.Fatal(err)
-				}
-				if err := ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0644); err != nil {
-					t.Fatal(err)
-				}
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0644)
+				require.NoError(t, err)
+
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0644)
+				require.NoError(t, err)
+
+				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0755)
+				require.NoError(t, err)
+
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0644)
+				require.NoError(t, err)
 			} else {
-				if err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0644); err != nil {
-					t.Fatal(err)
-				}
+				err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0644)
+				require.NoError(t, err)
 			}
 
 			// Set the modified time of the directory itself.
-			if err := os.Chtimes(filepath.Join(dir, rawDir), testAtime, testMtime); err != nil {
-				t.Fatal(err)
-			}
+			err = os.Chtimes(filepath.Join(dir, rawDir), testAtime, testMtime)
+			require.NoError(t, err)
 
 			// Whiteout the path.
 			hdr := &tar.Header{
@@ -272,34 +233,21 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			}
 
 			te := NewTarExtractor(UnpackOptions{})
-			if err := te.UnpackEntry(dir, hdr, nil); err != nil {
-				t.Fatalf("unexpected error in UnpackEntry: %s", err)
-			}
+			err = te.UnpackEntry(dir, hdr, nil)
+			require.NoErrorf(t, err, "UnpackEntry %s whiteout", hdr.Name)
 
 			// Make sure that the path is gone.
-			if _, err := os.Lstat(filepath.Join(dir, test.path)); !errors.Is(err, os.ErrNotExist) {
-				if err != nil {
-					t.Fatalf("unexpected error checking whiteout out path: %s", err)
-				}
-				t.Errorf("path was not removed by whiteout: %s", test.path)
-			}
+			_, err = os.Lstat(filepath.Join(dir, test.path))
+			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path")
 
 			// Make sure the parent directory wasn't modified.
-			if fi, err := os.Lstat(filepath.Join(dir, rawDir)); err != nil {
-				t.Fatalf("error checking parent directory of whiteout: %s", err)
-			} else {
-				hdr, err := tar.FileInfoHeader(fi, "")
-				if err != nil {
-					t.Fatalf("error generating header from fileinfo of parent directory of whiteout: %s", err)
-				}
+			fi, err := os.Lstat(filepath.Join(dir, rawDir))
+			require.NoError(t, err, "stat parent directory")
 
-				if !hdr.ModTime.Equal(testMtime) {
-					t.Errorf("mtime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testMtime)
-				}
-				if !hdr.AccessTime.Equal(testAtime) {
-					t.Errorf("atime of parent directory changed after whiteout: got=%q expected=%q", hdr.ModTime, testAtime)
-				}
-			}
+			hdr, err = tar.FileInfoHeader(fi, "")
+			require.NoError(t, err, "convert parent directory to tar header")
+			assert.Equal(t, testMtime, hdr.ModTime, "mtime of parent directory")
+			assert.Equal(t, testAtime, hdr.AccessTime, "atime of parent directory")
 		})
 	}
 }
@@ -308,7 +256,6 @@ type pseudoHdr struct {
 	path     string
 	linkname string
 	typeflag byte
-	upper    bool
 }
 
 func fromPseudoHdr(ph pseudoHdr) (*tar.Header, io.Reader) {
@@ -343,120 +290,126 @@ func fromPseudoHdr(ph pseudoHdr) (*tar.Header, io.Reader) {
 // correctly, as well as ensuring that the metadata of the parent is
 // maintained -- and that upperdir entries are handled.
 func TestUnpackOpaqueWhiteout(t *testing.T) {
+	type layeredPseudoHdr struct {
+		pseudoHdr
+		upper, shouldSurvive bool
+	}
+
 	for _, test := range []struct {
 		name          string
-		ignoreExist   bool // ignore if extra upper files exist
-		pseudoHeaders []pseudoHdr
+		pseudoHeaders []layeredPseudoHdr
 	}{
-		{"EmptyDir", false, nil},
-		{"OneLevel", false, []pseudoHdr{
-			{"file", "", tar.TypeReg, false},
-			{"link", "..", tar.TypeSymlink, true},
-			{"badlink", "./nothing", tar.TypeSymlink, true},
-			{"fifo", "", tar.TypeFifo, false},
+		{"EmptyDir", nil},
+		{"OneLevel", []layeredPseudoHdr{
+			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"link", "..", tar.TypeSymlink}, true, true},
+			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, true, true},
+			{pseudoHdr{"fifo", "", tar.TypeFifo}, false, false},
 		}},
-		{"OneLevelNoUpper", false, []pseudoHdr{
-			{"file", "", tar.TypeReg, false},
-			{"link", "..", tar.TypeSymlink, false},
-			{"badlink", "./nothing", tar.TypeSymlink, false},
-			{"fifo", "", tar.TypeFifo, false},
+		{"OneLevelNoUpper", []layeredPseudoHdr{
+			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"fifo", "", tar.TypeFifo}, false, false},
 		}},
-		{"TwoLevel", false, []pseudoHdr{
-			{"file", "", tar.TypeReg, true},
-			{"link", "..", tar.TypeSymlink, false},
-			{"badlink", "./nothing", tar.TypeSymlink, false},
-			{"dir", "", tar.TypeDir, true},
-			{"dir/file", "", tar.TypeRegA, true},
-			{"dir/link", "../badlink", tar.TypeSymlink, false},
-			{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
-			{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+		{"TwoLevel", []layeredPseudoHdr{
+			{pseudoHdr{"file", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir", "", tar.TypeDir}, true, true},
+			{pseudoHdr{"dir/file", "", tar.TypeRegA}, true, true},
+			{pseudoHdr{"dir/link", "../badlink", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, true, true},
+			{pseudoHdr{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
 		}},
-		{"TwoLevelNoUpper", false, []pseudoHdr{
-			{"file", "", tar.TypeReg, false},
-			{"link", "..", tar.TypeSymlink, false},
-			{"badlink", "./nothing", tar.TypeSymlink, false},
-			{"dir", "", tar.TypeDir, false},
-			{"dir/file", "", tar.TypeRegA, false},
-			{"dir/link", "../badlink", tar.TypeSymlink, false},
-			{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-			{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
+		{"TwoLevelNoUpper", []layeredPseudoHdr{
+			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"dir/file", "", tar.TypeRegA}, false, false},
+			{pseudoHdr{"dir/link", "../badlink", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
 		}},
-		{"MultiLevel", false, []pseudoHdr{
-			{"level1_file", "", tar.TypeReg, true},
-			{"level1_link", "..", tar.TypeSymlink, false},
-			{"level1a", "", tar.TypeDir, true},
-			{"level1a/level2_file", "", tar.TypeRegA, false},
-			{"level1a/level2_link", "../../../", tar.TypeSymlink, true},
-			{"level1a/level2a", "", tar.TypeDir, false},
-			{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
-			{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
-			{"level1a/level2b", "", tar.TypeDir, true},
-			{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
-			{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
-			{"level1a/level2b/level3", "", tar.TypeDir, false},
-			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-			{"level1a/level2b/level3_fileA", "", tar.TypeReg, true},
-			{"level1b", "", tar.TypeDir, false},
-			{"level1b/level2_fileA", "", tar.TypeReg, false},
-			{"level1b/level2_fileB", "", tar.TypeReg, false},
-			{"level1b/level2", "", tar.TypeDir, false},
-			{"level1b/level2/level3_file", "", tar.TypeReg, false},
+		{"MultiLevel", []layeredPseudoHdr{
+			{pseudoHdr{"level1_file", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"level1_link", "..", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"level1a", "", tar.TypeDir}, true, true},
+			{pseudoHdr{"level1a/level2_file", "", tar.TypeRegA}, false, false},
+			{pseudoHdr{"level1a/level2_link", "../../../", tar.TypeSymlink}, true, true},
+			{pseudoHdr{"level1a/level2a", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2a/level3_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2a/level3_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2b", "", tar.TypeDir}, true, true},
+			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"level1a/level2b/level3_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2b/level3", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"level1b", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1b/level2_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1b/level2_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1b/level2", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1b/level2/level3_file", "", tar.TypeReg}, false, false},
 		}},
-		{"MultiLevelNoUpper", false, []pseudoHdr{
-			{"level1_file", "", tar.TypeReg, false},
-			{"level1_link", "..", tar.TypeSymlink, false},
-			{"level1a", "", tar.TypeDir, false},
-			{"level1a/level2_file", "", tar.TypeRegA, false},
-			{"level1a/level2_link", "../../../", tar.TypeSymlink, false},
-			{"level1a/level2a", "", tar.TypeDir, false},
-			{"level1a/level2a/level3_fileA", "", tar.TypeReg, false},
-			{"level1a/level2a/level3_fileB", "", tar.TypeReg, false},
-			{"level1a/level2b", "", tar.TypeDir, false},
-			{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
-			{"level1a/level2b/level3_fileB", "", tar.TypeReg, false},
-			{"level1a/level2b/level3", "", tar.TypeDir, false},
-			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-			{"level1a/level2b/level3/level4", "", tar.TypeDir, false},
-			{"level1a/level2b/level3_fileA", "", tar.TypeReg, false},
-			{"level1b", "", tar.TypeDir, false},
-			{"level1b/level2_fileA", "", tar.TypeReg, false},
-			{"level1b/level2_fileB", "", tar.TypeReg, false},
-			{"level1b/level2", "", tar.TypeDir, false},
-			{"level1b/level2/level3_file", "", tar.TypeReg, false},
+		{"MultiLevelNoUpper", []layeredPseudoHdr{
+			{pseudoHdr{"level1_file", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1_link", "..", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"level1a", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2_file", "", tar.TypeRegA}, false, false},
+			{pseudoHdr{"level1a/level2_link", "../../../", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"level1a/level2a", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2a/level3_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2a/level3_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2b", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2b/level3_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1a/level2b/level3", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1b", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1b/level2_fileA", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1b/level2_fileB", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"level1b/level2", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"level1b/level2/level3_file", "", tar.TypeReg}, false, false},
 		}},
-		{"MissingUpperAncestor", true, []pseudoHdr{
-			{"some", "", tar.TypeDir, false},
-			{"some/dir", "", tar.TypeDir, false},
-			{"some/dir/somewhere", "", tar.TypeReg, true},
-			{"another", "", tar.TypeDir, false},
-			{"another/dir", "", tar.TypeDir, false},
-			{"another/dir/somewhere", "", tar.TypeReg, false},
+		{"MissingUpperAncestor", []layeredPseudoHdr{
+			// Even if the parent directories are not listed as being in an
+			// upper, they need to still exist for the subpath to exist.
+			{pseudoHdr{"some", "", tar.TypeDir}, false, true},
+			{pseudoHdr{"some/dir", "", tar.TypeDir}, false, true},
+			{pseudoHdr{"some/dir/somewhere", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"another", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"another/dir", "", tar.TypeDir}, false, false},
+			{pseudoHdr{"another/dir/somewhere", "", tar.TypeReg}, false, false},
 		}},
-		{"UpperWhiteout", false, []pseudoHdr{
-			{whPrefix + "fileB", "", tar.TypeReg, true},
-			{"fileA", "", tar.TypeReg, true},
-			{"fileB", "", tar.TypeReg, true},
-			{"fileC", "", tar.TypeReg, false},
-			{whPrefix + "fileA", "", tar.TypeReg, true},
-			{whPrefix + "fileC", "", tar.TypeReg, true},
+		{"UpperWhiteout", []layeredPseudoHdr{
+			{pseudoHdr{whPrefix + "fileB", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"fileA", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"fileB", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"fileC", "", tar.TypeReg}, false, false},
+			{pseudoHdr{whPrefix + "fileA", "", tar.TypeReg}, true, true},
+			{pseudoHdr{whPrefix + "fileC", "", tar.TypeReg}, true, true},
 		}},
 		// XXX: What umoci should do here is not really defined by the
 		//      spec. In particular, whether you need a whiteout for every
 		//      sub-path or just the path itself is not well-defined. This
 		//      code assumes that you *do not*.
-		{"UpperDirWhiteout", false, []pseudoHdr{
-			{whPrefix + "dir2", "", tar.TypeReg, true},
-			{"file", "", tar.TypeReg, false},
-			{"dir1", "", tar.TypeDir, true},
-			{"dir1/file", "", tar.TypeRegA, true},
-			{"dir1/link", "../badlink", tar.TypeSymlink, false},
-			{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, true},
-			{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink, false},
-			{whPrefix + "dir1", "", tar.TypeReg, true},
-			{"dir2", "", tar.TypeDir, true},
-			{"dir2/file", "", tar.TypeRegA, true},
-			{"dir2/link", "../badlink", tar.TypeSymlink, false},
+		{"UpperDirWhiteout", []layeredPseudoHdr{
+			{pseudoHdr{whPrefix + "dir2", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
+			{pseudoHdr{"dir1", "", tar.TypeDir}, true, true},
+			{pseudoHdr{"dir1/file", "", tar.TypeRegA}, true, true},
+			{pseudoHdr{"dir1/link", "../badlink", tar.TypeSymlink}, false, false},
+			{pseudoHdr{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, true, true},
+			{pseudoHdr{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
+			{pseudoHdr{whPrefix + "dir1", "", tar.TypeReg}, true, true},
+			{pseudoHdr{"dir2", "", tar.TypeDir}, true, true},
+			{pseudoHdr{"dir2/file", "", tar.TypeRegA}, true, true},
+			{pseudoHdr{"dir2/link", "../badlink", tar.TypeSymlink}, false, false},
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -466,18 +419,13 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				},
 			}
 
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackOpaqueWhiteout")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			// We do all whiteouts in a subdirectory.
 			whiteoutDir := "test-subdir"
 			whiteoutRoot := filepath.Join(dir, whiteoutDir)
-			if err := os.MkdirAll(whiteoutRoot, 0755); err != nil {
-				t.Fatal(err)
-			}
+			err := os.MkdirAll(whiteoutRoot, 0755)
+			require.NoError(t, err, "mkdir whiteout root")
 
 			// Track if we have upper entries.
 			numUpper := 0
@@ -490,11 +438,10 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 					numUpper++
 					continue
 				}
-				hdr, rdr := fromPseudoHdr(ph)
+				hdr, rdr := fromPseudoHdr(ph.pseudoHdr)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
-				if err := te.UnpackEntry(dir, hdr, rdr); err != nil {
-					t.Errorf("UnpackEntry %s failed: %v", hdr.Name, err)
-				}
+				err := te.UnpackEntry(dir, hdr, rdr)
+				assert.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
 			}
 
 			// Now we apply the upper files in another TarExtractor.
@@ -504,11 +451,10 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				if !ph.upper {
 					continue
 				}
-				hdr, rdr := fromPseudoHdr(ph)
+				hdr, rdr := fromPseudoHdr(ph.pseudoHdr)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
-				if err := te.UnpackEntry(dir, hdr, rdr); err != nil {
-					t.Errorf("UnpackEntry %s failed: %v", hdr.Name, err)
-				}
+				err := te.UnpackEntry(dir, hdr, rdr)
+				assert.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
 			}
 
 			// And now apply a whiteout for the whiteoutRoot.
@@ -516,9 +462,8 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				Name:     filepath.Join(whiteoutDir, whOpaque),
 				Typeflag: tar.TypeReg,
 			}
-			if err := te.UnpackEntry(dir, whHdr, nil); err != nil {
-				t.Fatalf("unpack whiteout %s failed: %v", whiteoutRoot, err)
-			}
+			err = te.UnpackEntry(dir, whHdr, nil)
+			assert.NoErrorf(t, err, "UnpackEntry %s whiteout", whiteoutRoot)
 
 			// Now we double-check it worked. If the file was in "upper" it
 			// should have survived. If it was in lower it shouldn't. We don't
@@ -533,37 +478,27 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 				fullPath := filepath.Join(whiteoutRoot, ph.path)
 				_, err := te.fsEval.Lstat(fullPath)
-				if err != nil && !errors.Is(err, os.ErrNotExist) {
-					t.Errorf("unexpected lstat error of %s: %v", ph.path, err)
-				} else if ph.upper && err != nil {
-					t.Errorf("expected upper %s to exist: got %v", ph.path, err)
-				} else if !ph.upper && err == nil {
-					if !test.ignoreExist {
-						t.Errorf("expected lower %s to not exist", ph.path)
-					}
+				if ph.shouldSurvive {
+					assert.NoError(t, err)
+				} else {
+					assert.ErrorIs(t, err, os.ErrNotExist)
 				}
 			}
 
 			// Make sure the whiteoutRoot still exists.
-			if fi, err := te.fsEval.Lstat(whiteoutRoot); err != nil {
-				if errors.Is(err, os.ErrNotExist) {
-					t.Errorf("expected whiteout root to still exist: %v", err)
-				} else {
-					t.Errorf("unexpected error in lstat of whiteout root: %v", err)
-				}
-			} else if !fi.IsDir() {
-				t.Errorf("expected whiteout root to still be a directory")
-			}
+			fi, err := te.fsEval.Lstat(whiteoutRoot)
+			require.NoError(t, err, "whiteout root should still exist")
+			assert.True(t, fi.IsDir(), "whiteout root should still be a directory")
 
 			// Check that the directory is empty if there's no uppers.
 			if numUpper == 0 {
-				if fd, err := os.Open(whiteoutRoot); err != nil {
-					t.Errorf("unexpected error opening whiteoutRoot: %v", err)
-				} else if names, err := fd.Readdirnames(-1); err != nil {
-					t.Errorf("unexpected error reading dirnames: %v", err)
-				} else if len(names) != 0 {
-					t.Errorf("expected empty opaque'd dir: got %v", names)
-				}
+				fd, err := os.Open(whiteoutRoot)
+				require.NoError(t, err, "open whiteout root")
+
+				names, err := fd.Readdirnames(-1)
+				require.NoError(t, err, "readdir whiteout root")
+
+				assert.Empty(t, names, "whiteout root should be empty if no uppers")
 			}
 		})
 	}
@@ -573,17 +508,11 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 // cases. In particular when it comes to hardlinks to symlinks.
 func TestUnpackHardlink(t *testing.T) {
 	// Create the files we're going to play with.
-	dir, err := ioutil.TempDir("", "umoci-TestUnpackHardlink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	var (
 		hdr *tar.Header
-
-		// On MacOS, this might not work.
-		hardlinkToSymlinkSupported = true
+		err error
 
 		ctrValue  = []byte("some content we won't check")
 		regFile   = "regular"
@@ -606,9 +535,8 @@ func TestUnpackHardlink(t *testing.T) {
 		AccessTime: time.Now(),
 		ChangeTime: time.Now(),
 	}
-	if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-		t.Fatalf("regular: unexpected UnpackEntry error: %s", err)
-	}
+	err = te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue))
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Hardlink to regFile.
 	hdr = &tar.Header{
@@ -619,9 +547,8 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("hardlinkA: unexpected UnpackEntry error: %s", err)
-	}
+	err = te.UnpackEntry(dir, hdr, nil)
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Symlink to regFile.
 	hdr = &tar.Header{
@@ -631,9 +558,8 @@ func TestUnpackHardlink(t *testing.T) {
 		Typeflag: tar.TypeSymlink,
 		Linkname: filepath.Join("../../../", regFile),
 	}
-	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
-		t.Fatalf("symlink: unexpected UnpackEntry error: %s", err)
-	}
+	err = te.UnpackEntry(dir, hdr, nil)
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Hardlink to symlink.
 	hdr = &tar.Header{
@@ -644,88 +570,47 @@ func TestUnpackHardlink(t *testing.T) {
 		Uid: os.Getuid() + 1337,
 		Gid: os.Getgid() + 2020,
 	}
-	if err := te.UnpackEntry(dir, hdr, nil); err != nil {
-		// On Travis' setup, hardlinks to symlinks are not permitted under
-		// MacOS. That's fine.
-		if runtime.GOOS == "darwin" && errors.Is(err, unix.ENOTSUP) {
-			hardlinkToSymlinkSupported = false
-			t.Logf("hardlinks to symlinks unsupported -- skipping that part of the test")
-		} else {
-			t.Fatalf("hardlinkB: unexpected UnpackEntry error: %s", err)
-		}
-	}
+	err = te.UnpackEntry(dir, hdr, nil)
+	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Make sure that the contents are as expected.
 	ctrValueGot, err := ioutil.ReadFile(filepath.Join(dir, regFile))
-	if err != nil {
-		t.Fatalf("regular file was not created: %s", err)
-	}
-	if !bytes.Equal(ctrValueGot, ctrValue) {
-		t.Fatalf("regular file did not have expected values: expected=%s got=%s", ctrValue, ctrValueGot)
-	}
+	require.NoError(t, err, "read regular file contents")
+	assert.Equal(t, ctrValue, ctrValueGot, "regular file contents should match tar entry")
 
 	// Now we have to check the inode numbers.
-	var regFi, symFi, hardAFi unix.Stat_t
+	var regFi, symFi, hardAFi, hardBFi unix.Stat_t
 
-	if err := unix.Lstat(filepath.Join(dir, regFile), &regFi); err != nil {
-		t.Fatalf("could not stat regular file: %s", err)
-	}
-	if err := unix.Lstat(filepath.Join(dir, symFile), &symFi); err != nil {
-		t.Fatalf("could not stat symlink: %s", err)
-	}
-	if err := unix.Lstat(filepath.Join(dir, hardFileA), &hardAFi); err != nil {
-		t.Fatalf("could not stat hardlinkA: %s", err)
-	}
+	err = unix.Lstat(filepath.Join(dir, regFile), &regFi)
+	require.NoError(t, err, "lstat regular file")
+	err = unix.Lstat(filepath.Join(dir, symFile), &symFi)
+	require.NoError(t, err, "lstat symlink")
+	err = unix.Lstat(filepath.Join(dir, hardFileA), &hardAFi)
+	require.NoError(t, err, "lstat hardlink to regular file")
+	err = unix.Lstat(filepath.Join(dir, hardFileB), &hardBFi)
+	require.NoError(t, err, "lstat hardlink to symlink")
 
-	if regFi.Ino == symFi.Ino {
-		t.Errorf("regular and symlink have the same inode! ino=%d", regFi.Ino)
-	}
-	if hardAFi.Ino != regFi.Ino {
-		t.Errorf("hardlink to regular has a different inode: reg=%d hard=%d", regFi.Ino, hardAFi.Ino)
-	}
+	// Check inode numbers of regular hardlink.
+	assert.NotEqual(t, regFi.Ino, symFi.Ino, "regular and symlink should have different inode numbers")
+	assert.Equal(t, regFi.Ino, hardAFi.Ino, "hardlink should have the same inode number as the original file")
 
-	if hardlinkToSymlinkSupported {
-		var hardBFi unix.Stat_t
+	// Check inode numbers of hardlink-to-symlink.
+	assert.NotEqual(t, regFi.Ino, hardBFi.Ino, "hardlink to symlink should not have the same inode number as the original file")
+	assert.NotEqual(t, hardAFi.Ino, hardBFi.Ino, "hardlink to symlink should not have the same inode number as regular hardlink")
+	assert.Equal(t, symFi.Ino, hardBFi.Ino, "hardlink to symlink should have same inode number as the symlink")
 
-		if err := unix.Lstat(filepath.Join(dir, hardFileB), &hardBFi); err != nil {
-			t.Fatalf("could not stat hardlinkB: %s", err)
-		}
-
-		// Check inode numbers of hardlink-to-symlink.
-		if hardAFi.Ino == hardBFi.Ino {
-			t.Errorf("both hardlinks have the same inode! ino=%d", hardAFi.Ino)
-		}
-		if hardBFi.Ino != symFi.Ino {
-			t.Errorf("hardlink to symlink has a different inode: sym=%d hard=%d", symFi.Ino, hardBFi.Ino)
-		}
-
-		// Double-check readlink.
-		linknameA, err := os.Readlink(filepath.Join(dir, symFile))
-		if err != nil {
-			t.Errorf("unexpected error reading symlink: %s", err)
-		}
-		linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
-		if err != nil {
-			t.Errorf("unexpected error reading hardlink to symlink: %s", err)
-		}
-		if linknameA != linknameB {
-			t.Errorf("hardlink to symlink doesn't match linkname: link=%s hard=%s", linknameA, linknameB)
-		}
-	}
+	// Double-check readlink.
+	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
+	assert.NoError(t, err, "readlink symlink")
+	linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
+	assert.NoError(t, err, "readlink symlink to hardlink")
+	assert.Equal(t, linknameA, linknameB, "hardlink to symlink should have same readlink data")
 
 	// Make sure that uid and gid don't apply to hardlinks.
-	if int(regFi.Uid) != os.Getuid() {
-		t.Errorf("regular file: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), regFi.Uid)
-	}
-	if int(regFi.Gid) != os.Getgid() {
-		t.Errorf("regular file: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), regFi.Gid)
-	}
-	if int(symFi.Uid) != os.Getuid() {
-		t.Errorf("symlink: uid was changed by hardlink unpack: expected=%d got=%d", os.Getuid(), symFi.Uid)
-	}
-	if int(symFi.Gid) != os.Getgid() {
-		t.Errorf("symlink: gid was changed by hardlink unpack: expected=%d got=%d", os.Getgid(), symFi.Gid)
-	}
+	assert.EqualValues(t, os.Getuid(), regFi.Uid, "regular file uid should not be changed by hardlink unpack")
+	assert.EqualValues(t, os.Getgid(), regFi.Gid, "regular file gid should not be changed by hardlink unpack")
+	assert.EqualValues(t, os.Getuid(), symFi.Uid, "symlink uid should not be changed by hardlink unpack")
+	assert.EqualValues(t, os.Getgid(), symFi.Gid, "symlink gid should not be changed by hardlink unpack")
 }
 
 // TestUnpackEntryMap checks that the mapOptions handling works.
@@ -751,16 +636,13 @@ func TestUnpackEntryMap(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// Create the files we're going to play with.
-			dir, err := ioutil.TempDir("", "umoci-TestUnpackEntryMap")
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer os.RemoveAll(dir)
+			dir := t.TempDir()
 
 			var (
-				hdrUID, hdrGID, uUID, uGID int
-				hdr                        *tar.Header
-				fi                         unix.Stat_t
+				hdrUid, hdrGid int
+				hdr            *tar.Header
+				fi             unix.Stat_t
+				err            error
 
 				ctrValue = []byte("some content we won't check")
 				regFile  = "regular"
@@ -775,11 +657,11 @@ func TestUnpackEntryMap(t *testing.T) {
 			}})
 
 			// Regular file.
-			hdrUID, hdrGID = 0, 0
+			hdrUid, hdrGid = 0, 0
 			hdr = &tar.Header{
 				Name:       regFile,
-				Uid:        hdrUID,
-				Gid:        hdrGID,
+				Uid:        hdrUid,
+				Gid:        hdrGid,
 				Mode:       0644,
 				Size:       int64(len(ctrValue)),
 				Typeflag:   tar.TypeReg,
@@ -787,173 +669,123 @@ func TestUnpackEntryMap(t *testing.T) {
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regfile: unexpected UnpackEntry error: %s", err)
-			}
+			err = te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue))
+			require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
-				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
-			} else {
-				uUID = int(fi.Uid)
-				uGID = int(fi.Gid)
-				if uUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
-				}
-				if uGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
-				}
-			}
+			err = unix.Lstat(filepath.Join(dir, hdr.Name), &fi)
+			require.NoErrorf(t, err, "lstat %s", hdr.Name)
+			assert.EqualValuesf(t, int(test.uidMap.HostID)+hdrUid, fi.Uid, "file %s uid mapping", hdr.Name)
+			assert.EqualValuesf(t, int(test.gidMap.HostID)+hdrGid, fi.Gid, "file %s gid mapping", hdr.Name)
 
 			// Regular directory.
-			hdrUID, hdrGID = 13, 42
+			hdrUid, hdrGid = 13, 42
 			hdr = &tar.Header{
 				Name:       regDir,
-				Uid:        hdrUID,
-				Gid:        hdrGID,
+				Uid:        hdrUid,
+				Gid:        hdrGid,
 				Mode:       0755,
 				Typeflag:   tar.TypeDir,
 				ModTime:    time.Now(),
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
-			}
+			err = te.UnpackEntry(dir, hdr, nil)
+			require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
-				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
-			} else {
-				uUID = int(fi.Uid)
-				uGID = int(fi.Gid)
-				if uUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
-				}
-				if uGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
-				}
-			}
+			err = unix.Lstat(filepath.Join(dir, hdr.Name), &fi)
+			require.NoErrorf(t, err, "lstat %s", hdr.Name)
+			assert.EqualValuesf(t, int(test.uidMap.HostID)+hdrUid, fi.Uid, "file %s uid mapping", hdr.Name)
+			assert.EqualValuesf(t, int(test.gidMap.HostID)+hdrGid, fi.Gid, "file %s gid mapping", hdr.Name)
 
 			// Symlink to file.
-			hdrUID, hdrGID = 23, 22
+			hdrUid, hdrGid = 23, 22
 			hdr = &tar.Header{
 				Name:       symFile,
-				Uid:        hdrUID,
-				Gid:        hdrGID,
+				Uid:        hdrUid,
+				Gid:        hdrGid,
 				Typeflag:   tar.TypeSymlink,
 				Linkname:   regFile,
 				ModTime:    time.Now(),
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
-			}
+			err = te.UnpackEntry(dir, hdr, nil)
+			require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
-				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
-			} else {
-				uUID = int(fi.Uid)
-				uGID = int(fi.Gid)
-				if uUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
-				}
-				if uGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
-				}
-			}
+			err = unix.Lstat(filepath.Join(dir, hdr.Name), &fi)
+			require.NoErrorf(t, err, "lstat %s", hdr.Name)
+			assert.EqualValuesf(t, int(test.uidMap.HostID)+hdrUid, fi.Uid, "file %s uid mapping", hdr.Name)
+			assert.EqualValuesf(t, int(test.gidMap.HostID)+hdrGid, fi.Gid, "file %s gid mapping", hdr.Name)
 
-			// Symlink to director.
-			hdrUID, hdrGID = 99, 88
+			// Symlink to directory.
+			hdrUid, hdrGid = 99, 88
 			hdr = &tar.Header{
 				Name:       symDir,
-				Uid:        hdrUID,
-				Gid:        hdrGID,
+				Uid:        hdrUid,
+				Gid:        hdrGid,
 				Typeflag:   tar.TypeSymlink,
 				Linkname:   regDir,
 				ModTime:    time.Now(),
 				AccessTime: time.Now(),
 				ChangeTime: time.Now(),
 			}
-			if err := te.UnpackEntry(dir, hdr, bytes.NewBuffer(ctrValue)); err != nil {
-				t.Fatalf("regdir: unexpected UnpackEntry error: %s", err)
-			}
+			err = te.UnpackEntry(dir, hdr, nil)
+			require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-			if err := unix.Lstat(filepath.Join(dir, hdr.Name), &fi); err != nil {
-				t.Errorf("failed to lstat %s: %s", hdr.Name, err)
-			} else {
-				uUID = int(fi.Uid)
-				uGID = int(fi.Gid)
-				if uUID != int(test.uidMap.HostID)+hdrUID {
-					t.Errorf("file %s has the wrong uid mapping: got=%d expected=%d", hdr.Name, uUID, int(test.uidMap.HostID)+hdrUID)
-				}
-				if uGID != int(test.gidMap.HostID)+hdrGID {
-					t.Errorf("file %s has the wrong gid mapping: got=%d expected=%d", hdr.Name, uGID, int(test.gidMap.HostID)+hdrGID)
-				}
-			}
+			err = unix.Lstat(filepath.Join(dir, hdr.Name), &fi)
+			require.NoErrorf(t, err, "lstat %s", hdr.Name)
+			assert.EqualValuesf(t, int(test.uidMap.HostID)+hdrUid, fi.Uid, "file %s uid mapping", hdr.Name)
+			assert.EqualValuesf(t, int(test.gidMap.HostID)+hdrGid, fi.Gid, "file %s gid mapping", hdr.Name)
 		})
 	}
 }
 
 func TestIsDirlink(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestDirLink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
-	if err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if file, err := os.Create(filepath.Join(dir, "test_file")); err != nil {
-		t.Fatal(err)
-	} else {
-		file.Close()
-	}
-	if err := os.Symlink("test_dir", filepath.Join(dir, "link")); err != nil {
-		t.Fatal(err)
-	}
+	err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755)
+	require.NoError(t, err)
+
+	file, err := os.Create(filepath.Join(dir, "test_file"))
+	require.NoError(t, err)
+	file.Close()
+
+	err = os.Symlink("test_dir", filepath.Join(dir, "link"))
+	require.NoError(t, err)
 
 	te := NewTarExtractor(UnpackOptions{})
 	// Basic symlink usage.
-	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
-		t.Errorf("symlink failed: %v", err)
-	} else if !dirlink {
-		t.Errorf("dirlink test failed")
-	}
+	dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link"))
+	require.NoError(t, err, "isDirlink symlink to directory")
+	assert.True(t, dirlink, "symlink to directory is a dirlink")
 
 	// "Read" a non-existent link.
-	if _, err := te.isDirlink(dir, filepath.Join(dir, "doesnt-exist")); err == nil {
-		t.Errorf("read non-existent dirlink")
-	}
+	_, err = te.isDirlink(dir, filepath.Join(dir, "doesnt-exist"))
+	assert.Error(t, err, "isDirlink non-existent path")
+
 	// "Read" a directory.
-	if _, err := te.isDirlink(dir, filepath.Join(dir, "test_dir")); err == nil {
-		t.Errorf("read non-link dirlink")
-	}
+	_, err = te.isDirlink(dir, filepath.Join(dir, "test_dir"))
+	assert.Error(t, err, "isDirlink directory")
+
 	// "Read" a file.
-	if _, err := te.isDirlink(dir, filepath.Join(dir, "test_file")); err == nil {
-		t.Errorf("read non-link dirlink")
-	}
+	_, err = te.isDirlink(dir, filepath.Join(dir, "test_file"))
+	assert.Error(t, err, "isDirlink file")
 
 	// Break the symlink.
-	if err := os.Remove(filepath.Join(dir, "test_dir")); err != nil {
-		t.Fatal(err)
-	}
-	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
-		t.Errorf("broken symlink failed: %v", err)
-	} else if dirlink {
-		t.Errorf("broken dirlink test failed")
-	}
+	err = os.Remove(filepath.Join(dir, "test_dir"))
+	require.NoError(t, err, "delete symlink target")
+
+	dirlink, err = te.isDirlink(dir, filepath.Join(dir, "link"))
+	require.NoError(t, err, "isDirlink broken symlink to directory")
+	assert.False(t, dirlink, "broken symlink to directory is not a dirlink")
 
 	// Point the symlink to a file.
-	if err := os.Remove(filepath.Join(dir, "link")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("test_file", filepath.Join(dir, "link")); err != nil {
-		t.Fatal(err)
-	}
-	if dirlink, err := te.isDirlink(dir, filepath.Join(dir, "link")); err != nil {
-		t.Errorf("file symlink failed: %v", err)
-	} else if dirlink {
-		t.Errorf("file dirlink test failed")
-	}
+	err = os.Remove(filepath.Join(dir, "link"))
+	require.NoError(t, err)
+	err = os.Symlink("test_file", filepath.Join(dir, "link"))
+	require.NoError(t, err)
+
+	dirlink, err = te.isDirlink(dir, filepath.Join(dir, "link"))
+	require.NoError(t, err, "isDirlink symlink to file")
+	assert.False(t, dirlink, "symlink to file is not a dirlink")
 }

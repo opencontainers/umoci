@@ -1,5 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2020 SUSE LLC
+# Copyright (C) 2016-2025 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -141,11 +142,13 @@ local-validate: local-validate-go local-validate-spell local-validate-reproducib
 .PHONY: local-validate-go
 local-validate-go:
 	@type gofmt     >/dev/null 2>/dev/null || (echo "ERROR: gofmt not found." && false)
-	test -z "$$(gofmt -s -l . | grep -vE '^vendor/|^third_party/' | tee /dev/stderr)"
+	test -z "$$(gofmt -s -l . | grep -vE '^vendor/' | tee /dev/stderr)"
 	@type golint    >/dev/null 2>/dev/null || (echo "ERROR: golint not found." && false)
-	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/|/third_party/' | tee /dev/stderr)"
+	test -z "$$(golint $(PROJECT)/... | grep -vE '/vendor/' | tee /dev/stderr)"
+	@type goimports >/dev/null 2>/dev/null || (echo "ERROR: goimports not found." && false)
+	test -z "$$(goimports -local $(PROJECT) -l . | grep -vE '^vendor/' | tee /dev/stderr)"
 	@go doc cmd/vet >/dev/null 2>/dev/null || (echo "ERROR: go vet not found." && false)
-	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/|/third_party/') 2>&1 | tee /dev/stderr)"
+	test -z "$$($(GO) vet $$($(GO) list $(PROJECT)/... | grep -vE '/vendor/') 2>&1 | tee /dev/stderr)"
 	@type gosec     >/dev/null 2>/dev/null || (echo "ERROR: gosec not found." && false)
 	test -z "$$(gosec -quiet -exclude=G301,G302,G304 $$GOPATH/$(PROJECT)/... | tee /dev/stderr)"
 	./hack/test-vendor.sh
@@ -154,7 +157,7 @@ local-validate-go:
 local-validate-spell:
 	make clean
 	@type misspell  >/dev/null 2>/dev/null || (echo "ERROR: misspell not found." && false)
-	test -z "$$(find . -type f -print0 | xargs -0 misspell | grep -vE '/(vendor|third_party|\.site)/' | tee /dev/stderr)"
+	test -z "$$(find . -type f -print0 | xargs -0 misspell | grep -vE '/(vendor|\.site)/' | tee /dev/stderr)"
 
 # Make sure that our builds are reproducible even if you wait between them and
 # the modified time of the files is different.

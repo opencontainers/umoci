@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -22,9 +23,10 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/opencontainers/umoci/pkg/system"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // Default is the "identity" form of FsEval. In particular, it does not do any

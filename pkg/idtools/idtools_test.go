@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,6 +22,7 @@ import (
 	"testing"
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestToHost(t *testing.T) {
@@ -43,15 +45,10 @@ func TestToHost(t *testing.T) {
 	} {
 		id, err := ToHost(test.container, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.host {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
 }
@@ -65,11 +62,8 @@ func TestToHostNil(t *testing.T) {
 		1,
 	} {
 		id, err := ToHost(test, nil)
-		if err != nil {
-			t.Errorf("unexpected error: %+v", err)
-		} else if id != test {
-			t.Errorf("expected to get %d, got %d", test, id)
-		}
+		assert.NoErrorf(t, err, "should be able to map container id %d", test)
+		assert.Equalf(t, test, id, "map container id %d", test)
 	}
 }
 
@@ -95,15 +89,10 @@ func TestToHostLarger(t *testing.T) {
 	} {
 		id, err := ToHost(test.container, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.host {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
 }
@@ -143,15 +132,10 @@ func TestToHostMultiple(t *testing.T) {
 	} {
 		id, err := ToHost(test.container, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.host {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
 }
@@ -176,15 +160,10 @@ func TestToContainer(t *testing.T) {
 	} {
 		id, err := ToContainer(test.host, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.container {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
 }
@@ -198,11 +177,8 @@ func TestToContainerNil(t *testing.T) {
 		1,
 	} {
 		id, err := ToContainer(test, nil)
-		if err != nil {
-			t.Errorf("unexpected error: %+v", err)
-		} else if id != test {
-			t.Errorf("expected to get %d, got %d", test, id)
-		}
+		assert.NoErrorf(t, err, "should be able to map host id %d", test)
+		assert.Equalf(t, test, id, "map host id %d", test)
 	}
 }
 
@@ -228,15 +204,10 @@ func TestToContainerLarger(t *testing.T) {
 	} {
 		id, err := ToContainer(test.host, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.container {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
 }
@@ -276,15 +247,10 @@ func TestToContainerMultiple(t *testing.T) {
 	} {
 		id, err := ToContainer(test.host, idMap)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with container=%d", test.container)
-			}
+			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else if id != test.container {
-				t.Errorf("expected to get %d, got %d", test.host, id)
-			}
+			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
 }
@@ -310,23 +276,12 @@ func TestParseIDMapping(t *testing.T) {
 	} {
 		idMap, err := ParseMapping(test.spec)
 		if test.failure {
-			if err == nil {
-				t.Errorf("expected an error with spec %s -- got %+v", test.spec, idMap)
-			}
+			assert.ErrorContainsf(t, err, "invalid", "should get an error with mapping %q", test.spec)
 		} else {
-			if err != nil {
-				t.Errorf("unexpected error: %+v", err)
-			} else {
-				if idMap.HostID != test.host {
-					t.Errorf("%q: expected to get host %d, got %d", test.spec, test.host, idMap.HostID)
-				}
-				if idMap.ContainerID != test.container {
-					t.Errorf("%q: expected to get container %d, got %d", test.spec, test.container, idMap.HostID)
-				}
-				if idMap.Size != test.size {
-					t.Errorf("%q: expected to get size %d, got %d", test.spec, test.size, idMap.HostID)
-				}
-			}
+			assert.NoErrorf(t, err, "should be able to parse mapping %q", test.spec)
+			assert.EqualValuesf(t, test.host, idMap.HostID, "invalid host id for mapping %q", test.spec)
+			assert.EqualValuesf(t, test.container, idMap.ContainerID, "invalid container id for mapping %q", test.spec)
+			assert.EqualValuesf(t, test.size, idMap.Size, "invalid size for mapping %q", test.spec)
 		}
 	}
 }

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,40 +25,42 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
-	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
 
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/oci/cas"
 	casdir "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/require"
 )
 
 // These come from just running the code.
 // TODO: Auto-generate these in a much more sane way.
 const (
-	expectedLayerDigest    = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
-	expectedConfigDigest   = "sha256:ddcc2a93d5b0bcdcb571431c3607d84abe3752406f7c631a898340e6e7e61ed0"
-	expectedManifestDigest = "sha256:a4f6551691241fd52bcabb6af7994c30e9f8c8fe3d5b6b0c1ffd137386689675"
+	expectedLayerDigest digest.Digest = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
+	expectedLayerDiffID digest.Digest = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
+	expectedLayerSize   int64         = 2048
+
+	expectedConfigDigest digest.Digest = "sha256:ddcc2a93d5b0bcdcb571431c3607d84abe3752406f7c631a898340e6e7e61ed0"
+	expectedConfigSize   int64         = 190
+
+	expectedManifestDigest digest.Digest = "sha256:a4f6551691241fd52bcabb6af7994c30e9f8c8fe3d5b6b0c1ffd137386689675"
+	expectedManifestSize   int64         = 403
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	dir = filepath.Join(dir, "image")
-	if err := casdir.Create(dir); err != nil {
-		t.Fatal(err)
-	}
+	err := casdir.Create(dir)
+	require.NoError(t, err)
 
 	engine, err := casdir.Open(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	engineExt := casext.NewEngine(engine)
 
 	// Write a tar layer.
@@ -77,12 +80,12 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	diffidDigester := cas.BlobAlgorithm.Digester()
 	hashReader := io.TeeReader(&buffer, diffidDigester.Hash())
 	layerDigest, layerSize, err := engine.PutBlob(context.Background(), hashReader)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if layerDigest != expectedLayerDigest {
-		t.Errorf("unexpected layerDigest: got %s, expected %s", layerDigest, expectedLayerDigest)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedLayerDigest, layerDigest, "unexpected layer digest")
+	assert.Equal(t, expectedLayerSize, layerSize, "unexpected layer size")
+
+	layerDiffID := diffidDigester.Digest()
+	assert.Equal(t, expectedLayerDiffID, layerDiffID, "unexpected layer diffid")
 
 	// Create a config.
 	config := ispec.Image{
@@ -91,7 +94,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
-			DiffIDs: []digest.Digest{diffidDigester.Digest()},
+			DiffIDs: []digest.Digest{layerDiffID},
 		},
 		History: []ispec.History{
 			{EmptyLayer: false},
@@ -99,12 +102,9 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	}
 
 	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if configDigest != expectedConfigDigest {
-		t.Errorf("unexpected configDigest: got %s, expected %s", configDigest, expectedConfigDigest)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedConfigDigest, configDigest, "unexpected config digest")
+	assert.Equal(t, expectedConfigSize, configSize, "unexpected config size")
 
 	// Create the manifest.
 	manifest := ispec.Manifest{
@@ -127,12 +127,9 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	}
 
 	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if manifestDigest != expectedManifestDigest {
-		t.Errorf("unexpected manifestDigest: got %s, expected %s", manifestDigest, expectedManifestDigest)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, expectedManifestDigest, manifestDigest, "unexpected manifest digest")
+	assert.Equal(t, expectedManifestSize, manifestSize, "unexpected manifest size")
 
 	return engine, ispec.Descriptor{
 		MediaType: ispec.MediaTypeImageManifest,
@@ -142,78 +139,61 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 }
 
 func TestMutateCache(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateBasic")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Check that caching actually works.
-	if err := mutator.cache(context.Background()); err != nil {
-		t.Fatalf("unexpected error getting cache: %+v", err)
-	}
+	err = mutator.cache(context.Background())
+	require.NoError(t, err, "getting cache")
 
 	// Check manifest.
-	if mutator.manifest.SchemaVersion != 2 {
-		t.Errorf("manifest.SchemaVersion is not cached")
-	}
-	if mutator.manifest.Config.MediaType != ispec.MediaTypeImageConfig {
-		t.Errorf("manifest.Config.MediaType is not cached")
-	}
-	if mutator.manifest.Config.Digest != expectedConfigDigest {
-		t.Errorf("manifest.Config.Digest is not cached")
-	}
-	if len(mutator.manifest.Layers) != 1 {
-		t.Errorf("manifest.Layers is not cached")
-	}
-	if mutator.manifest.Layers[0].MediaType != ispec.MediaTypeImageLayerGzip {
-		t.Errorf("manifest.Layers is not cached")
-	}
-	if mutator.manifest.Layers[0].Digest != expectedLayerDigest {
-		t.Errorf("manifest.Layers.Digest is not cached")
-	}
+	assert.Equal(t, ispec.Manifest{
+		Versioned: imeta.Versioned{
+			SchemaVersion: 2,
+		},
+		MediaType: ispec.MediaTypeImageManifest,
+		Config: ispec.Descriptor{
+			MediaType: ispec.MediaTypeImageConfig,
+			Digest:    expectedConfigDigest,
+			Size:      expectedConfigSize,
+		},
+		Layers: []ispec.Descriptor{
+			{
+				MediaType: ispec.MediaTypeImageLayerGzip,
+				Digest:    expectedLayerDigest,
+				Size:      expectedLayerSize,
+			},
+		},
+	}, *mutator.manifest, "manifest not cached")
 
 	// Check config.
-	if mutator.config.Config.User != "default:user" {
-		t.Errorf("config.Config.User is not cached")
-	}
-	if mutator.config.RootFS.Type != "layers" {
-		t.Errorf("config.RootFS.Type is not cached")
-	}
-	if len(mutator.config.RootFS.DiffIDs) != 1 {
-		t.Errorf("config.RootFS.DiffIDs is not cached")
-	}
-	// TODO: Check Config.RootFS.DiffIDs.Digest.
-	if len(mutator.config.History) != 1 {
-		t.Errorf("config.History is not cached")
-	}
-	if mutator.config.History[0].EmptyLayer != false {
-		t.Errorf("config.History[0].EmptyLayer is not cached")
-	}
+	assert.Equal(t, ispec.Image{
+		Config: ispec.ImageConfig{
+			User: "default:user",
+		},
+		RootFS: ispec.RootFS{
+			Type:    "layers",
+			DiffIDs: []digest.Digest{expectedLayerDiffID},
+		},
+		History: []ispec.History{
+			{EmptyLayer: false},
+		},
+	}, *mutator.config, "config not cached")
 }
 
 func TestMutateAdd(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAdd")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This isn't a valid image, but whatever.
 	buffer := bytes.NewBufferString("contents")
@@ -221,90 +201,51 @@ func TestMutateAdd(t *testing.T) {
 
 	// Add a new layer.
 	annotations := map[string]string{"hello": "world"}
-	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
-		Comment: "new layer",
-	}, blobcompress.Gzip, annotations)
-	if err != nil {
-		t.Fatalf("unexpected error adding layer: %+v", err)
+	newLayerHist := ispec.History{
+		EmptyLayer: false,
+		Comment:    "new layer",
 	}
+	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &newLayerHist, blobcompress.Gzip, annotations)
+	require.NoError(t, err, "add layer")
 
 	newDescriptor, err := mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error committing changes: %+v", err)
-	}
-
-	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
-		t.Fatalf("new and old descriptors are the same!")
-	}
+	require.NoError(t, err, "commit changes")
+	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new and old descriptors should be different")
 
 	mutator, err = New(engine, newDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Cache the data to check it.
-	if err := mutator.cache(context.Background()); err != nil {
-		t.Fatalf("unexpected error getting cache: %+v", err)
-	}
+	err = mutator.cache(context.Background())
+	require.NoError(t, err, "get cache")
 
-	// Check digests are different.
-	if mutator.manifest.Config.Digest == expectedConfigDigest {
-		t.Errorf("manifest.Config.Digest is the same!")
-	}
-	if mutator.manifest.Layers[0].Digest != expectedLayerDigest {
-		t.Errorf("manifest.Layers[0].Digest is not the same!")
-	}
-	if mutator.manifest.Layers[1].Digest == expectedLayerDigest {
-		t.Errorf("manifest.Layers[1].Digest is not the same!")
-	}
-	if len(mutator.manifest.Layers[1].Annotations) != 2 {
-		t.Errorf("manifest.Layers[1].Annotations was not set correctly!: %+v", mutator.manifest.Layers[1].Annotations)
-	}
-	if mutator.manifest.Layers[1].Annotations["hello"] != "world" {
-		t.Errorf("manifest.Layers[1].Annotations['hello'] was not set correctly!: %+v", mutator.manifest.Layers[1].Annotations)
-	}
-	if mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation] != fmt.Sprintf("%d", bufferSize) {
-		t.Errorf("manifest.Layers[1].Annotations[%q] was not set correctly!: %q, expected %d",
-			UmociUncompressedBlobSizeAnnotation,
-			mutator.manifest.Layers[1].Annotations[UmociUncompressedBlobSizeAnnotation],
-			bufferSize)
-	}
-	if mutator.manifest.Layers[1].Digest != newLayerDesc.Digest {
-		t.Fatalf("unexpected digest for new layer: %v %v", mutator.manifest.Layers[1].Digest, newLayerDesc.Digest)
-	}
+	// Check digests for new config and layer are different.
+	assert.NotEqual(t, expectedConfigDigest, mutator.manifest.Config.Digest, "new config should have a different digest")
+	assert.Equal(t, expectedLayerDigest, mutator.manifest.Layers[0].Digest, "old layer should have same digest")
+	assert.NotEqual(t, expectedLayerDigest, mutator.manifest.Layers[1].Digest, "new layer should have a different digest")
+
+	assert.Equal(t, map[string]string{
+		"hello":                             "world",
+		UmociUncompressedBlobSizeAnnotation: fmt.Sprintf("%d", bufferSize),
+	}, mutator.manifest.Layers[1].Annotations, "new layer annotations")
+
+	assert.Equal(t, newLayerDesc, mutator.manifest.Layers[1], "new layer descriptor should match the one returned by mutator")
 
 	manifestFromFunction, err := mutator.Manifest(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error getting manifest: %+v", err)
-	}
-
-	if !reflect.DeepEqual(manifestFromFunction, *mutator.manifest) {
-		t.Fatalf("mutator.Manifest() didn't return the cached manifest")
-	}
+	require.NoError(t, err, "get manifest")
+	assert.Equal(t, *mutator.manifest, manifestFromFunction, "mutator.Manifest() should return cached manifest")
 
 	// Check layer was added.
-	if len(mutator.manifest.Layers) != 2 {
-		t.Errorf("manifest.Layers was not updated")
-	}
-	if mutator.manifest.Layers[1].MediaType != ispec.MediaTypeImageLayerGzip {
-		t.Errorf("manifest.Layers[1].MediaType is the wrong value: %s", mutator.manifest.Layers[1].MediaType)
-	}
+	assert.Len(t, mutator.manifest.Layers, 2, "manifest.Layers should include new layer")
+	assert.Equal(t, ispec.MediaTypeImageLayerGzip, mutator.manifest.Layers[1].MediaType, "new layer should have the right media-type")
 
 	// Check config was also modified.
-	if len(mutator.config.RootFS.DiffIDs) != 2 {
-		t.Errorf("config.RootFS.DiffIDs was not updated")
-	}
+	assert.Len(t, mutator.config.RootFS.DiffIDs, 2, "config.RootFS.DiffIDs should include new layer")
+	assert.NotEqual(t, expectedLayerDiffID, mutator.config.RootFS.DiffIDs[1], "new layer should have a different diffid")
 
 	// Check history.
-	if len(mutator.config.History) != 2 {
-		t.Errorf("config.History was not updated")
-	}
-	if mutator.config.History[1].EmptyLayer != false {
-		t.Errorf("config.History[1].EmptyLayer was not set")
-	}
-	if mutator.config.History[1].Comment != "new layer" {
-		t.Errorf("config.History[1].Comment was not set")
-	}
+	assert.Len(t, mutator.config.History, 2, "config.History should include new layer")
+	assert.Equal(t, newLayerHist, mutator.config.History[1], "new layer history should match specified value")
 }
 
 func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, addCompressAlgo, expectedCompressAlgo blobcompress.Algorithm) {
@@ -366,9 +307,7 @@ func TestMutateAddCompression(t *testing.T) {
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Test that explicitly setting the compression does what you expect:
 	for _, test := range []struct {
@@ -416,19 +355,13 @@ func TestMutateAddCompression(t *testing.T) {
 }
 
 func TestMutateAddExisting(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAddExisting")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// This isn't a valid image, but whatever.
 	buffer := bytes.NewBufferString("contents")
@@ -437,205 +370,124 @@ func TestMutateAddExisting(t *testing.T) {
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
 	}, blobcompress.Gzip, nil)
-	if err != nil {
-		t.Fatalf("unexpected error adding layer: %+v", err)
-	}
+	require.NoError(t, err, "add layer")
 
 	newDescriptor, err := mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error committing changes: %+v", err)
-	}
+	require.NoError(t, err, "commit change")
 
 	mutator, err = New(engine, newDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// add the layer again; first loading the cache so we can use the existing one
 	err = mutator.cache(context.Background())
+	require.NoError(t, err, "get cache")
+
 	diffID := mutator.config.RootFS.DiffIDs[len(mutator.config.RootFS.DiffIDs)-1]
 	history := ispec.History{Comment: "hello world"}
 	layerDesc := mutator.manifest.Layers[len(mutator.manifest.Layers)-1]
 	err = mutator.AddExisting(context.Background(), layerDesc, &history, diffID)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "add existing layer")
 
 	_, err = mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "commit change")
 
 	manifestFromFunction, err := mutator.Manifest(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error getting manifest: %+v", err)
-	}
+	require.NoError(t, err, "get manifest")
+	assert.Equal(t, *mutator.manifest, manifestFromFunction, "mutator.Manifest() should return cached manifest")
 
-	if !reflect.DeepEqual(manifestFromFunction, *mutator.manifest) {
-		t.Fatalf("mutator.Manifest() didn't return the cached manifest")
-	}
+	require.Len(t, mutator.manifest.Layers, 3, "manifest should include new layers")
+	assert.Equal(t, layerDesc, mutator.manifest.Layers[1], "new layer descriptor")
+	assert.Equal(t, layerDesc, mutator.manifest.Layers[2], "re-used new layer descriptor")
 
-	if len(mutator.manifest.Layers) != 3 {
-		t.Fatalf("manifest.Layers was not updated")
-	}
-
-	if !reflect.DeepEqual(mutator.manifest.Layers[2], layerDesc) {
-		t.Fatalf("new layer doesn't match")
-	}
-
-	if !reflect.DeepEqual(mutator.manifest.Layers[1], layerDesc) {
-		t.Fatalf("old layer doesn't match")
-	}
-
-	if len(mutator.config.RootFS.DiffIDs) != 3 {
-		t.Fatalf("config.RootFS.DiffIDs was not updated")
-	}
-
-	if mutator.config.RootFS.DiffIDs[2] != diffID {
-		t.Fatalf("new layer's diffid doesn't match")
-	}
-
-	if mutator.config.RootFS.DiffIDs[1] != diffID {
-		t.Fatalf("old layer's diffid doesn't match")
-	}
+	require.Len(t, mutator.config.RootFS.DiffIDs, 3, "config should include new layer diffids")
+	assert.Equal(t, diffID, mutator.config.RootFS.DiffIDs[1], "new layer diffid")
+	assert.Equal(t, diffID, mutator.config.RootFS.DiffIDs[2], "re-used new layer diffid")
 }
 
 func TestMutateSet(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Change the config
-	if err := mutator.Set(context.Background(), ispec.ImageConfig{
+	err = mutator.Set(context.Background(), ispec.ImageConfig{
 		User: "changed:user",
 	}, Meta{}, nil, &ispec.History{
 		Comment: "another layer",
-	}); err != nil {
-		t.Fatalf("unexpected error adding layer: %+v", err)
-	}
+	})
+	require.NoError(t, err, "set config")
 
 	newDescriptor, err := mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error committing changes: %+v", err)
-	}
-
-	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
-		t.Fatalf("new and old descriptors are the same!")
-	}
+	require.NoError(t, err, "commit change")
+	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new manifest descriptor digest should be different")
 
 	mutator, err = New(engine, newDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Cache the data to check it.
-	if err := mutator.cache(context.Background()); err != nil {
-		t.Fatalf("unexpected error getting cache: %+v", err)
-	}
+	err = mutator.cache(context.Background())
+	require.NoError(t, err, "get cache")
 
 	// Check digests are different.
-	if mutator.manifest.Config.Digest == expectedConfigDigest {
-		t.Errorf("manifest.Config.Digest is the same!")
-	}
+	assert.NotEqual(t, expectedConfigDigest, mutator.manifest.Config.Digest, "config digest should be different")
 
-	// Check layer was not added.
-	if len(mutator.manifest.Layers) != 1 {
-		t.Errorf("manifest.Layers was updated")
-	}
+	// Check a layer was not added.
+	assert.Len(t, mutator.manifest.Layers, 1, "config change shouldn't affect layer digests")
+	assert.Len(t, mutator.config.RootFS.DiffIDs, 1, "config change shouldn't affect layer diffids")
 
 	// Check config was also modified.
-	if len(mutator.config.RootFS.DiffIDs) != 1 {
-		t.Errorf("config.RootFS.DiffIDs was updated")
-	}
-	if mutator.config.Config.User != "changed:user" {
-		t.Errorf("config.Config.USer was not updated! expected changed:user, got %s", mutator.config.Config.User)
-	}
+	assert.Equal(t, "changed:user", mutator.config.Config.User, "config user wasn't updated")
 
 	// Check history.
-	if len(mutator.config.History) != 2 {
-		t.Errorf("config.History was not updated")
-	}
-	if mutator.config.History[1].EmptyLayer != true {
-		t.Errorf("config.History[1].EmptyLayer was not set")
-	}
-	if mutator.config.History[1].Comment != "another layer" {
-		t.Errorf("config.History[1].Comment was not set")
-	}
+	assert.Len(t, mutator.config.History, 2, "history should have new entry")
+	assert.Equal(t, ispec.History{
+		EmptyLayer: true,
+		Comment:    "another layer",
+	}, mutator.config.History[1], "config history entry")
 }
 
 func TestMutateSetNoHistory(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSetNoHistory")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
 	defer engine.Close()
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Change the config
-	if err := mutator.Set(context.Background(), ispec.ImageConfig{
+	err = mutator.Set(context.Background(), ispec.ImageConfig{
 		User: "changed:user",
-	}, Meta{}, nil, nil); err != nil {
-		t.Fatalf("unexpected error adding layer: %+v", err)
-	}
+	}, Meta{}, nil, nil)
+	require.NoError(t, err, "set config")
 
 	newDescriptor, err := mutator.Commit(context.Background())
-	if err != nil {
-		t.Fatalf("unexpected error committing changes: %+v", err)
-	}
-
-	if newDescriptor.Descriptor().Digest == fromDescriptor.Digest {
-		t.Fatalf("new and old descriptors are the same!")
-	}
+	require.NoError(t, err, "commit change")
+	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new manifest descriptor digest should be different")
 
 	mutator, err = New(engine, newDescriptor)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
 	// Cache the data to check it.
-	if err := mutator.cache(context.Background()); err != nil {
-		t.Fatalf("unexpected error getting cache: %+v", err)
-	}
+	err = mutator.cache(context.Background())
+	require.NoError(t, err, "get cache")
 
 	// Check digests are different.
-	if mutator.manifest.Config.Digest == expectedConfigDigest {
-		t.Errorf("manifest.Config.Digest is the same!")
-	}
+	assert.NotEqual(t, expectedConfigDigest, mutator.manifest.Config.Digest, "config digest should be different")
 
-	// Check layer was not added.
-	if len(mutator.manifest.Layers) != 1 {
-		t.Errorf("manifest.Layers was updated")
-	}
+	// Check a layer was not added.
+	assert.Len(t, mutator.manifest.Layers, 1, "config change shouldn't affect layer digests")
+	assert.Len(t, mutator.config.RootFS.DiffIDs, 1, "config change shouldn't affect layer diffids")
 
 	// Check config was also modified.
-	if len(mutator.config.RootFS.DiffIDs) != 1 {
-		t.Errorf("config.RootFS.DiffIDs was updated")
-	}
-	if mutator.config.Config.User != "changed:user" {
-		t.Errorf("config.Config.USer was not updated! expected changed:user, got %s", mutator.config.Config.User)
-	}
+	assert.Equal(t, "changed:user", mutator.config.Config.User, "config user wasn't updated")
 
 	// Check history.
-	if len(mutator.config.History) == 2 {
-		t.Errorf("config.History was changed")
-	}
+	assert.Len(t, mutator.config.History, 1, "history should not have new entry")
 }
 
 func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.Descriptor) (casext.DescriptorPath, error) {
@@ -658,11 +510,7 @@ func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.De
 }
 
 func TestMutatePath(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestMutateSet")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	engine, manifestDescriptor := setup(t, dir)
 	engineExt := casext.NewEngine(engine)
@@ -685,9 +533,7 @@ func TestMutatePath(t *testing.T) {
 			},
 		}
 		newRootDigest, newRootSize, err := engineExt.PutBlobJSON(context.Background(), newRoot)
-		if err != nil {
-			t.Fatalf("failed to put blob json newroot: %+v", err)
-		}
+		require.NoError(t, err, "failed to put new root blob json")
 		newRootDescriptor := ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageIndex,
 			Digest:    newRootDigest,
@@ -703,19 +549,14 @@ func TestMutatePath(t *testing.T) {
 	// Mutate each one.
 	for idx, path := range expectedPaths {
 		mutator, err := New(engine, path)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		// Change the config in some minor way.
 		meta, err := mutator.Meta(context.Background())
-		if err != nil {
-			t.Fatalf("%d: unexpected error getting meta: %+v", idx, err)
-		}
+		require.NoErrorf(t, err, "getting %d meta", idx)
+
 		config, err := mutator.Config(context.Background())
-		if err != nil {
-			t.Fatalf("%d: unexpected error getting config: %+v", idx, err)
-		}
+		require.NoErrorf(t, err, "getting %d config", idx)
 
 		// Change the label.
 		label := fmt.Sprintf("TestMutateSet+%d", idx)
@@ -725,52 +566,36 @@ func TestMutatePath(t *testing.T) {
 		config.Config.Labels["org.opensuse.testidx"] = label
 
 		// Update it.
-		if err := mutator.Set(context.Background(), config.Config, meta, nil, &ispec.History{
+		err = mutator.Set(context.Background(), config.Config, meta, nil, &ispec.History{
 			Comment: "change label " + label,
-		}); err != nil {
-			t.Fatalf("%d: unexpected error modifying config: %+v", idx, err)
-		}
+		})
+		require.NoErrorf(t, err, "setting %d config", idx)
 
 		// Commit.
 		newPath, err := mutator.Commit(context.Background())
-		if err != nil {
-			t.Fatalf("%d: unexpected error committing: %+v", idx, err)
-		}
+		require.NoErrorf(t, err, "commit change %d", idx)
 
 		// Make sure that the paths are the same length but have different
 		// digests.
-		if len(newPath.Walk) != len(path.Walk) {
-			t.Errorf("%d: new path was a different length than the old one: %v != %v", idx, len(newPath.Walk), len(path.Walk))
-		} else if reflect.DeepEqual(newPath, path) {
-			t.Errorf("%d: new path was identical to old one: %v", idx, path)
-		} else {
+		if assert.Len(t, newPath.Walk, len(path.Walk), "new path should be the same length as the old one") {
+			assert.NotEqual(t, newPath, path, "new path should be different to the old one")
 			for i := 0; i < len(path.Walk); i++ {
-				if path.Walk[i].Digest == newPath.Walk[i].Digest {
-					t.Errorf("%d: path[%d].Digest = newPath[%d].Digest: %v = %v", idx, i, i, path.Walk[i].Digest, newPath.Walk[i].Digest)
-				}
-				if path.Walk[i].MediaType != newPath.Walk[i].MediaType {
-					t.Errorf("%d: path[%d].MediaType != newPath[%d].MediaType: %v != %v", idx, i, i, path.Walk[i].MediaType, newPath.Walk[i].MediaType)
-				}
-				if !reflect.DeepEqual(path.Walk[i].Annotations, newPath.Walk[i].Annotations) {
-					t.Errorf("%d: path[%d].Annotations != newPath[%d].Annotations: %v != %v", idx, i, i, path.Walk[i].Annotations, newPath.Walk[i].Annotations)
-				}
+				assert.Equalf(t, path.Walk[i].MediaType, newPath.Walk[i].MediaType, "media type for entry %d in walk should be the same", i)
+				assert.Equalf(t, path.Walk[i].Annotations, newPath.Walk[i].Annotations, "annotations for entry %d in walk should be the same", i)
+				assert.NotEqualf(t, path.Walk[i].Digest, newPath.Walk[i].Digest, "digest for entry %d in walk should be different", i)
 			}
 		}
 
 		// Emulate a reference resolution with walkDescriptorRoot.
 		walkPath, err := walkDescriptorRoot(context.Background(), engineExt, newPath.Root())
-		if err != nil {
-			t.Errorf("%d: unexpected error with walkPath %v", idx, err)
-		} else if !reflect.DeepEqual(newPath, walkPath) {
-			t.Errorf("%d: walkDescriptorRoot didn't give the same path: expected %v got %v", idx, newPath, walkPath)
+		if assert.NoErrorf(t, err, "walk new path %d", idx) {
+			assert.Equalf(t, newPath, walkPath, "walk of new path %d should give the same path", idx)
 		}
 
 		// Make sure the old path still exists (not necessary to be honest).
 		oldWalkPath, err := walkDescriptorRoot(context.Background(), engineExt, path.Root())
-		if err != nil {
-			t.Errorf("%d: unexpected error with oldWalkPath %v", idx, err)
-		} else if !reflect.DeepEqual(oldWalkPath, path) {
-			t.Errorf("%d: walkDescriptorRoot didn't give the same old path: expected %v got %v", idx, newPath, walkPath)
+		if assert.NoErrorf(t, err, "walk old path %d", idx) {
+			assert.Equalf(t, path, oldWalkPath, "walk of old path %d should give the same path", idx)
 		}
 	}
 }

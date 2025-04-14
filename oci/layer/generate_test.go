@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,65 +20,49 @@ package layer
 
 import (
 	"archive/tar"
-	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 )
 
 func TestGenerate(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerate")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	require.NoError(t, err)
 
 	// Get initial.
 	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree walk")
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dir, "some", "parents", "deleted")); err != nil {
-		t.Fatal(err)
-	}
+	// Modify some files.
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	require.NoError(t, err)
+	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
+	require.NoError(t, err)
 
 	// Get post.
 	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree walk")
 
 	diffs, err := mtree.Compare(initDh, postDh, initDh.UsedKeywords())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree diff generate")
 
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "generate layer")
 	defer reader.Close()
 
 	var (
@@ -92,28 +77,19 @@ func TestGenerate(t *testing.T) {
 		if err == io.EOF {
 			break
 		}
-		if err != nil {
-			t.Errorf("unexpected error: %s", err)
-			break
-		}
+		require.NoError(t, err, "read tar entry")
+
 		switch hdr.Name {
 		case filepath.Join("some", "parents") + "/":
-			if hdr.Typeflag != tar.TypeDir {
-				t.Errorf("directory suddenly stopped being a directory")
-			}
+			assert.EqualValues(t, tar.TypeDir, hdr.Typeflag, "directory tar entry should have a dir typeflag")
 			gotDir = true
 		case filepath.Join("some", "parents", ".wh.deleted"):
-			if hdr.Size != 0 {
-				t.Errorf("whiteout file has non-zero size: %d", hdr.Size)
-			}
+			assert.Empty(t, hdr.Size, "whiteout tar entry should be empty")
 			gotDeleted = true
 		case filepath.Join("some", "parents", "filechanged"):
 			contents, err := ioutil.ReadAll(tr)
-			if err != nil {
-				t.Errorf("unexpected error reading changed file: %s", err)
-			}
-			if !bytes.Equal(contents, []byte("new contents")) {
-				t.Errorf("did not get expected contents: %s", contents)
+			if assert.NoError(t, err, "read file tar entry") {
+				assert.EqualValues(t, "new contents", contents, "modified file should contain new contents")
 			}
 			gotChanged = true
 		case filepath.Join("some", "fileunchanged"):
@@ -123,84 +99,58 @@ func TestGenerate(t *testing.T) {
 		}
 	}
 
-	if !gotDeleted {
-		t.Errorf("did not get deleted file!")
-	}
-	if !gotChanged {
-		t.Errorf("did not get changed file!")
-	}
-	if !gotDir {
-		// This for some reason happen on Travis even though it shouldn't. It's
-		// probably caused by some AUFS fun times that I don't want to debug.
-		t.Logf("did not get directory!")
-	}
+	assert.True(t, gotDeleted, "should see the deleted file")
+	assert.True(t, gotChanged, "should see the changed file")
+	assert.True(t, gotDir, "should see the directory")
 }
 
 // Make sure that opencontainers/umoci#33 doesn't regress.
 func TestGenerateMissingFileError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	require.NoError(t, err)
 
 	// Get initial from the main directory.
 	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dir, "some", "parents", "deleted")); err != nil {
-		t.Fatal(err)
-	}
+	// Modify some files.
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	require.NoError(t, err)
+	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
+	require.NoError(t, err)
 
 	// Get post.
 	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree walk")
 
 	diffs, err := mtree.Compare(initDh, postDh, initDh.UsedKeywords())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree diff generate")
 
 	// Remove the changed file after getting the diffs. This will cause an error.
-	if err := os.Remove(filepath.Join(dir, "some", "parents", "filechanged")); err != nil {
-		t.Fatal(err)
-	}
+	err = os.Remove(filepath.Join(dir, "some", "parents", "filechanged"))
+	require.NoError(t, err)
 
 	// Generate a layer where the changed file is missing after the diff.
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "generate layer")
 	defer reader.Close()
 
 	tr := tar.NewReader(reader)
+	// TODO: Should we use assert.Eventually?
 	for {
 		_, err := tr.Next()
-		if err == io.EOF {
-			t.Errorf("got EOF, not a proper error!")
-		}
+		require.NotErrorIs(t, err, io.EOF, "should get a real error before io.EOF")
 		if err != nil {
+			assert.ErrorIs(t, err, os.ErrNotExist, "should get enoent from GenerateLayer stream")
 			break
 		}
 	}
@@ -208,64 +158,47 @@ func TestGenerateMissingFileError(t *testing.T) {
 
 // Make sure that opencontainers/umoci#33 doesn't regress.
 func TestGenerateWrongRootError(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestGenerateError")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644); err != nil {
-		t.Fatal(err)
-	}
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	require.NoError(t, err)
 
 	// Get initial from the main directory.
 	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Remove(filepath.Join(dir, "some", "parents", "deleted")); err != nil {
-		t.Fatal(err)
-	}
+	// Modify some files.
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	require.NoError(t, err)
+	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
+	require.NoError(t, err)
 
 	// Get post.
 	postDh, err := mtree.Walk(dir, nil, initDh.UsedKeywords(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree walk")
 
 	diffs, err := mtree.Compare(initDh, postDh, initDh.UsedKeywords())
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "mtree diff generate")
 
 	// Generate a layer with the wrong root directory.
 	reader, err := GenerateLayer(filepath.Join(dir, "some"), diffs, &RepackOptions{})
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "generate layer")
 	defer reader.Close()
 
 	tr := tar.NewReader(reader)
+	// TODO: Should we use assert.Eventually?
 	for {
 		_, err := tr.Next()
-		if err == io.EOF {
-			t.Errorf("got EOF, not a proper error!")
-		}
+		require.NotErrorIs(t, err, io.EOF, "should get a real error before io.EOF")
 		if err != nil {
+			assert.ErrorIs(t, err, os.ErrNotExist, "should get enoent from GenerateLayer stream")
 			break
 		}
 	}

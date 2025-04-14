@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,7 +22,6 @@ import (
 	"io"
 	"io/ioutil"
 	"os"
-	"reflect"
 	"testing"
 	"time"
 
@@ -29,31 +29,24 @@ import (
 	_ "crypto/sha256"
 
 	"github.com/opencontainers/go-digest"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestWriteTo(t *testing.T) {
 	g := New()
 
 	fh, err := ioutil.TempFile("", "umoci-TestWriteTo")
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	defer os.RemoveAll(fh.Name())
 	defer fh.Close()
 
 	size, err := g.WriteTo(fh)
-	if err != nil {
-		t.Errorf("failed to write: %+v", err)
-	}
+	assert.NoError(t, err, "generator WriteTo")
 
 	fi, err := fh.Stat()
-	if err != nil {
-		t.Errorf("failed to stat: %+v", err)
-	}
-
-	if fi.Size() != size {
-		t.Errorf("wrong size: expected %d, got %d", size, fi.Size())
-	}
+	assert.NoError(t, err, "stat target")
+	assert.Equal(t, size, fi.Size(), "returned WriteTo size should be the final file size")
 }
 
 func TestConfigUser(t *testing.T) {
@@ -63,9 +56,7 @@ func TestConfigUser(t *testing.T) {
 	g.SetConfigUser(expected)
 	got := g.ConfigUser()
 
-	if expected != got {
-		t.Errorf("ConfigUser get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "ConfigUser get/set should match")
 }
 
 func TestConfigWorkingDir(t *testing.T) {
@@ -75,9 +66,7 @@ func TestConfigWorkingDir(t *testing.T) {
 	g.SetConfigWorkingDir(expected)
 	got := g.ConfigWorkingDir()
 
-	if expected != got {
-		t.Errorf("ConfigWorkingDir get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "ConfigWorkingDir get/set should match")
 }
 
 func TestArchitecture(t *testing.T) {
@@ -87,9 +76,7 @@ func TestArchitecture(t *testing.T) {
 	g.SetArchitecture(expected)
 	got := g.Architecture()
 
-	if expected != got {
-		t.Errorf("Architecture get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "Architecture get/set should match")
 }
 
 func TestOS(t *testing.T) {
@@ -99,9 +86,7 @@ func TestOS(t *testing.T) {
 	g.SetOS(expected)
 	got := g.OS()
 
-	if expected != got {
-		t.Errorf("OS get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "OS get/set should match")
 }
 
 func TestAuthor(t *testing.T) {
@@ -111,9 +96,7 @@ func TestAuthor(t *testing.T) {
 	g.SetAuthor(expected)
 	got := g.Author()
 
-	if expected != got {
-		t.Errorf("Author get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "Author get/set should match")
 }
 
 func TestRootfsType(t *testing.T) {
@@ -123,9 +106,7 @@ func TestRootfsType(t *testing.T) {
 	g.SetRootfsType(expected)
 	got := g.RootfsType()
 
-	if expected != got {
-		t.Errorf("RootfsType get/set doesn't match: expected %v, got %v", expected, got)
-	}
+	assert.Equal(t, expected, got, "RootfsType get/set should match")
 }
 
 func TestRootfsDiffIDs(t *testing.T) {
@@ -143,36 +124,29 @@ func TestRootfsDiffIDs(t *testing.T) {
 	for _, diffid := range diffids {
 		g.AddRootfsDiffID(diffid)
 	}
-
 	got := g.RootfsDiffIDs()
 
-	if !reflect.DeepEqual(diffids, got) {
-		t.Errorf("RootfsDiffIDs doesn't match: expected %v, got %v", diffids, got)
-	}
+	assert.Equal(t, diffids, got, "RootfsDiffIDs get/set should match")
 }
 
 func TestConfigEntrypoint(t *testing.T) {
 	g := New()
-	entrypoint := []string{"a", "b", "c"}
+	expected := []string{"a", "b", "c"}
 
-	g.SetConfigEntrypoint(entrypoint)
+	g.SetConfigEntrypoint(expected)
 	got := g.ConfigEntrypoint()
 
-	if !reflect.DeepEqual(entrypoint, got) {
-		t.Errorf("ConfigEntrypoint doesn't match: expected %v, got %v", entrypoint, got)
-	}
+	assert.Equal(t, expected, got, "ConfigEntrypoint get/set should match")
 }
 
 func TestConfigCmd(t *testing.T) {
 	g := New()
-	entrypoint := []string{"a", "b", "c"}
+	expected := []string{"a", "b", "c"}
 
-	g.SetConfigCmd(entrypoint)
+	g.SetConfigCmd(expected)
 	got := g.ConfigCmd()
 
-	if !reflect.DeepEqual(entrypoint, got) {
-		t.Errorf("ConfigCmd doesn't match: expected %v, got %v", entrypoint, got)
-	}
+	assert.Equal(t, expected, got, "ConfigCmd get/set should match")
 }
 
 func TestConfigExposedPorts(t *testing.T) {
@@ -187,20 +161,16 @@ func TestConfigExposedPorts(t *testing.T) {
 	for exposedport := range exposedports {
 		g.AddConfigExposedPort(exposedport)
 	}
-
 	got := g.ConfigExposedPorts()
-	if !reflect.DeepEqual(exposedports, got) {
-		t.Errorf("ConfigExposedPorts doesn't match: expected %v, got %v", exposedports, got)
-	}
+
+	assert.Equal(t, exposedports, got, "ConfigExposedPorts get/set should match")
 
 	delete(exposedports, "a")
 	g.RemoveConfigExposedPort("a")
-	delete(got, "b")
-
+	delete(got, "b") // make sure it's a copy
 	got = g.ConfigExposedPorts()
-	if !reflect.DeepEqual(exposedports, got) {
-		t.Errorf("ConfigExposedPorts doesn't match: expected %v, got %v", exposedports, got)
-	}
+
+	assert.Equal(t, exposedports, got, "ConfigExposedPorts get/set should match")
 }
 
 func TestConfigVolumes(t *testing.T) {
@@ -215,20 +185,16 @@ func TestConfigVolumes(t *testing.T) {
 	for volume := range volumes {
 		g.AddConfigVolume(volume)
 	}
-
 	got := g.ConfigVolumes()
-	if !reflect.DeepEqual(volumes, got) {
-		t.Errorf("ConfigVolumes doesn't match: expected %v, got %v", volumes, got)
-	}
+
+	assert.Equal(t, volumes, got, "ConfigVolumes get/set should match")
 
 	delete(volumes, "a")
 	g.RemoveConfigVolume("a")
-	delete(got, "b")
-
+	delete(got, "b") // make sure it's a copy
 	got = g.ConfigVolumes()
-	if !reflect.DeepEqual(volumes, got) {
-		t.Errorf("ConfigVolumes doesn't match: expected %v, got %v", volumes, got)
-	}
+
+	assert.Equal(t, volumes, got, "ConfigVolumes get/set should match")
 }
 
 func TestConfigEnv(t *testing.T) {
@@ -243,19 +209,16 @@ func TestConfigEnv(t *testing.T) {
 	g.AddConfigEnv("HOME", "a,b,c")
 	g.AddConfigEnv("TEST", "a=b=c")
 	g.AddConfigEnv("ANOTHER", "")
-
 	got := g.ConfigEnv()
-	if !reflect.DeepEqual(env, got) {
-		t.Errorf("ConfigEnv doesn't match: expected %v, got %v", env, got)
-	}
+
+	assert.Equal(t, env, got, "ConfigEnv get/set should match")
 
 	env[1] = "TEST=different"
 	g.AddConfigEnv("TEST", "different")
-
+	got[0] = "badvalue=" // make sure it's a copy
 	got = g.ConfigEnv()
-	if !reflect.DeepEqual(env, got) {
-		t.Errorf("ConfigEnv doesn't match: expected %v, got %v", env, got)
-	}
+
+	assert.Equal(t, env, got, "ConfigEnv get/set should match")
 }
 
 func TestConfigLabels(t *testing.T) {
@@ -270,28 +233,23 @@ func TestConfigLabels(t *testing.T) {
 	for k, v := range labels {
 		g.AddConfigLabel(k, v)
 	}
-
 	got := g.ConfigLabels()
-	if !reflect.DeepEqual(labels, got) {
-		t.Errorf("ConfigLabels doesn't match: expected %v, got %v", labels, got)
-	}
+
+	assert.Equal(t, labels, got, "ConfigLabels get/set should match")
 
 	delete(labels, "some")
 	g.RemoveConfigLabel("some")
-
+	delete(got, "value") // make sure it's a copy
 	got = g.ConfigLabels()
-	if !reflect.DeepEqual(labels, got) {
-		t.Errorf("ConfigLabels doesn't match: expected %v, got %v", labels, got)
-	}
+
+	assert.Equal(t, labels, got, "ConfigLabels get/set should match")
 
 	delete(labels, "nonexist")
 	g.RemoveConfigLabel("nonexist")
-	delete(got, "value")
-
+	delete(got, "value") // make sure it's a copy
 	got = g.ConfigLabels()
-	if !reflect.DeepEqual(labels, got) {
-		t.Errorf("ConfigLabels doesn't match: expected %v, got %v", labels, got)
-	}
+
+	assert.Equal(t, labels, got, "ConfigLabels get/set should match")
 }
 
 func TestConfigStopSignal(t *testing.T) {
@@ -308,9 +266,7 @@ func TestConfigStopSignal(t *testing.T) {
 	for _, signal := range signals {
 		g.SetConfigStopSignal(signal)
 		got := g.ConfigStopSignal()
-		if signal != got {
-			t.Errorf("ConfigStopSignal doesn't match: expected %q, got %q", signal, got)
-		}
+		assert.Equal(t, signal, got, "ConfigStopSignal get/set should match")
 	}
 }
 
@@ -320,7 +276,5 @@ func TestCreated(t *testing.T) {
 	g.SetCreated(timeA)
 	timeB := g.Created()
 
-	if !timeA.Equal(timeB) {
-		t.Errorf("created get/set doesn't match: expected %v, got %v", timeA, timeB)
-	}
+	assert.Equal(t, timeA, timeB, "Created get/set should match")
 }

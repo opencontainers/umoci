@@ -1,3 +1,21 @@
+// SPDX-License-Identifier: Apache-2.0
+/*
+ * umoci: Umoci Modifies Open Containers' Images
+ * Copyright (C) 2016-2025 SUSE LLC
+ *
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *    http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
 package casext
 
 import (
@@ -5,8 +23,6 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
-	"io/ioutil"
-	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -14,109 +30,69 @@ import (
 	"github.com/opencontainers/go-digest"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/oci/cas/dir"
 )
 
 func TestGCWithEmptyIndex(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	engineExt := NewEngine(engine)
 	defer engine.Close()
 
 	// creates an empty index.json and several orphan blobs which should be pruned
 	descMap, err := fakeSetupEngine(t, engineExt)
-	if err != nil {
-		t.Fatalf("unexpected error doing fakeSetupEngine: %+v", err)
-	}
-	if descMap == nil {
-		t.Fatalf("empty descMap")
-	}
+	require.NoError(t, err, "fakeSetupEngine")
+	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	b, err := engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) == 0 {
-		t.Fatalf("expected non-empty blob list before GC")
-	}
+	require.NoError(t, err, "list blobs before gc")
+	assert.NotEmpty(t, b, "fakeSetupEngine'd image should contain blobs")
 
 	err = engineExt.GC(ctx)
-	if err != nil {
-		t.Fatalf("GC failed: %+v", err)
-	}
+	require.NoError(t, err, "gc")
 
 	b, err = engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) != 0 {
-		t.Fatalf("expected empty blob list after GC: %#v", b)
-	}
+	require.NoError(t, err, "list blobs after gc")
+	assert.Empty(t, b, "empty image should contain no blobs")
 }
 
 func TestGCWithNonEmptyIndex(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	engineExt := NewEngine(engine)
 	defer engine.Close()
 
 	// creates an empty index.json and several orphan blobs which should be pruned
 	descMap, err := fakeSetupEngine(t, engineExt)
-	if err != nil {
-		t.Fatalf("unexpected error doing fakeSetupEngine: %+v", err)
-	}
-	if descMap == nil {
-		t.Fatalf("empty descMap")
-	}
+	require.NoError(t, err, "fakeSetupEngine")
+	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	b, err := engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) == 0 {
-		t.Fatalf("expected non-empty blob list before GC")
-	}
+	require.NoError(t, err, "list blobs")
+	assert.NotEmpty(t, b, "fakeSetupEngine'd image should contain blobs")
+	initalBlobNumber := len(b)
 
 	// build a blob, manifest, index that will survive GC
 	content := "this is a test blob"
 	br := strings.NewReader(content)
 	digest, size, err := engine.PutBlob(ctx, br)
-	if err != nil {
-		t.Fatalf("error writing blob: %+v", err)
-	}
-	if size != int64(len(content)) {
-		t.Fatalf("partially written blob")
-	}
+	require.NoError(t, err, "put blob")
+	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
 	m := ispec.Manifest{
 		Versioned: imeta.Versioned{
@@ -137,17 +113,11 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 		},
 	}
 	data, err := json.Marshal(&m)
-	if err != nil {
-		t.Fatalf("error marshaling json: %+v", err)
-	}
+	require.NoError(t, err, "marshal manifest json")
 	mr := bytes.NewReader(data)
 	digest, size, err = engine.PutBlob(ctx, mr)
-	if err != nil {
-		t.Fatalf("error writing blob: %+v", err)
-	}
-	if size != int64(len(data)) {
-		t.Fatalf("partially written blob")
-	}
+	require.NoError(t, err, "put marshal json blob")
+	assert.EqualValues(t, len(data), size, "put blob should write entire blob")
 
 	idx := ispec.Index{
 		Versioned: imeta.Versioned{
@@ -162,49 +132,31 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 			},
 		},
 	}
-	if err := engine.PutIndex(ctx, idx); err != nil {
-		t.Fatalf("error writing index: %+v", err)
-	}
+	err = engine.PutIndex(ctx, idx)
+	require.NoError(t, err, "put index")
 
 	b, err = engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) <= 2 {
-		t.Fatalf("expected >2 blob list before GC: %#v", b)
-	}
+	require.NoError(t, err, "list blobs before gc")
+	assert.Len(t, b, initalBlobNumber+2, "before gc we should have two more blobs")
 
 	err = engineExt.GC(ctx)
-	if err != nil {
-		t.Fatalf("GC failed: %+v", err)
-	}
+	require.NoError(t, err, "gc")
 
 	b, err = engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) != 2 {
-		t.Fatalf("expected two-entry blob list after GC: %#v", b)
-	}
+	require.NoError(t, err, "list blobs after gc")
+	assert.Len(t, b, 2, "after gc only two pinned blobs should remain")
 }
 
-func gcOkFunc(t *testing.T, expectedDigest digest.Digest, unexpectedDigest digest.Digest) GCPolicy {
+func gcOkFunc(t *testing.T, expectedDigest digest.Digest) GCPolicy {
 	return func(ctx context.Context, digest digest.Digest) (bool, error) {
-		if digest == "" || digest == unexpectedDigest {
-			t.Errorf("got incorrect digest to gc policy callback: unexpected %v", digest)
-		}
-		if digest != expectedDigest {
-			t.Errorf("got incorrect digest to gc policy callback: expected %v, got %v", expectedDigest, digest)
-		}
+		assert.Equal(t, expectedDigest, digest, "unexpected digest with gc callback")
 		return true, nil
 	}
 }
 
 func gcSkipFunc(t *testing.T, expectedDigest digest.Digest) GCPolicy {
 	return func(ctx context.Context, digest digest.Digest) (bool, error) {
-		if digest != expectedDigest {
-			t.Errorf("got incorrect digest to gc policy callback: expected %v, got %v", expectedDigest, digest)
-		}
+		assert.Equal(t, expectedDigest, digest, "unexpected digest with gc callback")
 		return false, nil
 	}
 }
@@ -216,21 +168,12 @@ func errFunc(ctx context.Context, digest digest.Digest) (bool, error) {
 func TestGCWithPolicy(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	engineExt := NewEngine(engine)
 	defer engine.Close()
 
@@ -238,23 +181,15 @@ func TestGCWithPolicy(t *testing.T) {
 	content := "this is a orphan blob"
 	br := strings.NewReader(content)
 	odigest, size, err := engine.PutBlob(ctx, br)
-	if err != nil {
-		t.Fatalf("error writing blob: %+v", err)
-	}
-	if size != int64(len(content)) {
-		t.Fatalf("partially written blob")
-	}
+	require.NoError(t, err, "put blob")
+	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
 	// build a blob, manifest, index that will survive GC
 	content = "this is a test blob"
 	br = strings.NewReader(content)
 	digest, size, err := engine.PutBlob(ctx, br)
-	if err != nil {
-		t.Fatalf("error writing blob: %+v", err)
-	}
-	if size != int64(len(content)) {
-		t.Fatalf("partially written blob")
-	}
+	require.NoError(t, err, "put blob")
+	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
 	digest, size, err = engineExt.PutBlobJSON(ctx,
 		ispec.Manifest{
@@ -275,9 +210,7 @@ func TestGCWithPolicy(t *testing.T) {
 				},
 			},
 		})
-	if err != nil {
-		t.Fatalf("error writing blob: %+v", err)
-	}
+	require.NoError(t, err, "put manifest json blob")
 
 	idx := ispec.Index{
 		Versioned: imeta.Versioned{
@@ -292,40 +225,23 @@ func TestGCWithPolicy(t *testing.T) {
 			},
 		},
 	}
-	if err := engine.PutIndex(ctx, idx); err != nil {
-		t.Fatalf("error writing index: %+v", err)
-	}
+	err = engine.PutIndex(ctx, idx)
+	require.NoError(t, err, "put index")
 
 	err = engineExt.GC(ctx, errFunc)
-	// expect this to fail
-	if err == nil {
-		t.Fatalf("GC failed: %+v", err)
-	}
+	require.Error(t, err, "gc with err policy should fail")
 
 	err = engineExt.GC(ctx, gcSkipFunc(t, odigest))
-	// expect this to succeed but not perform GC
-	if err != nil {
-		t.Fatalf("GC failed: %+v", err)
-	}
-	b, err := engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) != 3 {
-		t.Fatalf("expected all entries in blob list after skip GC policy: %#v", b)
-	}
+	require.NoError(t, err, "gc with skip policy")
 
-	err = engineExt.GC(ctx, gcOkFunc(t, odigest, digest))
-	// expect this to succeed
-	if err != nil {
-		t.Fatalf("GC failed: %+v", err)
-	}
+	b, err := engine.ListBlobs(ctx)
+	require.NoError(t, err, "list blobs after gc with skip policy")
+	assert.Len(t, b, 3, "after gc with skip policy all blobs should remain")
+
+	err = engineExt.GC(ctx, gcOkFunc(t, odigest))
+	require.NoError(t, err, "gc with ok policy")
 
 	b, err = engine.ListBlobs(ctx)
-	if err != nil {
-		t.Fatalf("unable to list blobs: %+v", err)
-	}
-	if len(b) != 2 {
-		t.Fatalf("expected blob list with two entries after GC: %#v", b)
-	}
+	require.NoError(t, err, "list blobs after gc with skip policy")
+	assert.Len(t, b, 2, "after gc with ok policy only pinned blobs should remain")
 }

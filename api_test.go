@@ -1,5 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
+ * Copyright (C) 2016-2025 SUSE LLC
  * Copyright (C) 2018 Cisco Systems
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -18,42 +20,32 @@
 package umoci
 
 import (
-	"io/ioutil"
 	"os"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestCreateExistingFails(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci_testCreateExistingFails")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	// opening a bad layout should fail
-	_, err = OpenLayout(dir)
-	if err == nil {
-		t.Fatal("opening non-existent layout succeeded?")
-	}
+	_, err := OpenLayout(dir)
+	require.Error(t, err, "open invalid layout")
 
 	// remove directory so that create can create it
-	os.RemoveAll(dir)
+	require.NoError(t, os.RemoveAll(dir))
 
 	// create should work
 	_, err = CreateLayout(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err, "create new layout")
 
 	// but not twice
 	_, err = CreateLayout(dir)
-	if err == nil {
-		t.Fatal("create worked twice?")
-	}
+	assert.Error(t, err, "create should not work on existing layout")
 
 	// but open should work now
 	_, err = OpenLayout(dir)
-	if err != nil {
-		t.Fatal(err)
-	}
+	assert.NoError(t, err, "open layout")
 }

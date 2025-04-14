@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,13 +20,13 @@ package unpriv
 
 import (
 	"archive/tar"
-	"bytes"
-	"errors"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"reflect"
 	"testing"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
@@ -35,33 +36,61 @@ func TestWrapNoTricks(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapNoTricks")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Make sure that no error is returned an no trickery is done if fn() works
 	// the first time. This is important to make sure that we're not doing
 	// dodgy stuff if unnecessary.
-	if err := Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
 		return nil
-	}); err != nil {
-		t.Errorf("wrap returned error in the simple case: %s", err)
-	}
+	})
+	assert.NoError(t, err, "wrap should not return error in simple case")
 
 	// Now make sure that Wrap doesn't mess with any directories in the same case.
-	if err := os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
+	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "parent"), 0)
+	require.NoError(t, err)
+	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
 		return nil
-	}); err != nil {
-		t.Errorf("wrap returned error in the simple case: %s", err)
+	})
+	assert.NoError(t, err, "wrap should not return error in simple case")
+}
+
+// assert that the given path has 0o000 permissions and is thus inaccessible.
+func assertInaccessibleMode(t *testing.T, path string) os.FileInfo {
+	fi, err := Lstat(path)
+	if assert.NoErrorf(t, err, "checking %q is inaccesssible", path) {
+		assert.Zero(t, fi.Mode()&os.ModePerm, "permissions on inaccessible path should be 0o000")
 	}
+	return fi
+}
+
+// assert that the file has the specified file mode.
+func assertFileMode(t *testing.T, path string, mode os.FileMode) os.FileInfo {
+	fi, err := Lstat(path)
+	if assert.NoErrorf(t, err, "checking %q is accesssible", path) {
+		assert.EqualValuesf(t, mode, fi.Mode()&os.ModePerm, "incorrect permissions on %q", path)
+	}
+	return fi
+}
+
+// assert that the file does not exist.
+func assertNotExist(t *testing.T, path string) {
+	_, err := Lstat(path)
+	assert.ErrorIsf(t, err, os.ErrNotExist, "expected path %q to not exist", path)
+}
+
+// assert that the file does exist.
+func assertExist(t *testing.T, path string) {
+	_, err := Lstat(path)
+	assert.NoErrorf(t, err, "expected path %q to exist", path)
 }
 
 func TestLstat(t *testing.T) {
@@ -69,82 +98,42 @@ func TestLstat(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLstat")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	var fi os.FileInfo
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Check that the mode was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestReadlink(t *testing.T) {
@@ -152,88 +141,46 @@ func TestReadlink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReadlink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("..", filepath.Join(dir, "some", "parent", "directories", "link2")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	var linkname string
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = os.Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1"))
+	require.NoError(t, err)
+	err = os.Symlink("..", filepath.Join(dir, "some", "parent", "directories", "link2"))
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Check that the links can be read.
-	linkname, err = Readlink(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.readlink error: %s", err)
+	if linkname, err := Readlink(filepath.Join(dir, "some", "parent", "directories", "link1")); assert.NoError(t, err) {
+		assert.Equal(t, "some path", linkname, "incorrect symlink target")
 	}
-	if linkname != "some path" {
-		t.Errorf("unexpected linkname for path %s: %s", "link1", linkname)
+	if linkname, err := Readlink(filepath.Join(dir, "some", "parent", "directories", "link2")); assert.NoError(t, err) {
+		assert.Equal(t, "..", linkname, "incorrect symlink target")
 	}
-	linkname, err = Readlink(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.readlink error: %s", err)
-	}
-	if linkname != ".." {
-		t.Errorf("unexpected linkname for path %s: %s", "link2", linkname)
-	}
-
-	var fi os.FileInfo
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestSymlink(t *testing.T) {
@@ -241,90 +188,48 @@ func TestSymlink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestSymlink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// unpriv.Symlink.
-	if err := Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1")); err != nil {
-		t.Fatal(err)
-	}
-	if err := Symlink("..", filepath.Join(dir, "some", "parent", "directories", "link2")); err != nil {
-		t.Fatal(err)
-	}
-
-	var linkname string
+	err = Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1"))
+	require.NoError(t, err)
+	err = Symlink("..", filepath.Join(dir, "some", "parent", "directories", "link2"))
+	require.NoError(t, err)
 
 	// Check that the links can be read.
-	linkname, err = Readlink(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.readlink error: %s", err)
+	if linkname, err := Readlink(filepath.Join(dir, "some", "parent", "directories", "link1")); assert.NoError(t, err) {
+		assert.Equal(t, "some path", linkname, "incorrect symlink target")
 	}
-	if linkname != "some path" {
-		t.Errorf("unexpected linkname for path %s: %s", "link1", linkname)
+	if linkname, err := Readlink(filepath.Join(dir, "some", "parent", "directories", "link2")); assert.NoError(t, err) {
+		assert.Equal(t, "..", linkname, "incorrect symlink target")
 	}
-	linkname, err = Readlink(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.readlink error: %s", err)
-	}
-	if linkname != ".." {
-		t.Errorf("unexpected linkname for path %s: %s", "link2", linkname)
-	}
-
-	var fi os.FileInfo
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestOpen(t *testing.T) {
@@ -332,136 +237,77 @@ func TestOpen(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestOpen")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err, "unpriv open")
 	defer fh.Close()
 
-	var fi os.FileInfo
-
 	// Check that the mode was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
 
 	// Check using fh.Stat.
-	fi, err = fh.Stat()
-	if err != nil {
-		t.Errorf("unexpected unpriv.open.stat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	if fi, err := fh.Stat(); assert.NoErrorf(t, err, "checking %q is inaccesssible", fh.Name()) {
+		assert.Zero(t, fi.Mode()&os.ModePerm, "permissions on inaccessible path should be 0o000")
 	}
 
 	// Read the file contents.
 	gotContent, err := ioutil.ReadAll(fh)
-	if err != nil {
-		t.Errorf("unexpected error reading from unpriv.open: %s", err)
-	}
-	if !bytes.Equal(gotContent, fileContent) {
-		t.Errorf("unpriv.open content doesn't match actual content: expected=%s got=%s", fileContent, gotContent)
-	}
+	require.NoError(t, err)
+	assert.Equal(t, fileContent, gotContent, "unpriv open content should match actual file contents")
 
 	// Now change the mode using fh.Chmod.
-	if err := fh.Chmod(0755); err != nil {
-		t.Errorf("unexpected error doing fh.chown: %s", err)
-	}
+	err = fh.Chmod(0755)
+	assert.NoError(t, err)
 
 	// Double check it was changed.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0755 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
+	if fi, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "file")); assert.NoErrorf(t, err, "checking %q is accesssible", fh.Name()) {
+		assert.EqualValues(t, 0755, fi.Mode()&os.ModePerm, "permissions on accessible path should be 0o755")
 	}
 
 	// Change it back.
-	if err := fh.Chmod(0); err != nil {
-		t.Errorf("unexpected error doing fh.chown: %s", err)
-	}
+	err = fh.Chmod(0)
+	assert.NoError(t, err)
 
 	// Double check it was changed.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestReaddir(t *testing.T) {
@@ -469,122 +315,74 @@ func TestReaddir(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestReaddir")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file1"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file2"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file3"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "dir"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file1"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file2"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file3"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "dir"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
-	// Make sure that the naive Open.Readdir will fail.
+	// Make sure that the naive Open+Readdir will fail.
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh.Close()
 
 	_, err = fh.Readdir(-1)
-	if err == nil {
-		t.Errorf("unexpected unpriv.open.readdir success (unwrapped readdir)!")
-	}
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail")
 
 	// Check that Readdir() only returns the relevant results.
 	infos, err := Readdir(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.readdir error: %s", err)
-	}
-	if len(infos) != 4 {
-		t.Errorf("expected unpriv.readdir to give %d results, got %d", 4, len(infos))
-	}
+	require.NoError(t, err)
+	assert.Len(t, infos, 4, "unpriv readdir should give the right number of results")
 	for _, info := range infos {
-		if info.Mode()&os.ModePerm != 0 {
-			t.Errorf("unexpected modeperm for path %s: %o", info.Name(), info.Mode()&os.ModePerm)
-		}
+		assert.Zerof(t, info.Mode()&os.ModePerm, "unexpected permissions for path %q", info.Name())
 	}
-
-	var fi os.FileInfo
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 
 	// Make sure that the naive Open.Readdir will still fail.
 	fh, err = Open(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err, "unpriv open")
 	defer fh.Close()
 
 	_, err = fh.Readdir(-1)
-	if err == nil {
-		t.Errorf("unexpected unpriv.open.readdir success (unwrapped readdir)!")
-	}
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail")
 }
 
 func TestWrapWrite(t *testing.T) {
@@ -592,81 +390,48 @@ func TestWrapWrite(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWrapWrite")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
-	if err := Wrap(filepath.Join(dir, "some", "parent", "directories", "lolpath"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "some", "parent", "directories", "lolpath"), func(path string) error {
 		return ioutil.WriteFile(path, fileContent, 0755)
-	}); err != nil {
-		t.Errorf("unpexected unpriv.wrap writing error: %s", err)
-	}
+	})
+	require.NoError(t, err, "unwrap wrap WriteFile")
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "lolpath"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh.Close()
 
 	// Read the file contents.
-	gotContent, err := ioutil.ReadAll(fh)
-	if err != nil {
-		t.Errorf("unexpected error reading from unpriv.open: %s", err)
+	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
-	if !bytes.Equal(gotContent, fileContent) {
-		t.Errorf("unpriv.open content doesn't match actual content: expected=%s got=%s", fileContent, gotContent)
-	}
-
-	var fi os.FileInfo
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestLink(t *testing.T) {
@@ -674,163 +439,83 @@ func TestLink(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLink")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh.Close()
 
-	var fi os.FileInfo
-
 	// Read the file contents.
-	gotContent, err := ioutil.ReadAll(fh)
-	if err != nil {
-		t.Errorf("unexpected error reading from unpriv.open: %s", err)
-	}
-	if !bytes.Equal(gotContent, fileContent) {
-		t.Errorf("unpriv.open content doesn't match actual content: expected=%s got=%s", fileContent, gotContent)
+	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
 
 	// Make new links.
-	if err := Link(filepath.Join(dir, "some", "parent", "directories", "file"), filepath.Join(dir, "some", "parent", "directories", "file2")); err != nil {
-		t.Errorf("unexpected unpriv.link error: %s", err)
-	}
-	if err := Link(filepath.Join(dir, "some", "parent", "directories", "file"), filepath.Join(dir, "some", "parent", "file2")); err != nil {
-		t.Errorf("unexpected unpriv.link error: %s", err)
-	}
+	err = Link(filepath.Join(dir, "some", "parent", "directories", "file"), filepath.Join(dir, "some", "parent", "directories", "file2"))
+	require.NoError(t, err)
+	err = Link(filepath.Join(dir, "some", "parent", "directories", "file"), filepath.Join(dir, "some", "parent", "file2"))
+	require.NoError(t, err)
 
 	// Check the contents.
 	fh1, err := Open(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh1.Close()
-	gotContent1, err := ioutil.ReadAll(fh1)
-	if err != nil {
-		t.Errorf("unexpected error reading from unpriv.open: %s", err)
-	}
-	if !bytes.Equal(gotContent1, fileContent) {
-		t.Errorf("unpriv.open content doesn't match actual content: expected=%s got=%s", fileContent, gotContent1)
+	if gotContent, err := ioutil.ReadAll(fh1); assert.NoError(t, err) {
+		assert.Equal(t, fileContent, gotContent, "file content through link1 should match original content")
 	}
 
 	// And the other link.
 	fh2, err := Open(filepath.Join(dir, "some", "parent", "file2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.open error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh2.Close()
-	gotContent2, err := ioutil.ReadAll(fh2)
-	if err != nil {
-		t.Errorf("unexpected error reading from unpriv.open: %s", err)
-	}
-	if !bytes.Equal(gotContent2, fileContent) {
-		t.Errorf("unpriv.open content doesn't match actual content: expected=%s got=%s", fileContent, gotContent2)
+	if gotContent, err := ioutil.ReadAll(fh2); assert.NoError(t, err) {
+		assert.Equal(t, fileContent, gotContent, "file content through link2 should match original content")
 	}
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi1, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi2, err := Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	fi1 := assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
+	fi2 := assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file2"))
+	fi3 := assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "file2"))
 
 	// Check that the files are the same.
-	if !os.SameFile(fi, fi1) {
-		t.Errorf("link1 and original file not the same!")
-	}
-	if !os.SameFile(fi, fi2) {
-		t.Errorf("link2 and original file not the same!")
-	}
-	if !os.SameFile(fi1, fi2) {
-		t.Errorf("link1 and link2 not the same!")
-	}
+	assert.True(t, os.SameFile(fi1, fi2), "link1 and original file should be the same")
+	assert.True(t, os.SameFile(fi1, fi3), "link2 and original file should be the same")
+	assert.True(t, os.SameFile(fi2, fi3), "link1 and link2 should be the same")
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestChtimes(t *testing.T) {
@@ -838,112 +523,63 @@ func TestChtimes(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestChtimes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	var fi os.FileInfo
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Get the atime and mtime of one of the paths.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrOld, _ := tar.FileInfoHeader(fi, "")
+	fiOld, err := Lstat(filepath.Join(dir, "some", "parent", "directories"))
+	require.NoError(t, err)
+	hdrOld, _ := tar.FileInfoHeader(fiOld, "")
 
 	// Modify the times.
 	atime := testutils.Unix(12345678, 12421512)
 	mtime := testutils.Unix(11245631, 13373321)
-	if err := Chtimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime); err != nil {
-		t.Errorf("unexpected error from unpriv.chtimes: %s", err)
-	}
+	err = Chtimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime)
+	require.NoError(t, err)
 
 	// Get the new atime and mtime.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrNew, _ := tar.FileInfoHeader(fi, "")
+	fiNew, err := Lstat(filepath.Join(dir, "some", "parent", "directories"))
+	require.NoError(t, err)
+	hdrNew, _ := tar.FileInfoHeader(fiNew, "")
 
-	if hdrNew.AccessTime.Equal(hdrOld.AccessTime) {
-		t.Errorf("atime was unchanged! %s", hdrNew.AccessTime)
-	}
-	if hdrNew.ModTime.Equal(hdrOld.ModTime) {
-		t.Errorf("mtime was unchanged! %s", hdrNew.ModTime)
-	}
-	if !hdrNew.ModTime.Equal(mtime) {
-		t.Errorf("mtime was not change to correct value. expected=%q got=%q", mtime, hdrNew.ModTime)
-	}
-	if !hdrNew.AccessTime.Equal(atime) {
-		t.Errorf("atime was not change to correct value. expected=%q got=%q", atime, hdrNew.AccessTime)
-	}
+	assert.NotEqual(t, hdrOld.AccessTime, hdrNew.AccessTime, "atime should have changed after chtimes")
+	assert.Equal(t, atime, hdrNew.AccessTime, "atime should match value given to chtimes")
+	assert.NotEqual(t, hdrOld.ModTime, hdrNew.ModTime, "mtime should have changed after chtimes")
+	assert.Equal(t, mtime, hdrNew.ModTime, "mtime should match value given to chtimes")
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestLutimes(t *testing.T) {
@@ -951,160 +587,92 @@ func TestLutimes(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestLutimes")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(".", filepath.Join(dir, "some", "parent", "directories", "link2")); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	var fi os.FileInfo
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Symlink(".", filepath.Join(dir, "some", "parent", "directories", "link2"))
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Get the atime and mtime of one of the paths.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrDirOld, _ := tar.FileInfoHeader(fi, "")
+	fiDirOld, err := Lstat(filepath.Join(dir, "some", "parent", "directories"))
+	require.NoError(t, err)
+	hdrDirOld, _ := tar.FileInfoHeader(fiDirOld, "")
 
 	// Modify the times.
 	atime := testutils.Unix(12345678, 12421512)
 	mtime := testutils.Unix(11245631, 13373321)
-	if err := Lutimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime); err != nil {
-		t.Errorf("unexpected error from unpriv.lutimes: %s", err)
-	}
+	err = Lutimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime)
+	require.NoError(t, err)
 
 	// Get the new atime and mtime.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrDirNew, _ := tar.FileInfoHeader(fi, "")
+	fiDirNew, err := Lstat(filepath.Join(dir, "some", "parent", "directories"))
+	require.NoError(t, err)
+	hdrDirNew, _ := tar.FileInfoHeader(fiDirNew, "")
 
-	if hdrDirNew.AccessTime.Equal(hdrDirOld.AccessTime) {
-		t.Errorf("atime was unchanged! %s", hdrDirNew.AccessTime)
-	}
-	if hdrDirNew.ModTime.Equal(hdrDirOld.ModTime) {
-		t.Errorf("mtime was unchanged! %s", hdrDirNew.ModTime)
-	}
-	if !hdrDirNew.ModTime.Equal(mtime) {
-		t.Errorf("mtime was not change to correct value. expected=%q got=%q", mtime, hdrDirNew.ModTime)
-	}
-	if !hdrDirNew.AccessTime.Equal(atime) {
-		t.Errorf("atime was not change to correct value. expected=%q got=%q", atime, hdrDirNew.AccessTime)
-	}
+	assert.NotEqual(t, hdrDirOld.AccessTime, hdrDirNew.AccessTime, "atime should have changed after lutimes")
+	assert.Equal(t, atime, hdrDirNew.AccessTime, "atime should match value given to lutimes")
+	assert.NotEqual(t, hdrDirOld.ModTime, hdrDirNew.ModTime, "mtime should have changed after lutimes")
+	assert.Equal(t, mtime, hdrDirNew.ModTime, "mtime should match value given to lutimes")
 
 	// Do the same for a symlink.
 	atime = testutils.Unix(18127518, 12421122)
 	mtime = testutils.Unix(15245123, 19912991)
 
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrOld, _ := tar.FileInfoHeader(fi, "")
-	if err := Lutimes(filepath.Join(dir, "some", "parent", "directories", "link2"), atime, mtime); err != nil {
-		t.Errorf("unexpected error from unpriv.lutimes: %s", err)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrNew, _ := tar.FileInfoHeader(fi, "")
+	fiOld, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
+	require.NoError(t, err)
+	hdrOld, _ := tar.FileInfoHeader(fiOld, "")
 
-	if hdrNew.AccessTime.Equal(hdrOld.AccessTime) {
-		t.Errorf("atime was unchanged! %s", hdrNew.AccessTime)
-	}
-	if hdrNew.ModTime.Equal(hdrOld.ModTime) {
-		t.Errorf("mtime was unchanged! %s", hdrNew.ModTime)
-	}
-	if !hdrNew.ModTime.Equal(mtime) {
-		t.Errorf("mtime was not change to correct value. expected=%q got=%q", mtime, hdrNew.ModTime)
-	}
-	if !hdrNew.AccessTime.Equal(atime) {
-		t.Errorf("atime was not change to correct value. expected=%q got=%q", atime, hdrNew.AccessTime)
-	}
+	err = Lutimes(filepath.Join(dir, "some", "parent", "directories", "link2"), atime, mtime)
+	require.NoError(t, err)
+
+	fiNew, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
+	require.NoError(t, err)
+	hdrNew, _ := tar.FileInfoHeader(fiNew, "")
+
+	assert.NotEqual(t, hdrOld.AccessTime, hdrNew.AccessTime, "atime should have changed after lutimes")
+	assert.Equal(t, atime, hdrNew.AccessTime, "atime should match value given to lutimes")
+	assert.NotEqual(t, hdrOld.ModTime, hdrNew.ModTime, "mtime should have changed after lutimes")
+	assert.Equal(t, mtime, hdrNew.ModTime, "mtime should match value given to lutimes")
 
 	// Make sure that the parent was not changed by Lutimes.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected error from unpriv.lstat: %s", err)
-	}
-	hdrDirNew2, _ := tar.FileInfoHeader(fi, "")
+	fiDirNew2, err := Lstat(filepath.Join(dir, "some", "parent", "directories"))
+	require.NoError(t, err)
+	hdrDirNew2, _ := tar.FileInfoHeader(fiDirNew2, "")
 
-	if !hdrDirNew2.AccessTime.Equal(hdrDirNew.AccessTime) {
-		t.Errorf("atime was changed! expected=%q got=%q", hdrDirNew.AccessTime, hdrDirNew2.AccessTime)
-	}
-	if !hdrDirNew2.ModTime.Equal(hdrDirNew.ModTime) {
-		t.Errorf("mtime was changed! expected=%q got=%q", hdrDirNew.ModTime, hdrDirNew2.ModTime)
-	}
+	assert.EqualExportedValues(t, hdrDirNew, hdrDirNew2, "parent directory state should not have been changed by wrapped Lutimes")
 
 	// Check that the parents were unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "parent", "directories"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "parent"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestRemove(t *testing.T) {
@@ -1112,81 +680,59 @@ func TestRemove(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemove")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "cousin", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "file2"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "cousin"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "cousin", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "file2"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "cousin"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Make sure that os.Remove fails.
-	if err := os.Remove(filepath.Join(dir, "some", "parent", "directories", "file")); err == nil {
-		t.Errorf("os.remove did not fail!")
-	}
+	err = os.Remove(filepath.Join(dir, "some", "parent", "directories", "file"))
+	require.ErrorIs(t, err, os.ErrPermission, "os remove should fail with EACCES")
 
 	// Now try removing all of the things.
-	if err := Remove(filepath.Join(dir, "some", "parent", "directories", "file")); err != nil {
-		t.Errorf("unexpected failure in unpriv.remove: %s", err)
-	}
-	if err := Remove(filepath.Join(dir, "some", "parent", "directories")); err != nil {
-		t.Errorf("unexpected failure in unpriv.remove: %s", err)
-	}
-	if err := Remove(filepath.Join(dir, "some", "parent", "file2")); err != nil {
-		t.Errorf("unexpected failure in unpriv.remove: %s", err)
-	}
-	if err := Remove(filepath.Join(dir, "some", "cousin", "directories")); err != nil {
-		t.Errorf("unexpected failure in unpriv.remove: %s", err)
-	}
+	err = Remove(filepath.Join(dir, "some", "parent", "directories", "file"))
+	assert.NoError(t, err)
+	err = Remove(filepath.Join(dir, "some", "parent", "directories"))
+	assert.NoError(t, err)
+	err = Remove(filepath.Join(dir, "some", "parent", "file2"))
+	assert.NoError(t, err)
+	err = Remove(filepath.Join(dir, "some", "cousin", "directories"))
+	assert.NoError(t, err)
 
 	// Check that they are gone.
-	if _, err := Lstat(filepath.Join(dir, "some", "parent", "directories")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("expected deleted directory to give ENOENT: %s", err)
-	}
-	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("expected deleted directory to give ENOENT: %s", err)
-	}
-	if _, err := Lstat(filepath.Join(dir, "some", "cousin", "directories")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("expected deleted file to give ENOENT: %s", err)
-	}
-	if _, err := Lstat(filepath.Join(dir, "some", "parent", "file2")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("expected deleted file to give ENOENT: %s", err)
-	}
+	assertNotExist(t, filepath.Join(dir, "some", "parent", "directories", "file"))
+	assertNotExist(t, filepath.Join(dir, "some", "parent", "directories"))
+	assertNotExist(t, filepath.Join(dir, "some", "cousin", "directories"))
+	assertNotExist(t, filepath.Join(dir, "some", "parent", "file2"))
 }
 
 func TestRemoveAll(t *testing.T) {
@@ -1194,71 +740,55 @@ func TestRemoveAll(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestRemoveAll")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "cousin"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "file2"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "cousin"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "file2"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Make sure that os.RemoveAll fails.
-	if err := os.RemoveAll(filepath.Join(dir, "some", "parent")); err == nil {
-		t.Errorf("os.removeall did not fail!")
-	}
+	err = os.RemoveAll(filepath.Join(dir, "some", "parent"))
+	require.ErrorIs(t, err, os.ErrPermission, "os removeall should fail")
 
 	// Now try to removeall the entire tree.
-	if err := RemoveAll(filepath.Join(dir, "some", "parent")); err != nil {
-		t.Errorf("unexpected failure in unpriv.removeall: %s", err)
-	}
+	err = RemoveAll(filepath.Join(dir, "some", "parent"))
+	assert.NoError(t, err)
 
 	// Check that they are gone.
-	if _, err := Lstat(filepath.Join(dir, "some", "parent")); !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("expected deleted directory to give ENOENT: %s", err)
-	}
-	if _, err := Lstat(filepath.Join(dir, "some")); err != nil {
-		t.Errorf("expected parent of deleted directory to not have error: %s", err)
-	}
+	assertNotExist(t, filepath.Join(dir, "some", "parent"))
+	assertExist(t, filepath.Join(dir, "some"))
 
 	// Make sure that trying to remove the directory after it's gone still won't fail.
-	if err := RemoveAll(filepath.Join(dir, "some", "parent")); err != nil {
-		t.Errorf("unexpected failure in unpriv.removeall (after deletion): %s", err)
-	}
+	err = RemoveAll(filepath.Join(dir, "some", "parent"))
+	assert.NoError(t, err, "removeall after path is gone should still succeed")
 }
 
 func TestMkdir(t *testing.T) {
@@ -1266,83 +796,41 @@ func TestMkdir(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdir")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Make some subdirectories.
-	if err := Mkdir(filepath.Join(dir, "some", "child"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := Mkdir(filepath.Join(dir, "some", "other-child"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := Mkdir(filepath.Join(dir, "some", "child", "dir"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	// Check that they all have chmod(0).
-	var fi os.FileInfo
+	err = Mkdir(filepath.Join(dir, "some", "child"), 0)
+	require.NoError(t, err)
+	err = Mkdir(filepath.Join(dir, "some", "other-child"), 0)
+	require.NoError(t, err)
+	err = Mkdir(filepath.Join(dir, "some", "child", "dir"), 0)
+	require.NoError(t, err)
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "other-child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "child", "dir"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "other-child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child", "dir"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestMkdirAll(t *testing.T) {
@@ -1350,118 +838,46 @@ func TestMkdirAll(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAll")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
 
 	// Make some subdirectories.
-	if err := MkdirAll(filepath.Join(dir, "some", "child"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "other-child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	// Check that they all have chmod(0).
-	var fi os.FileInfo
+	err = MkdirAll(filepath.Join(dir, "some", "child"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "other-child", "with", "more", "children"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "child", "with", "more", "children"), 0)
+	require.NoError(t, err)
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "other-child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "other-child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "other-child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "other-child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "child", "with", "more", "children"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "other-child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "other-child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "other-child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "other-child", "with", "more", "children"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some"))
 
 	// Make sure that os.Lstat still fails.
-	fi, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
-	fi, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	if err == nil {
-		t.Errorf("expected os.Lstat to give EPERM -- got no error!")
-	} else if !errors.Is(err, os.ErrPermission) {
-		t.Errorf("expected os.Lstat to give EPERM -- got %s", err)
-	}
+	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
 }
 
 func TestMkdirAllMissing(t *testing.T) {
@@ -1469,92 +885,38 @@ func TestMkdirAllMissing(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirAllMissing")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create no structure, but with read access.
-	if err := os.MkdirAll(filepath.Join(dir, "some"), 0755); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	require.NoError(t, err)
 
 	// Make some subdirectories.
-	if err := MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"), 0)
+	require.NoError(t, err)
 	// Make sure that os.MkdirAll fails.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "serious", "hacks"), 0); err == nil {
-		t.Fatalf("expected MkdirAll to error out")
-	}
-
-	// Check that they all have chmod(0).
-	var fi os.FileInfo
+	err = os.MkdirAll(filepath.Join(dir, "some", "serious", "hacks"), 0)
+	require.ErrorIs(t, err, os.ErrPermission, "os.MkdirAll should fail in inaccessible path")
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"))
 }
 
 // Makes sure that if a parent directory only has +rw (-x) permissions, things
@@ -1565,116 +927,55 @@ func TestMkdirRWPerm(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRWPerm")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some small structure. This is modelled after /var/log/anaconda/pre-anaconda-logs/lvmdump.
-	if err := os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0600); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0600)
+	require.NoError(t, err)
 
-	// Now we have to try to create /var/log/anaconda/pre-anaconda-logs/lvmdump/config_diff.
-	if fh, err := os.Create(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump", "config_diff")); err == nil {
-		fh.Close()
-		t.Fatalf("expected error when using os.create for lvmdump/config_diff!")
-	}
+	// Make sure the os.Create fails with the path.
+	_, err = os.Create(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump", "config_diff"))
+	require.ErrorIs(t, err, os.ErrPermission, "os.Create should fail to create in an 0600 directory")
 
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump", "config_diff"))
-	if err != nil {
-		t.Fatalf("unexpected unpriv.create error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh.Close()
 
-	if n, err := fh.Write(fileContent); err != nil {
-		t.Fatal(err)
-	} else if n != len(fileContent) {
-		t.Fatalf("incomplete write to config_diff")
-	}
+	n, err := fh.Write(fileContent)
+	require.NoError(t, err)
+	require.EqualValues(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
-	if err := MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"), 0); err != nil {
-		t.Fatal(err)
-	}
+	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"), 0)
+	require.NoError(t, err)
+	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"), 0)
+	require.NoError(t, err)
 	// Make sure that os.MkdirAll fails.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "serious", "hacks"), 0); err == nil {
-		t.Fatalf("expected MkdirAll to error out")
-	}
-
-	// Check that they all have chmod(0).
-	var fi os.FileInfo
+	err = os.MkdirAll(filepath.Join(dir, "some", "serious", "hacks"), 0)
+	require.ErrorIs(t, err, os.ErrPermission, "os.MkdirAll should fail in inaccessible path")
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "a", "b", "c", "child", "with", "more", "children"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more"))
+	assertInaccessibleMode(t, filepath.Join(dir, "some", "x", "y", "z", "other-child", "with", "more", "children"))
 }
 
 // Makes sure that if a parent directory only has +rx (-w) permissions, things
@@ -1684,90 +985,49 @@ func TestMkdirRPerm(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestMkdirRPerm")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	fileContent := []byte("some content")
 
 	// Create some small structure.
-	if err := os.MkdirAll(filepath.Join(dir, "var", "log"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "var", "log"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "var"), 0555); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "var", "log"), 0755)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "var", "log"), 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "var"), 0555)
+	require.NoError(t, err)
 
-	if fh, err := os.Create(filepath.Join(dir, "var", "log", "anaconda")); err == nil {
-		fh.Close()
-		t.Fatalf("expected error when using os.create for lvmdump/config_diff!")
-	}
+	// Make sure the os.Create fails with the path.
+	_, err = os.Create(filepath.Join(dir, "var", "log", "anaconda"))
+	require.ErrorIs(t, err, os.ErrPermission, "os.Create should fail to create in an 0555 directory")
 
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda"))
-	if err != nil {
-		t.Fatalf("unexpected unpriv.create error: %s", err)
-	}
-	if err := fh.Chmod(0); err != nil {
-		t.Fatalf("unexpected unpriv.create.chmod error: %s", err)
-	}
+	require.NoError(t, err)
 	defer fh.Close()
+	err = fh.Chmod(0)
+	require.NoError(t, err)
 
-	if n, err := fh.Write(fileContent); err != nil {
-		t.Fatal(err)
-	} else if n != len(fileContent) {
-		t.Fatalf("incomplete write to config_diff")
-	}
+	n, err := fh.Write(fileContent)
+	require.NoError(t, err)
+	require.EqualValues(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
-	if err := MkdirAll(filepath.Join(dir, "var", "log", "anaconda2", "childdir"), 0); err != nil {
-		t.Fatal(err)
-	}
-
-	// Check that they all have chmod(0).
-	var fi os.FileInfo
+	err = MkdirAll(filepath.Join(dir, "var", "log", "anaconda2", "childdir"), 0)
+	require.NoError(t, err)
 
 	// Double check it was unchanged.
-	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda2", "childdir"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "var", "log", "anaconda2"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "var", "log"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0555 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
-	fi, err = Lstat(filepath.Join(dir, "var"))
-	if err != nil {
-		t.Errorf("unexpected unpriv.lstat error: %s", err)
-	}
-	if fi.Mode()&os.ModePerm != 0555 {
-		t.Errorf("unexpected modeperm for path %s: %o", fi.Name(), fi.Mode()&os.ModePerm)
-	}
+	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda"))
+	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2", "childdir"))
+	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2"))
+	assertFileMode(t, filepath.Join(dir, "var", "log"), 0555)
+	assertFileMode(t, filepath.Join(dir, "var"), 0555)
 }
 
 func TestWalk(t *testing.T) {
@@ -1779,41 +1039,35 @@ func TestWalk(t *testing.T) {
 		t.Skip("unpriv.* tests only work with non-root privileges")
 	}
 
-	dir, err := ioutil.TempDir("", "umoci-unpriv.TestWalk")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	// We need to delete the directory manually because the stdlib RemoveAll
+	// will get permission errors with the way we structure the paths.
+	dir, err := ioutil.TempDir(dir, "inner")
+	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	if err := os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0123); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some", "parent"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(filepath.Join(dir, "some"), 0); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Chmod(dir, 0755); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	require.NoError(t, err)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0123)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(filepath.Join(dir, "some"), 0)
+	require.NoError(t, err)
+	err = os.Chmod(dir, 0755)
+	require.NoError(t, err)
 
 	// Walk over it.
-	seen := map[string]int{}
+	seen := map[string]struct{}{}
 	err = Walk(dir, func(path string, info os.FileInfo, err error) error {
 		// Don't expect errors.
-		if err != nil {
-			t.Errorf("unexpected error in walkfunc(%s): %v", path, err)
+		if !assert.NoErrorf(t, err, "unexpected error in walkfunc(%q)", path) {
 			return err
 		}
 
@@ -1841,28 +1095,16 @@ func TestWalk(t *testing.T) {
 		}
 
 		// Check the mode.
-		if info.Mode() != expectedMode {
-			t.Errorf("got unexpected mode on %s: expected %o got %o", path, info.Mode(), expectedMode)
-		}
-		if !reflect.DeepEqual(info, newFi) {
-			t.Errorf("got different info after lstat: before=%#v after=%#v", info, newFi)
-		}
+		assert.EqualValuesf(t, expectedMode, info.Mode(), "unexpected file mode for %q", path)
+		assert.EqualExportedValues(t, info, newFi, "should get the same FileInfo before and after lstat")
 
 		// Update seen map.
-		seen[path]++
+		assert.NotContainsf(t, seen, path, "saw the path %q during the walk more than once", path)
+		seen[path] = struct{}{}
 		return nil
 	})
-	if err != nil {
-		t.Errorf("unexpected walk error: %v", err)
-	}
+	require.NoError(t, err)
 
-	// Check the seen map.
-	for path, num := range seen {
-		if num != 1 {
-			t.Errorf("path %s seen an unexpected number of times %d (expected %d)", path, num, 1)
-		}
-	}
-	if len(seen) != 5 {
-		t.Errorf("saw an unexpected number of paths: len(%v) != %v", seen, 5)
-	}
+	// Make sure we saw the right number of elements.
+	assert.Len(t, seen, 5, "expected to see all subpaths during walk")
 }

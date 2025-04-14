@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,6 +20,8 @@ package casext
 
 import (
 	"testing"
+
+	"github.com/stretchr/testify/assert"
 )
 
 func TestValidateRefname(t *testing.T) {
@@ -58,8 +61,6 @@ func TestValidateRefname(t *testing.T) {
 		{"etc/passwd/123", true},
 	} {
 		valid := IsValidReferenceName(test.refname)
-		if valid != test.valid {
-			t.Errorf("incorrectly determined validity of refname %q: expected %v got %v", test.refname, test.valid, valid)
-		}
+		assert.Equalf(t, test.valid, valid, "incorrectly determined validity of refname %q", test.refname)
 	}
 }

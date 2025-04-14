@@ -1,4 +1,5 @@
 #!/bin/bash
+# SPDX-License-Identifier: CC0-1.0
 # readlinkf: POSIX-compliant implementation of readlink -f.
 # Author: Koichi Nakashima <koichi@nksm.name>
 # Licensed under the Creative Commons Zero v1.0 Universal license.

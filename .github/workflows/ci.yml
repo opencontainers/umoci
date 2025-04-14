@@ -1,5 +1,6 @@
+# SPDX-License-Identifier: Apache-2.0
 # umoci: Umoci Modifies Open Containers' Images
-# Copyright (C) 2016-2020 SUSE LLC
+# Copyright (C) 2016-2025 SUSE LLC
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -49,12 +50,13 @@ jobs:
           # kind of lint checker that doesn't fail the CI completely and
           # instead just gives us nice warnings but for now just pin a Go
           # version.
-          go-version: '1.20.x'
+          go-version: '1.24.x'
       - name: install dependencies
         run: |
           # TODO: Move this to 'make fetch-deps'.
           go install github.com/cpuguy83/go-md2man/v2@latest
           go install golang.org/x/lint/golint@latest
+          go install golang.org/x/tools/cmd/goimports@latest
           go install github.com/securego/gosec/cmd/gosec@latest
           go install github.com/client9/misspell/cmd/misspell@latest
       - run: |

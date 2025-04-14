@@ -1,9 +1,10 @@
 //go:build gofuzz
 // +build gofuzz
 
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2021 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,8 +24,9 @@ package hardening
 import (
 	"bytes"
 	_ "crypto/sha256" // Import is necessary for go-digest
-	"github.com/opencontainers/go-digest"
 	"io/ioutil"
+
+	"github.com/opencontainers/go-digest"
 )
 
 // Fuzz fuzzes the VerifiedReader.Read() implementation.

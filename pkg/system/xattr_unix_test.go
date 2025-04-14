@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -23,14 +24,16 @@ import (
 	"os"
 	"testing"
 
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 )
 
 func TestClearxattrFilter(t *testing.T) {
-	file, err := ioutil.TempFile("", "TestClearxattrFilter")
-	if err != nil {
-		t.Fatal(err)
-	}
+	dir := t.TempDir()
+
+	file, err := ioutil.TempFile(dir, "TestClearxattrFilter")
+	require.NoError(t, err)
 	defer file.Close()
 
 	path := file.Name()
@@ -46,63 +49,37 @@ func TestClearxattrFilter(t *testing.T) {
 		{"user.forbidden1.allowed", "test", false},
 	}
 
-	allXattrCount := make(map[string]int)
-	forbiddenXattrCount := make(map[string]int)
+	setXattrNames := []string{}
+	forbiddenXattrNames := []string{}
 	forbiddenXattrs := make(map[string]struct{})
 
 	for _, xattr := range xattrs {
-		allXattrCount[xattr.name] = 0
+		setXattrNames = append(setXattrNames, xattr.name)
 		if xattr.forbidden {
-			forbiddenXattrCount[xattr.name] = 0
+			forbiddenXattrNames = append(forbiddenXattrNames, xattr.name)
 			forbiddenXattrs[xattr.name] = struct{}{}
 		}
 
-		if err := unix.Lsetxattr(path, xattr.name, []byte(xattr.value), 0); err != nil {
-			if errors.Is(err, unix.ENOTSUP) {
-				t.Skip("xattrs unsupported on backing filesystem")
-			}
-			t.Fatalf("unexpected error setting %v=%v on %v: %v", xattr.name, xattr.value, path, err)
+		err := unix.Lsetxattr(path, xattr.name, []byte(xattr.value), 0)
+		if errors.Is(err, unix.ENOTSUP) {
+			t.Skipf("xattrs unsupported on %s backing filesystem", dir)
 		}
+		require.NoErrorf(t, err, "lsetxattr %q=%q on %q", xattr.name, xattr.value, path)
 	}
 
 	// Check they're all present.
 	allXattrList, err := Llistxattr(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, xattr := range allXattrList {
-		if _, ok := allXattrCount[xattr]; !ok {
-			t.Errorf("saw unexpected xattr in all list: %q", xattr)
-		} else {
-			allXattrCount[xattr]++
-		}
-	}
-	for xattr, count := range allXattrCount {
-		if count != 1 {
-			t.Errorf("all xattr count inconsistent: saw %q %v times", xattr, count)
-		}
-	}
+	require.NoErrorf(t, err, "llistxattr %q", path)
+	assert.ElementsMatch(t, setXattrNames, allXattrList, "all xattrs should be present after setting")
 
 	// Now clear them.
-	if err := Lclearxattrs(path, forbiddenXattrs); err != nil {
-		t.Fatal(err)
-	}
+	err = Lclearxattrs(path, forbiddenXattrs)
+	require.NoErrorf(t, err, "lclearxattrs %q (forbidden=%v)", path, forbiddenXattrs)
 
 	// Check that only the forbidden ones remain.
 	forbiddenXattrList, err := Llistxattr(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, xattr := range forbiddenXattrList {
-		if _, ok := forbiddenXattrCount[xattr]; !ok {
-			t.Errorf("saw unexpected xattr in forbidden list: %q", xattr)
-		} else {
-			forbiddenXattrCount[xattr]++
-		}
-	}
-	for xattr, count := range forbiddenXattrCount {
-		if count != 1 {
-			t.Errorf("forbidden xattr count inconsistent: saw %q %v times", xattr, count)
-		}
-	}
+	require.NoErrorf(t, err, "llistxattr %q", path)
+	assert.NotElementsMatch(t, setXattrNames, forbiddenXattrList, "there should be a different set of xattrs after clearing")
+	assert.ElementsMatch(t, forbiddenXattrNames, forbiddenXattrList, "only explicitly forbidden xattrs should be allowed to remain after clearing")
+	assert.NotEmpty(t, forbiddenXattrList, "there should be some remaining xattrs after clearing")
 }

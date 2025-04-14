@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,11 +25,8 @@ import (
 	crand "crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
-	"os"
 	"path/filepath"
-	"reflect"
 	"runtime"
 	"testing"
 	"time"
@@ -36,6 +34,9 @@ import (
 	"github.com/opencontainers/go-digest"
 	ispecs "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	"github.com/opencontainers/umoci/pkg/testutils"
@@ -108,9 +109,8 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		// Generate layer data.
 		for idx := range layerData {
 			tw := tar.NewWriter(&layerData[idx])
-			if err := randomTarData(t, tw); err != nil {
-				t.Fatalf("%s: error generating layer%d data: %+v", name, idx, err)
-			}
+			err := randomTarData(t, tw)
+			require.NoErrorf(t, err, "%s: generate layer%d data", name, idx)
 			tw.Close()
 		}
 
@@ -118,9 +118,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		layerDescriptors := make([]ispec.Descriptor, n)
 		for idx, layer := range layerData {
 			digest, size, err := engineExt.PutBlob(ctx, &layer)
-			if err != nil {
-				t.Fatalf("%s: error putting layer%d blob: %+v", name, idx, err)
-			}
+			require.NoErrorf(t, err, "%s: putting layer%d blob", name, idx)
 			layerDescriptors[idx] = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageLayer,
 				Digest:    digest,
@@ -139,9 +137,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Type: "unknown",
 			},
 		})
-		if err != nil {
-			t.Fatalf("%s: error putting config blob: %+v", name, err)
-		}
+		require.NoError(t, err, "put config blob json")
 		configDescriptor := ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageConfig,
 			Digest:    configDigest,
@@ -159,9 +155,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		manifest.Layers = append(manifest.Layers, layerDescriptors...)
 
 		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(ctx, manifest)
-		if err != nil {
-			t.Fatalf("%s: error putting manifest blob: %+v", name, err)
-		}
+		require.NoError(t, err, "put manifest blob json")
 		manifestDescriptor := ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageManifest,
 			Digest:    manifestDigest,
@@ -182,9 +176,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
-			if err != nil {
-				t.Fatalf("%s: error putting index-%d blob: %+v", name, i, err)
-			}
+			require.NoErrorf(t, err, "%s: put index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
 				Digest:    indexDigest,
@@ -208,9 +200,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		notTargetDigest, notTargetSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
 			Data: []byte("Hello, world!"),
 		})
-		if err != nil {
-			t.Fatalf("%s: error putting custom-manifest blob: %+v", name, err)
-		}
+		require.NoErrorf(t, err, "%s: put custom manifest blob", name)
 		notTargetDescriptor := ispec.Descriptor{
 			MediaType: customTargetMediaType,
 			Digest:    notTargetDigest,
@@ -227,9 +217,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
 			})
-			if err != nil {
-				t.Fatalf("%s: error putting custom-(non)target-%d blob: %+v", name, i, err)
-			}
+			require.NoErrorf(t, err, "%s: putting custom-(non)target-%d blob", name, i)
 			currentDescriptor = ispec.Descriptor{
 				MediaType: customMediaType,
 				Digest:    newDigest,
@@ -242,9 +230,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			Descriptor: currentDescriptor,
 			Data:       []byte("I am the real target!"),
 		})
-		if err != nil {
-			t.Fatalf("%s: error putting custom-manifest blob: %+v", name, err)
-		}
+		require.NoErrorf(t, err, "%s: putting custom-manifest blob", name)
 		targetDescriptor := ispec.Descriptor{
 			MediaType: customTargetMediaType,
 			Digest:    targetDigest,
@@ -261,9 +247,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
 			})
-			if err != nil {
-				t.Fatalf("%s: error putting custom-(non)target-%d blob: %+v", name, i, err)
-			}
+			require.NoErrorf(t, err, "%s: putting custom-(non)target-%d blob", name, i)
 			currentDescriptor = ispec.Descriptor{
 				MediaType: customMediaType,
 				Digest:    newDigest,
@@ -282,9 +266,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
-			if err != nil {
-				t.Fatalf("%s: error putting index-%d blob: %+v", name, i, err)
-			}
+			require.NoErrorf(t, err, "%s: putting index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
 				Digest:    indexDigest,
@@ -311,9 +293,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			},
 			Data: []byte("Hello, world!"),
 		})
-		if err != nil {
-			t.Fatalf("%s: error putting manifest blob: %+v", name, err)
-		}
+		require.NoErrorf(t, err, "%s: put manifest blob", name)
 		manifestDescriptor := ispec.Descriptor{
 			MediaType: unknownMediaType,
 			Digest:    manifestDigest,
@@ -334,9 +314,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
 			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
-			if err != nil {
-				t.Fatalf("%s: error putting index-%d blob: %+v", name, i, err)
-			}
+			require.NoErrorf(t, err, "%s: put index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
 				Digest:    indexDigest,
@@ -356,145 +334,102 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 func TestEngineReference(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err)
 	engineExt := NewEngine(engine)
 	defer engine.Close()
 
 	descMap, err := fakeSetupEngine(t, engineExt)
-	if err != nil {
-		t.Fatalf("unexpected error doing fakeSetupEngine: %+v", err)
-	}
+	require.NoError(t, err, "fakeSetupEngine")
+	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	for idx, test := range descMap {
-		name := fmt.Sprintf("new_tag_%d", idx)
+		test := test // copy iterator
+		t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
+			name := fmt.Sprintf("new_tag_%d", idx)
 
-		if err := engineExt.UpdateReference(ctx, name, test.index); err != nil {
-			t.Errorf("UpdateReference: unexpected error: %+v", err)
-		}
+			err := engineExt.UpdateReference(ctx, name, test.index)
+			require.NoErrorf(t, err, "update reference %s", name)
 
-		gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
-		if err != nil {
-			t.Errorf("ResolveReference: unexpected error: %+v", err)
-		}
-		if len(gotDescriptorPaths) != 1 {
-			t.Errorf("ResolveReference: expected %q to get %d descriptors, got %d: %+v", name, 1, len(gotDescriptorPaths), gotDescriptorPaths)
-			continue
-		}
-		gotDescriptor := gotDescriptorPaths[0].Descriptor()
+			gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
+			require.NoErrorf(t, err, "resolve reference %s", name)
+			assert.Len(t, gotDescriptorPaths, 1, "unexpected number of descriptors")
+			gotDescriptor := gotDescriptorPaths[0].Descriptor()
 
-		if !reflect.DeepEqual(test.result, gotDescriptor) {
-			t.Errorf("ResolveReference: got different descriptor to original: expected=%v got=%v", test.result, gotDescriptor)
-		}
+			assert.Equal(t, test.result, gotDescriptor, "resolve reference should get same descriptor as original")
 
-		if err := engineExt.DeleteReference(ctx, name); err != nil {
-			t.Errorf("DeleteReference: unexpected error: %+v", err)
-		}
+			err = engineExt.DeleteReference(ctx, name)
+			require.NoErrorf(t, err, "delete reference %s", name)
 
-		if gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name); err != nil {
-			t.Errorf("ResolveReference: unexpected error: %+v", err)
-		} else if len(gotDescriptorPaths) > 0 {
-			t.Errorf("ResolveReference: still got reference descriptors after DeleteReference!")
-		}
+			gotDescriptorPaths, err = engineExt.ResolveReference(ctx, name)
+			assert.NoErrorf(t, err, "resolve reference %s", name)
+			assert.Empty(t, gotDescriptorPaths, "resolve reference after deleting should find no references")
 
-		// DeleteBlob is idempotent. It shouldn't cause an error.
-		if err := engineExt.DeleteReference(ctx, name); err != nil {
-			t.Errorf("DeleteReference: unexpected error on double-delete: %+v", err)
-		}
+			// DeleteReference is idempotent. It shouldn't cause an error.
+			err = engineExt.DeleteReference(ctx, name)
+			assert.NoErrorf(t, err, "delete non-existent reference %s", name)
+		})
 	}
 }
 
 func TestEngineReferenceReadonly(t *testing.T) {
 	ctx := context.Background()
 
-	root, err := ioutil.TempDir("", "umoci-TestEngineReferenceReadonly")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(root)
-
-	image := filepath.Join(root, "image")
-	if err := dir.Create(image); err != nil {
-		t.Fatalf("unexpected error creating image: %+v", err)
-	}
+	image := filepath.Join(t.TempDir(), "image")
+	err := dir.Create(image)
+	require.NoError(t, err)
 
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatalf("unexpected error opening image: %+v", err)
-	}
+	require.NoError(t, err, "open read-write engine")
 	engineExt := NewEngine(engine)
 
 	descMap, err := fakeSetupEngine(t, engineExt)
-	if err != nil {
-		t.Fatalf("unexpected error doing fakeSetupEngine: %+v", err)
-	}
+	require.NoError(t, err, "fakeSetupEngine")
+	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
-	if err := engine.Close(); err != nil {
-		t.Fatalf("unexpected error closing image: %+v", err)
-	}
+	err = engine.Close()
+	assert.NoError(t, err, "close read-write engine")
 
 	for idx, test := range descMap {
-		name := fmt.Sprintf("new_tag_%d", idx)
+		test := test // copy iterator
+		t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
+			name := fmt.Sprintf("new_tag_%d", idx)
 
-		engine, err := dir.Open(image)
-		if err != nil {
-			t.Fatalf("unexpected error opening image: %+v", err)
-		}
-		engineExt := NewEngine(engine)
+			engine, err := dir.Open(image)
+			require.NoError(t, err, "open read-write engine")
+			engineExt := NewEngine(engine)
 
-		if err := engineExt.UpdateReference(ctx, name, test.index); err != nil {
-			t.Errorf("UpdateReference: unexpected error: %+v", err)
-		}
+			err = engineExt.UpdateReference(ctx, name, test.index)
+			require.NoErrorf(t, err, "update reference %s", name)
 
-		if err := engine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered: %+v", err)
-		}
+			err = engine.Close()
+			assert.NoError(t, err, "close read-write engine")
 
-		// make it readonly
-		testutils.MakeReadOnly(t, image)
+			// make it readonly
+			testutils.MakeReadOnly(t, image)
+			defer testutils.MakeReadWrite(t, image)
 
-		newEngine, err := dir.Open(image)
-		if err != nil {
-			t.Errorf("unexpected error opening ro image: %+v", err)
-		}
-		newEngineExt := NewEngine(newEngine)
+			newEngine, err := dir.Open(image)
+			require.NoError(t, err, "open read-only engine")
+			newEngineExt := NewEngine(newEngine)
 
-		gotDescriptorPaths, err := newEngineExt.ResolveReference(ctx, name)
-		if err != nil {
-			t.Errorf("ResolveReference: unexpected error: %+v", err)
-		}
-		if len(gotDescriptorPaths) != 1 {
-			t.Errorf("ResolveReference: expected to get %d descriptors, got %d: %+v", 1, len(gotDescriptorPaths), gotDescriptorPaths)
-		}
-		gotDescriptor := gotDescriptorPaths[0].Descriptor()
+			gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
+			require.NoErrorf(t, err, "resolve reference %s", name)
+			assert.Len(t, gotDescriptorPaths, 1, "unexpected number of descriptors")
+			gotDescriptor := gotDescriptorPaths[0].Descriptor()
 
-		if !reflect.DeepEqual(test.result, gotDescriptor) {
-			t.Errorf("ResolveReference: got different descriptor to original: expected=%v got=%v", test.result, gotDescriptor)
-		}
+			assert.Equal(t, test.result, gotDescriptor, "resolve reference should get same descriptor as original")
 
-		// Make sure that writing will FAIL.
-		if err := newEngineExt.UpdateReference(ctx, name+"new", test.index); err == nil {
-			t.Errorf("UpdateReference: expected error on ro image!")
-		}
+			// Make sure that writing will FAIL.
+			err = newEngineExt.UpdateReference(ctx, name+"new", test.index)
+			assert.Errorf(t, err, "update reference %s for read-only image should fail", name)
 
-		if err := newEngine.Close(); err != nil {
-			t.Errorf("Close: unexpected error encountered on ro: %+v", err)
-		}
-
-		// make it readwrite again.
-		testutils.MakeReadWrite(t, image)
+			err = newEngine.Close()
+			assert.NoError(t, err, "close read-only engine")
+		})
 	}
 }

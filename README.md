@@ -106,6 +106,8 @@ how to use umoci. Notable users of umoci include:
    The fact that a container runtime with a vastly different model to OCI
    container runtimes can make use of umoci is further evidence of its
    unopinionated design.
+ * [Incus][incus] and [LXD][lxd] provide support for OCI container umages using
+   umoci as well.
 
 If you wish to provide feedback or contribute, read the [`CONTRIBUTING.md`][contributing]
 for this project to refresh your knowledge about how to submit good bug reports
@@ -121,6 +123,8 @@ also provided.
 [stacker]: https://github.com/project-stacker/stacker
 [lxc]: https://linuxcontainers.org/
 [lxc-oci]: https://github.com/lxc/lxc/blob/lxc-4.0.2/templates/lxc-oci.in
+[incus]: https://linuxcontainers.org/incus
+[lxd]: https://github.com/canonical/lxd
 [contributing]: /CONTRIBUTING.md
 
 ### Install ###
@@ -252,8 +256,8 @@ umoci is licensed under the terms of the Apache 2.0 license.
 
 ```text
 umoci: Umoci Modifies Open Containers' Images
-Copyright (C) 2016-2020 SUSE LLC
-Copyright (C) 2018 Cisco Systems
+Copyright (C) 2016-2025 SUSE LLC
+Copyright (C) 2018, 2020 Cisco Systems
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

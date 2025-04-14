@@ -1,8 +1,10 @@
 //go:build linux
 // +build linux
 
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
+ * Copyright (C) 2016-2025 SUSE LLC
  * Copyright (C) 2020 Cisco Inc.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
@@ -23,13 +25,15 @@ package layer
 import (
 	"archive/tar"
 	"errors"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
 
-	"github.com/opencontainers/umoci/pkg/system"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func canMknod(dir string) (bool, error) {
@@ -46,33 +50,27 @@ func canMknod(dir string) (bool, error) {
 }
 
 func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
-	dir, err := ioutil.TempDir("", "umoci-TestOverlayFSWhiteout")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	mknodOk, err := canMknod(dir)
-	if err != nil {
-		t.Fatalf("couldn't mknod in dir: %v", err)
-	}
+	require.NoError(t, err, "check if can mknod")
 
 	if !mknodOk {
 		t.Skip("skipping overlayfs test on kernel < 5.8")
 	}
 
 	headers := []pseudoHdr{
-		{"file", "", tar.TypeReg, false},
-		{whPrefix + "file", "", tar.TypeReg, false},
+		{"file", "", tar.TypeReg},
+		{whPrefix + "file", "", tar.TypeReg},
 	}
 
 	canSetTrustedXattrs := os.Geteuid() == 0
 
 	if canSetTrustedXattrs {
 		headers = append(headers, []pseudoHdr{
-			{"dir", "", tar.TypeDir, false},
-			{"dir/fileindir", "dir", tar.TypeReg, false},
-			{"dir/" + whOpaque, "dir", tar.TypeReg, false},
+			{"dir", "", tar.TypeDir},
+			{"dir/fileindir", "dir", tar.TypeReg},
+			{"dir/" + whOpaque, "dir", tar.TypeReg},
 		}...)
 	}
 
@@ -87,33 +85,21 @@ func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 
 	for _, ph := range headers {
 		hdr, rdr := fromPseudoHdr(ph)
-		if err := te.UnpackEntry(dir, hdr, rdr); err != nil {
-			t.Errorf("UnpackEntry %s failed: %v", hdr.Name, err)
-		}
+		err := te.UnpackEntry(dir, hdr, rdr)
+		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
 	fi, err := os.Stat(filepath.Join(dir, "file"))
-	if err != nil {
-		t.Fatalf("failed to stat `file`: %v", err)
-	}
+	require.NoError(t, err, "failed to stat file")
 
 	whiteout, err := isOverlayWhiteout(fi)
-	if err != nil {
-		t.Fatalf("failed to check overlay whiteout: %v", err)
-	}
-	if !whiteout {
-		t.Fatalf("extract didn't make overlay whiteout")
-	}
+	require.NoError(t, err, "isOverlayWhiteout")
+	assert.True(t, whiteout, "extract should make overlay whiteout")
 
 	if canSetTrustedXattrs {
 		value := make([]byte, 10)
 		n, err := unix.Getxattr(filepath.Join(dir, "dir"), "trusted.overlay.opaque", value)
-		if err != nil {
-			t.Fatalf("failed to get overlay opaque attr: %v", err)
-		}
-
-		if string(value[:n]) != "y" {
-			t.Fatalf("bad opaque xattr: %v", string(value[:n]))
-		}
+		require.NoError(t, err, "get overlay opaque attr")
+		assert.Equal(t, "y", string(value[:n]), "bad opaque attr")
 	}
 }

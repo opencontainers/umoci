@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -24,250 +25,173 @@ import (
 	"testing"
 	"time"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
+
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 func TestLutimesFile(t *testing.T) {
-	var fiOld, fiNew unix.Stat_t
+	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesFile")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, "some file")
 
-	if err := ioutil.WriteFile(path, []byte("some contents"), 0755); err != nil {
-		t.Fatal(err)
-	}
+	err := ioutil.WriteFile(path, []byte("some contents"), 0755)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)
 	mtime := testutils.Unix(257172893, 995216512)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentOld)
+	require.NoErrorf(t, err, "lstat %s", path)
 
-	if err := Lutimes(path, atime, mtime); err != nil {
-		t.Errorf("unexpected error with system.lutimes: %s", err)
-	}
+	err = Lutimes(path, atime, mtime)
+	require.NoErrorf(t, err, "lutimes %s", path)
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentNew)
+	require.NoErrorf(t, err, "lstat %s", path)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Mtim.Unix())
 	atimeNew := time.Unix(fiNew.Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, atimeOld, atimeNew, "atime should change after lutimes")
+	assert.Equal(t, atime, atimeNew, "new atime should match requested atime")
 
-	if atimeOld.Equal(atimeNew) {
-		t.Errorf("atime was not changed at all!")
-	}
-	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
-	}
-	if mtimeOld.Equal(mtimeNew) {
-		t.Errorf("mtime was not changed at all!")
-	}
-	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
-	}
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, mtimeOld, mtimeNew, "mtime should change after lutimes")
+	assert.Equal(t, mtime, mtimeNew, "new mtime should match requested mtime")
+
+	assert.Equal(t, fiParentOld, fiParentNew, "stat data of parent directory should be unchanged")
 }
 
 func TestLutimesDirectory(t *testing.T) {
-	var fiOld, fiNew unix.Stat_t
+	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesDirectory")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, " a directory  ")
 
-	if err := os.Mkdir(path, 0755); err != nil {
-		t.Fatal(err)
-	}
+	err := os.Mkdir(path, 0755)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
 	mtime := testutils.Unix(185726393, 752135712)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentOld)
+	require.NoErrorf(t, err, "lstat %s", path)
 
-	if err := Lutimes(path, atime, mtime); err != nil {
-		t.Errorf("unexpected error with system.lutimes: %s", err)
-	}
+	err = Lutimes(path, atime, mtime)
+	require.NoErrorf(t, err, "lutimes %s", path)
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentNew)
+	require.NoErrorf(t, err, "lstat %s", path)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Mtim.Unix())
 	atimeNew := time.Unix(fiNew.Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, atimeOld, atimeNew, "atime should change after lutimes")
+	assert.Equal(t, atime, atimeNew, "new atime should match requested atime")
 
-	if atimeOld.Equal(atimeNew) {
-		t.Errorf("atime was not changed at all!")
-	}
-	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
-	}
-	if mtimeOld.Equal(mtimeNew) {
-		t.Errorf("mtime was not changed at all!")
-	}
-	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
-	}
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, mtimeOld, mtimeNew, "mtime should change after lutimes")
+	assert.Equal(t, mtime, mtimeNew, "new mtime should match requested mtime")
+
+	assert.Equal(t, fiParentOld, fiParentNew, "stat data of parent directory should be unchanged")
 }
 
 func TestLutimesSymlink(t *testing.T) {
 	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesSymlink")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	path := filepath.Join(dir, "  a symlink   ")
 
-	if err := os.Symlink(".", path); err != nil {
-		t.Fatal(err)
-	}
+	err := os.Symlink(".", path)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
 	mtime := testutils.Unix(185726393, 752135712)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(dir, &fiParentOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentOld)
+	require.NoErrorf(t, err, "lstat %s", path)
 
-	if err := Lutimes(path, atime, mtime); err != nil {
-		t.Errorf("unexpected error with system.lutimes: %s", err)
-	}
+	err = Lutimes(path, atime, mtime)
+	require.NoErrorf(t, err, "lutimes %s", path)
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(dir, &fiParentNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentNew)
+	require.NoErrorf(t, err, "lstat %s", path)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Mtim.Unix())
 	atimeNew := time.Unix(fiNew.Atim.Unix())
+	assert.NotEqual(t, atimeOld, atimeNew, "atime should change after lutimes")
+	assert.Equal(t, atime, atimeNew, "new atime should match requested atime")
+
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
 	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, mtimeOld, mtimeNew, "mtime should change after lutimes")
+	assert.Equal(t, mtime, mtimeNew, "new mtime should match requested mtime")
 
-	if atimeOld.Equal(atimeNew) {
-		t.Errorf("atime was not changed at all!")
-	}
-	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
-	}
-	if mtimeOld.Equal(mtimeNew) {
-		t.Errorf("mtime was not changed at all!")
-	}
-	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
-	}
-
-	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Atim.Unix())
-	mtimeParentOld := time.Unix(fiParentOld.Mtim.Unix())
-	atimeParentNew := time.Unix(fiParentNew.Atim.Unix())
-	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
-
-	if !atimeParentOld.Equal(atimeParentNew) {
-		t.Errorf("parent directory atime was changed! old=%q new=%q", atimeParentOld, atimeParentNew)
-	}
-	if !mtimeParentOld.Equal(mtimeParentNew) {
-		t.Errorf("parent directory mtime was changed! old=%q new=%q", mtimeParentOld, mtimeParentNew)
-	}
+	assert.Equal(t, fiParentOld, fiParentNew, "stat data of parent directory should be unchanged")
 }
 
 func TestLutimesRelative(t *testing.T) {
 	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
-	dir, err := ioutil.TempDir("", "umoci-system.TestLutimesRelative")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(dir)
+	dir := t.TempDir()
 
 	oldwd, err := os.Getwd()
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	os.Chdir(dir)
 	defer os.Chdir(oldwd)
 
 	path := filepath.Join("some parent", " !! symlink here")
 
-	if err := os.MkdirAll(filepath.Dir(path), 0755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(".", path); err != nil {
-		t.Fatal(err)
-	}
+	err = os.MkdirAll(filepath.Dir(path), 0755)
+	require.NoError(t, err)
+	err = os.Symlink(".", path)
+	require.NoError(t, err)
 
 	atime := testutils.Unix(134858232, 258921237)
 	mtime := testutils.Unix(171257291, 425815288)
 
-	if err := unix.Lstat(path, &fiOld); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(".", &fiParentOld); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiOld)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentOld)
+	require.NoErrorf(t, err, "lstat %s", path)
 
-	if err := Lutimes(path, atime, mtime); err != nil {
-		t.Errorf("unexpected error with system.lutimes: %s", err)
-	}
+	err = Lutimes(path, atime, mtime)
+	require.NoErrorf(t, err, "lutimes %s", path)
 
-	if err := unix.Lstat(path, &fiNew); err != nil {
-		t.Fatal(err)
-	}
-	if err := unix.Lstat(".", &fiParentNew); err != nil {
-		t.Fatal(err)
-	}
+	err = unix.Lstat(path, &fiNew)
+	require.NoErrorf(t, err, "lstat %s", path)
+	err = unix.Lstat(dir, &fiParentNew)
+	require.NoErrorf(t, err, "lstat %s", path)
 
 	atimeOld := time.Unix(fiOld.Atim.Unix())
-	mtimeOld := time.Unix(fiOld.Mtim.Unix())
 	atimeNew := time.Unix(fiNew.Atim.Unix())
-	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, atimeOld, atimeNew, "atime should change after lutimes")
+	assert.Equal(t, atime, atimeNew, "new atime should match requested atime")
 
-	if atimeOld.Equal(atimeNew) {
-		t.Errorf("atime was not changed at all!")
-	}
-	if !atimeNew.Equal(atime) {
-		t.Errorf("atime was not changed to expected value: expected=%q got=%q old=%q", atime, atimeNew, atimeOld)
-	}
-	if mtimeOld.Equal(mtimeNew) {
-		t.Errorf("mtime was not changed at all!")
-	}
-	if !mtimeNew.Equal(mtime) {
-		t.Errorf("mtime was not changed: expected=%q got=%q old=%q", mtime, mtimeNew, mtimeOld)
-	}
+	mtimeOld := time.Unix(fiOld.Mtim.Unix())
+	mtimeNew := time.Unix(fiNew.Mtim.Unix())
+	assert.NotEqual(t, mtimeOld, mtimeNew, "mtime should change after lutimes")
+	assert.Equal(t, mtime, mtimeNew, "new mtime should match requested mtime")
 
 	// Make sure that the parent directory was unchanged.
-	atimeParentOld := time.Unix(fiParentOld.Atim.Unix())
-	mtimeParentOld := time.Unix(fiParentOld.Mtim.Unix())
-	atimeParentNew := time.Unix(fiParentNew.Atim.Unix())
-	mtimeParentNew := time.Unix(fiParentNew.Mtim.Unix())
-
-	if !atimeParentOld.Equal(atimeParentNew) {
-		t.Errorf("parent directory atime was changed! old=%q new=%q", atimeParentOld, atimeParentNew)
-	}
-	if !mtimeParentOld.Equal(mtimeParentNew) {
-		t.Errorf("parent directory mtime was changed! old=%q new=%q", mtimeParentOld, mtimeParentNew)
-	}
+	assert.Equal(t, fiParentOld, fiParentNew, "stat data of parent directory should be unchanged")
 }

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2024 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,9 +22,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -32,10 +31,12 @@ import (
 	"github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
-	"github.com/stretchr/testify/assert"
 )
 
 func mustDecodeString(s string) []byte {
@@ -78,10 +79,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		},
 	}
 
-	root, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer")
-	if err != nil {
-		t.Fatal(err)
-	}
+	root := t.TempDir()
 
 	// Create our image.
 	image := filepath.Join(root, "image")
@@ -89,9 +87,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		t.Fatal(err)
 	}
 	engine, err := dir.Open(image)
-	if err != nil {
-		t.Fatal(err)
-	}
+	require.NoError(t, err)
 	engineExt := casext.NewEngine(engine)
 
 	// Set up the CAS and an image from the above layers.
@@ -105,9 +101,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		// DiffIDs.
 		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
 		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
-		if err != nil {
-			t.Fatal(err)
-		}
+		require.NoError(t, err)
 
 		layerDigests = append(layerDigests, layer.digest)
 		layerDescriptors = append(layerDescriptors, ispec.Descriptor{
@@ -155,14 +149,8 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 func TestUnpackManifestCustomLayer(t *testing.T) {
 	ctx := context.Background()
 
-	root, manifest, engineExt := makeImage(t)
-	defer os.RemoveAll(root)
-
-	bundle, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer_bundle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(bundle)
+	_, manifest, engineExt := makeImage(t)
+	bundle := t.TempDir()
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
 	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
@@ -181,25 +169,16 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 		called = true
 		return nil
 	}
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
-		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
-	}
-	if !called {
-		t.Errorf("callback not called")
-	}
+	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	require.NoError(t, err, "UnpackManifest")
+	assert.True(t, called, "UnpackManifest callback should have been called")
 }
 
 func TestUnpackStartFromDescriptor(t *testing.T) {
 	ctx := context.Background()
 
-	root, manifest, engineExt := makeImage(t)
-	defer os.RemoveAll(root)
-
-	bundle, err := ioutil.TempDir("", "umoci-TestUnpackStartFromDescriptor_bundle")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer os.RemoveAll(bundle)
+	_, manifest, engineExt := makeImage(t)
+	bundle := t.TempDir()
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
 	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
@@ -214,14 +193,11 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 		Rootless: os.Geteuid() != 0,
 	}}
 	unpackOptions.StartFrom = manifest.Layers[1]
-	if err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions); err != nil {
-		t.Errorf("unexpected UnpackManifest error: %+v\n", err)
-	}
+	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	require.NoError(t, err, "UnpackManifest")
 
 	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
-	if err == nil || !errors.Is(err, os.ErrNotExist) {
-		t.Errorf("test file present? %+v\n", err)
-	}
+	assert.ErrorIs(t, err, os.ErrNotExist, "test file should not be present")
 }
 
 func TestLayerCompressionCheck(t *testing.T) {

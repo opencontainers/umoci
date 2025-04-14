@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
- * Copyright (C) 2016-2020 SUSE LLC
+ * Copyright (C) 2016-2025 SUSE LLC
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -21,12 +22,14 @@ import (
 	crand "crypto/rand"
 	"io"
 	"math/rand"
-	"reflect"
 	"testing"
 
 	"github.com/mohae/deepcopy"
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
+
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -56,25 +59,30 @@ func randomDescriptor(t *testing.T) ispec.Descriptor {
 func TestMapDescriptors_Identity(t *testing.T) {
 	// List of interfaces to use MapDescriptors on, as well as how many
 	// *unique* descriptors they contain.
-	ociList := []struct {
-		num int
-		obj interface{}
+	tests := []struct {
+		name string
+		num  int
+		obj  interface{}
 	}{
 		// Make sure that "base" types work.
 		{
-			num: 0,
-			obj: nil,
+			name: "Nil",
+			num:  0,
+			obj:  nil,
 		},
 		{
-			num: 1,
-			obj: randomDescriptor(t),
+			name: "Plain",
+			num:  1,
+			obj:  randomDescriptor(t),
 		},
 		{
-			num: 1,
-			obj: descriptorPtr(randomDescriptor(t)),
+			name: "Ptr",
+			num:  1,
+			obj:  descriptorPtr(randomDescriptor(t)),
 		},
 		{
-			num: 3,
+			name: "Slice-Plain",
+			num:  3,
 			obj: []ispec.Descriptor{
 				randomDescriptor(t),
 				randomDescriptor(t),
@@ -82,7 +90,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 			},
 		},
 		{
-			num: 7,
+			name: "Slice-Ptr",
+			num:  7,
 			obj: []*ispec.Descriptor{
 				descriptorPtr(randomDescriptor(t)),
 				descriptorPtr(randomDescriptor(t)),
@@ -95,7 +104,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		},
 		// Make sure official OCI structs work.
 		{
-			num: 7,
+			name: "Manifest-Plain",
+			num:  7,
 			obj: ispec.Manifest{
 				MediaType: ispec.MediaTypeImageManifest,
 				Config:    randomDescriptor(t),
@@ -110,7 +120,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 			},
 		},
 		{
-			num: 2,
+			name: "Index-Plain",
+			num:  2,
 			obj: ispec.Index{
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
@@ -121,7 +132,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		},
 		// Check that pointers also work.
 		{
-			num: 5,
+			name: "Manifest-Ptr",
+			num:  5,
 			obj: &ispec.Manifest{
 				MediaType: ispec.MediaTypeImageManifest,
 				Config:    randomDescriptor(t),
@@ -134,7 +146,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 			},
 		},
 		{
-			num: 9,
+			name: "Index-Ptr",
+			num:  9,
 			obj: &ispec.Index{
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
@@ -152,11 +165,13 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		},
 		// Make sure that an empty []ispec.Descriptor works properly.
 		{
-			num: 0,
-			obj: []ispec.Descriptor{},
+			name: "Slice-Empty",
+			num:  0,
+			obj:  []ispec.Descriptor{},
 		},
 		{
-			num: 1,
+			name: "Manifest-NoLayers",
+			num:  1,
 			obj: ispec.Manifest{
 				MediaType: ispec.MediaTypeImageManifest,
 				Config:    randomDescriptor(t),
@@ -164,7 +179,8 @@ func TestMapDescriptors_Identity(t *testing.T) {
 			},
 		},
 		{
-			num: 0,
+			name: "Index-NoManifests",
+			num:  0,
 			obj: ispec.Index{
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{},
@@ -173,35 +189,26 @@ func TestMapDescriptors_Identity(t *testing.T) {
 		// TODO: Add support for descending into maps.
 	}
 
-	for idx, test := range ociList {
-		// Make a copy for later comparison.
-		original := deepcopy.Copy(test.obj)
+	for _, test := range tests {
+		test := test // copy iterator
+		t.Run(test.name, func(*testing.T) {
+			// Make a copy for later comparison.
+			original := deepcopy.Copy(test.obj)
 
-		foundSet := map[digest.Digest]int{}
+			foundSet := map[digest.Digest]int{}
 
-		if err := MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
-			foundSet[descriptor.Digest]++
-			return descriptor
-		}); err != nil {
-			t.Errorf("MapDescriptors(%d) unexpected error: %v", idx, err)
-			continue
-		}
+			require.NoError(t, MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
+				foundSet[descriptor.Digest]++
+				return descriptor
+			}), "MapDescriptors should not return an error")
 
-		// Make sure that we hit everything uniquely.
-		found := 0
-		for d, n := range foundSet {
-			found++
-			if n != 1 {
-				t.Errorf("MapDescriptors(%d) hit a descriptor more than once: %#v hit %d times", idx, d, n)
+			// Make sure that we hit everything uniquely.
+			for d, n := range foundSet {
+				assert.Equalf(t, 1, n, "MapDescriptors(%d) should only hit a descriptor once", d)
 			}
-		}
-		if found != test.num {
-			t.Errorf("MapDescriptors(%d) didn't hit the right number, expected %d got %d", idx, test.num, found)
-		}
-
-		if !reflect.DeepEqual(original, test.obj) {
-			t.Errorf("MapDescriptors(%d) descriptors were modified with identity mapping, expected %#v got %#v", idx, original, test.obj)
-		}
+			assert.Len(t, foundSet, test.num, "MapDescriptors hit an unexpected number of descriptors")
+			assert.Equal(t, original, test.obj, "MapDescriptors with identify mapping should not change object")
+		})
 	}
 }
 
@@ -209,13 +216,16 @@ func TestMapDescriptors_Identity(t *testing.T) {
 func TestMapDescriptors_ModifyOCI(t *testing.T) {
 	// List of interfaces to use MapDescriptors on.
 	ociList := []struct {
-		obj interface{}
+		name string
+		obj  interface{}
 	}{
 		// Make sure that "base" types work.
 		{
-			obj: descriptorPtr(randomDescriptor(t)),
+			name: "Ptr",
+			obj:  descriptorPtr(randomDescriptor(t)),
 		},
 		{
+			name: "Slice-Plain",
 			obj: []ispec.Descriptor{
 				randomDescriptor(t),
 				randomDescriptor(t),
@@ -223,6 +233,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 			},
 		},
 		{
+			name: "Slice-Ptr",
 			obj: []*ispec.Descriptor{
 				descriptorPtr(randomDescriptor(t)),
 				descriptorPtr(randomDescriptor(t)),
@@ -231,6 +242,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 		// TODO: Add the ability to mutate map keys and values.
 		// Make sure official OCI structs work.
 		{
+			name: "Manifest-Ptr",
 			obj: &ispec.Manifest{
 				MediaType: ispec.MediaTypeImageManifest,
 				Config:    randomDescriptor(t),
@@ -245,6 +257,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 			},
 		},
 		{
+			name: "Index-Plain",
 			obj: ispec.Index{
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
@@ -254,6 +267,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 			},
 		},
 		{
+			name: "Index-Ptr",
 			obj: &ispec.Index{
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{
@@ -264,21 +278,29 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 		},
 	}
 
-	for idx, test := range ociList {
-		// Make a copy for later comparison.
-		original := deepcopy.Copy(test.obj)
+	for _, test := range ociList {
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			// Make a copy for later comparison.
+			original := deepcopy.Copy(test.obj)
 
-		if err := MapDescriptors(&test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
-			// Create an entirely new descriptor.
-			return randomDescriptor(t)
-		}); err != nil {
-			t.Errorf("MapDescriptors(%d) unexpected error: %v", idx, err)
-			continue
-		}
+			newDescriptors := map[digest.Digest]bool{}
+			require.NoError(t, MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
+				// Create an entirely new descriptor.
+				newDesc := randomDescriptor(t)
+				newDescriptors[newDesc.Digest] = true
+				return newDesc
+			}), "MapDescriptors should not return an error")
 
-		if reflect.DeepEqual(original, test.obj) {
-			t.Errorf("MapDescriptors(%d) descriptor was unmodified when replacing with a random descriptor!", idx)
-		}
+			foundDescriptors := map[digest.Digest]bool{}
+			require.NoError(t, MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
+				foundDescriptors[descriptor.Digest] = true
+				return descriptor
+			}), "MapDescriptors should not return an error")
+
+			assert.NotEqual(t, original, test.obj, "MapDescriptors should modify the structure")
+			assert.Equal(t, newDescriptors, foundDescriptors, "walking through object after modifying should yield the same set of descriptors")
+		})
 	}
 }
 
