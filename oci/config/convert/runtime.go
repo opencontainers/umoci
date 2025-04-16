@@ -20,11 +20,13 @@ package convert
 
 import (
 	"fmt"
+	"io"
 	"path/filepath"
 	"strings"
 
 	"github.com/apex/log"
 	"github.com/blang/semver/v4"
+	securejoin "github.com/cyphar/filepath-securejoin"
 	"github.com/moby/sys/user"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
@@ -177,12 +179,18 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	// Get the *actual* uid and gid of the user. If the image doesn't contain
 	// an /etc/passwd or /etc/group file then GetExecUserPath will just do a
 	// numerical parsing.
-	var passwdPath, groupPath string
+	var passwdRdr, groupRdr io.Reader
 	if rootfs != "" {
-		passwdPath = filepath.Join(rootfs, "/etc/passwd")
-		groupPath = filepath.Join(rootfs, "/etc/group")
+		if file, err := securejoin.OpenInRoot(rootfs, "/etc/passwd"); err == nil {
+			defer file.Close()
+			passwdRdr = file
+		}
+		if file, err := securejoin.OpenInRoot(rootfs, "/etc/group"); err == nil {
+			defer file.Close()
+			groupRdr = file
+		}
 	}
-	execUser, err := user.GetExecUserPath(ig.ConfigUser(), nil, passwdPath, groupPath)
+	execUser, err := user.GetExecUser(ig.ConfigUser(), nil, passwdRdr, groupRdr)
 	if err != nil {
 		// We only log an error if were not given a rootfs, and we set execUser
 		// to the "default" (root:root).
