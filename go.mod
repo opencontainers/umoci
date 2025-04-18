@@ -38,7 +38,7 @@ require (
 	github.com/urfave/cli v1.22.12
 	github.com/vbatts/go-mtree v0.5.4
 	golang.org/x/sys v0.32.0
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
