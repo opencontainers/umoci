@@ -18,6 +18,7 @@
 module github.com/opencontainers/umoci
 
 go 1.21
+toolchain go1.24.1
 
 require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1
@@ -38,7 +39,7 @@ require (
 	github.com/urfave/cli v1.22.12
 	github.com/vbatts/go-mtree v0.5.4
 	golang.org/x/sys v0.25.0
-	google.golang.org/protobuf v1.34.2
+	google.golang.org/protobuf v1.36.6
 )
 
 require (
