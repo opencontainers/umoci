@@ -91,8 +91,8 @@ github.com/urfave/cli
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
 github.com/vbatts/go-mtree/xattr
-# golang.org/x/crypto v0.24.0
-## explicit; go 1.18
+# golang.org/x/crypto v0.37.0
+## explicit; go 1.23.0
 golang.org/x/crypto/ripemd160
 # golang.org/x/sys v0.32.0
 ## explicit; go 1.23.0
