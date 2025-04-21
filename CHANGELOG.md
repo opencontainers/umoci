@@ -67,6 +67,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   * All OCI whiteouts added to the archive would incorrectly have the full host
     name of the path rather than the correctly rooted path, making the whiteout
     practically useless.
+  * Any non-whiteout files would not be included in the layer, making the layer
+    data incomplete and thus resulting in silent data loss.
+  Given how severe these bugs were and the lack of bug reports of this issue in
+  the past 4 years, it seems this feature has not really been used by anyone (I
+  hope...).
 
 ## [0.4.7] - 2021-04-05 ##
 

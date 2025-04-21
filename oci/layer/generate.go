@@ -100,8 +100,8 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 						if err := tg.AddWhiteout(name); err != nil {
 							return fmt.Errorf("generate whiteout from overlayfs: %w", err)
 						}
+						continue
 					}
-					continue
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
 					log.Warnf("generate layer: could not add file %q: %s", name, err)
