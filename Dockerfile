@@ -33,7 +33,7 @@ RUN zypper -n in \
 		curl \
 		git \
 		gnu_parallel \
-		"go==1.21" \
+		"go>=1.23" \
 		go-mtree \
 		gzip \
 		jq \
