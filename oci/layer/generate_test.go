@@ -25,11 +25,51 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 )
+
+type tarDentry struct {
+	path     string
+	ftype    byte
+	linkname string
+	xattrs   map[string]string
+	contents string
+}
+
+func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
+	tr := tar.NewReader(rdr)
+
+	var sawEntries []tarDentry
+	for {
+		hdr, err := tr.Next()
+		if err == io.EOF {
+			break
+		}
+		require.NoError(t, err, "read next tar header")
+
+		contents, err := ioutil.ReadAll(tr)
+		require.NoErrorf(t, err, "read data after tar header for %q", hdr.Name)
+		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
+			assert.Lenf(t, contents, int(hdr.Size), "data for %q should have same size as in tar header", hdr.Name)
+		} else {
+			assert.Zerof(t, hdr.Size, "non-regular-file tar header for %q should have an empty size", hdr.Name)
+			assert.Emptyf(t, contents, "non-regular-file tar header for %q should not have any data to read", hdr.Name)
+		}
+
+		sawEntries = append(sawEntries, tarDentry{
+			path:     hdr.Name,
+			ftype:    hdr.Typeflag,
+			linkname: hdr.Linkname,
+			xattrs:   hdr.Xattrs,
+			contents: string(contents),
+		})
+	}
+	assert.ElementsMatch(t, wantEntries, sawEntries, "generated archive entries")
+}
 
 func TestGenerate(t *testing.T) {
 	dir := t.TempDir()
@@ -48,6 +88,12 @@ func TestGenerate(t *testing.T) {
 	initDh, err := mtree.Walk(dir, nil, append(mtree.DefaultKeywords, "sha256digest"), nil)
 	require.NoError(t, err, "mtree walk")
 
+	// Wait for a second to make sure that the the mtime of the directory gets
+	// changed (in the GitHub Actions it seems the filesystem doesn't have
+	// sub-second precision and so changing the directory without a delay
+	// results in no diff entry being created for the directory).
+	time.Sleep(1 * time.Second)
+
 	// Modify some files.
 	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
 	require.NoError(t, err)
@@ -65,43 +111,11 @@ func TestGenerate(t *testing.T) {
 	require.NoError(t, err, "generate layer")
 	defer reader.Close()
 
-	var (
-		gotDeleted bool
-		gotChanged bool
-		gotDir     bool
-	)
-
-	tr := tar.NewReader(reader)
-	for {
-		hdr, err := tr.Next()
-		if err == io.EOF {
-			break
-		}
-		require.NoError(t, err, "read tar entry")
-
-		switch hdr.Name {
-		case filepath.Join("some", "parents") + "/":
-			assert.EqualValues(t, tar.TypeDir, hdr.Typeflag, "directory tar entry should have a dir typeflag")
-			gotDir = true
-		case filepath.Join("some", "parents", ".wh.deleted"):
-			assert.Empty(t, hdr.Size, "whiteout tar entry should be empty")
-			gotDeleted = true
-		case filepath.Join("some", "parents", "filechanged"):
-			contents, err := ioutil.ReadAll(tr)
-			if assert.NoError(t, err, "read file tar entry") {
-				assert.EqualValues(t, "new contents", contents, "modified file should contain new contents")
-			}
-			gotChanged = true
-		case filepath.Join("some", "fileunchanged"):
-			t.Errorf("got unchanged file in diff layer!")
-		default:
-			t.Errorf("got unexpected file: %s", hdr.Name)
-		}
-	}
-
-	assert.True(t, gotDeleted, "should see the deleted file")
-	assert.True(t, gotChanged, "should see the changed file")
-	assert.True(t, gotDir, "should see the directory")
+	checkLayerEntries(t, reader, []tarDentry{
+		{path: "some/parents/", ftype: tar.TypeDir},
+		{path: "some/parents/" + whPrefix + "deleted", ftype: tar.TypeReg},
+		{path: "some/parents/filechanged", ftype: tar.TypeReg, contents: "new contents"},
+	})
 }
 
 // Make sure that opencontainers/umoci#33 doesn't regress.

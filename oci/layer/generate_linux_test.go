@@ -23,8 +23,8 @@ package layer
 
 import (
 	"archive/tar"
-	"io"
-	"path"
+	"os"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -46,26 +46,20 @@ func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
 		t.Skip("skipping overlayfs test on kernel < 5.8")
 	}
 
-	testNode := path.Join(dir, "test")
-	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	assert.NoError(t, err, "mknod")
+	err = system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	require.NoError(t, err, "mknod")
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
 	reader := GenerateInsertLayer(dir, "/", false, &packOptions)
 	defer reader.Close()
 
-	tr := tar.NewReader(reader)
-	hdr, err := tr.Next()
-	assert.NoError(t, err, "read next header")
-	assert.Equal(t, hdr.Name, "/", "first entry should be /")
-
-	hdr, err = tr.Next()
-	assert.NoError(t, err, "read next header")
-	assert.EqualValues(t, hdr.Typeflag, tar.TypeReg, "whiteout typeflag")
-	assert.Equal(t, hdr.Name, whPrefix+"test", "whiteout pathname prefix")
-
-	_, err = tr.Next()
-	assert.ErrorIs(t, err, io.EOF, "end of archive")
+	checkLayerEntries(t, reader, []tarDentry{
+		{path: "/", ftype: tar.TypeDir},
+		{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+		{path: whPrefix + "test", ftype: tar.TypeReg},
+	})
 }
 
 func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
@@ -78,9 +72,10 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 		t.Skip("skipping overlayfs test on kernel < 5.8")
 	}
 
-	testNode := path.Join(dir, "test")
-	err = system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	assert.NoError(t, err, "mknod")
+	err = system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	require.NoError(t, err, "mknod")
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
 	// something reasonable
@@ -98,16 +93,9 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 	assert.NoError(t, err, "generate layer")
 	defer reader.Close()
 
-	tr := tar.NewReader(reader)
-	hdr, err := tr.Next()
-	assert.NoError(t, err, "read next header")
-	assert.Equal(t, hdr.Name, ".", "first entry should be /")
-
-	hdr, err = tr.Next()
-	assert.NoError(t, err, "read next header")
-	assert.EqualValues(t, hdr.Typeflag, tar.TypeReg, "whiteout typeflag")
-	assert.Equal(t, hdr.Name, whPrefix+"test", "whiteout pathname prefix")
-
-	_, err = tr.Next()
-	assert.ErrorIs(t, err, io.EOF, "end of archive")
+	checkLayerEntries(t, reader, []tarDentry{
+		{path: ".", ftype: tar.TypeDir},
+		{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+		{path: whPrefix + "test", ftype: tar.TypeReg},
+	})
 }
