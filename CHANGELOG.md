@@ -61,6 +61,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   #452
 - umoci will now return an explicit error if you pass invalid uid or gid values
   to `--uid-map` and `--gid-map` rather than silently truncating the value.
+- For Go users of umoci, `GenerateLayer` (but not `GenerateInsertLayer`) with
+  the `TranslateOverlayWhiteouts` option enabled had several severe bugs that
+  made the feature unusable:
+  * All OCI whiteouts added to the archive would incorrectly have the full host
+    name of the path rather than the correctly rooted path, making the whiteout
+    practically useless.
 
 ## [0.4.7] - 2021-04-05 ##
 

@@ -103,7 +103,7 @@ func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
 	hdr, err := tr.Next()
 	assert.NoError(t, err, "read next header")
 	assert.EqualValues(t, hdr.Typeflag, tar.TypeReg, "whiteout typeflag")
-	assert.Equal(t, path.Base(hdr.Name), whPrefix+"test", "whiteout pathname prefix")
+	assert.Equal(t, hdr.Name, whPrefix+"test", "whiteout pathname prefix")
 
 	_, err = tr.Next()
 	assert.ErrorIs(t, err, io.EOF, "end of archive")
