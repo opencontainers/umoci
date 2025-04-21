@@ -33,7 +33,7 @@ RUN zypper -n in \
 		curl \
 		git \
 		gnu_parallel \
-		"go==1.21" \
+		"go>=1.23" \
 		go-mtree \
 		gzip \
 		jq \
@@ -75,7 +75,13 @@ RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp
 #        cannot scan image layouts). The source is so old we need to manually
 #        build it (including doing "go mod init").
 RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/oci-image-tools && \
-	( cd /tmp/oci-image-tools && go mod init github.com/opencontainers/image-tools && go mod tidy && go mod vendor; ) && \
+	( cd /tmp/oci-image-tools && \
+		git ls-files --no-recurse-submodules -z | \
+			xargs -0 -I :: find :: -maxdepth 0 -type f -print0 | \
+			xargs -0 sed -Ei 's|github.com/Sirupsen/logrus|github.com/sirupsen/logrus|g' && \
+		go mod init github.com/opencontainers/image-tools && \
+		go mod tidy && \
+		go mod vendor; ) && \
 	make -C /tmp/oci-image-tools all install && \
 	rm -rf /tmp/oci-image-tools
 
