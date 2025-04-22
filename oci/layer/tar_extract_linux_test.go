@@ -36,42 +36,35 @@ import (
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
-func canMknod(dir string) (bool, error) {
-	testNode := filepath.Join(dir, "test")
-	err := system.Mknod(testNode, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	if err != nil {
-		if errors.Is(err, os.ErrPermission) {
-			return false, nil
-		}
+func testNeedsMknod(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "test-inode")
 
-		return false, err
+	err := system.Mknod(path, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	if errors.Is(err, os.ErrPermission) {
+		t.Skipf("skipping test -- cannot mknod: %v", err)
 	}
-	return true, os.Remove(testNode)
+	require.NoError(t, err, "mknod should either succeed or error with ErrPermission")
 }
 
-func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
+func testNeedsTrustedOverlayXattrs(t *testing.T) {
 	dir := t.TempDir()
 
-	mknodOk, err := canMknod(dir)
-	require.NoError(t, err, "check if can mknod")
-
-	if !mknodOk {
-		t.Skip("skipping overlayfs test on kernel < 5.8")
+	err := unix.Setxattr(dir, "trusted.overlay.opaque", []byte("y"), 0)
+	if errors.Is(err, os.ErrPermission) {
+		t.Skipf("skipping test -- cannot setxattr trusted.overlay.opaque: %v", err)
 	}
+	require.NoError(t, err, "setxattr trusted.overlay.opaque should succeed or error with ErrPermission")
+}
+
+func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
+	dir := t.TempDir()
+
+	testNeedsMknod(t)
 
 	headers := []pseudoHdr{
 		{"file", "", tar.TypeReg},
 		{whPrefix + "file", "", tar.TypeReg},
-	}
-
-	canSetTrustedXattrs := os.Geteuid() == 0
-
-	if canSetTrustedXattrs {
-		headers = append(headers, []pseudoHdr{
-			{"dir", "", tar.TypeDir},
-			{"dir/fileindir", "dir", tar.TypeReg},
-			{"dir/" + whOpaque, "dir", tar.TypeReg},
-		}...)
 	}
 
 	unpackOptions := UnpackOptions{
@@ -95,11 +88,37 @@ func TestUnpackEntryOverlayFSWhiteout(t *testing.T) {
 	whiteout, err := isOverlayWhiteout(fi)
 	require.NoError(t, err, "isOverlayWhiteout")
 	assert.True(t, whiteout, "extract should make overlay whiteout")
+}
 
-	if canSetTrustedXattrs {
-		value := make([]byte, 10)
-		n, err := unix.Getxattr(filepath.Join(dir, "dir"), "trusted.overlay.opaque", value)
-		require.NoError(t, err, "get overlay opaque attr")
-		assert.Equal(t, "y", string(value[:n]), "bad opaque attr")
+func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
+	dir := t.TempDir()
+
+	testNeedsMknod(t)
+	testNeedsTrustedOverlayXattrs(t)
+
+	headers := []pseudoHdr{
+		{"dir", "", tar.TypeDir},
+		{"dir/fileindir", "dir", tar.TypeReg},
+		{"dir/" + whOpaque, "dir", tar.TypeReg},
 	}
+
+	unpackOptions := UnpackOptions{
+		MapOptions: MapOptions{
+			Rootless: os.Geteuid() != 0,
+		},
+		WhiteoutMode: OverlayFSWhiteout,
+	}
+
+	te := NewTarExtractor(unpackOptions)
+
+	for _, ph := range headers {
+		hdr, rdr := fromPseudoHdr(ph)
+		err := te.UnpackEntry(dir, hdr, rdr)
+		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+	}
+
+	value := make([]byte, 10)
+	n, err := unix.Getxattr(filepath.Join(dir, "dir"), "trusted.overlay.opaque", value)
+	require.NoError(t, err, "get overlay opaque attr")
+	assert.Equal(t, "y", string(value[:n]), "bad opaque attr")
 }

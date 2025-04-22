@@ -36,66 +36,49 @@ import (
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
-func TestInsertLayerTranslateOverlayWhiteouts(t *testing.T) {
+func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 	dir := t.TempDir()
 
-	mknodOk, err := canMknod(dir)
-	require.NoError(t, err, "check if can mknod")
+	testNeedsMknod(t)
 
-	if !mknodOk {
-		t.Skip("skipping overlayfs test on kernel < 5.8")
-	}
-
-	err = system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	err := system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
 	require.NoError(t, err, "mknod")
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
-	reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-	defer reader.Close()
 
-	checkLayerEntries(t, reader, []tarDentry{
-		{path: "/", ftype: tar.TypeDir},
-		{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-		{path: whPrefix + "test", ftype: tar.TypeReg},
+	t.Run("GenerateLayer", func(t *testing.T) {
+		// something reasonable
+		mtreeKeywords := []mtree.Keyword{
+			"size",
+			"type",
+			"uid",
+			"gid",
+			"mode",
+		}
+		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
+		assert.NoError(t, err, "mtree check")
+
+		reader, err := GenerateLayer(dir, deltas, &packOptions)
+		assert.NoError(t, err, "generate layer")
+		defer reader.Close()
+
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: ".", ftype: tar.TypeDir},
+			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+			{path: whPrefix + "test", ftype: tar.TypeReg},
+		})
 	})
-}
 
-func TestGenerateLayerTranslateOverlayWhiteouts(t *testing.T) {
-	dir := t.TempDir()
+	t.Run("GenerateInsertLayer", func(t *testing.T) {
+		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
+		defer reader.Close()
 
-	mknodOk, err := canMknod(dir)
-	require.NoError(t, err, "check if can mknod")
-
-	if !mknodOk {
-		t.Skip("skipping overlayfs test on kernel < 5.8")
-	}
-
-	err = system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
-	require.NoError(t, err, "mknod")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
-	require.NoError(t, err)
-
-	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
-	// something reasonable
-	mtreeKeywords := []mtree.Keyword{
-		"size",
-		"type",
-		"uid",
-		"gid",
-		"mode",
-	}
-	deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-	assert.NoError(t, err, "mtree check")
-
-	reader, err := GenerateLayer(dir, deltas, &packOptions)
-	assert.NoError(t, err, "generate layer")
-	defer reader.Close()
-
-	checkLayerEntries(t, reader, []tarDentry{
-		{path: ".", ftype: tar.TypeDir},
-		{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-		{path: whPrefix + "test", ftype: tar.TypeReg},
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: "/", ftype: tar.TypeDir},
+			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+			{path: whPrefix + "test", ftype: tar.TypeReg},
+		})
 	})
 }
