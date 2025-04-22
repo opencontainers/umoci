@@ -28,7 +28,7 @@ import (
 	"github.com/apex/log"
 	"github.com/vbatts/go-mtree"
 
-	"github.com/opencontainers/umoci/pkg/unpriv"
+	"github.com/opencontainers/umoci/pkg/fseval"
 )
 
 // inodeDeltas is a wrapper around []mtree.InodeDelta that allows for sorting
@@ -138,6 +138,10 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 	if opt != nil {
 		packOptions = *opt
 	}
+	fsEval := fseval.Default
+	if packOptions.MapOptions.Rootless {
+		fsEval = fseval.Rootless
+	}
 
 	reader, writer := io.Pipe()
 
@@ -169,7 +173,7 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 			}
 			// Continue on to add the new root contents...
 		}
-		return unpriv.Walk(root, func(fullPath string, info os.FileInfo, err error) error {
+		return fsEval.Walk(root, func(fullPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
