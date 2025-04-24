@@ -231,12 +231,13 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		//       (we'd need to use libcap to parse it).
 		value, err := tg.fsEval.Lgetxattr(path, name)
 		if err != nil {
-			// TODO: Should we use errors.As?
+			// Ignore xattrs we were unable to read or if the filesystem is
+			// refusing to provide information about them. Note that rather
+			// than getting a permission error when reading a trusted.* xattr
+			// as an unprivileged user, you actually get ENODATA.
 			log.Debugf("failure reading xattr from list on %q: %q", name, err)
+			// TODO: Should we use errors.As?
 			if !errors.Is(err, unix.EOPNOTSUPP) && !errors.Is(err, unix.ENODATA) {
-				// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
-				//      fail with EPERM. If it can, we should ignore it (like when
-				//      we try to clear xattrs).
 				return fmt.Errorf("get xattr: %s: %w", name, err)
 			}
 		}

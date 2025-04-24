@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -82,12 +83,12 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
-	fi, err := os.Stat(filepath.Join(dir, "file"))
-	require.NoError(t, err, "failed to stat file")
+	whiteoutPath := filepath.Join(dir, "file")
 
-	whiteout, err := isOverlayWhiteout(fi)
+	woType, isWo, err := isOverlayWhiteout(whiteoutPath, fseval.Default)
 	require.NoError(t, err, "isOverlayWhiteout")
-	assert.True(t, whiteout, "extract should make overlay whiteout")
+	assert.True(t, isWo, "extract should make overlay whiteout")
+	assert.Equal(t, overlayWhiteoutPlain, woType, "extract should make a plain whiteout")
 }
 
 func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
@@ -117,8 +118,14 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
-	value := make([]byte, 10)
-	n, err := unix.Getxattr(filepath.Join(dir, "dir"), "trusted.overlay.opaque", value)
+	whiteoutPath := filepath.Join(dir, "dir")
+
+	val, err := system.Lgetxattr(whiteoutPath, "trusted.overlay.opaque")
 	require.NoError(t, err, "get overlay opaque attr")
-	assert.Equal(t, "y", string(value[:n]), "bad opaque attr")
+	assert.Equal(t, "y", string(val), "bad opaque attr")
+
+	woType, isWo, err := isOverlayWhiteout(whiteoutPath, fseval.Default)
+	require.NoError(t, err, "isOverlayWhiteout")
+	assert.True(t, isWo, "extract should make overlay whiteout")
+	assert.Equal(t, overlayWhiteoutOpaque, woType, "extract should make an opaque whiteout")
 }

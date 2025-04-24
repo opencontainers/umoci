@@ -23,12 +23,10 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/apex/log"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
-	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/opencontainers/umoci/pkg/idtools"
@@ -211,23 +209,4 @@ func CleanPath(path string) string {
 
 	// Clean the path again for good measure.
 	return filepath.Clean(path)
-}
-
-// isOverlayWhiteout returns true if the FileInfo represents an overlayfs style
-// whiteout (i.e. mknod c 0 0) and false otherwise.
-func isOverlayWhiteout(info os.FileInfo) (bool, error) {
-	var major, minor uint32
-	switch stat := info.Sys().(type) {
-	case *unix.Stat_t:
-		major = unix.Major(uint64(stat.Rdev))
-		minor = unix.Minor(uint64(stat.Rdev))
-	case *syscall.Stat_t:
-		major = unix.Major(uint64(stat.Rdev))
-		minor = unix.Minor(uint64(stat.Rdev))
-	default:
-		return false, fmt.Errorf("[internal error] unknown stat info type %T", info.Sys())
-	}
-
-	return major == 0 && minor == 0 &&
-		info.Mode()&os.ModeCharDevice != 0, nil
 }

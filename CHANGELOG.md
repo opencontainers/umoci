@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     `--compress` flag. You can also disable compression entirely using
     `--compress=none` but `--compress=auto` will never automatically choose
     `none` compression.
+- `GenerateLayer` and `GenerateInsertLayer` with `TranslateOverlayWhiteouts`
+  now support converting `trusted.overlay.opaque=y` and
+  `trusted.overlay.whiteout` whiteouts into OCI whiteouts when generating OCI
+  layers.
 
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.
