@@ -126,10 +126,12 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	return reader, nil
 }
 
-// GenerateInsertLayer generates a completely new layer from "root"to be
-// inserted into the image at "target". If "root" is an empty string then the
-// "target" will be removed via a whiteout.
-func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
+// GenerateInsertLayer generates a completely new layer from root to be
+// inserted into the image at target. If root is an empty string then the
+// target will be removed via a whiteout. If opaque is true then the target
+// directory will also have an opaque whiteout applied (clearing any files
+// inside the directory), followed by the contents of the root.
+func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
 	root = CleanPath(root)
 
 	var packOptions RepackOptions
@@ -158,13 +160,14 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			}
 		}()
 
+		if root == "" {
+			return tg.AddWhiteout(target)
+		}
 		if opaque {
 			if err := tg.AddOpaqueWhiteout(target); err != nil {
 				return err
 			}
-		}
-		if root == "" {
-			return tg.AddWhiteout(target)
+			// Continue on to add the new root contents...
 		}
 		return unpriv.Walk(root, func(fullPath string, info os.FileInfo, err error) error {
 			if err != nil {

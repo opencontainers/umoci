@@ -246,3 +246,20 @@ func TestGenerateWrongRootError(t *testing.T) {
 		}
 	}
 }
+
+func TestGenerateInsertWhiteout(t *testing.T) {
+	t.Run("WhiteoutPath", func(t *testing.T) {
+		reader := GenerateInsertLayer("", "foo/bar/baz", false, nil)
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: "foo/bar/" + whPrefix + "baz", ftype: tar.TypeReg},
+		})
+	})
+
+	// opaque + whiteout should only result in a regular whiteout.
+	t.Run("BothWhiteouts", func(t *testing.T) {
+		reader := GenerateInsertLayer("", "foo/bar/baz", true, nil)
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: "foo/bar/" + whPrefix + "baz", ftype: tar.TypeReg},
+		})
+	})
+}
