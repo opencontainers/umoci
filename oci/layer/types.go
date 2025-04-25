@@ -46,11 +46,10 @@ type UnpackOptions struct {
 	// MapOptions are the UID and GID mappings used when unpacking an image
 	MapOptions MapOptions
 
-	// KeepDirlinks is essentially the same as rsync's optio
-	// --keep-dirlinks: if, on extraction, a directory would be created
-	// where a symlink to a directory previously existed, KeepDirlinks
-	// doesn't create that directory, but instead just uses the existing
-	// symlink.
+	// KeepDirlinks is essentially the same as rsync's --keep-dirlinks option.
+	// If, on extraction, a directory would be created where a symlink to a
+	// directory previously existed, KeepDirlinks doesn't create that
+	// directory, but instead just uses the existing symlink.
 	KeepDirlinks bool
 
 	// AfterLayerUnpack is a function that's called after every layer is
