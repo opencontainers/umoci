@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 
@@ -166,22 +165,27 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 		if root == "" {
 			return tg.AddWhiteout(target)
 		}
-		return unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+		return unpriv.Walk(root, func(fullPath string, info os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
-			pathInTar := path.Join(target, curPath[len(root):])
+			relName, err := filepath.Rel(root, fullPath)
+			if err != nil {
+				return err
+			}
+			name := filepath.Join(target, relName)
+
 			whiteout, err := isOverlayWhiteout(info)
 			if err != nil {
 				return err
 			}
 			if packOptions.TranslateOverlayWhiteouts && whiteout {
-				log.Debugf("converting overlayfs whiteout %s to OCI whiteout", pathInTar)
-				return tg.AddWhiteout(pathInTar)
+				log.Debugf("converting overlayfs whiteout %s to OCI whiteout", name)
+				return tg.AddWhiteout(name)
 			}
 
-			return tg.AddFile(pathInTar, curPath)
+			return tg.AddFile(name, fullPath)
 		})
 	}()
 	return reader
