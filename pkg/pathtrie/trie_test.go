@@ -168,10 +168,136 @@ func TestDelete(t *testing.T) {
 		// Verify that the final node is actually gone.
 		node1 := trie.lookupNode(pathToKey("/a/b/c/d"), false)
 		assert.Nilf(t, node1, "node /a/b/c/d should've been pruned -- got %#v", node1)
+		// And verify that the no-longer-needed nodes are also gone.
+		node2 := trie.lookupNode(pathToKey("/a/b/c"), false)
+		assert.Nilf(t, node2, "node /a/b/c should've been pruned -- got %#v", node2)
+		node3 := trie.lookupNode(pathToKey("/a/b"), false)
+		assert.Nilf(t, node3, "node /a/b should've been pruned -- got %#v", node3)
+	})
+}
+
+func TestDeletePruning(t *testing.T) {
+	trie := NewTrie[string]()
+	assert.Zero(t, trie.numChildren, "the trie should be empty")
+
+	testSetNew(t, trie, "/a/b/foo/bar/baz", "baz")
+	testSetNew(t, trie, "/a/b/abc/def/xyz", "xyz")
+	for n := range 100 {
+		testSetNew(t, trie, fmt.Sprintf("/a/dummy/foo/c/%.2d", n), "foobar")
+		testSetNew(t, trie, fmt.Sprintf("/a/dummy/bar/d/%.2d", n), "foobar")
+	}
+
+	// Make sure the child count is correct.
+	root := trie.lookupNode(pathToKey("/"), false)
+	require.NotNil(t, root, "node / should exist")
+	assert.EqualValues(t, 202, root.numChildren, "unexpected number of children accounted in root")
+
+	t.Run("DeleteAllPrune", func(t *testing.T) {
+		testDeleteAllInternal(t, trie, "/a/dummy/foo/c")
+		// Check that the root's accounting is updated correctly.
+		assert.EqualValues(t, 102, root.numChildren, "unexpected number of children accounted in root after removing 100 children")
+
+		// Make sure that parent directories that are now empty were pruned.
+		node1 := trie.lookupNode(pathToKey("/a/dummy/foo/c"), false)
+		assert.Nilf(t, node1, "node /a/dummy/foo/c should have been pruned -- got %#v", node1)
+		node2 := trie.lookupNode(pathToKey("/a/dummy/foo"), false)
+		assert.Nilf(t, node2, "node /a/dummy/foo should have been pruned -- got %#v", node2)
+		node3 := trie.lookupNode(pathToKey("/a/dummy"), false)
+		require.NotNil(t, node3, "node /a/dummy should not have been pruned")
+		assert.EqualValues(t, 100, node3.numChildren, "unpruned /a/dummy should have the right child accounting")
+
+		testDeleteAllInternal(t, trie, "/a/dummy/bar")
+		// Check that the root's accounting is updated correctly.
+		assert.EqualValues(t, 2, root.numChildren, "unexpected number of children accounted in root after removing 100 children")
+
+		// And now the old shared parent should have been pruned.
+		node4 := trie.lookupNode(pathToKey("/a/dummy"), false)
+		assert.Nilf(t, node4, "node /a/dummy should have been pruned -- got %#v", node4)
+		node5 := trie.lookupNode(pathToKey("/a"), false)
+		require.NotNil(t, node5, "node /a should not have been pruned")
+		assert.EqualValues(t, 2, node5.numChildren, "unpruned /a should have the right child accounting")
 	})
 
-	// TODO: If we switch to making Delete clear trash more aggressively, we
-	// should test that here.
+	t.Run("PlainDeletePrune", func(t *testing.T) {
+		testDeleteExist(t, trie, "/a/b/foo/bar/baz", "baz")
+		// Check that the root's accounting is updated correctly.
+		assert.EqualValues(t, 1, root.numChildren, "unexpected number of children accounted in root after removing 1 child")
+
+		// Even clearing a single path should clear all unused parents.
+		node1 := trie.lookupNode(pathToKey("/a/b/foo/bar"), false)
+		assert.Nilf(t, node1, "node /a/b/foo/bar should have been pruned -- got %#v", node1)
+		node2 := trie.lookupNode(pathToKey("/a/b/foo"), false)
+		assert.Nilf(t, node2, "node /a/b/foo should have been pruned -- got %#v", node2)
+		node3 := trie.lookupNode(pathToKey("/a/b"), false)
+		require.NotNil(t, node3, "node /a/b should not have been pruned")
+		assert.EqualValues(t, 1, node3.numChildren, "unpruned /a/b should have the right child accounting")
+		node4 := trie.lookupNode(pathToKey("/a"), false)
+		require.NotNil(t, node4, "node /a/b should not have been pruned")
+		assert.EqualValues(t, 1, node4.numChildren, "unpruned /a should have the right child accounting")
+	})
+
+	testDeleteAllInternal(t, trie, "/a")
+	assert.Zero(t, root.numChildren, "the trie should be empty")
+
+	testSetNew(t, trie, "/z/x/y/w/v/u/t", "t")
+	testSetNew(t, trie, "/z/x/y/w/v/u", "u")
+	testSetNew(t, trie, "/z/x/y/w/v", "v")
+	testSetNew(t, trie, "/z/x/y/w", "w")
+	testSetNew(t, trie, "/z/x/y", "y")
+
+	assert.EqualValues(t, 5, root.numChildren, "unexpected number of children accounted after setup")
+
+	t.Run("FilledInternalNodes", func(t *testing.T) {
+		// First delete the internal nodes and verify we don't accidentally
+		// delete anything more than expected.
+		testDeleteExist(t, trie, "/z/x/y/w", "w")
+		testGetSucceed(t, trie, "/z/x/y/w/v/u/t", "t")
+		testGetSucceed(t, trie, "/z/x/y/w/v/u", "u")
+		testGetSucceed(t, trie, "/z/x/y/w/v", "v")
+		testGetFail(t, trie, "/z/x/y/w")
+		testGetSucceed(t, trie, "/z/x/y", "y")
+		assert.EqualValues(t, 4, root.numChildren, "unexpected number of children accounted after removing 1 internal child")
+
+		testDeleteExist(t, trie, "/z/x/y/w/v", "v")
+		testGetSucceed(t, trie, "/z/x/y/w/v/u/t", "t")
+		testGetSucceed(t, trie, "/z/x/y/w/v/u", "u")
+		testGetFail(t, trie, "/z/x/y/w/v")
+		testGetFail(t, trie, "/z/x/y/w")
+		testGetSucceed(t, trie, "/z/x/y", "y")
+		assert.EqualValues(t, 3, root.numChildren, "unexpected number of children accounted after removing 1 internal child")
+
+		testDeleteExist(t, trie, "/z/x/y/w/v/u", "u")
+		testGetSucceed(t, trie, "/z/x/y/w/v/u/t", "t")
+		testGetFail(t, trie, "/z/x/y/w/v/u")
+		testGetFail(t, trie, "/z/x/y/w/v")
+		testGetFail(t, trie, "/z/x/y/w")
+		testGetSucceed(t, trie, "/z/x/y", "y")
+		assert.EqualValues(t, 2, root.numChildren, "unexpected number of children accounted after removing 1 internal child")
+
+		node1 := trie.lookupNode(pathToKey("/z/x/y/w/v/u"), false)
+		require.NotNil(t, node1, "node /z/x/y/w/v/u should not have been pruned")
+		assert.EqualValues(t, 1, node1.numChildren, "unexpected number of children in internal node with only 1 child")
+
+		// Now delete the terminal node, which should clean up the now-unused
+		// parent nodes.
+		testDeleteExist(t, trie, "/z/x/y/w/v/u/t", "t")
+		testGetFail(t, trie, "/z/x/y/w/v/u/t")
+		testGetFail(t, trie, "/z/x/y/w/v/u")
+		testGetFail(t, trie, "/z/x/y/w/v")
+		testGetFail(t, trie, "/z/x/y/w")
+		testGetSucceed(t, trie, "/z/x/y", "y")
+		assert.EqualValues(t, 1, root.numChildren, "unexpected number of children accounted after removing 1 terminal child")
+
+		node2 := trie.lookupNode(pathToKey("/z/x/y/w/v/u"), false)
+		assert.Nilf(t, node2, "node /z/x/y/w/v/u should have been pruned -- got %#v", node2)
+		node3 := trie.lookupNode(pathToKey("/z/x/y/w/v"), false)
+		assert.Nilf(t, node3, "node /z/x/y/w/v should have been pruned -- got %#v", node3)
+		node4 := trie.lookupNode(pathToKey("/z/x/y/w"), false)
+		assert.Nilf(t, node4, "node /z/x/y/w should have been pruned -- got %#v", node4)
+		node5 := trie.lookupNode(pathToKey("/z/x/y"), false)
+		require.NotNil(t, node5, "node /z/x/y/w/v/u should not have been pruned")
+		assert.EqualValues(t, 1, node5.numChildren, "unexpected number of children in internal node with only 1 child")
+	})
 }
 
 func TestDeleteAll(t *testing.T) {

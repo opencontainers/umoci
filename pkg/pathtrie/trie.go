@@ -26,12 +26,23 @@ import (
 type trieNode[V any] struct {
 	value    *V
 	children map[string]*trieNode[V]
+
+	// Used for bookkeeping to make delete much more efficient. Once
+	// numChildren is 0 we can be sure it's safe to remove this node from
+	// parent (which is connected via parent.children[key]).
+	parent      *trieNode[V] // parent.children stores this node
+	key         string       // parent.children[key] === this node
+	numChildren uintptr      // how many total values set in this node and all descendants?
 }
 
-func newNode[V any]() *trieNode[V] {
+func newNode[V any](parent *trieNode[V], key string) *trieNode[V] {
 	return &trieNode[V]{
 		value:    nil,
 		children: map[string]*trieNode[V]{},
+
+		parent:      parent,
+		key:         key,
+		numChildren: 0,
 	}
 }
 
@@ -57,7 +68,7 @@ func (root *trieNode[V]) lookupNode(path pathKey, alloc bool) *trieNode[V] {
 
 	next, exists := root.children[top]
 	if !exists && alloc {
-		root.children[top] = newNode[V]()
+		root.children[top] = newNode[V](root, top)
 		next, exists = root.children[top]
 	}
 	if !exists {
@@ -72,7 +83,7 @@ type PathTrie[V any] struct {
 
 // NewTrie returns a new empty [PathTrie].
 func NewTrie[V any]() *PathTrie[V] {
-	return &PathTrie[V]{newNode[V]()}
+	return &PathTrie[V]{newNode[V](nil, "")}
 }
 
 // Get looks up the given path in the trie. Completely non-existent paths and
@@ -95,6 +106,12 @@ func (t *PathTrie[V]) Set(path string, value V) (old V, found bool) {
 	if node.value != nil {
 		old = *node.value
 		found = true
+	} else {
+		// If we've inserted a new value we need to update the bookkeeping of
+		// how many children there are in the trie branch.
+		for cur := node; cur != nil; cur = cur.parent {
+			cur.numChildren++
+		}
 	}
 	node.value = &value
 	return old, found
@@ -114,18 +131,26 @@ func (t *PathTrie[V]) delete(path string, recursive bool) (old V, found bool) {
 			old, found = *child.value, true
 		}
 		child.value = nil
-		// If the node has no children (or we are doing recursive removals),
-		// remove it as well to avoid keeping around garbage.
-		//
-		// TODO: In the case of us deleting an intermediate node that had a
-		// child several layers deeper that has been removed, we will not
-		// delete the now-unneeded nodes. The most obvious optimisation is to
-		// store a count of the number of children per-layer which we update up
-		// the tree recursively so we can detect if it's safe to prune the
-		// children -- the only downside is it will complicated our simple
-		// lookupNode code.
-		if recursive || len(child.children) == 0 {
+
+		// Update the bookkeeping for children and prune any unused parts of
+		// the trie.
+		var deletedChildren uintptr
+		if recursive {
+			// For recusive removals, just detach the child from the tree.
 			delete(node.children, file)
+			deletedChildren = child.numChildren
+		} else if found {
+			// If there was a value for non-recursive removal we've only
+			// removed one child.
+			deletedChildren = 1
+		}
+		// Update the child count up the stack and prune any branches that no
+		// longer have actual children.
+		for cur := child; cur != nil; cur = cur.parent {
+			cur.numChildren -= deletedChildren
+			if cur.numChildren == 0 && cur.parent != nil {
+				delete(cur.parent.children, cur.key)
+			}
 		}
 	}
 	return old, found
