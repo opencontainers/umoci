@@ -83,6 +83,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     assuming the underlying path exists) because the whiteout is being created
     in a separate layer to the underlying file. We also need to make sure that
     opaque whiteout targets are directories.
+  * `trusted.overlay.opaque=y` has very peculiar behaviour when a regular
+    whiteout (i.e. `mknod c 0 0`) is placed inside an opaque directory -- the
+    whiteout-ed file appears in `readdir` but the file itself doesn't exist. To
+    avoid this confusion (and possible information leak), umoci will no longer
+    extract plain whiteouts within an opaque whiteout directory in the same
+    layer. (As per the OCI spec requirements, this is regardless of the order
+    of the opaque whiteout and the regular whiteout in the layer archive.)
 
 ## [0.4.7] - 2021-04-05 ##
 

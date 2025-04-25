@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/pathtrie"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -67,6 +68,17 @@ type TarExtractor struct {
 	// are fully symlink-expanded so no need to worry about that line noise.
 	upperPaths map[string]struct{}
 
+	// upperWhiteouts is a trie that represents the subset of upperPaths that
+	// are whiteout files. This is needed for overlayfs translation because
+	// opaque whiteout directories in overlayfs do not play well with regular
+	// whiteouts.
+	//
+	// This is stored separately to upperPaths because this is only needed for
+	// overlayfs mode (a niche usecase), and it is far more efficient for us to
+	// only walk through whiteout entries (as it's the only thing that matters
+	// for upperWhiteouts) as there should be very few of them in most images.
+	upperWhiteouts *pathtrie.PathTrie[overlayWhiteoutType]
+
 	// enotsupWarned is a flag set when we encounter the first ENOTSUP error
 	// dealing with xattrs. This is used to ensure extraction to a destination
 	// file system that does not support xattrs raises a single warning, rather
@@ -89,11 +101,17 @@ func NewTarExtractor(opt UnpackOptions) *TarExtractor {
 		fsEval = fseval.Rootless
 	}
 
+	var upperWhiteouts *pathtrie.PathTrie[overlayWhiteoutType]
+	if opt.WhiteoutMode == OverlayFSWhiteout {
+		upperWhiteouts = pathtrie.NewTrie[overlayWhiteoutType]()
+	}
+
 	return &TarExtractor{
 		mapOptions:      opt.MapOptions,
 		partialRootless: opt.MapOptions.Rootless || inUserNamespace,
 		fsEval:          fsEval,
 		upperPaths:      make(map[string]struct{}),
+		upperWhiteouts:  upperWhiteouts,
 		enotsupWarned:   false,
 		keepDirlinks:    opt.KeepDirlinks,
 		whiteoutMode:    opt.WhiteoutMode,
@@ -369,7 +387,7 @@ func (te *TarExtractor) ociWhiteout(root, dir, file string) error {
 	return nil
 }
 
-func (te *TarExtractor) overlayFSWhiteout(dir, file string) error {
+func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
 	// Unlike standard dir whiteouts, we need to ensure that the path we are
 	// whiting out exists, because this layer is applied to lower layers where
 	// the target path might exist. As with UnpackEntry, we expect the tar
@@ -391,6 +409,13 @@ func (te *TarExtractor) overlayFSWhiteout(dir, file string) error {
 		return fmt.Errorf("mkdir overlayfs whiteout parent %q: %w", dir, err)
 	}
 
+	subpath := filepath.Join(dir, file)
+	upperPath, err := filepath.Rel(root, subpath)
+	if err != nil {
+		return fmt.Errorf("find relative-to-root [should never happen]: %w", err)
+	}
+	upperPath = filepath.Join("/", upperPath)
+
 	switch file {
 	case "":
 		// For opaque whiteouts, we just need to set the overlayfs xattr for
@@ -401,15 +426,50 @@ func (te *TarExtractor) overlayFSWhiteout(dir, file string) error {
 			return fmt.Errorf("couldn't set overlayfs whiteout attr for %q: %w", dir, err)
 		}
 
+		// Overlayfs has strange behaviour if we extract a whiteout into an
+		// opaque directory (namely readdir will report the whiteouts as being
+		// there while all other syscalls will fail to operate on them). The
+		// solution is to delete any pre-existing whiteouts we have when we hit
+		// an opaque whiteout, and the creation of any subsequent regular
+		// whiteouts inside an opaque whiteout should be skipped.
+		te.upperWhiteouts.Set(upperPath, overlayWhiteoutOpaque)
+		if err := te.upperWhiteouts.WalkFrom(upperPath, func(woPath string, woType overlayWhiteoutType) error {
+			// Skip any opaque whiteouts, because stacking them is fine and we
+			// cannot just RemoveAll them anyway (we would need to clear the
+			// xattr).
+			if woType != overlayWhiteoutPlain {
+				return nil
+			}
+			// Clear the subpath.
+			log.Debugf("opaque overlayfs whiteout %s needs to remove existing plain whiteout %s", upperPath, woPath)
+			return te.fsEval.RemoveAll(filepath.Join(root, woPath))
+		}); err != nil {
+			return fmt.Errorf("could not remove all pre-existing overlayfs whiteouts for opaque dir %q: %w", upperPath, err)
+		}
+
 	default:
 		// For regular whiteouts, just remove any pre-existing inode and
 		// replace it with a whiteout inode.
-		p := filepath.Join(dir, file)
-		if err := te.fsEval.RemoveAll(p); err != nil {
-			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", p, err)
+		if err := te.fsEval.RemoveAll(subpath); err != nil {
+			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
 		}
-		if err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
-			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", p, err)
+
+		// If the path is inside an opaque whiteout, don't bother creating a
+		// whiteout inode. We still need to RemoveAll first to make sure
+		// anything there gets removed though.
+		te.upperWhiteouts.DeleteAll(upperPath)
+		var insideOpaqueWhiteout bool
+		for pth := upperPath; pth != filepath.Dir(pth); pth = filepath.Dir(pth) {
+			if woType, isWo := te.upperWhiteouts.Get(pth); isWo && woType == overlayWhiteoutOpaque {
+				insideOpaqueWhiteout = true
+				break
+			}
+		}
+		if !insideOpaqueWhiteout {
+			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+				return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
+			}
+			te.upperWhiteouts.Set(upperPath, overlayWhiteoutPlain)
 		}
 	}
 	return nil
@@ -525,7 +585,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		case OCIStandardWhiteout:
 			return te.ociWhiteout(root, dir, woFile)
 		case OverlayFSWhiteout:
-			return te.overlayFSWhiteout(dir, woFile)
+			return te.overlayFSWhiteout(root, dir, woFile)
 		default:
 			return fmt.Errorf("unknown whiteout mode %d", te.whiteoutMode)
 		}

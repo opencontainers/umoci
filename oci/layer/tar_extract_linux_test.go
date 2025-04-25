@@ -76,6 +76,11 @@ func assertIsOpaqueWhiteout(t *testing.T, path string) {
 	assert.Equalf(t, overlayWhiteoutOpaque, woType, "extract should make %q an opaque whiteout", path)
 }
 
+func assertNoPathExists(t *testing.T, path string) {
+	_, err := os.Lstat(path)
+	assert.ErrorIsf(t, err, os.ErrNotExist, "path %q should not have existed", path)
+}
+
 func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 	dir := t.TempDir()
 
@@ -171,4 +176,50 @@ func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
 	assertIsPlainWhiteout(t, filepath.Join(dir, "whiteout-noparent/a/b/c"))
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-nondir"))
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-whiteout"))
+}
+
+func TestUnpackEntry_OverlayFSWhiteout_Nested(t *testing.T) {
+	dir := t.TempDir()
+
+	testNeedsMknod(t)
+	testNeedsTrustedOverlayXattrs(t)
+
+	dentries := []tarDentry{
+		// make sure that whiteouts before and after are all missing from the
+		// final layer
+		{path: "opaque-innerplain/foo/bar/baz/" + whPrefix + "before", ftype: tar.TypeReg},
+		{path: "opaque-innerplain/regfile", ftype: tar.TypeReg},
+		{path: "opaque-innerplain/" + whOpaque, ftype: tar.TypeReg},
+		{path: "opaque-innerplain/a/b/c/d/e/f/" + whPrefix + "after", ftype: tar.TypeReg},
+		{path: "opaque-innerplain/a/b/c/d/regfile", ftype: tar.TypeReg},
+		// nested opaque directories should stay opaque
+		{path: "opaque-nested/a/b/c/d/" + whOpaque, ftype: tar.TypeReg},
+		{path: "opaque-nested/a/b/" + whOpaque, ftype: tar.TypeReg},
+		{path: "opaque-nested/" + whOpaque, ftype: tar.TypeReg},
+	}
+
+	unpackOptions := UnpackOptions{
+		MapOptions: MapOptions{
+			Rootless: os.Geteuid() != 0,
+		},
+		WhiteoutMode: OverlayFSWhiteout,
+	}
+
+	te := NewTarExtractor(unpackOptions)
+
+	for _, de := range dentries {
+		hdr, rdr := tarFromDentry(de)
+		err := te.UnpackEntry(dir, hdr, rdr)
+		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+	}
+
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-innerplain"))
+	assertNoPathExists(t, filepath.Join(dir, "opaque-innerplain/foo/bar/baz/before"))
+	assertNoPathExists(t, filepath.Join(dir, "opaque-innerplain/a/b/c/d/e/f/after"))
+	assert.FileExists(t, filepath.Join(dir, "opaque-innerplain/a/b/c/d/regfile"))
+	assert.FileExists(t, filepath.Join(dir, "opaque-innerplain/regfile"))
+
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-nested"))
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-nested/a/b"))
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-nested/a/b/c/d"))
 }
