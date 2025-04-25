@@ -76,6 +76,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Given how severe these bugs were and the lack of bug reports of this issue in
   the past 4 years, it seems this feature has not really been used by anyone (I
   hope...).
+- For Go users of umoci, `UnpackLayer` now correctly handles several aspects of
+  `OverlayFSWhiteout` extraction that weren't handled correctly:
+  * Unlike regular extractions, overlayfs-style extractions require us to
+    create the parent directory of the whiteout (rather than ignoring or
+    assuming the underlying path exists) because the whiteout is being created
+    in a separate layer to the underlying file. We also need to make sure that
+    opaque whiteout targets are directories.
 
 ## [0.4.7] - 2021-04-05 ##
 

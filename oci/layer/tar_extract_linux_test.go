@@ -58,6 +58,24 @@ func testNeedsTrustedOverlayXattrs(t *testing.T) {
 	require.NoError(t, err, "setxattr trusted.overlay.opaque should succeed or error with ErrPermission")
 }
 
+func assertIsPlainWhiteout(t *testing.T, path string) {
+	woType, isWo, err := isOverlayWhiteout(path, fseval.Default)
+	require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
+	assert.True(t, isWo, "extract should make overlay whiteout")
+	assert.Equal(t, overlayWhiteoutPlain, woType, "extract should make a plain whiteout")
+}
+
+func assertIsOpaqueWhiteout(t *testing.T, path string) {
+	val, err := system.Lgetxattr(path, "trusted.overlay.opaque")
+	require.NoErrorf(t, err, "get overlay opaque attr for %q", path)
+	assert.Equalf(t, "y", string(val), "bad opaque attr for %q", path)
+
+	woType, isWo, err := isOverlayWhiteout(path, fseval.Default)
+	require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
+	assert.Truef(t, isWo, "extract should make %q an overlay whiteout", path)
+	assert.Equalf(t, overlayWhiteoutOpaque, woType, "extract should make %q an opaque whiteout", path)
+}
+
 func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 	dir := t.TempDir()
 
@@ -83,12 +101,7 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
-	whiteoutPath := filepath.Join(dir, "file")
-
-	woType, isWo, err := isOverlayWhiteout(whiteoutPath, fseval.Default)
-	require.NoError(t, err, "isOverlayWhiteout")
-	assert.True(t, isWo, "extract should make overlay whiteout")
-	assert.Equal(t, overlayWhiteoutPlain, woType, "extract should make a plain whiteout")
+	assertIsPlainWhiteout(t, filepath.Join(dir, "file"))
 }
 
 func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
@@ -118,14 +131,44 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
-	whiteoutPath := filepath.Join(dir, "dir")
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "dir"))
+}
 
-	val, err := system.Lgetxattr(whiteoutPath, "trusted.overlay.opaque")
-	require.NoError(t, err, "get overlay opaque attr")
-	assert.Equal(t, "y", string(val), "bad opaque attr")
+func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
+	dir := t.TempDir()
 
-	woType, isWo, err := isOverlayWhiteout(whiteoutPath, fseval.Default)
-	require.NoError(t, err, "isOverlayWhiteout")
-	assert.True(t, isWo, "extract should make overlay whiteout")
-	assert.Equal(t, overlayWhiteoutOpaque, woType, "extract should make an opaque whiteout")
+	testNeedsMknod(t)
+	testNeedsTrustedOverlayXattrs(t)
+
+	dentries := []tarDentry{
+		// entry with no parent directory entries
+		{path: "opaque-noparent/a/b/c/" + whOpaque, ftype: tar.TypeReg},
+		{path: "whiteout-noparent/a/b/" + whPrefix + "c", ftype: tar.TypeReg},
+		// implicitly changing the type with an opaque dir
+		{path: "opaque-nondir", ftype: tar.TypeReg},
+		{path: "opaque-nondir/" + whOpaque, ftype: tar.TypeReg},
+		// plain whiteout converted to opaque dir
+		{path: whPrefix + "opaque-whiteout", ftype: tar.TypeReg},
+		{path: "opaque-whiteout/" + whOpaque, ftype: tar.TypeReg},
+	}
+
+	unpackOptions := UnpackOptions{
+		MapOptions: MapOptions{
+			Rootless: os.Geteuid() != 0,
+		},
+		WhiteoutMode: OverlayFSWhiteout,
+	}
+
+	te := NewTarExtractor(unpackOptions)
+
+	for _, de := range dentries {
+		hdr, rdr := tarFromDentry(de)
+		err := te.UnpackEntry(dir, hdr, rdr)
+		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+	}
+
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-noparent/a/b/c"))
+	assertIsPlainWhiteout(t, filepath.Join(dir, "whiteout-noparent/a/b/c"))
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-nondir"))
+	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-whiteout"))
 }

@@ -284,9 +284,8 @@ func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	return targetInfo.IsDir(), nil
 }
 
-func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error {
-	isOpaque := file == whOpaque
-	file = strings.TrimPrefix(file, whPrefix)
+func (te *TarExtractor) ociWhiteout(root, dir, file string) error {
+	isOpaque := file == ""
 
 	// We have to be quite careful here. While the most intuitive way of
 	// handling whiteouts would be to just RemoveAll without prejudice, We
@@ -370,25 +369,48 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 	return nil
 }
 
-func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
-	isOpaque := file == whOpaque
-
-	// if this is an opaque whiteout, whiteout the directory
-	if isOpaque {
-		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
-			return fmt.Errorf("couldn't set overlayfs whiteout attr for %s: %w", dir, err)
+func (te *TarExtractor) overlayFSWhiteout(dir, file string) error {
+	// Unlike standard dir whiteouts, we need to ensure that the path we are
+	// whiting out exists, because this layer is applied to lower layers where
+	// the target path might exist. As with UnpackEntry, we expect the tar
+	// archive itself to contain information about the directory (and since we
+	// are extracting overlayfs we can't really be sure of the underlying
+	// directory's ownership and modes either).
+	//
+	// TODO: Same TODO as UnpackEntry regarding consistency.
+	if file == "" {
+		// In the case of opaque whiteouts we need to make sure the target path
+		// is definitely a directory, so if it's a non-directory clear it.
+		if fi, err := te.fsEval.Lstat(dir); err == nil && !fi.IsDir() {
+			if err := te.fsEval.RemoveAll(dir); err != nil {
+				return fmt.Errorf("clear non-directory overlayfs whiteout parent %q: %w", dir, err)
+			}
 		}
-		return nil
+	}
+	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+		return fmt.Errorf("mkdir overlayfs whiteout parent %q: %w", dir, err)
 	}
 
-	// otherwise, white out the file itself.
-	p := filepath.Join(dir, strings.TrimPrefix(file, whPrefix))
-	if err := os.RemoveAll(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
-	}
+	switch file {
+	case "":
+		// For opaque whiteouts, we just need to set the overlayfs xattr for
+		// directory. Any files already there were added in this layer (since
+		// OverlayFSWhiteout is used to generate each layer in separate
+		// directories) and so shouldn't be removed anyway.
+		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
+			return fmt.Errorf("couldn't set overlayfs whiteout attr for %q: %w", dir, err)
+		}
 
-	if err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
-		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+	default:
+		// For regular whiteouts, just remove any pre-existing inode and
+		// replace it with a whiteout inode.
+		p := filepath.Join(dir, file)
+		if err := te.fsEval.RemoveAll(p); err != nil {
+			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", p, err)
+		}
+		if err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", p, err)
+		}
 	}
 	return nil
 }
@@ -495,12 +517,15 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// ('\x00') but it could be possible that someone produces a different
 	// Typeflag, expecting that the path is the only thing that matters in a
 	// whiteout entry.
-	if strings.HasPrefix(file, whPrefix) {
+	if woFile, isWhiteout := strings.CutPrefix(file, whPrefix); isWhiteout {
+		if file == whOpaque {
+			woFile = ""
+		}
 		switch te.whiteoutMode {
 		case OCIStandardWhiteout:
-			return te.ociWhiteout(root, dir, file)
+			return te.ociWhiteout(root, dir, woFile)
 		case OverlayFSWhiteout:
-			return te.overlayFSWhiteout(dir, file)
+			return te.overlayFSWhiteout(dir, woFile)
 		default:
 			return fmt.Errorf("unknown whiteout mode %d", te.whiteoutMode)
 		}
