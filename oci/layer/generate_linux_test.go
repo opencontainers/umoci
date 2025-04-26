@@ -45,7 +45,7 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
-	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
+	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
 
 	t.Run("GenerateLayer", func(t *testing.T) {
 		// something reasonable
@@ -94,7 +94,7 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
-	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
+	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
 
 	t.Run("GenerateLayer", func(t *testing.T) {
 		// something reasonable
@@ -145,7 +145,7 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
-	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
+	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
 
 	t.Run("GenerateLayer", func(t *testing.T) {
 		// something reasonable

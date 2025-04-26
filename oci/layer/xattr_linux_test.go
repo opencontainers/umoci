@@ -49,7 +49,7 @@ func getAllXattrs(t *testing.T, path string) map[string]string {
 	return xattrs
 }
 
-func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMode, wantDentries []tarDentry) {
+func testGenerateLayersForRoundTrip(t *testing.T, dir string, onDiskFmt OnDiskFormat, wantDentries []tarDentry) {
 	t.Run("ToGenerateLayer", func(t *testing.T) {
 		// something reasonable
 		mtreeKeywords := []mtree.Keyword{
@@ -63,7 +63,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &RepackOptions{
-			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
+			OnDiskFormat: onDiskFmt,
 		})
 		require.NoError(t, err, "generate layer")
 		defer reader.Close() //nolint:errcheck
@@ -75,7 +75,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 
 	t.Run("ToGenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, ".", false, &RepackOptions{
-			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
+			OnDiskFormat: onDiskFmt,
 		})
 		defer reader.Close() //nolint:errcheck
 
@@ -85,7 +85,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 	})
 }
 
-func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
+func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
 	testNeedsMknod(t)
 	testNeedsTrustedOverlayXattrs(t)
 
@@ -158,24 +158,30 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		name   string
-		woType WhiteoutMode
+		name      string
+		onDiskFmt OnDiskFormat
 	}{
-		{"OverlayFSWhiteout", OverlayFSWhiteout},
-		{"OCIStandardWhiteout", OCIStandardWhiteout},
+		{"DirRootfs", DirRootfs{}},
+		{"OverlayfsRootfs", OverlayfsRootfs{}},
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
 
-			unpackOptions := UnpackOptions{
-				MapOptions: MapOptions{
-					Rootless: os.Geteuid() != 0,
-				},
-				WhiteoutMode: test.woType,
+			switch onDiskFmt := test.onDiskFmt.(type) {
+			case DirRootfs:
+				onDiskFmt.MapOptions.Rootless = os.Geteuid() != 0
+				test.onDiskFmt = onDiskFmt
+			case OverlayfsRootfs:
+				onDiskFmt.MapOptions.Rootless = os.Geteuid() != 0
+				test.onDiskFmt = onDiskFmt
 			}
 
-			te := NewTarExtractor(unpackOptions)
+			unpackOptions := UnpackOptions{
+				OnDiskFormat: test.onDiskFmt,
+			}
+
+			te := NewTarExtractor(&unpackOptions)
 
 			for _, de := range dentries {
 				hdr, rdr := tarFromDentry(de.tarDentry)
@@ -189,10 +195,10 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 
 				xattrs := getAllXattrs(t, fullPath)
 
-				switch test.woType {
-				case OverlayFSWhiteout:
-					// With extraction using OverlayFSWhiteout we expect to get
-					// the remapped xattrs.
+				switch test.onDiskFmt.(type) {
+				case OverlayfsRootfs:
+					// With extraction on OverlayfsRootfs we expect to get the
+					// remapped xattrs.
 					assert.Equalf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v remapped properly", path, de.xattrs)
 
 					// And so none of the inodes should be actual whiteouts.
@@ -200,10 +206,9 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 					require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
 					assert.Falsef(t, isWo, "isOverlayWhiteout(%q): regular entries with overlayfs xattrs should not end up being unpacked with overlayfs whiteout xattrs", path)
 
-				case OCIStandardWhiteout:
-					// For standard OCI extraction, trusted.overlay.* is not
-					// treated as a special xattr and so should not be
-					// remapped.
+				case DirRootfs:
+					// For DirRootfs, trusted.overlay.* is not treated as a
+					// special xattr and so should not be remapped.
 					xattrs := getAllXattrs(t, fullPath)
 					assert.Equalf(t, de.xattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
 					assert.NotEqualf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
@@ -216,7 +221,7 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 			for _, dentry := range dentries {
 				wantDentries = append(wantDentries, dentry.tarDentry)
 			}
-			testGenerateLayersForRoundTrip(t, dir, unpackOptions.WhiteoutMode, wantDentries)
+			testGenerateLayersForRoundTrip(t, dir, unpackOptions.OnDiskFormat, wantDentries)
 		})
 	}
 }
@@ -234,7 +239,7 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 	filter, isSpecial := getXattrFilter(forbiddenTestXattr)
 	require.Truef(t, isSpecial, "getXattrFilter(%q) should return a filter", forbiddenTestXattr)
 	require.Equalf(t, forbiddenXattrFilter{}, filter, "getXattrFilter(%q) should return the forbidden filter", forbiddenTestXattr)
-	require.Truef(t, filter.MaskedOnDisk(OCIStandardWhiteout, forbiddenTestXattr), "getXattrFilter(%q).MaskedOnDisk should be true", forbiddenTestXattr)
+	require.Truef(t, filter.MaskedOnDisk(DirRootfs{}, forbiddenTestXattr), "getXattrFilter(%q).MaskedOnDisk should be true", forbiddenTestXattr)
 
 	dentries := []struct {
 		tarDentry
@@ -271,24 +276,30 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 	}
 
 	for _, test := range []struct {
-		name   string
-		woType WhiteoutMode
+		name      string
+		onDiskFmt OnDiskFormat
 	}{
-		{"OverlayFSWhiteout", OverlayFSWhiteout},
-		{"OCIStandardWhiteout", OCIStandardWhiteout},
+		{"DirRootfs", DirRootfs{}},
+		{"OverlayfsRootfs", OverlayfsRootfs{}},
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
 
-			unpackOptions := UnpackOptions{
-				MapOptions: MapOptions{
-					Rootless: os.Geteuid() != 0,
-				},
-				WhiteoutMode: test.woType,
+			switch onDiskFmt := test.onDiskFmt.(type) {
+			case DirRootfs:
+				onDiskFmt.MapOptions.Rootless = os.Geteuid() != 0
+				test.onDiskFmt = onDiskFmt
+			case OverlayfsRootfs:
+				onDiskFmt.MapOptions.Rootless = os.Geteuid() != 0
+				test.onDiskFmt = onDiskFmt
 			}
 
-			te := NewTarExtractor(unpackOptions)
+			unpackOptions := UnpackOptions{
+				OnDiskFormat: test.onDiskFmt,
+			}
+
+			te := NewTarExtractor(&unpackOptions)
 
 			for _, de := range dentries {
 				hdr, rdr := tarFromDentry(de.tarDentry)
@@ -333,7 +344,7 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 			for _, dentry := range dentries {
 				wantDentries = append(wantDentries, dentry.tarDentry)
 			}
-			testGenerateLayersForRoundTrip(t, dir, unpackOptions.WhiteoutMode, wantDentries)
+			testGenerateLayersForRoundTrip(t, dir, unpackOptions.OnDiskFormat, wantDentries)
 		})
 	}
 }

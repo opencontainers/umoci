@@ -37,7 +37,7 @@ import (
 func Unpack(engineExt casext.Engine, fromName, bundlePath string, unpackOptions layer.UnpackOptions) (Err error) {
 	meta := Meta{
 		Version:    MetaVersion,
-		MapOptions: unpackOptions.MapOptions,
+		MapOptions: unpackOptions.MapOptions(),
 	}
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)

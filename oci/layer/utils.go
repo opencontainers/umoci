@@ -25,24 +25,11 @@ import (
 	"path/filepath"
 
 	"github.com/apex/log"
-	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"google.golang.org/protobuf/proto"
 
 	"github.com/opencontainers/umoci/pkg/idtools"
 )
-
-// MapOptions specifies the UID and GID mappings used when unpacking and
-// repacking images.
-type MapOptions struct {
-	// UIDMappings and GIDMappings are the UID and GID mappings to apply when
-	// packing and unpacking image rootfs layers.
-	UIDMappings []rspec.LinuxIDMapping `json:"uid_mappings"`
-	GIDMappings []rspec.LinuxIDMapping `json:"gid_mappings"`
-
-	// Rootless specifies whether any to error out if chown fails.
-	Rootless bool `json:"rootless"`
-}
 
 // mapHeader maps a tar.Header generated from the filesystem so that it
 // describes the inode as it would be observed by a container process. In

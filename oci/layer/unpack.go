@@ -57,11 +57,9 @@ type AfterLayerUnpackCallback func(manifest ispec.Manifest, desc ispec.Descripto
 // state used to create the layer. If an error is returned, the state of root
 // is undefined (unpacking is not guaranteed to be atomic).
 func UnpackLayer(root string, layer io.Reader, opt *UnpackOptions) error {
-	var unpackOptions UnpackOptions
-	if opt != nil {
-		unpackOptions = *opt
-	}
-	te := NewTarExtractor(unpackOptions)
+	opt = opt.fill()
+
+	te := NewTarExtractor(opt)
 	tr := tar.NewReader(layer)
 	for {
 		hdr, err := tr.Next()
@@ -109,6 +107,8 @@ func getLayerCompressAlgorithm(mediaType string) (string, blobcompress.Algorithm
 //
 // FIXME: This interface is ugly.
 func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *UnpackOptions) (Err error) {
+	opt = opt.fill()
+
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -136,7 +136,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	defer func() {
 		if Err != nil {
 			fsEval := fseval.Default
-			if opt != nil && opt.MapOptions.Rootless {
+			if opt != nil && opt.MapOptions().Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
@@ -163,7 +163,8 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 	defer funchelpers.VerifyClose(&Err, configFile)
 
-	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &opt.MapOptions); err != nil {
+	mapOptions := opt.MapOptions()
+	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &mapOptions); err != nil {
 		return fmt.Errorf("unpack config.json: %w", err)
 	}
 	return nil
@@ -172,12 +173,14 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 // UnpackRootfs extracts all of the layers in the given manifest.
 // Some verification is done during image extraction.
 func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *UnpackOptions) (Err error) {
+	opt = opt.fill()
+
 	// TODO: For now, unpacking layers into a bundle with the overlayfs on-disk
 	// format is not supported, because we still unpack everything into a
 	// single rootfs directory. For more information about outstanding issues,
 	// see <https://github.com/opencontainers/umoci/issues/574>.
-	if opt != nil && opt.WhiteoutMode != OCIStandardWhiteout {
-		return fmt.Errorf("%w: umoci cannot yet unpack a manifest into a bundle using the overlayfs on-disk format", internal.ErrUnimplemented)
+	if _, isOciFmt := opt.OnDiskFormat.(DirRootfs); !isOciFmt {
+		return fmt.Errorf("%w: umoci cannot yet unpack a manifest into a bundle using anything other than the dir-rootfs on-disk format", internal.ErrUnimplemented)
 	}
 
 	engineExt := casext.NewEngine(engine)
@@ -192,7 +195,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	defer func() {
 		if Err != nil {
 			fsEval := fseval.Default
-			if opt != nil && opt.MapOptions.Rootless {
+			if opt != nil && opt.MapOptions().Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
@@ -201,11 +204,11 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	}()
 
 	// Make sure that the owner is correct.
-	rootUID, err := idtools.ToHost(0, opt.MapOptions.UIDMappings)
+	rootUID, err := idtools.ToHost(0, opt.MapOptions().UIDMappings)
 	if err != nil {
 		return fmt.Errorf("ensure rootuid has mapping: %w", err)
 	}
-	rootGID, err := idtools.ToHost(0, opt.MapOptions.GIDMappings)
+	rootGID, err := idtools.ToHost(0, opt.MapOptions().GIDMappings)
 	if err != nil {
 		return fmt.Errorf("ensure rootgid has mapping: %w", err)
 	}

@@ -300,16 +300,18 @@ func FuzzUnpack(data []byte) int {
 	}
 	defer os.RemoveAll(bundle) //nolint:errcheck
 
-	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
-		UIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+	unpackOptions := &UnpackOptions{OnDiskFormat: DirRootfs{
+		MapOptions: MapOptions{
+			UIDMappings: []rspec.LinuxIDMapping{
+				{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+				{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+			},
+			GIDMappings: []rspec.LinuxIDMapping{
+				{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+				{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+			},
+			Rootless: os.Geteuid() != 0,
 		},
-		GIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
-		},
-		Rootless: os.Geteuid() != 0,
 	}}
 
 	called := false

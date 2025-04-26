@@ -150,22 +150,28 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 	_, manifest, engineExt := makeImage(t)
 	bundle := t.TempDir()
 
-	// Unpack (we map both root and the uid/gid in the archives to the current user).
-	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
-		UIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
-		},
-		GIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
-		},
-		Rootless: os.Geteuid() != 0,
-	}}
-	called := false
-	unpackOptions.AfterLayerUnpack = func(ispec.Manifest, ispec.Descriptor) error {
+	var called bool
+	afterLayerCallback := func(ispec.Manifest, ispec.Descriptor) error {
 		called = true
 		return nil
+	}
+
+	// Unpack (we map both root and the uid/gid in the archives to the current user).
+	unpackOptions := &UnpackOptions{
+		OnDiskFormat: DirRootfs{
+			MapOptions: MapOptions{
+				UIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+				},
+				GIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+				},
+				Rootless: os.Geteuid() != 0,
+			},
+		},
+		AfterLayerUnpack: afterLayerCallback,
 	}
 	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
 	require.NoError(t, err, "UnpackManifest")
@@ -179,18 +185,23 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 	bundle := t.TempDir()
 
 	// Unpack (we map both root and the uid/gid in the archives to the current user).
-	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
-		UIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+	unpackOptions := &UnpackOptions{
+		OnDiskFormat: DirRootfs{
+			MapOptions: MapOptions{
+				UIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+				},
+				GIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+				},
+				Rootless: os.Geteuid() != 0,
+			},
 		},
-		GIDMappings: []rspec.LinuxIDMapping{
-			{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
-			{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
-		},
-		Rootless: os.Geteuid() != 0,
-	}}
-	unpackOptions.StartFrom = manifest.Layers[1]
+		// Skip the first layer.
+		StartFrom: manifest.Layers[1],
+	}
 	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
 	require.NoError(t, err, "UnpackManifest")
 
@@ -205,29 +216,30 @@ func TestUnpackUnimplementedOverlayfs(t *testing.T) {
 
 	_, manifest, engineExt := makeImage(t)
 
-	// Unpacking with WhiteoutMode != OCIStandardWhiteout should fail.
+	// Unpacking with non-DirRootfs should fail.
 	unpackOptions := &UnpackOptions{
-		MapOptions: MapOptions{
-			UIDMappings: []rspec.LinuxIDMapping{
-				{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
-				{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+		OnDiskFormat: OverlayfsRootfs{
+			MapOptions: MapOptions{
+				UIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+				},
+				GIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+				},
+				Rootless: os.Geteuid() != 0,
 			},
-			GIDMappings: []rspec.LinuxIDMapping{
-				{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
-				{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
-			},
-			Rootless: os.Geteuid() != 0,
 		},
-		WhiteoutMode: OverlayFSWhiteout,
 	}
 
 	bundle := t.TempDir()
 	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
-	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackManifest with OverlayFSWhiteout")
+	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackManifest with OverlayfsRootfs")
 
 	rootfs := t.TempDir()
 	err = UnpackRootfs(ctx, engineExt, rootfs, manifest, unpackOptions)
-	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackRootfs with OverlayFSWhiteout")
+	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackRootfs with OverlayfsRootfs")
 }
 
 func TestLayerCompressionCheck(t *testing.T) {

@@ -41,9 +41,10 @@ import (
 type tarGenerator struct {
 	tw *tar.Writer
 
-	// mapOptions is the set of mapping options for modifying entries before
-	// they're added to the layer.
-	mapOptions MapOptions
+	// onDiskFmt is the on-disk format that was used for the already-extracted
+	// directory we are operating on. [OverlayfsRootfs] will cause
+	// overlayfs-style whiteouts to be converted to OCI-style whiteouts.
+	onDiskFmt OnDiskFormat
 
 	// Hardlink mapping.
 	inodes map[uint64]string
@@ -51,32 +52,25 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
-	// whiteoutMode indicates how this tarGenerator will handle whiteouts.
-	whiteoutMode WhiteoutMode
-
 	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
-func newTarGenerator(w io.Writer, opt RepackOptions) *tarGenerator {
+func newTarGenerator(w io.Writer, opt *RepackOptions) *tarGenerator {
+	opt = opt.fill()
+
 	fsEval := fseval.Default
-	if opt.MapOptions.Rootless {
+	if opt.MapOptions().Rootless {
 		fsEval = fseval.Rootless
 	}
 
-	whiteoutMode := OCIStandardWhiteout
-	if opt.TranslateOverlayWhiteouts {
-		whiteoutMode = OverlayFSWhiteout
-	}
-
 	return &tarGenerator{
-		tw:           tar.NewWriter(w),
-		mapOptions:   opt.MapOptions,
-		inodes:       map[uint64]string{},
-		fsEval:       fsEval,
-		whiteoutMode: whiteoutMode,
+		tw:        tar.NewWriter(w),
+		onDiskFmt: opt.OnDiskFormat,
+		inodes:    map[uint64]string{},
+		fsEval:    fsEval,
 	}
 }
 
@@ -186,7 +180,7 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 		// when in overlayfs mode) to have correct values.
 		mappedName := xattr
 		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
-			if newName := filter.ToTar(tg.whiteoutMode, xattr); newName == nil {
+			if newName := filter.ToTar(tg.onDiskFmt, xattr); newName == nil {
 				log.Debugf("xattr{%s} skipping the inclusion of xattr %q in generated tar archive", hdr.Name, xattr)
 				continue
 			} else if *newName != xattr {
@@ -235,7 +229,7 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 	}
 
 	// Apply any header mappings.
-	if err := mapHeader(hdr, tg.mapOptions); err != nil {
+	if err := mapHeader(hdr, tg.onDiskFmt.Map()); err != nil {
 		return fmt.Errorf("map header: %w", err)
 	}
 	if err := tg.tw.WriteHeader(hdr); err != nil {

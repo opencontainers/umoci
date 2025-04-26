@@ -165,7 +165,11 @@ func insert(ctx *cli.Context) (Err error) {
 		return err
 	}
 
-	packOptions := layer.RepackOptions{MapOptions: meta.MapOptions}
+	packOptions := layer.RepackOptions{
+		OnDiskFormat: layer.DirRootfs{
+			MapOptions: meta.MapOptions,
+		},
+	}
 	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &packOptions)
 	defer funchelpers.VerifyClose(&Err, reader)
 

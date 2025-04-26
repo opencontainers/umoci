@@ -42,7 +42,7 @@ import (
 //   - For xattrs where ToTar(xattr) != nil, implementations must ensure that
 //     ToDisk(ToTar(xattr)) === xattr.
 //
-//   - For a given xattr and [WhiteoutMode], [MaskedOnDisk] must return true
+//   - For a given xattr and [OnDiskFormat], [MaskedOnDisk] must return true
 //     (meaning that the on-disk xattr will NOT be cleared) *if and only if*
 //     [ToTar] will returns nil.
 //
@@ -60,26 +60,25 @@ type xattrFilter interface {
 	//
 	// In particular, due to the implementation details of UnpackEntry
 	// (described in [ToTar]), MaskedOnDisk must only return true *if and only
-	// if* (for the same xattr and whiteout mode) [ToTar] would return nil and
+	// if* (for the same xattr and [OnDiskFormat]) [ToTar] would return nil and
 	// [ToDisk] would never generate it. Otherwise, it is impossible for this
 	// on-disk xattr to have come from or be stored in the archive.
-	MaskedOnDisk(onDiskMode WhiteoutMode, xattr string) bool
+	MaskedOnDisk(onDiskFmt OnDiskFormat, xattr string) bool
 
 	// ToDisk returns what name a tar archive xattr should be stored with
-	// on-disk (with the provided [WhiteoutMode] as the "on disk" format). The
-	// returned string will be used for as the on-disk xattr name instead of
-	// the original xattr -- if nil is returned then the xattr will not be
-	// extracted.
+	// on-disk (with the provided [OnDiskFormat]). The returned string will be
+	// used for as the on-disk xattr name instead of the original xattr -- if
+	// nil is returned then the xattr will not be extracted.
 	//
 	// [MaskedOnDisk] must only return true if [ToDisk] would never generate
 	// the same xattr.
-	ToDisk(onDiskMode WhiteoutMode, xattr string) (newName *string)
+	ToDisk(onDiskFmt OnDiskFormat, xattr string) (newName *string)
 
 	// ToTar returns what an on-disk xattr name should be converted to when
-	// storing in a tar archive (with the provided [WhiteoutMode] as the "on
-	// disk" format). The returned string will be stored inside tar archives as
-	// the xattr name instead of the original xattr -- if nil is returned then
-	// the xattr will not be included in the tar archive.
+	// storing in a tar archive (with the provided [OnDiskFormat]). The
+	// returned string will be stored inside tar archives as the xattr name
+	// instead of the original xattr -- if nil is returned then the xattr will
+	// not be included in the tar archive.
 	//
 	// Note that ToTar is not exclusively called on tar archive entries from
 	// layer archives. When doing UnpackEntry we need to restore the metadata
@@ -92,10 +91,10 @@ type xattrFilter interface {
 	// routinely called on directories that may have "special" xattrs.
 	//
 	// [MaskedOnDisk] must only return true for a given xattr and
-	// [WhiteoutMode] *if and only if*, ToTar with the same arguments returns
+	// [OnDiskFormat] *if and only if*, ToTar with the same arguments returns
 	// nil. Otherwise, when the metadata is re-applied with on-disk data you
 	// will end up losing on-disk xattrs or adding new nonsense xattrs.
-	ToTar(onDiskMode WhiteoutMode, xattr string) (newName *string)
+	ToTar(onDiskFmt OnDiskFormat, xattr string) (newName *string)
 }
 
 // forbiddenXattrFilter is a dummy filter that will block all xattrs that are
@@ -104,9 +103,9 @@ type forbiddenXattrFilter struct{}
 
 var _ xattrFilter = forbiddenXattrFilter{}
 
-func (forbiddenXattrFilter) MaskedOnDisk(WhiteoutMode, string) bool { return true }
-func (forbiddenXattrFilter) ToDisk(WhiteoutMode, string) *string    { return nil }
-func (forbiddenXattrFilter) ToTar(WhiteoutMode, string) *string     { return nil }
+func (forbiddenXattrFilter) MaskedOnDisk(OnDiskFormat, string) bool { return true }
+func (forbiddenXattrFilter) ToDisk(OnDiskFormat, string) *string    { return nil }
+func (forbiddenXattrFilter) ToTar(OnDiskFormat, string) *string     { return nil }
 
 // overlayXattrFilter is a filter for all trusted.overlay.* xattrs which will
 // escape the xattrs on unpack and unescape them when.
@@ -114,16 +113,19 @@ type overlayXattrFilter struct{}
 
 var _ xattrFilter = overlayXattrFilter{}
 
-func (overlayXattrFilter) MaskedOnDisk(woMode WhiteoutMode, xattr string) bool {
+func (overlayXattrFilter) MaskedOnDisk(onDiskFmt OnDiskFormat, xattr string) bool {
+	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
+
 	// Only trusted.overlay.* top-level xattrs are masked in overlayfs mode.
 	// Escaped xattrs and xattrs in regular mode are allowed.
-	return woMode == OverlayFSWhiteout &&
+	return isOverlayfs &&
 		doesXattrMatch(xattr, "trusted.overlay.") &&
 		!doesXattrMatch(xattr, "trusted.overlay.overlay.")
 }
 
-func (overlayXattrFilter) ToDisk(woMode WhiteoutMode, xattr string) *string {
-	if woMode != OverlayFSWhiteout {
+func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) *string {
+	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
+	if !isOverlayfs {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange
 		// to see them.)
@@ -141,8 +143,9 @@ func (overlayXattrFilter) ToDisk(woMode WhiteoutMode, xattr string) *string {
 	return &escaped
 }
 
-func (overlayXattrFilter) ToTar(woMode WhiteoutMode, xattr string) *string {
-	if woMode != OverlayFSWhiteout {
+func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) *string {
+	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
+	if !isOverlayfs {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange
 		// to see them.)

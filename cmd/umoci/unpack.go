@@ -73,7 +73,6 @@ func unpack(ctx *cli.Context) (Err error) {
 	fromName := mustFetchMeta[string](ctx, "--image-tag")
 	bundlePath := mustFetchMeta[string](ctx, "bundle")
 
-	var unpackOptions layer.UnpackOptions
 	var meta umoci.Meta
 	meta.Version = umoci.MetaVersion
 
@@ -83,8 +82,12 @@ func unpack(ctx *cli.Context) (Err error) {
 		return err
 	}
 
-	unpackOptions.KeepDirlinks = ctx.Bool("keep-dirlinks")
-	unpackOptions.MapOptions = meta.MapOptions
+	unpackOptions := layer.UnpackOptions{
+		OnDiskFormat: layer.DirRootfs{
+			MapOptions: meta.MapOptions,
+		},
+		KeepDirlinks: ctx.Bool("keep-dirlinks"),
+	}
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)

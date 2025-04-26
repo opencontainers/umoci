@@ -81,7 +81,7 @@ func assertNoPathExists(t *testing.T, path string) {
 	assert.ErrorIsf(t, err, os.ErrNotExist, "path %q should not have existed", path)
 }
 
-func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
+func TestUnpackEntry_OverlayfsRootfs_Whiteout(t *testing.T) {
 	dir := t.TempDir()
 
 	testNeedsMknod(t)
@@ -92,13 +92,13 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 	}
 
 	unpackOptions := UnpackOptions{
-		MapOptions: MapOptions{
-			Rootless: os.Geteuid() != 0,
+		OnDiskFormat: OverlayfsRootfs{
+			MapOptions: MapOptions{
+				Rootless: os.Geteuid() != 0,
+			},
 		},
-		WhiteoutMode: OverlayFSWhiteout,
 	}
-
-	te := NewTarExtractor(unpackOptions)
+	te := NewTarExtractor(&unpackOptions)
 
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
@@ -109,7 +109,7 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 	assertIsPlainWhiteout(t, filepath.Join(dir, "file"))
 }
 
-func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
+func TestUnpackEntry_OverlayfsRootfs_OpaqueWhiteout(t *testing.T) {
 	dir := t.TempDir()
 
 	testNeedsMknod(t)
@@ -122,13 +122,13 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 	}
 
 	unpackOptions := UnpackOptions{
-		MapOptions: MapOptions{
-			Rootless: os.Geteuid() != 0,
+		OnDiskFormat: OverlayfsRootfs{
+			MapOptions: MapOptions{
+				Rootless: os.Geteuid() != 0,
+			},
 		},
-		WhiteoutMode: OverlayFSWhiteout,
 	}
-
-	te := NewTarExtractor(unpackOptions)
+	te := NewTarExtractor(&unpackOptions)
 
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
@@ -139,7 +139,7 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "dir"))
 }
 
-func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
+func TestUnpackEntry_OverlayfsRootfs_Whiteout_MissingDirs(t *testing.T) {
 	dir := t.TempDir()
 
 	testNeedsMknod(t)
@@ -158,13 +158,13 @@ func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
 	}
 
 	unpackOptions := UnpackOptions{
-		MapOptions: MapOptions{
-			Rootless: os.Geteuid() != 0,
+		OnDiskFormat: OverlayfsRootfs{
+			MapOptions: MapOptions{
+				Rootless: os.Geteuid() != 0,
+			},
 		},
-		WhiteoutMode: OverlayFSWhiteout,
 	}
-
-	te := NewTarExtractor(unpackOptions)
+	te := NewTarExtractor(&unpackOptions)
 
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
@@ -178,7 +178,7 @@ func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-whiteout"))
 }
 
-func TestUnpackEntry_OverlayFSWhiteout_Nested(t *testing.T) {
+func TestUnpackEntry_OverlayfsRootfs_Whiteout_Nested(t *testing.T) {
 	dir := t.TempDir()
 
 	testNeedsMknod(t)
@@ -199,13 +199,13 @@ func TestUnpackEntry_OverlayFSWhiteout_Nested(t *testing.T) {
 	}
 
 	unpackOptions := UnpackOptions{
-		MapOptions: MapOptions{
-			Rootless: os.Geteuid() != 0,
+		OnDiskFormat: OverlayfsRootfs{
+			MapOptions: MapOptions{
+				Rootless: os.Geteuid() != 0,
+			},
 		},
-		WhiteoutMode: OverlayFSWhiteout,
 	}
-
-	te := NewTarExtractor(unpackOptions)
+	te := NewTarExtractor(&unpackOptions)
 
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
