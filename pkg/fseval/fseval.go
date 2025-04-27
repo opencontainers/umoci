@@ -77,7 +77,7 @@ type FsEval interface {
 	Lgetxattr(path string, name string) ([]byte, error)
 
 	// Lclearxattrs is equivalent to system.Lclearxattrs
-	Lclearxattrs(path string, except map[string]struct{}) error
+	Lclearxattrs(path string, skipFn func(xattr string) bool) error
 
 	// Walk is equivalent to filepath.Walk.
 	Walk(root string, fn filepath.WalkFunc) error

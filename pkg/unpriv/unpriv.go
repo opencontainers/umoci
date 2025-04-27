@@ -566,8 +566,8 @@ func Lgetxattr(path, name string) ([]byte, error) {
 // Lclearxattrs is a wrapper around system.Lclearxattrs which has been wrapped
 // with unpriv.Wrap to make it possible to get a path even if you do not
 // currently have the required access bits to resolve the path.
-func Lclearxattrs(path string, except map[string]struct{}) error {
-	err := Wrap(path, func(path string) error { return system.Lclearxattrs(path, except) })
+func Lclearxattrs(path string, skipFn func(xattrName string) bool) error {
+	err := Wrap(path, func(path string) error { return system.Lclearxattrs(path, skipFn) })
 	if err != nil {
 		return fmt.Errorf("unpriv.lclearxattrs: %w", err)
 	}

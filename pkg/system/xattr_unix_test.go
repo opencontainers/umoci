@@ -73,7 +73,10 @@ func TestClearxattrFilter(t *testing.T) {
 	assert.ElementsMatch(t, setXattrNames, allXattrList, "all xattrs should be present after setting")
 
 	// Now clear them.
-	err = Lclearxattrs(path, forbiddenXattrs)
+	err = Lclearxattrs(path, func(xattrName string) bool {
+		_, ok := forbiddenXattrs[xattrName]
+		return ok
+	})
 	require.NoErrorf(t, err, "lclearxattrs %q (forbidden=%v)", path, forbiddenXattrs)
 
 	// Check that only the forbidden ones remain.

@@ -149,7 +149,10 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	err := te.fsEval.Lclearxattrs(path, ignoreXattrs)
+	err := te.fsEval.Lclearxattrs(path, func(xattr string) bool {
+		_, ok := ignoreXattrs[xattr]
+		return ok
+	})
 	if err != nil {
 		if !errors.Is(err, unix.ENOTSUP) {
 			return fmt.Errorf("clear xattr metadata: %s: %w", path, err)
