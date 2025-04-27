@@ -68,7 +68,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := newTarGenerator(writer, packOptions.MapOptions)
+		tg := newTarGenerator(writer, packOptions)
 
 		// Sort the delta paths.
 		// FIXME: We need to add whiteouts first, otherwise we might end up
@@ -150,7 +150,7 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			_ = writer.CloseWithError(closeErr)
 		}()
 
-		tg := newTarGenerator(writer, packOptions.MapOptions)
+		tg := newTarGenerator(writer, packOptions)
 
 		defer func() {
 			if err := tg.tw.Close(); err != nil {

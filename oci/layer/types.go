@@ -22,6 +22,10 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
+// TODO: Move away from separate WhiteoutMode and TranslateOverlayWhiteouts
+// configurations to a single "OnDiskFormat" configuration that will allow for
+// more complete overlayfs support.
+
 // WhiteoutMode indicates how this TarExtractor will create whiteouts on the
 // filesystem when it encounters them.
 type WhiteoutMode int

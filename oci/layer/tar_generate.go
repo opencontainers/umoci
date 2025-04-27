@@ -92,23 +92,32 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
+	// whiteoutMode indicates how this tarGenerator will handle whiteouts.
+	whiteoutMode WhiteoutMode
+
 	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
-func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
+func newTarGenerator(w io.Writer, opt RepackOptions) *tarGenerator {
 	fsEval := fseval.Default
-	if opt.Rootless {
+	if opt.MapOptions.Rootless {
 		fsEval = fseval.Rootless
 	}
 
+	whiteoutMode := OCIStandardWhiteout
+	if opt.TranslateOverlayWhiteouts {
+		whiteoutMode = OverlayFSWhiteout
+	}
+
 	return &tarGenerator{
-		tw:         tar.NewWriter(w),
-		mapOptions: opt,
-		inodes:     map[uint64]string{},
-		fsEval:     fsEval,
+		tw:           tar.NewWriter(w),
+		mapOptions:   opt.MapOptions,
+		inodes:       map[uint64]string{},
+		fsEval:       fsEval,
+		whiteoutMode: whiteoutMode,
 	}
 }
 

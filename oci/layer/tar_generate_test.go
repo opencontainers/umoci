@@ -59,7 +59,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
 
-	tg := newTarGenerator(writer, MapOptions{})
+	tg := newTarGenerator(writer, RepackOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -128,7 +128,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
 
-	tg := newTarGenerator(writer, MapOptions{})
+	tg := newTarGenerator(writer, RepackOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -198,7 +198,7 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
 
-	tg := newTarGenerator(writer, MapOptions{})
+	tg := newTarGenerator(writer, RepackOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the tar entries in a goroutine so we can parse the tar
@@ -262,7 +262,7 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 		"dir/.",
 	}
 
-	tg := newTarGenerator(writer, MapOptions{})
+	tg := newTarGenerator(writer, RepackOptions{})
 	tr := tar.NewReader(reader)
 
 	// Create all of the whiteout entries in a goroutine so we can parse the
