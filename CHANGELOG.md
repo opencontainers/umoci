@@ -90,6 +90,29 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     extract plain whiteouts within an opaque whiteout directory in the same
     layer. (As per the OCI spec requirements, this is regardless of the order
     of the opaque whiteout and the regular whiteout in the layer archive.)
+- `UnpackLayer` and `Generate(Insert)Layer` now correctly handle
+  `trusted.overlay.*` xattr escaping when extracting and generating layers with
+  the overlayfs on-disk format. This escaping feature [has been supported by
+  overlayfs since Linux 6.7][linux-overlayfs-escaping-dad02fad84cbc], and
+  allows for you to created images that contain an overlayfs layout inside the
+  image (nested to arbitrary levels).
+  * If an image contains `trusted.overlay.*` xattrs, `UnpackLayer` will
+    rewrite the xattrs to instead be in the `trusted.overlay.overlay.*`
+    namespace, so that when merged using overlayfs the user will see the
+    expected xattrs.
+  * If an on-disk overlayfs directory used with `Generate(Insert)Layer`
+    contains escaped `trusted.overlay.overlay.*` xattrs, they will be rewritten
+    so that the generated layer contains `trusted.overlay.*` xattrs. If we
+    encounter an unescaped `trusted.overlay.*` xattr they will not be included
+    in the image (though they may cause the file to be converted to a whiteout
+    in the image) because they are considered to be an internal aspect of the
+    host on-disk format (i.e. `trusted.overlay.origin` might be automatically
+    set by whatever tool is using the overlayfs layers).
+  Note that in the regular extraction mode, these xattrs will be treated like
+  any other xattrs (this is in contrast to the previous behaviour where they
+  would be silently ignored regardless of the on-disk format being used).
+
+[linux-overlayfs-escaping-dad02fad84cbc]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=dad02fad84cbce30f317b69a4f2391f90045f79d
 
 ## [0.4.7] - 2021-04-05 ##
 

@@ -168,15 +168,15 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
 	err := te.fsEval.Lclearxattrs(path, func(xattr string) bool {
-		_, ok := ignoreXattrs[xattr]
-		return ok
+		filter, isSpecial := getXattrFilter(xattr)
+		return isSpecial && filter.MaskedOnDisk(te.whiteoutMode, xattr)
 	})
 	if err != nil {
 		if !errors.Is(err, unix.ENOTSUP) {
 			return fmt.Errorf("clear xattr metadata: %s: %w", path, err)
 		}
 		if !te.enotsupWarned {
-			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", hdr.Name)
 			log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
 			te.enotsupWarned = true
 		} else {
@@ -184,29 +184,38 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		}
 	}
 
-	for name, value := range hdr.Xattrs {
+	for xattr, value := range hdr.Xattrs {
 		value := []byte(value)
 
-		// Forbidden xattrs should never be touched.
-		if _, skip := ignoreXattrs[name]; skip {
-			// If the xattr is already set to the requested value, don't bail.
-			// The reason for this logic is kinda convoluted, but effectively
-			// because restoreMetadata is called with the *on-disk* metadata we
-			// run the risk of things like "security.selinux" being included in
-			// that metadata (and thus tripping the forbidden xattr error). By
-			// only touching xattrs that have a different value we are somewhat
-			// more efficient and we don't have to special case parent restore.
-			// Of course this will only ever impact ignoreXattrs.
-			if oldValue, err := te.fsEval.Lgetxattr(path, name); err == nil {
-				if bytes.Equal(value, oldValue) {
-					log.Debugf("restore xattr metadata: skipping already-set xattr %q: %s", name, hdr.Name)
-					continue
+		// Some xattrs need to be skipped for sanity reasons, such as
+		// security.selinux, because they are very much host-specific and
+		// extracting them from layers would be a really bad idea. Also, other
+		// xattrs may need to be remapped (such as trusted.overlay.* xattrs
+		// when in overlayfs mode) to have correct values.
+		mappedName := xattr
+		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
+			if newName := filter.ToDisk(te.whiteoutMode, xattr); newName == nil {
+				// Avoid outputting a warning if a must-skip xattr already has
+				// the expected value we wanted.
+				//
+				// TODO: Maybe we should still emit a warning even in this case
+				//       because now that the directory has its xattrs cleared
+				//       with ToTar, we should probably warn if images have
+				//       xattrs that only happen to be applied correctly now.
+				if oldValue, err := te.fsEval.Lgetxattr(path, xattr); err == nil {
+					if bytes.Equal(value, oldValue) {
+						log.Debugf("xattr{%s} restore xattr metadata: skipping already-set xattr %q", hdr.Name, xattr)
+						continue
+					}
 				}
+				log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, xattr)
+				continue
+			} else if *newName != xattr {
+				mappedName = *newName
+				log.Debugf("xattr{%s} remapping xattr %q to %q during extraction", hdr.Name, xattr, mappedName)
 			}
-			log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, name)
-			continue
 		}
-		if err := te.fsEval.Lsetxattr(path, name, value, 0); err != nil {
+		if err := te.fsEval.Lsetxattr(path, mappedName, value, 0); err != nil {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
@@ -216,7 +225,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			//       unprivileged users (we also would need to translate them
 			//       back when creating archives).
 			if te.partialRootless && errors.Is(err, os.ErrPermission) {
-				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
+				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, mappedName)
 				continue
 			}
 			// We cannot do much if we get an ENOTSUP -- this usually means
@@ -224,7 +233,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// underlying filesystem (such as AUFS or NFS).
 			if errors.Is(err, unix.ENOTSUP) {
 				if !te.enotsupWarned {
-					log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+					log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, mappedName)
 					log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
 					te.enotsupWarned = true
 				} else {
@@ -555,7 +564,33 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				if err != nil {
 					return fmt.Errorf("get xattr: %w", err)
 				}
-				dirHdr.Xattrs[xattr] = string(value)
+				// Because restoreMetadata will re-apply these xattrs
+				// (potentially remapping them if we have specialXattrs
+				// filters) we need to map their names to match what we would
+				// get from an actual archive.
+				//
+				// However, since these are xattrs on the underlying filesystem
+				// we don't need to provide any user warnings.
+				mappedName := xattr
+				if filter, isSpecial := getXattrFilter(xattr); isSpecial {
+					if newName := filter.ToTar(te.whiteoutMode, xattr); newName == nil {
+						// If the xattr should be ignored we can safely skip it
+						// here because MaskedOnDisk will also stop them from
+						// being cleared. However, just to be safe we should
+						// verify that this is actually true (otherwise you'll
+						// end up with silently wrong extractions).
+						if filter.MaskedOnDisk(te.whiteoutMode, xattr) {
+							// TODO: Find a nicer setup that doesn't require
+							// this fatal error.
+							log.Fatalf("[internal error] xattr %q is being hidden by GenerateEntry but UnpackShouldClear returns true")
+						}
+						continue
+					} else if *newName != xattr {
+						mappedName = *newName
+						log.Debugf("xattr{%s} remapping xattr %q to %q for later restoreMetadata", unsafeDir, xattr, mappedName)
+					}
+				}
+				dirHdr.Xattrs[mappedName] = string(value)
 			}
 		}
 
