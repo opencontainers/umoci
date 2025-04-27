@@ -563,33 +563,11 @@ func Lgetxattr(path, name string) ([]byte, error) {
 	return value, nil
 }
 
-// Lclearxattrs is similar to system.Lclearxattrs but in order to implement it
-// properly all of the internal functions were wrapped with unpriv.Wrap to make
-// it possible to create a path even if you do not currently have enough access
-// bits.
+// Lclearxattrs is a wrapper around system.Lclearxattrs which has been wrapped
+// with unpriv.Wrap to make it possible to get a path even if you do not
+// currently have the required access bits to resolve the path.
 func Lclearxattrs(path string, except map[string]struct{}) error {
-	err := Wrap(path, func(path string) error {
-		names, err := Llistxattr(path)
-		if err != nil {
-			return err
-		}
-		for _, name := range names {
-			if _, skip := except[name]; skip {
-				continue
-			}
-			if err := Lremovexattr(path, name); err != nil {
-				// SELinux won't let you change security.selinux (for obvious
-				// security reasons), so we don't clear xattrs if attempting to
-				// clear them causes an EPERM. This EPERM will not be due to
-				// resolution issues (Llistxattr already has done that for us).
-				if errors.Is(err, os.ErrPermission) {
-					continue
-				}
-				return err
-			}
-		}
-		return nil
-	})
+	err := Wrap(path, func(path string) error { return system.Lclearxattrs(path, except) })
 	if err != nil {
 		return fmt.Errorf("unpriv.lclearxattrs: %w", err)
 	}
