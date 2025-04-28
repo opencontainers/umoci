@@ -21,8 +21,6 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
-	"crypto/rand"
-	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -252,164 +250,130 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 	}
 }
 
-type pseudoHdr struct {
-	path     string
-	linkname string
-	typeflag byte
-}
-
-func fromPseudoHdr(ph pseudoHdr) (*tar.Header, io.Reader) {
-	var r io.Reader
-	var size int64
-	if ph.typeflag == tar.TypeReg || ph.typeflag == tar.TypeRegA {
-		size = 256 * 1024
-		r = &io.LimitedReader{
-			R: rand.Reader,
-			N: size,
-		}
-	}
-
-	mode := os.FileMode(0777)
-	if ph.typeflag == tar.TypeDir {
-		mode |= os.ModeDir
-	}
-
-	return &tar.Header{
-		Name:       ph.path,
-		Linkname:   ph.linkname,
-		Typeflag:   ph.typeflag,
-		Mode:       int64(mode),
-		Size:       size,
-		ModTime:    testutils.Unix(1210393, 4528036),
-		AccessTime: testutils.Unix(7892829, 2341211),
-		ChangeTime: testutils.Unix(8731293, 8218947),
-	}, r
-}
-
 // TestUnpackOpaqueWhiteout checks whether *opaque* whiteout handling is done
 // correctly, as well as ensuring that the metadata of the parent is
 // maintained -- and that upperdir entries are handled.
 func TestUnpackOpaqueWhiteout(t *testing.T) {
-	type layeredPseudoHdr struct {
-		pseudoHdr
+	type layeredTarDentry struct {
+		tarDentry
 		upper, shouldSurvive bool
 	}
 
 	for _, test := range []struct {
-		name          string
-		pseudoHeaders []layeredPseudoHdr
+		name     string
+		dentries []layeredTarDentry
 	}{
 		{"EmptyDir", nil},
-		{"OneLevel", []layeredPseudoHdr{
-			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"link", "..", tar.TypeSymlink}, true, true},
-			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, true, true},
-			{pseudoHdr{"fifo", "", tar.TypeFifo}, false, false},
+		{"OneLevel", []layeredTarDentry{
+			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, true, true},
+			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, true, true},
+			{tarDentry{path: "fifo", ftype: tar.TypeFifo}, false, false},
 		}},
-		{"OneLevelNoUpper", []layeredPseudoHdr{
-			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"fifo", "", tar.TypeFifo}, false, false},
+		{"OneLevelNoUpper", []layeredTarDentry{
+			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
+			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
+			{tarDentry{path: "fifo", ftype: tar.TypeFifo}, false, false},
 		}},
-		{"TwoLevel", []layeredPseudoHdr{
-			{pseudoHdr{"file", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir", "", tar.TypeDir}, true, true},
-			{pseudoHdr{"dir/file", "", tar.TypeRegA}, true, true},
-			{pseudoHdr{"dir/link", "../badlink", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, true, true},
-			{pseudoHdr{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
+		{"TwoLevel", []layeredTarDentry{
+			{tarDentry{path: "file", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
+			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
+			{tarDentry{path: "dir", ftype: tar.TypeDir}, true, true},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
+			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
+			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
 		}},
-		{"TwoLevelNoUpper", []layeredPseudoHdr{
-			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"link", "..", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"badlink", "./nothing", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"dir/file", "", tar.TypeRegA}, false, false},
-			{pseudoHdr{"dir/link", "../badlink", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
+		{"TwoLevelNoUpper", []layeredTarDentry{
+			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
+			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
+			{tarDentry{path: "dir", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
+			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, false, false},
+			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
 		}},
-		{"MultiLevel", []layeredPseudoHdr{
-			{pseudoHdr{"level1_file", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"level1_link", "..", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"level1a", "", tar.TypeDir}, true, true},
-			{pseudoHdr{"level1a/level2_file", "", tar.TypeRegA}, false, false},
-			{pseudoHdr{"level1a/level2_link", "../../../", tar.TypeSymlink}, true, true},
-			{pseudoHdr{"level1a/level2a", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2a/level3_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2a/level3_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2b", "", tar.TypeDir}, true, true},
-			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"level1a/level2b/level3_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2b/level3", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"level1b", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1b/level2_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1b/level2_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1b/level2", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1b/level2/level3_file", "", tar.TypeReg}, false, false},
+		{"MultiLevel", []layeredTarDentry{
+			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
+			{tarDentry{path: "level1a", ftype: tar.TypeDir}, true, true},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, true, true},
+			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2a/level3_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2b", ftype: tar.TypeDir}, true, true},
+			{tarDentry{path: "level1a/level2b/level3_fileA", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "level1a/level2b/level3_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2b/level3", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3/level4", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3/level4", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3_fileA", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "level1b", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1b/level2_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1b/level2_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1b/level2", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1b/level2/level3_file", ftype: tar.TypeReg}, false, false},
 		}},
-		{"MultiLevelNoUpper", []layeredPseudoHdr{
-			{pseudoHdr{"level1_file", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1_link", "..", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"level1a", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2_file", "", tar.TypeRegA}, false, false},
-			{pseudoHdr{"level1a/level2_link", "../../../", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"level1a/level2a", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2a/level3_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2a/level3_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2b", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2b/level3_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1a/level2b/level3", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3/level4", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1a/level2b/level3_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1b", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1b/level2_fileA", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1b/level2_fileB", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"level1b/level2", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"level1b/level2/level3_file", "", tar.TypeReg}, false, false},
+		{"MultiLevelNoUpper", []layeredTarDentry{
+			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
+			{tarDentry{path: "level1a", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, false, false},
+			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2a/level3_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2b", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2b/level3_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1a/level2b/level3", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3/level4", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3/level4", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1a/level2b/level3_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1b", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1b/level2_fileA", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1b/level2_fileB", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "level1b/level2", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "level1b/level2/level3_file", ftype: tar.TypeReg}, false, false},
 		}},
-		{"MissingUpperAncestor", []layeredPseudoHdr{
+		{"MissingUpperAncestor", []layeredTarDentry{
 			// Even if the parent directories are not listed as being in an
 			// upper, they need to still exist for the subpath to exist.
-			{pseudoHdr{"some", "", tar.TypeDir}, false, true},
-			{pseudoHdr{"some/dir", "", tar.TypeDir}, false, true},
-			{pseudoHdr{"some/dir/somewhere", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"another", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"another/dir", "", tar.TypeDir}, false, false},
-			{pseudoHdr{"another/dir/somewhere", "", tar.TypeReg}, false, false},
+			{tarDentry{path: "some", ftype: tar.TypeDir}, false, true},
+			{tarDentry{path: "some/dir", ftype: tar.TypeDir}, false, true},
+			{tarDentry{path: "some/dir/somewhere", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "another", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "another/dir", ftype: tar.TypeDir}, false, false},
+			{tarDentry{path: "another/dir/somewhere", ftype: tar.TypeReg}, false, false},
 		}},
-		{"UpperWhiteout", []layeredPseudoHdr{
-			{pseudoHdr{whPrefix + "fileB", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"fileA", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"fileB", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"fileC", "", tar.TypeReg}, false, false},
-			{pseudoHdr{whPrefix + "fileA", "", tar.TypeReg}, true, true},
-			{pseudoHdr{whPrefix + "fileC", "", tar.TypeReg}, true, true},
+		{"UpperWhiteout", []layeredTarDentry{
+			{tarDentry{path: whPrefix + "fileB", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "fileA", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "fileB", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "fileC", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: whPrefix + "fileA", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: whPrefix + "fileC", ftype: tar.TypeReg}, true, true},
 		}},
 		// XXX: What umoci should do here is not really defined by the
 		//      spec. In particular, whether you need a whiteout for every
 		//      sub-path or just the path itself is not well-defined. This
 		//      code assumes that you *do not*.
-		{"UpperDirWhiteout", []layeredPseudoHdr{
-			{pseudoHdr{whPrefix + "dir2", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"file", "", tar.TypeReg}, false, false},
-			{pseudoHdr{"dir1", "", tar.TypeDir}, true, true},
-			{pseudoHdr{"dir1/file", "", tar.TypeRegA}, true, true},
-			{pseudoHdr{"dir1/link", "../badlink", tar.TypeSymlink}, false, false},
-			{pseudoHdr{"dir1/verybadlink", "../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, true, true},
-			{pseudoHdr{"dir1/verybadlink2", "/../../../../../../../../../../../../etc/shadow", tar.TypeSymlink}, false, false},
-			{pseudoHdr{whPrefix + "dir1", "", tar.TypeReg}, true, true},
-			{pseudoHdr{"dir2", "", tar.TypeDir}, true, true},
-			{pseudoHdr{"dir2/file", "", tar.TypeRegA}, true, true},
-			{pseudoHdr{"dir2/link", "../badlink", tar.TypeSymlink}, false, false},
+		{"UpperDirWhiteout", []layeredTarDentry{
+			{tarDentry{path: whPrefix + "dir2", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
+			{tarDentry{path: "dir1", ftype: tar.TypeDir}, true, true},
+			{tarDentry{path: "dir1/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir1/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
+			{tarDentry{path: "dir1/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
+			{tarDentry{path: "dir1/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
+			{tarDentry{path: whPrefix + "dir1", ftype: tar.TypeReg}, true, true},
+			{tarDentry{path: "dir2", ftype: tar.TypeDir}, true, true},
+			{tarDentry{path: "dir2/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir2/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 		}},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -432,13 +396,13 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 			// First we apply the non-upper files in a new TarExtractor.
 			te := NewTarExtractor(unpackOptions)
-			for _, ph := range test.pseudoHeaders {
+			for _, de := range test.dentries {
 				// Skip upper.
-				if ph.upper {
+				if de.upper {
 					numUpper++
 					continue
 				}
-				hdr, rdr := fromPseudoHdr(ph.pseudoHdr)
+				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
 				assert.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
@@ -446,12 +410,12 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 
 			// Now we apply the upper files in another TarExtractor.
 			te = NewTarExtractor(unpackOptions)
-			for _, ph := range test.pseudoHeaders {
+			for _, de := range test.dentries {
 				// Skip non-upper.
-				if !ph.upper {
+				if !de.upper {
 					continue
 				}
-				hdr, rdr := fromPseudoHdr(ph.pseudoHdr)
+				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
 				assert.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
@@ -468,17 +432,17 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			// Now we double-check it worked. If the file was in "upper" it
 			// should have survived. If it was in lower it shouldn't. We don't
 			// bother checking the contents here.
-			for _, ph := range test.pseudoHeaders {
+			for _, de := range test.dentries {
 				// If there's an explicit whiteout in the headers we ignore it
 				// here, since it won't be on the filesystem.
-				if strings.HasPrefix(filepath.Base(ph.path), whPrefix) {
-					t.Logf("ignoring whiteout entry %q during post-check", ph.path)
+				if strings.HasPrefix(filepath.Base(de.path), whPrefix) {
+					t.Logf("ignoring whiteout entry %q during post-check", de.path)
 					continue
 				}
 
-				fullPath := filepath.Join(whiteoutRoot, ph.path)
+				fullPath := filepath.Join(whiteoutRoot, de.path)
 				_, err := te.fsEval.Lstat(fullPath)
-				if ph.shouldSurvive {
+				if de.shouldSurvive {
 					assert.NoError(t, err)
 				} else {
 					assert.ErrorIs(t, err, os.ErrNotExist)

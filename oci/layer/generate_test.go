@@ -20,6 +20,7 @@ package layer
 
 import (
 	"archive/tar"
+	"bytes"
 	"io"
 	"io/ioutil"
 	"os"
@@ -30,6 +31,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
+
+	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 type tarDentry struct {
@@ -38,6 +41,32 @@ type tarDentry struct {
 	linkname string
 	xattrs   map[string]string
 	contents string
+}
+
+func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
+	var r io.Reader
+	var size int64
+	if de.ftype == tar.TypeReg || de.ftype == tar.TypeRegA {
+		size = int64(len(de.contents))
+		r = bytes.NewBufferString(de.contents)
+	}
+
+	mode := os.FileMode(0777)
+	if de.ftype == tar.TypeDir {
+		mode |= os.ModeDir
+	}
+
+	return &tar.Header{
+		Name:       de.path,
+		Linkname:   de.linkname,
+		Typeflag:   de.ftype,
+		Mode:       int64(mode),
+		Size:       size,
+		Xattrs:     de.xattrs,
+		ModTime:    testutils.Unix(1210393, 4528036),
+		AccessTime: testutils.Unix(7892829, 2341211),
+		ChangeTime: testutils.Unix(8731293, 8218947),
+	}, r
 }
 
 func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {

@@ -62,9 +62,9 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 
 	testNeedsMknod(t)
 
-	headers := []pseudoHdr{
-		{"file", "", tar.TypeReg},
-		{whPrefix + "file", "", tar.TypeReg},
+	dentries := []tarDentry{
+		{path: "file", ftype: tar.TypeReg},
+		{path: whPrefix + "file", ftype: tar.TypeReg},
 	}
 
 	unpackOptions := UnpackOptions{
@@ -76,8 +76,8 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 
 	te := NewTarExtractor(unpackOptions)
 
-	for _, ph := range headers {
-		hdr, rdr := fromPseudoHdr(ph)
+	for _, de := range dentries {
+		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
@@ -96,10 +96,10 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 	testNeedsMknod(t)
 	testNeedsTrustedOverlayXattrs(t)
 
-	headers := []pseudoHdr{
-		{"dir", "", tar.TypeDir},
-		{"dir/fileindir", "dir", tar.TypeReg},
-		{"dir/" + whOpaque, "dir", tar.TypeReg},
+	dentries := []tarDentry{
+		{path: "dir", ftype: tar.TypeDir},
+		{path: "dir/fileindir", ftype: tar.TypeReg},
+		{path: "dir/" + whOpaque, ftype: tar.TypeReg},
 	}
 
 	unpackOptions := UnpackOptions{
@@ -111,8 +111,8 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 
 	te := NewTarExtractor(unpackOptions)
 
-	for _, ph := range headers {
-		hdr, rdr := fromPseudoHdr(ph)
+	for _, de := range dentries {
+		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
 		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
