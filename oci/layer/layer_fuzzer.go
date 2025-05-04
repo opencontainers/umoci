@@ -336,9 +336,7 @@ func FuzzUnpack(data []byte) int {
 		Rootless: os.Geteuid() != 0,
 	}}
 
-	called := false
 	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
-		called = true
 		return nil
 	}
 
