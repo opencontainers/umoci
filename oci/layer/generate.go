@@ -22,14 +22,13 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"sort"
 
 	"github.com/apex/log"
 	"github.com/vbatts/go-mtree"
 
-	"github.com/opencontainers/umoci/pkg/unpriv"
+	"github.com/opencontainers/umoci/pkg/fseval"
 )
 
 // inodeDeltas is a wrapper around []mtree.InodeDelta that allows for sorting
@@ -50,6 +49,10 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	if opt != nil {
 		packOptions = *opt
 	}
+	fsEval := fseval.Default
+	if packOptions.MapOptions.Rootless {
+		fsEval = fseval.Rootless
+	}
 
 	reader, writer := io.Pipe()
 
@@ -68,7 +71,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := newTarGenerator(writer, packOptions.MapOptions)
+		tg := newTarGenerator(writer, packOptions)
 
 		// Sort the delta paths.
 		// FIXME: We need to add whiteouts first, otherwise we might end up
@@ -87,21 +90,36 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
 				if packOptions.TranslateOverlayWhiteouts {
-					fi, err := os.Stat(fullPath)
+					woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
 					if err != nil {
-						return fmt.Errorf("couldn't determine overlay whiteout for %s: %w", fullPath, err)
+						return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
 					}
+					if isWo {
+						log.Debugf("generate layer: converting overlayfs whiteout %s %q to OCI whiteout", woType, name)
 
-					whiteout, err := isOverlayWhiteout(fi)
-					if err != nil {
-						return err
-					}
-					if whiteout {
-						if err := tg.AddWhiteout(fullPath); err != nil {
-							return fmt.Errorf("generate whiteout from overlayfs: %w", err)
+						var err error
+						switch woType {
+						case overlayWhiteoutPlain:
+							err = tg.AddWhiteout(name)
+						case overlayWhiteoutOpaque:
+							// For opaque whiteout directories we need to
+							// output an entry for the directory itself so that
+							// the ownership and modes set on the directory are
+							// included in the archive.
+							if err := tg.AddFile(name, fullPath); err != nil {
+								log.Warnf("generate layer: could not add directory entry for opaque from overlayfs for file %q: %s", name, err)
+								return fmt.Errorf("generate directory entry for opaque whiteout from overlayfs: %w", err)
+							}
+							err = tg.AddOpaqueWhiteout(name)
+						default:
+							return fmt.Errorf("[internal error] unknown overlayfs whiteout type %q", woType)
 						}
+						if err != nil {
+							log.Warnf("generate layer: could not add whiteout %s from overlayfs for file %q: %s", woType, name, err)
+							return fmt.Errorf("generate whiteout %s from overlayfs: %w", woType, err)
+						}
+						continue
 					}
-					continue
 				}
 				if err := tg.AddFile(name, fullPath); err != nil {
 					log.Warnf("generate layer: could not add file %q: %s", name, err)
@@ -126,15 +144,21 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	return reader, nil
 }
 
-// GenerateInsertLayer generates a completely new layer from "root"to be
-// inserted into the image at "target". If "root" is an empty string then the
-// "target" will be removed via a whiteout.
-func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
+// GenerateInsertLayer generates a completely new layer from root to be
+// inserted into the image at target. If root is an empty string then the
+// target will be removed via a whiteout. If opaque is true then the target
+// directory will also have an opaque whiteout applied (clearing any files
+// inside the directory), followed by the contents of the root.
+func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
 	root = CleanPath(root)
 
 	var packOptions RepackOptions
 	if opt != nil {
 		packOptions = *opt
+	}
+	fsEval := fseval.Default
+	if packOptions.MapOptions.Rootless {
+		fsEval = fseval.Rootless
 	}
 
 	reader, writer := io.Pipe()
@@ -150,7 +174,7 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			_ = writer.CloseWithError(closeErr)
 		}()
 
-		tg := newTarGenerator(writer, packOptions.MapOptions)
+		tg := newTarGenerator(writer, packOptions)
 
 		defer func() {
 			if err := tg.tw.Close(); err != nil {
@@ -158,30 +182,53 @@ func GenerateInsertLayer(root string, target string, opaque bool, opt *RepackOpt
 			}
 		}()
 
+		if root == "" {
+			return tg.AddWhiteout(target)
+		}
 		if opaque {
 			if err := tg.AddOpaqueWhiteout(target); err != nil {
 				return err
 			}
+			// Continue on to add the new root contents...
 		}
-		if root == "" {
-			return tg.AddWhiteout(target)
-		}
-		return unpriv.Walk(root, func(curPath string, info os.FileInfo, err error) error {
+		return fsEval.Walk(root, func(fullPath string, _ os.FileInfo, err error) error {
 			if err != nil {
 				return err
 			}
 
-			pathInTar := path.Join(target, curPath[len(root):])
-			whiteout, err := isOverlayWhiteout(info)
+			relName, err := filepath.Rel(root, fullPath)
 			if err != nil {
 				return err
 			}
-			if packOptions.TranslateOverlayWhiteouts && whiteout {
-				log.Debugf("converting overlayfs whiteout %s to OCI whiteout", pathInTar)
-				return tg.AddWhiteout(pathInTar)
+			name := filepath.Join(target, relName)
+
+			if packOptions.TranslateOverlayWhiteouts {
+				woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
+				if err != nil {
+					return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
+				}
+				if isWo {
+					log.Debugf("generate insert layer: converting overlayfs %s %q to OCI whiteout", woType, name)
+					switch woType {
+					case overlayWhiteoutPlain:
+						return tg.AddWhiteout(name)
+					case overlayWhiteoutOpaque:
+						// For opaque whiteout directories we need to
+						// output an entry for the directory itself so that
+						// the ownership and modes set on the directory are
+						// included in the archive.
+						if err := tg.AddFile(name, fullPath); err != nil {
+							log.Warnf("generate insert layer: could not add directory entry for opaque from overlayfs for file %q: %s", name, err)
+							return fmt.Errorf("generate directory entry for opaque whiteout from overlayfs: %w", err)
+						}
+						return tg.AddOpaqueWhiteout(name)
+					default:
+						return fmt.Errorf("[internal error] unknown overlayfs whiteout type %q", woType)
+					}
+				}
 			}
 
-			return tg.AddFile(pathInTar, curPath)
+			return tg.AddFile(name, fullPath)
 		})
 	}()
 	return reader

@@ -34,6 +34,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     `--compress` flag. You can also disable compression entirely using
     `--compress=none` but `--compress=auto` will never automatically choose
     `none` compression.
+- `GenerateLayer` and `GenerateInsertLayer` with `TranslateOverlayWhiteouts`
+  now support converting `trusted.overlay.opaque=y` and
+  `trusted.overlay.whiteout` whiteouts into OCI whiteouts when generating OCI
+  layers.
 
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.
@@ -61,6 +65,54 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   #452
 - umoci will now return an explicit error if you pass invalid uid or gid values
   to `--uid-map` and `--gid-map` rather than silently truncating the value.
+- For Go users of umoci, `GenerateLayer` (but not `GenerateInsertLayer`) with
+  the `TranslateOverlayWhiteouts` option enabled had several severe bugs that
+  made the feature unusable:
+  * All OCI whiteouts added to the archive would incorrectly have the full host
+    name of the path rather than the correctly rooted path, making the whiteout
+    practically useless.
+  * Any non-whiteout files would not be included in the layer, making the layer
+    data incomplete and thus resulting in silent data loss.
+  Given how severe these bugs were and the lack of bug reports of this issue in
+  the past 4 years, it seems this feature has not really been used by anyone (I
+  hope...).
+- For Go users of umoci, `UnpackLayer` now correctly handles several aspects of
+  `OverlayFSWhiteout` extraction that weren't handled correctly:
+  * Unlike regular extractions, overlayfs-style extractions require us to
+    create the parent directory of the whiteout (rather than ignoring or
+    assuming the underlying path exists) because the whiteout is being created
+    in a separate layer to the underlying file. We also need to make sure that
+    opaque whiteout targets are directories.
+  * `trusted.overlay.opaque=y` has very peculiar behaviour when a regular
+    whiteout (i.e. `mknod c 0 0`) is placed inside an opaque directory -- the
+    whiteout-ed file appears in `readdir` but the file itself doesn't exist. To
+    avoid this confusion (and possible information leak), umoci will no longer
+    extract plain whiteouts within an opaque whiteout directory in the same
+    layer. (As per the OCI spec requirements, this is regardless of the order
+    of the opaque whiteout and the regular whiteout in the layer archive.)
+- `UnpackLayer` and `Generate(Insert)Layer` now correctly handle
+  `trusted.overlay.*` xattr escaping when extracting and generating layers with
+  the overlayfs on-disk format. This escaping feature [has been supported by
+  overlayfs since Linux 6.7][linux-overlayfs-escaping-dad02fad84cbc], and
+  allows for you to created images that contain an overlayfs layout inside the
+  image (nested to arbitrary levels).
+  * If an image contains `trusted.overlay.*` xattrs, `UnpackLayer` will
+    rewrite the xattrs to instead be in the `trusted.overlay.overlay.*`
+    namespace, so that when merged using overlayfs the user will see the
+    expected xattrs.
+  * If an on-disk overlayfs directory used with `Generate(Insert)Layer`
+    contains escaped `trusted.overlay.overlay.*` xattrs, they will be rewritten
+    so that the generated layer contains `trusted.overlay.*` xattrs. If we
+    encounter an unescaped `trusted.overlay.*` xattr they will not be included
+    in the image (though they may cause the file to be converted to a whiteout
+    in the image) because they are considered to be an internal aspect of the
+    host on-disk format (i.e. `trusted.overlay.origin` might be automatically
+    set by whatever tool is using the overlayfs layers).
+  Note that in the regular extraction mode, these xattrs will be treated like
+  any other xattrs (this is in contrast to the previous behaviour where they
+  would be silently ignored regardless of the on-disk format being used).
+
+[linux-overlayfs-escaping-dad02fad84cbc]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=dad02fad84cbce30f317b69a4f2391f90045f79d
 
 ## [0.4.7] - 2021-04-05 ##
 

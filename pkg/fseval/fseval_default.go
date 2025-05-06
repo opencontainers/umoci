@@ -136,8 +136,8 @@ func (fs osFsEval) Lgetxattr(path string, name string) ([]byte, error) {
 }
 
 // Lclearxattrs is equivalent to system.Lclearxattrs
-func (fs osFsEval) Lclearxattrs(path string, except map[string]struct{}) error {
-	return system.Lclearxattrs(path, except)
+func (fs osFsEval) Lclearxattrs(path string, skipFn func(xattrName string) bool) error {
+	return system.Lclearxattrs(path, skipFn)
 }
 
 // KeywordFunc returns a wrapper around the given mtree.KeywordFunc.

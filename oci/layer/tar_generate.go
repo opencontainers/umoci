@@ -32,49 +32,7 @@ import (
 
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/system"
-	"github.com/opencontainers/umoci/pkg/testutils"
 )
-
-// ignoreXattrs is a list of xattr names that should be ignored when
-// creating a new image layer, because they are host-specific and/or would be a
-// bad idea to unpack. They are also excluded from Lclearxattr when extracting
-// an archive.
-// XXX: Maybe we should make this configurable so users can manually blacklist
-//
-//	(or even whitelist) xattrs that they actually want included? Like how
-//	GNU tar's xattr setup works.
-var ignoreXattrs = map[string]struct{}{
-	// SELinux doesn't allow you to set SELinux policies generically. They're
-	// also host-specific. So just ignore them during extraction.
-	"security.selinux": {},
-
-	// NFSv4 ACLs are very system-specific and shouldn't be touched by us, nor
-	// should they be included in images.
-	"system.nfs4_acl": {},
-
-	// In order to support overlayfs whiteout mode, we shouldn't un-set
-	// this after we've set it when writing out the whiteouts.
-	"trusted.overlay.opaque": {},
-
-	// We don't want to these xattrs into the image, because they're only
-	// relevant based on how the build overlay is constructed and will not
-	// be true on the target system once the image is unpacked (e.g. inodes
-	// might be different, impure status won't be true, etc.).
-	"trusted.overlay.redirect": {},
-	"trusted.overlay.origin":   {},
-	"trusted.overlay.impure":   {},
-	"trusted.overlay.nlink":    {},
-	"trusted.overlay.upper":    {},
-	"trusted.overlay.metacopy": {},
-}
-
-func init() {
-	// For test purposes we add a fake forbidden attribute that an unprivileged
-	// user can easily write to (and thus we can test it).
-	if testutils.IsTestBinary() {
-		ignoreXattrs["user.UMOCI:forbidden_xattr"] = struct{}{}
-	}
-}
 
 // tarGenerator is a helper for generating layer diff tars. It should be noted
 // that when using tarGenerator.Add{Path,Whiteout} it is recommended to do it
@@ -92,23 +50,32 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
+	// whiteoutMode indicates how this tarGenerator will handle whiteouts.
+	whiteoutMode WhiteoutMode
+
 	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
 
 // newTarGenerator creates a new tarGenerator using the provided writer as the
 // output writer.
-func newTarGenerator(w io.Writer, opt MapOptions) *tarGenerator {
+func newTarGenerator(w io.Writer, opt RepackOptions) *tarGenerator {
 	fsEval := fseval.Default
-	if opt.Rootless {
+	if opt.MapOptions.Rootless {
 		fsEval = fseval.Rootless
 	}
 
+	whiteoutMode := OCIStandardWhiteout
+	if opt.TranslateOverlayWhiteouts {
+		whiteoutMode = OverlayFSWhiteout
+	}
+
 	return &tarGenerator{
-		tw:         tar.NewWriter(w),
-		mapOptions: opt,
-		inodes:     map[uint64]string{},
-		fsEval:     fsEval,
+		tw:           tar.NewWriter(w),
+		mapOptions:   opt.MapOptions,
+		inodes:       map[uint64]string{},
+		fsEval:       fsEval,
+		whiteoutMode: whiteoutMode,
 	}
 }
 
@@ -203,32 +170,42 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	// Set up xattrs externally to updateHeader because the function signature
 	// would look really dumb otherwise.
 	// XXX: This should probably be moved to a function in tar_unix.go.
-	names, err := tg.fsEval.Llistxattr(path)
+	xattrs, err := tg.fsEval.Llistxattr(path)
 	if err != nil {
 		if !errors.Is(err, unix.EOPNOTSUPP) {
 			return fmt.Errorf("get xattr list: %w", err)
 		}
-		names = []string{}
+		xattrs = []string{}
 	}
-	for _, name := range names {
+	for _, xattr := range xattrs {
 		// Some xattrs need to be skipped for sanity reasons, such as
 		// security.selinux, because they are very much host-specific and
-		// carrying them to other hosts would be a really bad idea.
-		if _, ignore := ignoreXattrs[name]; ignore {
-			continue
+		// carrying them to other hosts would be a really bad idea. Other
+		// xattrs need to be remapped (such as escaped trusted.overlay.* xattrs
+		// when in overlayfs mode) to have correct values.
+		mappedName := xattr
+		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
+			if newName := filter.ToTar(tg.whiteoutMode, xattr); newName == nil {
+				log.Debugf("xattr{%s} skipping the inclusion of xattr %q in generated tar archive", hdr.Name, xattr)
+				continue
+			} else if *newName != xattr {
+				mappedName = *newName
+				log.Debugf("xattr{%s} remapping xattr %q to %q in generated tar archive", hdr.Name, xattr, mappedName)
+			}
 		}
 		// TODO: We should translate all v3 capabilities into root-owned
 		//       capabilities here. But we don't have Go code for that yet
 		//       (we'd need to use libcap to parse it).
-		value, err := tg.fsEval.Lgetxattr(path, name)
+		value, err := tg.fsEval.Lgetxattr(path, xattr)
 		if err != nil {
+			// Ignore xattrs we were unable to read or if the filesystem is
+			// refusing to provide information about them. Note that rather
+			// than getting a permission error when reading a trusted.* xattr
+			// as an unprivileged user, you actually get ENODATA.
+			log.Debugf("xattr{%s} failure reading xattr %q: %v", hdr.Name, xattr, err)
 			// TODO: Should we use errors.As?
-			log.Debugf("failure reading xattr from list on %q: %q", name, err)
 			if !errors.Is(err, unix.EOPNOTSUPP) && !errors.Is(err, unix.ENODATA) {
-				// XXX: I'm not sure if we're unprivileged whether Lgetxattr can
-				//      fail with EPERM. If it can, we should ignore it (like when
-				//      we try to clear xattrs).
-				return fmt.Errorf("get xattr: %s: %w", name, err)
+				return fmt.Errorf("get xattr %q: %w", xattr, err)
 			}
 		}
 		// https://golang.org/issues/20698 -- We don't just error out here
@@ -236,12 +213,12 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		// whether the stdlib will correctly handle reading or disable writing
 		// of these PAX headers so we have to track this ourselves.
 		if len(value) <= 0 {
-			log.Warnf("ignoring empty-valued xattr %s: disallowed by PAX standard", name)
+			log.Warnf("xattr{%s} ignoring empty-valued xattr %q: disallowed by PAX standard", hdr.Name, xattr)
 			continue
 		}
 		// Note that Go strings can actually be arbitrary byte sequences, so
 		// this conversion (while it might look a bit wrong) is actually fine.
-		hdr.Xattrs[name] = string(value)
+		hdr.Xattrs[mappedName] = string(value)
 	}
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to

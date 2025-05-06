@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/pathtrie"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -67,6 +68,17 @@ type TarExtractor struct {
 	// are fully symlink-expanded so no need to worry about that line noise.
 	upperPaths map[string]struct{}
 
+	// upperWhiteouts is a trie that represents the subset of upperPaths that
+	// are whiteout files. This is needed for overlayfs translation because
+	// opaque whiteout directories in overlayfs do not play well with regular
+	// whiteouts.
+	//
+	// This is stored separately to upperPaths because this is only needed for
+	// overlayfs mode (a niche usecase), and it is far more efficient for us to
+	// only walk through whiteout entries (as it's the only thing that matters
+	// for upperWhiteouts) as there should be very few of them in most images.
+	upperWhiteouts *pathtrie.PathTrie[overlayWhiteoutType]
+
 	// enotsupWarned is a flag set when we encounter the first ENOTSUP error
 	// dealing with xattrs. This is used to ensure extraction to a destination
 	// file system that does not support xattrs raises a single warning, rather
@@ -89,11 +101,17 @@ func NewTarExtractor(opt UnpackOptions) *TarExtractor {
 		fsEval = fseval.Rootless
 	}
 
+	var upperWhiteouts *pathtrie.PathTrie[overlayWhiteoutType]
+	if opt.WhiteoutMode == OverlayFSWhiteout {
+		upperWhiteouts = pathtrie.NewTrie[overlayWhiteoutType]()
+	}
+
 	return &TarExtractor{
 		mapOptions:      opt.MapOptions,
 		partialRootless: opt.MapOptions.Rootless || inUserNamespace,
 		fsEval:          fsEval,
 		upperPaths:      make(map[string]struct{}),
+		upperWhiteouts:  upperWhiteouts,
 		enotsupWarned:   false,
 		keepDirlinks:    opt.KeepDirlinks,
 		whiteoutMode:    opt.WhiteoutMode,
@@ -149,13 +167,16 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 	// Apply xattrs. In order to make sure that we *only* have the xattr set we
 	// want, we first clear the set of xattrs from the file then apply the ones
 	// set in the tar.Header.
-	err := te.fsEval.Lclearxattrs(path, ignoreXattrs)
+	err := te.fsEval.Lclearxattrs(path, func(xattr string) bool {
+		filter, isSpecial := getXattrFilter(xattr)
+		return isSpecial && filter.MaskedOnDisk(te.whiteoutMode, xattr)
+	})
 	if err != nil {
 		if !errors.Is(err, unix.ENOTSUP) {
 			return fmt.Errorf("clear xattr metadata: %s: %w", path, err)
 		}
 		if !te.enotsupWarned {
-			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", path)
+			log.Warnf("xattr{%s} ignoring ENOTSUP on clearxattrs", hdr.Name)
 			log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
 			te.enotsupWarned = true
 		} else {
@@ -163,29 +184,38 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		}
 	}
 
-	for name, value := range hdr.Xattrs {
+	for xattr, value := range hdr.Xattrs {
 		value := []byte(value)
 
-		// Forbidden xattrs should never be touched.
-		if _, skip := ignoreXattrs[name]; skip {
-			// If the xattr is already set to the requested value, don't bail.
-			// The reason for this logic is kinda convoluted, but effectively
-			// because restoreMetadata is called with the *on-disk* metadata we
-			// run the risk of things like "security.selinux" being included in
-			// that metadata (and thus tripping the forbidden xattr error). By
-			// only touching xattrs that have a different value we are somewhat
-			// more efficient and we don't have to special case parent restore.
-			// Of course this will only ever impact ignoreXattrs.
-			if oldValue, err := te.fsEval.Lgetxattr(path, name); err == nil {
-				if bytes.Equal(value, oldValue) {
-					log.Debugf("restore xattr metadata: skipping already-set xattr %q: %s", name, hdr.Name)
-					continue
+		// Some xattrs need to be skipped for sanity reasons, such as
+		// security.selinux, because they are very much host-specific and
+		// extracting them from layers would be a really bad idea. Also, other
+		// xattrs may need to be remapped (such as trusted.overlay.* xattrs
+		// when in overlayfs mode) to have correct values.
+		mappedName := xattr
+		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
+			if newName := filter.ToDisk(te.whiteoutMode, xattr); newName == nil {
+				// Avoid outputting a warning if a must-skip xattr already has
+				// the expected value we wanted.
+				//
+				// TODO: Maybe we should still emit a warning even in this case
+				//       because now that the directory has its xattrs cleared
+				//       with ToTar, we should probably warn if images have
+				//       xattrs that only happen to be applied correctly now.
+				if oldValue, err := te.fsEval.Lgetxattr(path, xattr); err == nil {
+					if bytes.Equal(value, oldValue) {
+						log.Debugf("xattr{%s} restore xattr metadata: skipping already-set xattr %q", hdr.Name, xattr)
+						continue
+					}
 				}
+				log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, xattr)
+				continue
+			} else if *newName != xattr {
+				mappedName = *newName
+				log.Debugf("xattr{%s} remapping xattr %q to %q during extraction", hdr.Name, xattr, mappedName)
 			}
-			log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, name)
-			continue
 		}
-		if err := te.fsEval.Lsetxattr(path, name, value, 0); err != nil {
+		if err := te.fsEval.Lsetxattr(path, mappedName, value, 0); err != nil {
 			// In rootless mode, some xattrs will fail (security.capability).
 			// This is _fine_ as long as we're not running as root (in which
 			// case we shouldn't be ignoring xattrs that we were told to set).
@@ -195,7 +225,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			//       unprivileged users (we also would need to translate them
 			//       back when creating archives).
 			if te.partialRootless && errors.Is(err, os.ErrPermission) {
-				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, name)
+				log.Warnf("rootless{%s} ignoring (usually) harmless EPERM on setxattr %q", hdr.Name, mappedName)
 				continue
 			}
 			// We cannot do much if we get an ENOTSUP -- this usually means
@@ -203,7 +233,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 			// underlying filesystem (such as AUFS or NFS).
 			if errors.Is(err, unix.ENOTSUP) {
 				if !te.enotsupWarned {
-					log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, name)
+					log.Warnf("xattr{%s} ignoring ENOTSUP on setxattr %q", hdr.Name, mappedName)
 					log.Warnf("xattr{%s} destination filesystem does not support xattrs, further warnings will be suppressed", path)
 					te.enotsupWarned = true
 				} else {
@@ -281,9 +311,8 @@ func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	return targetInfo.IsDir(), nil
 }
 
-func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error {
-	isOpaque := file == whOpaque
-	file = strings.TrimPrefix(file, whPrefix)
+func (te *TarExtractor) ociWhiteout(root, dir, file string) error {
+	isOpaque := file == ""
 
 	// We have to be quite careful here. While the most intuitive way of
 	// handling whiteouts would be to just RemoveAll without prejudice, We
@@ -367,25 +396,90 @@ func (te *TarExtractor) ociWhiteout(root string, dir string, file string) error 
 	return nil
 }
 
-func (te *TarExtractor) overlayFSWhiteout(dir string, file string) error {
-	isOpaque := file == whOpaque
-
-	// if this is an opaque whiteout, whiteout the directory
-	if isOpaque {
-		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
-			return fmt.Errorf("couldn't set overlayfs whiteout attr for %s: %w", dir, err)
+func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
+	// Unlike standard dir whiteouts, we need to ensure that the path we are
+	// whiting out exists, because this layer is applied to lower layers where
+	// the target path might exist. As with UnpackEntry, we expect the tar
+	// archive itself to contain information about the directory (and since we
+	// are extracting overlayfs we can't really be sure of the underlying
+	// directory's ownership and modes either).
+	//
+	// TODO: Same TODO as UnpackEntry regarding consistency.
+	if file == "" {
+		// In the case of opaque whiteouts we need to make sure the target path
+		// is definitely a directory, so if it's a non-directory clear it.
+		if fi, err := te.fsEval.Lstat(dir); err == nil && !fi.IsDir() {
+			if err := te.fsEval.RemoveAll(dir); err != nil {
+				return fmt.Errorf("clear non-directory overlayfs whiteout parent %q: %w", dir, err)
+			}
 		}
-		return nil
+	}
+	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+		return fmt.Errorf("mkdir overlayfs whiteout parent %q: %w", dir, err)
 	}
 
-	// otherwise, white out the file itself.
-	p := filepath.Join(dir, strings.TrimPrefix(file, whPrefix))
-	if err := os.RemoveAll(p); err != nil && !errors.Is(err, os.ErrNotExist) {
-		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+	subpath := filepath.Join(dir, file)
+	upperPath, err := filepath.Rel(root, subpath)
+	if err != nil {
+		return fmt.Errorf("find relative-to-root [should never happen]: %w", err)
 	}
+	upperPath = filepath.Join("/", upperPath)
 
-	if err := te.fsEval.Mknod(p, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
-		return fmt.Errorf("couldn't create overlayfs whiteout for %s: %w", p, err)
+	switch file {
+	case "":
+		// For opaque whiteouts, we just need to set the overlayfs xattr for
+		// directory. Any files already there were added in this layer (since
+		// OverlayFSWhiteout is used to generate each layer in separate
+		// directories) and so shouldn't be removed anyway.
+		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
+			return fmt.Errorf("couldn't set overlayfs whiteout attr for %q: %w", dir, err)
+		}
+
+		// Overlayfs has strange behaviour if we extract a whiteout into an
+		// opaque directory (namely readdir will report the whiteouts as being
+		// there while all other syscalls will fail to operate on them). The
+		// solution is to delete any pre-existing whiteouts we have when we hit
+		// an opaque whiteout, and the creation of any subsequent regular
+		// whiteouts inside an opaque whiteout should be skipped.
+		te.upperWhiteouts.Set(upperPath, overlayWhiteoutOpaque)
+		if err := te.upperWhiteouts.WalkFrom(upperPath, func(woPath string, woType overlayWhiteoutType) error {
+			// Skip any opaque whiteouts, because stacking them is fine and we
+			// cannot just RemoveAll them anyway (we would need to clear the
+			// xattr).
+			if woType != overlayWhiteoutPlain {
+				return nil
+			}
+			// Clear the subpath.
+			log.Debugf("opaque overlayfs whiteout %s needs to remove existing plain whiteout %s", upperPath, woPath)
+			return te.fsEval.RemoveAll(filepath.Join(root, woPath))
+		}); err != nil {
+			return fmt.Errorf("could not remove all pre-existing overlayfs whiteouts for opaque dir %q: %w", upperPath, err)
+		}
+
+	default:
+		// For regular whiteouts, just remove any pre-existing inode and
+		// replace it with a whiteout inode.
+		if err := te.fsEval.RemoveAll(subpath); err != nil {
+			return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
+		}
+
+		// If the path is inside an opaque whiteout, don't bother creating a
+		// whiteout inode. We still need to RemoveAll first to make sure
+		// anything there gets removed though.
+		te.upperWhiteouts.DeleteAll(upperPath)
+		var insideOpaqueWhiteout bool
+		for pth := upperPath; pth != filepath.Dir(pth); pth = filepath.Dir(pth) {
+			if woType, isWo := te.upperWhiteouts.Get(pth); isWo && woType == overlayWhiteoutOpaque {
+				insideOpaqueWhiteout = true
+				break
+			}
+		}
+		if !insideOpaqueWhiteout {
+			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+				return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
+			}
+			te.upperWhiteouts.Set(upperPath, overlayWhiteoutPlain)
+		}
 	}
 	return nil
 }
@@ -470,7 +564,33 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				if err != nil {
 					return fmt.Errorf("get xattr: %w", err)
 				}
-				dirHdr.Xattrs[xattr] = string(value)
+				// Because restoreMetadata will re-apply these xattrs
+				// (potentially remapping them if we have specialXattrs
+				// filters) we need to map their names to match what we would
+				// get from an actual archive.
+				//
+				// However, since these are xattrs on the underlying filesystem
+				// we don't need to provide any user warnings.
+				mappedName := xattr
+				if filter, isSpecial := getXattrFilter(xattr); isSpecial {
+					if newName := filter.ToTar(te.whiteoutMode, xattr); newName == nil {
+						// If the xattr should be ignored we can safely skip it
+						// here because MaskedOnDisk will also stop them from
+						// being cleared. However, just to be safe we should
+						// verify that this is actually true (otherwise you'll
+						// end up with silently wrong extractions).
+						if filter.MaskedOnDisk(te.whiteoutMode, xattr) {
+							// TODO: Find a nicer setup that doesn't require
+							// this fatal error.
+							log.Fatalf("[internal error] xattr %q is being hidden by GenerateEntry but UnpackShouldClear returns true")
+						}
+						continue
+					} else if *newName != xattr {
+						mappedName = *newName
+						log.Debugf("xattr{%s} remapping xattr %q to %q for later restoreMetadata", unsafeDir, xattr, mappedName)
+					}
+				}
+				dirHdr.Xattrs[mappedName] = string(value)
 			}
 		}
 
@@ -492,12 +612,15 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// ('\x00') but it could be possible that someone produces a different
 	// Typeflag, expecting that the path is the only thing that matters in a
 	// whiteout entry.
-	if strings.HasPrefix(file, whPrefix) {
+	if woFile, isWhiteout := strings.CutPrefix(file, whPrefix); isWhiteout {
+		if file == whOpaque {
+			woFile = ""
+		}
 		switch te.whiteoutMode {
 		case OCIStandardWhiteout:
-			return te.ociWhiteout(root, dir, file)
+			return te.ociWhiteout(root, dir, woFile)
 		case OverlayFSWhiteout:
-			return te.overlayFSWhiteout(dir, file)
+			return te.overlayFSWhiteout(root, dir, woFile)
 		default:
 			return fmt.Errorf("unknown whiteout mode %d", te.whiteoutMode)
 		}

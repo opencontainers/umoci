@@ -100,13 +100,16 @@ func Lgetxattr(path string, name string) ([]byte, error) {
 
 // Lclearxattrs is a wrapper around Llistxattr and Lremovexattr, which attempts
 // to remove all xattrs from a given file.
-func Lclearxattrs(path string, except map[string]struct{}) error {
+//
+// If skipFn is non-nil and returns true when passed an xattr we planned to
+// remove, that xattr is skipped and remains set on the path.
+func Lclearxattrs(path string, skipFn func(xattrName string) bool) error {
 	names, err := Llistxattr(path)
 	if err != nil {
 		return fmt.Errorf("lclearxattrs: get list: %w", err)
 	}
 	for _, name := range names {
-		if _, skip := except[name]; skip {
+		if skipFn != nil && skipFn(name) {
 			continue
 		}
 		if err := unix.Lremovexattr(path, name); err != nil {
@@ -115,7 +118,7 @@ func Lclearxattrs(path string, except map[string]struct{}) error {
 			if errors.Is(err, os.ErrPermission) {
 				continue
 			}
-			return fmt.Errorf("lclearxattrs: remove xattr: %w", err)
+			return fmt.Errorf("lclearxattrs: remove xattr %q: %w", name, err)
 		}
 	}
 	return nil

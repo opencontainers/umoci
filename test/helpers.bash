@@ -146,8 +146,8 @@ function umoci() {
 	#       the subcommand. We should probably switch to getopt here.
 	args+=("$1")
 
-	# We're rootless if we're asked to unpack something.
-	if [[ "$IS_ROOTLESS" != 0 && "$1" == "unpack" ]]; then
+	# Set --rootless for commands that require it when we're rootless.
+	if [[ "$IS_ROOTLESS" != 0 && "$1" =~ unpack|insert ]]; then
 		args+=("--rootless")
 	fi
 
