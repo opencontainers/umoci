@@ -125,8 +125,11 @@ func TestInvalidDigest(t *testing.T) {
 			_, err := io.CopyN(buffer, rand.Reader, int64(size))
 			require.NoError(t, err, "fill buffer with random data")
 
-			// Generate an *incorrect* hash.
-			fakeBytes := append(buffer.Bytes()[1:], 0x80)
+			// Generate an *incorrect* hash. Note that we need to make sure the
+			// appended byte is actually different to the original buffer
+			// (otherwise with size=1 we could get a spurrious test failure if
+			// the random byte is the same as the byte we replace it with).
+			fakeBytes := append(buffer.Bytes()[1:], buffer.Bytes()[0]^0x80)
 			expectedDigest := digest.SHA256.FromBytes(fakeBytes)
 			verifiedReader := &VerifiedReadCloser{
 				Reader:         ioutil.NopCloser(buffer),
