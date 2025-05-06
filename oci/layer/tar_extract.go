@@ -208,7 +208,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 						continue
 					}
 				}
-				log.Warnf("xattr{%s} ignoring forbidden xattr: %q", hdr.Name, xattr)
+				log.Warnf("xattr{%s} ignoring forbidden xattr %q", hdr.Name, xattr)
 				continue
 			} else if *newName != xattr {
 				mappedName = *newName
@@ -535,6 +535,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		}
 
 		// More faking to trick restoreMetadata to actually restore the directory.
+		dirHdr.Name = unsafeDir
 		dirHdr.Typeflag = tar.TypeDir
 		dirHdr.Linkname = ""
 
@@ -574,6 +575,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				mappedName := xattr
 				if filter, isSpecial := getXattrFilter(xattr); isSpecial {
 					if newName := filter.ToTar(te.whiteoutMode, xattr); newName == nil {
+						log.Debugf("xattr{%s} ignoring masked xattr %q while generating fake parent directory header for restoreMetadata", unsafeDir, xattr)
 						// If the xattr should be ignored we can safely skip it
 						// here because MaskedOnDisk will also stop them from
 						// being cleared. However, just to be safe we should
@@ -582,7 +584,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 						if filter.MaskedOnDisk(te.whiteoutMode, xattr) {
 							// TODO: Find a nicer setup that doesn't require
 							// this fatal error.
-							log.Fatalf("[internal error] xattr %q is being hidden by GenerateEntry but UnpackShouldClear returns true")
+							log.Fatalf("[internal error] xattr{%s} masked %q is being hidden by (%T).GenerateEntry but UnpackShouldClear returns true", unsafeDir, xattr, filter)
 						}
 						continue
 					} else if *newName != xattr {
