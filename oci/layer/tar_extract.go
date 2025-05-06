@@ -581,7 +581,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 						// being cleared. However, just to be safe we should
 						// verify that this is actually true (otherwise you'll
 						// end up with silently wrong extractions).
-						if filter.MaskedOnDisk(te.whiteoutMode, xattr) {
+						if !filter.MaskedOnDisk(te.whiteoutMode, xattr) {
 							// TODO: Find a nicer setup that doesn't require
 							// this fatal error.
 							log.Fatalf("[internal error] xattr{%s} masked %q is being hidden by (%T).GenerateEntry but UnpackShouldClear returns true", unsafeDir, xattr, filter)
