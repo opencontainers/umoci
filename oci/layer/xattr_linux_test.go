@@ -48,6 +48,42 @@ func getAllXattrs(t *testing.T, path string) map[string]string {
 	return xattrs
 }
 
+func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMode, wantDentries []tarDentry) {
+	t.Run("ToGenerateLayer", func(t *testing.T) {
+		// something reasonable
+		mtreeKeywords := []mtree.Keyword{
+			"size",
+			"type",
+			"uid",
+			"gid",
+			"mode",
+		}
+		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
+		assert.NoError(t, err, "mtree check")
+
+		reader, err := GenerateLayer(dir, deltas, &RepackOptions{
+			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
+		})
+		require.NoError(t, err, "generate layer")
+		defer reader.Close()
+
+		// We expect to get the exact same thing as the original archive
+		// entries in the new archive.
+		checkLayerEntries(t, reader, wantDentries)
+	})
+
+	t.Run("ToGenerateInsertLayer", func(t *testing.T) {
+		reader := GenerateInsertLayer(dir, ".", false, &RepackOptions{
+			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
+		})
+		defer reader.Close()
+
+		// We expect to get the exact same thing as the original archive
+		// entries in the new archive.
+		checkLayerEntries(t, reader, wantDentries)
+	})
+}
+
 func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 	dir := t.TempDir()
 
@@ -122,54 +158,56 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 		},
 	}
 
-	// With extraction using OverlayFSWhiteout we expect to get the remapped
-	// xattrs.
-	t.Run("OverlayFSWhiteout", func(t *testing.T) {
-		unpackOptions := UnpackOptions{
-			MapOptions: MapOptions{
-				Rootless: os.Geteuid() != 0,
-			},
-			WhiteoutMode: OverlayFSWhiteout,
-		}
-
-		te := NewTarExtractor(unpackOptions)
-
-		for _, de := range dentries {
-			hdr, rdr := tarFromDentry(de.tarDentry)
-			err := te.UnpackEntry(dir, hdr, rdr)
-			assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
-		}
-
-		for _, de := range dentries {
-			path := de.path
-			fullPath := filepath.Join(dir, path)
-
-			xattrs := getAllXattrs(t, fullPath)
-			assert.Equalf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v remapped properly", path, de.xattrs)
-
-			// Make sure none of the files are whiteouts.
-			_, isWo, err := isOverlayWhiteout(fullPath, fseval.Default)
-			require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
-			assert.Falsef(t, isWo, "isOverlayWhiteout(%q): regular entries with overlayfs xattrs should not end up being unpacked with overlayfs whiteout xattrs", path)
-		}
-
-		t.Run("ToGenerateLayer", func(t *testing.T) {
-			// something reasonable
-			mtreeKeywords := []mtree.Keyword{
-				"size",
-				"type",
-				"uid",
-				"gid",
-				"mode",
+	for _, test := range []struct {
+		name   string
+		woType WhiteoutMode
+	}{
+		{"OverlayFSWhiteout", OverlayFSWhiteout},
+		{"OCIStandardWhiteout", OCIStandardWhiteout},
+	} {
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			unpackOptions := UnpackOptions{
+				MapOptions: MapOptions{
+					Rootless: os.Geteuid() != 0,
+				},
+				WhiteoutMode: test.woType,
 			}
-			deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-			assert.NoError(t, err, "mtree check")
 
-			reader, err := GenerateLayer(dir, deltas, &RepackOptions{
-				TranslateOverlayWhiteouts: unpackOptions.WhiteoutMode == OverlayFSWhiteout,
-			})
-			require.NoError(t, err, "generate layer")
-			defer reader.Close()
+			te := NewTarExtractor(unpackOptions)
+
+			for _, de := range dentries {
+				hdr, rdr := tarFromDentry(de.tarDentry)
+				err := te.UnpackEntry(dir, hdr, rdr)
+				assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+			}
+
+			for _, de := range dentries {
+				path := de.path
+				fullPath := filepath.Join(dir, path)
+
+				xattrs := getAllXattrs(t, fullPath)
+
+				switch test.woType {
+				case OverlayFSWhiteout:
+					// With extraction using OverlayFSWhiteout we expect to get
+					// the remapped xattrs.
+					assert.Equalf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v remapped properly", path, de.xattrs)
+
+					// And so none of the inodes should be actual whiteouts.
+					_, isWo, err := isOverlayWhiteout(fullPath, fseval.Default)
+					require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
+					assert.Falsef(t, isWo, "isOverlayWhiteout(%q): regular entries with overlayfs xattrs should not end up being unpacked with overlayfs whiteout xattrs", path)
+
+				case OCIStandardWhiteout:
+					// For standard OCI extraction, trusted.overlay.* is not
+					// treated as a special xattr and so should not be
+					// remapped.
+					xattrs := getAllXattrs(t, fullPath)
+					assert.Equalf(t, de.xattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
+					assert.NotEqualf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
+				}
+			}
 
 			// We expect to get the exact same thing as the original archive
 			// entries in the new archive.
@@ -177,92 +215,7 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 			for _, dentry := range dentries {
 				wantDentries = append(wantDentries, dentry.tarDentry)
 			}
-			checkLayerEntries(t, reader, wantDentries)
+			testGenerateLayersForRoundTrip(t, dir, unpackOptions.WhiteoutMode, wantDentries)
 		})
-
-		t.Run("ToGenerateInsertLayer", func(t *testing.T) {
-			reader := GenerateInsertLayer(dir, ".", false, &RepackOptions{
-				TranslateOverlayWhiteouts: unpackOptions.WhiteoutMode == OverlayFSWhiteout,
-			})
-			defer reader.Close()
-
-			// We expect to get the exact same thing as the original archive
-			// entries in the new archive.
-			var wantDentries []tarDentry
-			for _, dentry := range dentries {
-				wantDentries = append(wantDentries, dentry.tarDentry)
-			}
-			checkLayerEntries(t, reader, wantDentries)
-		})
-	})
-
-	// With extraction using OverlayFSWhiteout we expect to get the remapped
-	// xattrs.
-	t.Run("OCIStandardWhiteout", func(t *testing.T) {
-		unpackOptions := UnpackOptions{
-			MapOptions: MapOptions{
-				Rootless: os.Geteuid() != 0,
-			},
-			WhiteoutMode: OCIStandardWhiteout,
-		}
-
-		te := NewTarExtractor(unpackOptions)
-
-		for _, de := range dentries {
-			hdr, rdr := tarFromDentry(de.tarDentry)
-			err := te.UnpackEntry(dir, hdr, rdr)
-			assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
-		}
-
-		for _, de := range dentries {
-			path := de.tarDentry.path
-			fullPath := filepath.Join(dir, path)
-
-			xattrs := getAllXattrs(t, fullPath)
-			assert.Equalf(t, de.xattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
-			assert.NotEqualf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
-		}
-
-		t.Run("ToGenerateLayer", func(t *testing.T) {
-			// something reasonable
-			mtreeKeywords := []mtree.Keyword{
-				"size",
-				"type",
-				"uid",
-				"gid",
-				"mode",
-			}
-			deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-			assert.NoError(t, err, "mtree check")
-
-			reader, err := GenerateLayer(dir, deltas, &RepackOptions{
-				TranslateOverlayWhiteouts: unpackOptions.WhiteoutMode == OverlayFSWhiteout,
-			})
-			require.NoError(t, err, "generate layer")
-			defer reader.Close()
-
-			// We expect to get the exact same thing as the original archive
-			// entries in the new archive.
-			var wantDentries []tarDentry
-			for _, dentry := range dentries {
-				wantDentries = append(wantDentries, dentry.tarDentry)
-			}
-			checkLayerEntries(t, reader, wantDentries)
-		})
-
-		t.Run("ToGenerateInsertLayer", func(t *testing.T) {
-			reader := GenerateInsertLayer(dir, ".", false, &RepackOptions{
-				TranslateOverlayWhiteouts: unpackOptions.WhiteoutMode == OverlayFSWhiteout,
-			})
-			defer reader.Close()
-
-			// We expect to get the exact same thing as the original archive
-			// entries in the new archive.
-			var wantDentries []tarDentry
-			for _, dentry := range dentries {
-				wantDentries = append(wantDentries, dentry.tarDentry)
-			}
-			checkLayerEntries(t, reader, wantDentries)
-		})
-	})
+	}
 }
