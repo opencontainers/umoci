@@ -93,7 +93,10 @@ type Meta struct {
 
 	// WhiteoutMode indicates what style of whiteout was written to disk
 	// when this filesystem was extracted.
-	WhiteoutMode layer.WhiteoutMode `json:"whiteout_mode"`
+	// NOTE: This field has been deprecated, as the feature was completely
+	// broken. See <https://github.com/opencontainers/umoci/issues/574> for
+	// more details.
+	DeprecatedWhiteoutMode layer.WhiteoutMode `json:"whiteout_mode,omitempty"`
 }
 
 // WriteTo writes a JSON-serialised version of Meta to the given io.Writer.
@@ -128,13 +131,17 @@ func ReadBundleMeta(bundle string) (Meta, error) {
 	defer fh.Close()
 
 	err = json.NewDecoder(fh).Decode(&meta)
-	if meta.Version != MetaVersion {
-		if err == nil {
-			err = fmt.Errorf("unsupported umoci.json version: %s", meta.Version)
-		}
-	}
 	if err != nil {
 		return meta, fmt.Errorf("decode metadata: %w", err)
+	}
+	if meta.Version != MetaVersion {
+		return meta, fmt.Errorf("decode metadata: unsupported umoci.json version %q", meta.Version)
+	}
+	// NOTE: This field has been deprecated, as the feature was completely
+	// broken. See <https://github.com/opencontainers/umoci/issues/574> for
+	// more details.
+	if meta.DeprecatedWhiteoutMode != layer.OCIStandardWhiteout {
+		return meta, fmt.Errorf("decode metadata: deprecated (broken) whiteout_mode field set")
 	}
 	return meta, nil
 }
