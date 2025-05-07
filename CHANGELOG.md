@@ -51,6 +51,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   cgroupv2 systems.
 - umoci has been migrated away from `github.com/pkg/errors` to Go stdlib error
   wrapping.
+- The gzip compression block size has been updated to be more friendly with
+  Docker and other tools that might round-trip the layer blob data (causing the
+  hash to change if the block size is different). #509
 
 ### Fixed ###
 - In 0.4.7, a performance regression was introduced as part of the
