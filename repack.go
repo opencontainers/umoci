@@ -106,11 +106,9 @@ func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Met
 			return err
 		}
 	} else {
-		packOptions := layer.RepackOptions{MapOptions: meta.MapOptions}
-		if meta.WhiteoutMode == layer.OverlayFSWhiteout {
-			packOptions.TranslateOverlayWhiteouts = true
-		}
-		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &packOptions)
+		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &layer.RepackOptions{
+			MapOptions: meta.MapOptions,
+		})
 		if err != nil {
 			return fmt.Errorf("generate diff layer: %w", err)
 		}

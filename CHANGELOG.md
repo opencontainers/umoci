@@ -42,6 +42,19 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
      *Note that `layer.UnpackLayer` still supports `OverlayFSWhiteout`.*
 
+   - Already-extracted bundles with `OverlayFSWhiteout` will now return an
+     error when umoci operates on them -- we included the whiteout mode in
+     our `umoci.json` but as the feature is broken, umoci will now refuse to
+     operate on such bundles. Such bundles could only have been created using
+     the now-error-inducing `UnpackRootfs` and `UnpackManifest` APIs mentioned
+     above, and as mentioned above we expect there to have been no real users
+     of this feature.
+
+     *Note that this only affects extracted bundles (a-la `umoci unpack`).*
+     Images created from such bundles are unaffected (even though their
+     contents probably should be audited, since the implementation of this
+     feature was quite broken in this usecase).
+
   Users should expect more breaking changes in the overlayfs-related Go APIs in
   a future umoci 0.6 release, as there is still a lot of work left to do.
 
