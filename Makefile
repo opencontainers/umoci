@@ -139,6 +139,10 @@ validate: ci-image
 .PHONY: local-validate
 local-validate: local-validate-go local-validate-spell local-validate-reproducible local-validate-build
 
+.PHONY: local-validate-keyring
+local-validate-keyring:
+	./hack/keyring_validate.sh
+
 .PHONY: local-validate-go
 local-validate-go:
 	@type gofmt     >/dev/null 2>/dev/null || (echo "ERROR: gofmt not found." && false)
