@@ -21,6 +21,30 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   had no real impact on umoci but for safety we implemented the now-recommended
   media-type embedding and verification. CVE-2021-41190
 
+### Breaking ###
+- In [umoci 0.4.7](#0.4.7), we added support for overlayfs unpacking using the
+  still-unstable Go API. However, the implementation is still missing some key
+  features and so we will now return errors from APIs that are still missing
+  key features:
+
+   - `layer.UnpackManifest` and `layer.UnpackRootfs` will now return an error
+     if `UnpackOptions.WhiteoutMode` is set to anything other than
+     `OCIStandardWhiteout` (the default).
+
+     This is because bundle-based unpacking currently tries to unpack all
+     layers into the same `rootfs` and generate an `mtree` manifest -- this
+     doesn't make sense for overlayfs-style unpacking and will produce garbage
+     bundles as a result. As such, we expect that nobody actually made use of
+     this feature (otherwise we would've seen bug reports complaining about it
+     being completely broken in the past 4 years). [opencontainers/umoci#574][]
+     tracks re-enabling this feature (and exposing to umoci CLI users, if
+     possible).
+
+     *Note that `layer.UnpackLayer` still supports `OverlayFSWhiteout`.*
+
+  Users should expect more breaking changes in the overlayfs-related Go APIs in
+  a future umoci 0.6 release, as there is still a lot of work left to do.
+
 ### Added ###
 - `umoci unpack` now supports handling layers compressed with zstd. This is
   something that was added in image-spec v1.2 (which we do not yet support
@@ -115,6 +139,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   any other xattrs (this is in contrast to the previous behaviour where they
   would be silently ignored regardless of the on-disk format being used).
 
+[opencontainers/umoci#574]: https://github.com/opencontainers/umoci/issues/574
 [linux-overlayfs-escaping-dad02fad84cbc]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=dad02fad84cbce30f317b69a4f2391f90045f79d
 
 ## [0.4.7] - 2021-04-05 ##

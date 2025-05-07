@@ -38,6 +38,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 
+	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
@@ -172,6 +173,14 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 // UnpackRootfs extracts all of the layers in the given manifest.
 // Some verification is done during image extraction.
 func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *UnpackOptions) (err error) {
+	// TODO: For now, unpacking layers into a bundle with the overlayfs on-disk
+	// format is not supported, because we still unpack everything into a
+	// single rootfs directory. For more information about outstanding issues,
+	// see <https://github.com/opencontainers/umoci/issues/574>.
+	if opt != nil && opt.WhiteoutMode != OCIStandardWhiteout {
+		return fmt.Errorf("%w: umoci cannot yet unpack a manifest into a bundle using the overlayfs on-disk format", internal.ErrUnimplemented)
+	}
+
 	engineExt := casext.NewEngine(engine)
 
 	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {

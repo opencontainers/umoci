@@ -34,6 +34,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
@@ -198,6 +199,38 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 
 	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
 	assert.ErrorIs(t, err, os.ErrNotExist, "test file should not be present")
+}
+
+// TODO: Temporary until <https://github.com/opencontainers/umoci/issues/574>
+// is resolved.
+func TestUnpackUnimplementedOverlayfs(t *testing.T) {
+	ctx := context.Background()
+
+	_, manifest, engineExt := makeImage(t)
+
+	// Unpacking with WhiteoutMode != OCIStandardWhiteout should fail.
+	unpackOptions := &UnpackOptions{
+		MapOptions: MapOptions{
+			UIDMappings: []rspec.LinuxIDMapping{
+				{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+				{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+			},
+			GIDMappings: []rspec.LinuxIDMapping{
+				{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+				{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+			},
+			Rootless: os.Geteuid() != 0,
+		},
+		WhiteoutMode: OverlayFSWhiteout,
+	}
+
+	bundle := t.TempDir()
+	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackManifest with OverlayFSWhiteout")
+
+	rootfs := t.TempDir()
+	err = UnpackRootfs(ctx, engineExt, rootfs, manifest, unpackOptions)
+	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackRootfs with OverlayFSWhiteout")
 }
 
 func TestLayerCompressionCheck(t *testing.T) {
