@@ -3,8 +3,10 @@ pub   rsa4096 2016-06-21 [SC] [expires: 2031-06-18]
 uid           [ultimate] Aleksa Sarai <asarai@suse.com>
 uid           [ultimate] Aleksa Sarai <asarai@suse.de>
 sub   rsa4096 2016-06-21 [E] [expires: 2031-06-18]
+      6EF371F1DBC97BD9C9E519AA605C5E921F773EA9
 
 -----BEGIN PGP PUBLIC KEY BLOCK-----
+Comment: github=cyphar
 
 mQINBFdpGN0BEADMEmLpnUel7OI2SM8f88i7w0iRgJd4kOvF1z673+zWCgaw9QW8
 ha7wAm/+3isas9IqlvGx61i6hbO7TFwcYi472VHhs4HP8jMtWytHHkjc3O9xlMc0
@@ -67,3 +69,4 @@ mp8FqVxVNdIS2capSF4+eOn3a4kcF0018xbTLA2AwQ2o9eF5G9qTdSVrN865VPCd
 KWr9ByCKAwVHsaSgVSJE/dse4f1toqeEHHbWk682U4RqOWZR4bA0
 =3/jE
 -----END PGP PUBLIC KEY BLOCK-----
+

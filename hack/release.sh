@@ -145,6 +145,35 @@ gpgflags=()
 [[ -z "$keyid" ]] || gpgflags+=("--default-key=$keyid")
 gpg_cansign "${gpgflags[@]}" || quit "Could not find suitable GPG key, skipping signing step."
 
+# Make explicit what we're doing.
+set -x
+
+# Check that the keyid is actually in the $project.keyring by signing a piece
+# of dummy text then verifying it against the list of keys in that keyring.
+tmp_gpgdir="$(mktemp -d --tmpdir "$project-sign-tmpkeyring.XXXXXX")"
+trap 'rm -r "$tmp_gpgdir"' EXIT
+
+tmp_project_gpgflags=("--homedir=$tmp_gpgdir" "--no-default-keyring" "--keyring=$project.keyring")
+gpg "${tmp_project_gpgflags[@]}" --import <"$root/$project.keyring"
+
+gpg "${gpgflags[@]}" --clear-sign <<<"[This is test text used for $project release scripts. $(date --rfc-email)]" |
+	gpg "${tmp_project_gpgflags[@]}" --verify || bail "Signing key ${keyid:-DEFAULT} is not in trusted $project.keyring list!"
+
+# Make sure the signer is okay with the list of keys in the keyring (once this
+# release is signed, distributions will trust this keyring).
+cat >&2 <<EOF
+== PLEASE VERIFY THE FOLLOWING KEYS ==
+
+The sources for this release will contain the following signing keys as
+"trusted", meaning that distributions may trust the keys to sign future
+releases. Please make sure that only authorised users' keys are listed.
+
+$(gpg "${tmp_project_gpgflags[@]}" --list-keys)
+
+[ Press ENTER to continue. ]
+EOF
+read -r
+
 # Sign everything.
 for target in "${targets[@]}"; do
 	target="${target//\//.}"
