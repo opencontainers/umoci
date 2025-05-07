@@ -21,7 +21,7 @@ package casext
 import (
 	"context"
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -64,7 +64,7 @@ func TestEngineBlobJSON(t *testing.T) {
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
-		gotBytes, err := ioutil.ReadAll(blobReader)
+		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err, "read entire blob")
 
 		var gotObject object
@@ -130,7 +130,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
-		gotBytes, err := ioutil.ReadAll(blobReader)
+		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err, "read entire blob")
 
 		var gotObject object

@@ -23,7 +23,7 @@ package casext
 
 import (
 	"context"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 
@@ -33,7 +33,7 @@ import (
 // Fuzz fuzzes the implementation of dirEngine.{PutBlobJSON,GetBlob}.
 func Fuzz(data []byte) int {
 	ctx := context.Background()
-	root, err := ioutil.TempDir("", "umoci-TestEngineBlobJSON")
+	root, err := os.MkdirTemp("", "umoci-TestEngineBlobJSON")
 	if err != nil {
 		return -1
 	}
@@ -61,7 +61,7 @@ func Fuzz(data []byte) int {
 	}
 	defer blobReader.Close()
 
-	_, err = ioutil.ReadAll(blobReader)
+	_, err = io.ReadAll(blobReader)
 	if err != nil {
 		return 0
 	}

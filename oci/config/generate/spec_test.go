@@ -20,7 +20,6 @@ package generate
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -36,7 +35,7 @@ import (
 func TestWriteTo(t *testing.T) {
 	g := New()
 
-	fh, err := ioutil.TempFile("", "umoci-TestWriteTo")
+	fh, err := os.CreateTemp(t.TempDir(), "umoci-TestWriteTo")
 	require.NoError(t, err)
 	defer os.RemoveAll(fh.Name())
 	defer fh.Close()

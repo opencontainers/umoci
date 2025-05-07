@@ -24,7 +24,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"path/filepath"
 	"testing"
@@ -307,7 +306,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 		require.NoError(t, plainLayerRdr.Close())
 	}()
 
-	plainLayerData, err := ioutil.ReadAll(plainLayerRdr)
+	plainLayerData, err := io.ReadAll(plainLayerRdr)
 	require.NoError(t, err)
 
 	assert.Equal(t, fakeLayerData, string(plainLayerData), "layer data should match after round-trip")

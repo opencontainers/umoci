@@ -20,7 +20,7 @@ package mutate
 
 import (
 	"bytes"
-	"io/ioutil"
+	"io"
 	"testing"
 
 	zstd "github.com/klauspost/compress/zstd"
@@ -40,7 +40,7 @@ func TestNoopCompressor(t *testing.T) {
 	require.NoError(t, err, "noop compress buffer")
 	assert.Empty(t, NoopCompressor.MediaTypeSuffix(), "noop compressor MediaTypeSuffix")
 
-	content, err := ioutil.ReadAll(r)
+	content, err := io.ReadAll(r)
 	require.NoError(t, err, "read from noop compressor")
 
 	assert.Equal(t, fact, string(content), "noop compressed data")
@@ -57,7 +57,7 @@ func TestGzipCompressor(t *testing.T) {
 	r, err = gzip.NewReader(r)
 	require.NoError(t, err, "read gzip data")
 
-	content, err := ioutil.ReadAll(r)
+	content, err := io.ReadAll(r)
 	require.NoError(t, err, "read from round-tripped gzip")
 
 	assert.Equal(t, fact, string(content), "gzip round-trip data")
@@ -74,7 +74,7 @@ func TestZstdCompressor(t *testing.T) {
 	dec, err := zstd.NewReader(r)
 	require.NoError(t, err, "read zstd data")
 
-	content, err := ioutil.ReadAll(dec)
+	content, err := io.ReadAll(dec)
 	require.NoError(t, err, "read from round-tripped zstd")
 
 	assert.Equal(t, fact, string(content), "zstd round-trip data")

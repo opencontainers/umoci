@@ -21,7 +21,6 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +49,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	rootfs := filepath.Join(dir, "rootfs")
 
 	// Create a host file that we want to make sure doesn't get overwrittern.
-	err := ioutil.WriteFile(filepath.Join(dir, file), hostValue, 0o644)
+	err := os.WriteFile(filepath.Join(dir, file), hostValue, 0o644)
 	require.NoError(t, err)
 
 	// Create our header. We raw prepend the prefix because we are generating
@@ -71,10 +70,10 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-	hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, file))
+	hostValueGot, err := os.ReadFile(filepath.Join(dir, file))
 	require.NoError(t, err, "read host file")
 
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, file))
+	ctrValueGot, err := os.ReadFile(filepath.Join(rootfs, file))
 	require.NoError(t, err, "read ctr file")
 
 	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
@@ -163,7 +162,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
+	ctrValueGot, err := os.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
 	require.NoError(t, err, "read ctr file")
 	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
 }
@@ -204,19 +203,19 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 				require.NoError(t, err)
 
 				// Make some subfiles and directories.
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0o644)
+				err = os.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0o644)
+				err = os.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
 				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0o755)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0o644)
+				err = os.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			} else {
-				err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0o644)
+				err := os.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			}
 
@@ -538,7 +537,7 @@ func TestUnpackHardlink(t *testing.T) {
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Make sure that the contents are as expected.
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(dir, regFile))
+	ctrValueGot, err := os.ReadFile(filepath.Join(dir, regFile))
 	require.NoError(t, err, "read regular file contents")
 	assert.Equal(t, ctrValue, ctrValueGot, "regular file contents should match tar entry")
 

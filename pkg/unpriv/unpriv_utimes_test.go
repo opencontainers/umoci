@@ -19,7 +19,6 @@
 package unpriv
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,13 +37,13 @@ func TestLutimesFile(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	path := filepath.Join(dir, "some file")
 
-	err = ioutil.WriteFile(path, []byte("some contents"), 0o755)
+	err = os.WriteFile(path, []byte("some contents"), 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)
@@ -86,7 +85,7 @@ func TestLutimesDirectory(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -134,7 +133,7 @@ func TestLutimesSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -199,7 +198,7 @@ func TestLutimesRelative(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 

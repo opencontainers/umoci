@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -38,7 +37,7 @@ func testAlgo(t *testing.T, algo Algorithm, expectedName string, expectedDiff bo
 	require.NoErrorf(t, err, "compress with %T (%q)", algo, expectedName)
 	assert.Equalf(t, expectedName, algo.MediaTypeSuffix(), "algo %T.MediaTypeSuffix", algo)
 
-	compressed, err := ioutil.ReadAll(r)
+	compressed, err := io.ReadAll(r)
 	require.NoError(t, err, "read compressed data")
 	if expectedDiff {
 		assert.NotEqualf(t, data, string(compressed), "compressed data with %T", algo)
@@ -51,7 +50,7 @@ func testAlgo(t *testing.T, algo Algorithm, expectedName string, expectedDiff bo
 	r, err = algo.Decompress(compressedBuf)
 	require.NoErrorf(t, err, "decompress with %T (%q)", algo, expectedName)
 
-	content, err := ioutil.ReadAll(r)
+	content, err := io.ReadAll(r)
 	require.NoErrorf(t, err, "read decompressed data")
 
 	assert.Equal(t, data, string(content), "%T (%q) round-tripped data", algo, expectedName)

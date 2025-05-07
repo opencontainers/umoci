@@ -25,7 +25,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"time"
@@ -300,7 +299,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// in the later diff_id check failing because the digester didn't get
 		// the whole uncompressed stream). Just blindly consume anything left
 		// in the layer.
-		if n, err := system.Copy(ioutil.Discard, layer); err != nil {
+		if n, err := system.Copy(io.Discard, layer); err != nil {
 			return fmt.Errorf("discard trailing archive bits: %w", err)
 		} else if n != 0 {
 			log.Debugf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the tar stream -- probably from GNU tar", layerDescriptor.Digest, n)
@@ -312,7 +311,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		// FIXME: We use layerData here because pgzip returns io.EOF from
 		// WriteTo, which causes havoc with system.Copy. Ideally we would use
 		// layerRaw. See <https://github.com/klauspost/pgzip/issues/38>.
-		if n, err := system.Copy(ioutil.Discard, layerData); err != nil {
+		if n, err := system.Copy(io.Discard, layerData); err != nil {
 			return fmt.Errorf("discard trailing raw bits: %w", err)
 		} else if n != 0 {
 			log.Warnf("unpack manifest: layer %s: ignoring %d trailing 'junk' bytes in the blob stream -- this may indicate a bug in the tool which built this image", layerDescriptor.Digest, n)

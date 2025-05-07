@@ -22,7 +22,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -80,7 +79,7 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 		}
 		require.NoError(t, err, "read next tar header")
 
-		contents, err := ioutil.ReadAll(tr)
+		contents, err := io.ReadAll(tr)
 		require.NoErrorf(t, err, "read data after tar header for %q", hdr.Name)
 		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
 			assert.Lenf(t, contents, int(hdr.Size), "data for %q should have same size as in tar header", hdr.Name)
@@ -106,11 +105,11 @@ func TestGenerate(t *testing.T) {
 	// Create some files and other fun things.
 	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial.
@@ -124,7 +123,7 @@ func TestGenerate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)
@@ -154,11 +153,11 @@ func TestGenerateMissingFileError(t *testing.T) {
 	// Create some files and other fun things.
 	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial from the main directory.
@@ -166,7 +165,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)
@@ -206,11 +205,11 @@ func TestGenerateWrongRootError(t *testing.T) {
 	// Create some files and other fun things.
 	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial from the main directory.
@@ -218,7 +217,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)

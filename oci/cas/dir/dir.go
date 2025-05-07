@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -83,7 +82,7 @@ type dirEngine struct {
 
 func (e *dirEngine) ensureTempDir() error {
 	if e.temp == "" {
-		tempDir, err := ioutil.TempDir(e.path, ".umoci-")
+		tempDir, err := os.MkdirTemp(e.path, ".umoci-")
 		if err != nil {
 			return fmt.Errorf("create tempdir: %w", err)
 		}
@@ -107,7 +106,7 @@ func (e *dirEngine) ensureTempDir() error {
 
 // verify ensures that the image is valid.
 func (e *dirEngine) validate() error {
-	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
+	content, err := os.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
@@ -163,7 +162,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 
 	// We copy this into a temporary file because we need to get the blob hash,
 	// but also to avoid half-writing an invalid blob.
-	fh, err := ioutil.TempFile(e.temp, "blob-")
+	fh, err := os.CreateTemp(e.temp, "blob-")
 	if err != nil {
 		return "", -1, fmt.Errorf("create temporary blob: %w", err)
 	}
@@ -255,7 +254,7 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 
 	// We copy this into a temporary index to ensure the atomicity of this
 	// operation.
-	fh, err := ioutil.TempFile(e.temp, "index-")
+	fh, err := os.CreateTemp(e.temp, "index-")
 	if err != nil {
 		return fmt.Errorf("create temporary index: %w", err)
 	}
@@ -288,7 +287,7 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 // that implements various reference resolution functions that should work for
 // most users.
 func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
-	content, err := ioutil.ReadFile(filepath.Join(e.path, indexFile))
+	content, err := os.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid

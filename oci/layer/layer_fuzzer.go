@@ -27,7 +27,6 @@ import (
 	"context"
 	"encoding/base64"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"unicode"
@@ -48,7 +47,7 @@ import (
 // createRandomFile is a helper function
 func createRandomFile(dirpath string, filename []byte, filecontents []byte) error {
 	fileP := filepath.Join(dirpath, string(filename))
-	if err := ioutil.WriteFile(fileP, filecontents, 0o644); err != nil {
+	if err := os.WriteFile(fileP, filecontents, 0o644); err != nil {
 		return err
 	}
 	defer os.Remove(fileP)
@@ -218,7 +217,7 @@ func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, 
 		},
 	}
 
-	root, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer")
+	root, err := os.MkdirTemp("", "umoci-TestUnpackManifestCustomLayer")
 	if err != nil {
 		return "nil", ispec.Manifest{}, casext.Engine{}, err
 	}
@@ -311,7 +310,7 @@ func FuzzUnpack(data []byte) int {
 	}
 	defer os.RemoveAll(root)
 
-	bundle, err := ioutil.TempDir("", "umoci-TestUnpackManifestCustomLayer_bundle")
+	bundle, err := os.MkdirTemp("", "umoci-TestUnpackManifestCustomLayer_bundle")
 	if err != nil {
 		return 0
 	}

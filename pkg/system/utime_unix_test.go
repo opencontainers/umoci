@@ -19,7 +19,6 @@
 package system
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -39,7 +38,7 @@ func TestLutimesFile(t *testing.T) {
 
 	path := filepath.Join(dir, "some file")
 
-	err := ioutil.WriteFile(path, []byte("some contents"), 0o755)
+	err := os.WriteFile(path, []byte("some contents"), 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)

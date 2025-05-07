@@ -20,7 +20,7 @@ package unpriv
 
 import (
 	"archive/tar"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,7 +40,7 @@ func TestWrapNoTricks(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -102,14 +102,14 @@ func TestLstat(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -145,7 +145,7 @@ func TestReadlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -192,7 +192,7 @@ func TestSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -241,7 +241,7 @@ func TestOpen(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -250,13 +250,13 @@ func TestOpen(t *testing.T) {
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0o555)
+	err = os.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -280,7 +280,7 @@ func TestOpen(t *testing.T) {
 	}
 
 	// Read the file contents.
-	gotContent, err := ioutil.ReadAll(fh)
+	gotContent, err := io.ReadAll(fh)
 	require.NoError(t, err)
 	assert.Equal(t, fileContent, gotContent, "unpriv open content should match actual file contents")
 
@@ -319,7 +319,7 @@ func TestReaddir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -328,11 +328,11 @@ func TestReaddir(t *testing.T) {
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0o755)
 	require.NoError(t, err)
@@ -394,7 +394,7 @@ func TestWrapWrite(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -411,7 +411,7 @@ func TestWrapWrite(t *testing.T) {
 	require.NoError(t, err)
 
 	err = Wrap(filepath.Join(dir, "some", "parent", "directories", "lolpath"), func(path string) error {
-		return ioutil.WriteFile(path, fileContent, 0o755)
+		return os.WriteFile(path, fileContent, 0o755)
 	})
 	require.NoError(t, err, "unwrap wrap WriteFile")
 
@@ -420,7 +420,7 @@ func TestWrapWrite(t *testing.T) {
 	defer fh.Close()
 
 	// Read the file contents.
-	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
 
@@ -443,7 +443,7 @@ func TestLink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -452,7 +452,7 @@ func TestLink(t *testing.T) {
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -468,7 +468,7 @@ func TestLink(t *testing.T) {
 	defer fh.Close()
 
 	// Read the file contents.
-	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
 
@@ -482,7 +482,7 @@ func TestLink(t *testing.T) {
 	fh1, err := Open(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	require.NoError(t, err)
 	defer fh1.Close()
-	if gotContent, err := ioutil.ReadAll(fh1); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh1); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link1 should match original content")
 	}
 
@@ -490,7 +490,7 @@ func TestLink(t *testing.T) {
 	fh2, err := Open(filepath.Join(dir, "some", "parent", "file2"))
 	require.NoError(t, err)
 	defer fh2.Close()
-	if gotContent, err := ioutil.ReadAll(fh2); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh2); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link2 should match original content")
 	}
 
@@ -527,7 +527,7 @@ func TestChtimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -536,7 +536,7 @@ func TestChtimes(t *testing.T) {
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -591,7 +591,7 @@ func TestLutimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -600,7 +600,7 @@ func TestLutimes(t *testing.T) {
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Symlink(".", filepath.Join(dir, "some", "parent", "directories", "link2"))
 	require.NoError(t, err)
@@ -684,7 +684,7 @@ func TestRemove(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -695,9 +695,9 @@ func TestRemove(t *testing.T) {
 	require.NoError(t, err)
 	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -744,7 +744,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -755,9 +755,9 @@ func TestRemoveAll(t *testing.T) {
 	require.NoError(t, err)
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -800,7 +800,7 @@ func TestMkdir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -842,7 +842,7 @@ func TestMkdirAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -889,7 +889,7 @@ func TestMkdirAllMissing(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -931,7 +931,7 @@ func TestMkdirRWPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -989,7 +989,7 @@ func TestMkdirRPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
@@ -1043,14 +1043,14 @@ func TestWalk(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
 	defer RemoveAll(dir)
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)

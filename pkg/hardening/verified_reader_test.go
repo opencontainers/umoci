@@ -23,7 +23,6 @@ import (
 	"crypto/rand"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	// Needed for digest.
@@ -45,13 +44,13 @@ func TestValid(t *testing.T) {
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 			verifiedReader := &VerifiedReadCloser{
-				Reader:         ioutil.NopCloser(buffer),
+				Reader:         io.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
 				ExpectedSize:   int64(size),
 			}
 
 			// Make sure if we copy-to-EOF we get no errors.
-			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			_, err = io.Copy(io.Discard, verifiedReader)
 			require.NoError(t, err, "digest+size should be correct on EOF")
 
 			// And on close we shouldn't get an error either.
@@ -72,13 +71,13 @@ func TestValidIgnoreLength(t *testing.T) {
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 			verifiedReader := &VerifiedReadCloser{
-				Reader:         ioutil.NopCloser(buffer),
+				Reader:         io.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
 				ExpectedSize:   -1,
 			}
 
 			// Make sure if we copy-to-EOF we get no errors.
-			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			_, err = io.Copy(io.Discard, verifiedReader)
 			require.NoError(t, err, "digest (size ignored) should be correct on EOF")
 
 			// And on close we shouldn't get an error either.
@@ -99,14 +98,14 @@ func TestValidTrailing(t *testing.T) {
 			// Get expected hash.
 			expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 			verifiedReader := &VerifiedReadCloser{
-				Reader:         ioutil.NopCloser(buffer),
+				Reader:         io.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
 				ExpectedSize:   -1,
 			}
 
 			// Read *half* of the bytes, leaving some remaining. We should get
 			// no errors.
-			_, err = io.CopyN(ioutil.Discard, verifiedReader, int64(size/2))
+			_, err = io.CopyN(io.Discard, verifiedReader, int64(size/2))
 			require.NoError(t, err, "should get no errors when reading half of blob")
 
 			// On close we shouldn't get an error, even though there are
@@ -132,13 +131,13 @@ func TestInvalidDigest(t *testing.T) {
 			fakeBytes := append(buffer.Bytes()[1:], buffer.Bytes()[0]^0x80)
 			expectedDigest := digest.SHA256.FromBytes(fakeBytes)
 			verifiedReader := &VerifiedReadCloser{
-				Reader:         ioutil.NopCloser(buffer),
+				Reader:         io.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
 				ExpectedSize:   int64(size),
 			}
 
 			// Make sure if we copy-to-EOF we get the right error.
-			_, err = io.Copy(ioutil.Discard, verifiedReader)
+			_, err = io.Copy(io.Discard, verifiedReader)
 			assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on EOF") //nolint:testifylint // assert.*Error* makes more sense
 
 			// And on close we should get the same error.
@@ -163,14 +162,14 @@ func TestInvalidDigest_Trailing_NoExpectedSize(t *testing.T) {
 				shortBuffer := buffer.Bytes()[:size-delta]
 				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
 				verifiedReader := &VerifiedReadCloser{
-					Reader:         ioutil.NopCloser(buffer),
+					Reader:         io.NopCloser(buffer),
 					ExpectedDigest: expectedDigest,
 					ExpectedSize:   -1,
 				}
 
 				// Read up to the end of the short buffer. We should get no
 				// errors.
-				_, err = io.CopyN(ioutil.Discard, verifiedReader, int64(size-delta))
+				_, err = io.CopyN(io.Discard, verifiedReader, int64(size-delta))
 				require.NoErrorf(t, err, "should get no errors when reading %d (%d-%d) bytes", size-delta, size, delta)
 
 				// Check that the digest does actually match right now.
@@ -204,13 +203,13 @@ func TestInvalidSize_LongBuffer(t *testing.T) {
 				shortBuffer := buffer.Bytes()[:size-delta]
 				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
 				verifiedReader := &VerifiedReadCloser{
-					Reader:         ioutil.NopCloser(buffer),
+					Reader:         io.NopCloser(buffer),
 					ExpectedDigest: expectedDigest,
 					ExpectedSize:   int64(size - delta),
 				}
 
 				// Make sure if we try to copy-to-EOF we get the right error.
-				read, err := io.Copy(ioutil.Discard, verifiedReader)
+				read, err := io.Copy(io.Discard, verifiedReader)
 				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on full copy") //nolint:testifylint // assert.*Error* makes more sense
 
 				// Make sure we don't actually read to the end of the buffer if
@@ -246,13 +245,13 @@ func TestInvalidSize_ShortBuffer(t *testing.T) {
 				// Generate a correct hash, but set the size to be larger.
 				expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 				verifiedReader := &VerifiedReadCloser{
-					Reader:         ioutil.NopCloser(buffer),
+					Reader:         io.NopCloser(buffer),
 					ExpectedDigest: expectedDigest,
 					ExpectedSize:   int64(size + delta),
 				}
 
 				// Make sure if we try to copy-to-EOF we get the right error.
-				_, err = io.Copy(ioutil.Discard, verifiedReader)
+				_, err = io.Copy(io.Discard, verifiedReader)
 				assert.ErrorIs(t, err, ErrSizeMismatch, "size should be invalid on full copy") //nolint:testifylint // assert.*Error* makes more sense
 
 				// On close we should get the error.
@@ -273,7 +272,7 @@ func TestNoop(t *testing.T) {
 	// Get expected hash.
 	expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 	verifiedReader := &VerifiedReadCloser{
-		Reader:         ioutil.NopCloser(buffer),
+		Reader:         io.NopCloser(buffer),
 		ExpectedDigest: expectedDigest,
 		ExpectedSize:   int64(size),
 	}
@@ -300,7 +299,7 @@ func TestNoop(t *testing.T) {
 	}
 
 	// Read from the uppermost wrapper, ignoring all errors.
-	_, _ = io.Copy(ioutil.Discard, tripleWrappedReader)
+	_, _ = io.Copy(io.Discard, tripleWrappedReader)
 	_ = tripleWrappedReader.Close()
 
 	// Bottom-most wrapper should've been hit.

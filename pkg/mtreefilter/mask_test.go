@@ -19,7 +19,6 @@
 package mtreefilter
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -45,17 +44,17 @@ func TestMaskDeltas(t *testing.T) {
 	mtreeKeywords := append(mtree.DefaultKeywords, "sha256digest")
 
 	// Create some files.
-	err := ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0o644)
+	err := os.WriteFile(filepath.Join(dir, "file1"), []byte("contents"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "file2"), []byte("another content"), 0o644)
 	require.NoError(t, err)
 	err = os.MkdirAll(filepath.Join(dir, "dir", "child"), 0o755)
 	require.NoError(t, err)
 	err = os.MkdirAll(filepath.Join(dir, "dir", "child2"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "dir", "file 3"), []byte("more content"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "dir", "child2", "4 files"), []byte("very content"), 0o644)
 	require.NoError(t, err)
 
 	// Generate a diff.
@@ -65,9 +64,9 @@ func TestMaskDeltas(t *testing.T) {
 	// Modify the root.
 	err = os.RemoveAll(filepath.Join(dir, "file2"))
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "dir", "new"), []byte("more content"), 0o755)
+	err = os.WriteFile(filepath.Join(dir, "dir", "new"), []byte("more content"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "file1"), []byte("different contents"), 0o666)
+	err = os.WriteFile(filepath.Join(dir, "file1"), []byte("different contents"), 0o666)
 	require.NoError(t, err)
 
 	// Generate the set of diffs.
@@ -114,7 +113,7 @@ func TestSimplifyFilter(t *testing.T) {
 	// Create some nested directories we can remove.
 	err := os.MkdirAll(filepath.Join(dir, "some", "path", "to", "remove"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0o644)
+	err = os.WriteFile(filepath.Join(dir, "some", "path", "to", "remove", "child"), []byte("very content"), 0o644)
 	require.NoError(t, err)
 
 	// Generate a diff.

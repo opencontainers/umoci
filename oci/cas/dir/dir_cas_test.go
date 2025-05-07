@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -95,7 +94,7 @@ func TestEngineBlob(t *testing.T) {
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
-		gotBytes, err := ioutil.ReadAll(blobReader)
+		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err)
 		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 
@@ -130,7 +129,7 @@ func TestEngineValidate(t *testing.T) {
 	// Invalid oci-layout.
 	t.Run("InvalidLayoutJSON-NonJSON", func(t *testing.T) {
 		image := t.TempDir()
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0o644))
 
 		engine, err := Open(image)
 		require.Error(t, err, "non-json oci-layout is not a valid image")
@@ -140,7 +139,7 @@ func TestEngineValidate(t *testing.T) {
 	// Invalid oci-layout.
 	t.Run("InvalidLayoutJSON-Empty", func(t *testing.T) {
 		image := t.TempDir()
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0o644))
+		require.NoError(t, os.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0o644))
 
 		engine, err := Open(image)
 		require.Error(t, err, "empty oci-layout is not a valid image")
@@ -165,7 +164,7 @@ func TestEngineValidate(t *testing.T) {
 		err := Create(image)
 		require.NoError(t, err, "create image")
 		require.NoError(t, os.RemoveAll(filepath.Join(image, blobDirectory)))
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0o755))
+		require.NoError(t, os.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0o755))
 
 		engine, err := Open(image)
 		require.Error(t, err, "blob directory as file is not a valid image")
@@ -239,9 +238,9 @@ func TestEngineGCLocking(t *testing.T) {
 
 	// Create subpaths to make sure our GC will only clean things that we can
 	// be sure can be removed.
-	umociTestDir, err := ioutil.TempDir(image, ".umoci-dead-")
+	umociTestDir, err := os.MkdirTemp(image, ".umoci-dead-")
 	require.NoError(t, err)
-	otherTestDir, err := ioutil.TempDir(image, "other-")
+	otherTestDir, err := os.MkdirTemp(image, "other-")
 	require.NoError(t, err)
 
 	// Open a new reference and GC it.
@@ -333,7 +332,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close()
 
-		gotBytes, err := ioutil.ReadAll(blobReader)
+		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err)
 		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 

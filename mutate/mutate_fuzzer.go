@@ -26,7 +26,6 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -132,7 +131,7 @@ func FuzzMutate(data []byte) int {
 	if err != nil {
 		return -1
 	}
-	dir, err := ioutil.TempDir("", "umoci-TestMutateAdd")
+	dir, err := os.MkdirTemp("", "umoci-TestMutateAdd")
 	if err != nil {
 		return -1
 	}
