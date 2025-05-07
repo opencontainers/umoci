@@ -39,11 +39,29 @@ func (gz gzipAlgo) MediaTypeSuffix() string {
 	return mediatype.GzipSuffix
 }
 
+// gzipBlockSize is the block size we use when generating gzip blobs. Changing
+// this value could result in different hashes (compared to the old setting)
+// for the same inputs, so it must not be changed except in exceptional
+// circumstances.
+//
+// This value was chosen to match the buffer size of containerd/docker because
+// it seems Docker will transparently re-compress blobs and a different block
+// size will result in different hashes. This is probably an unintentional
+// implementation detail that could change in the future, but given that it
+// will cause all layer blobs to have different hashes you can hope they would
+// notice if they break it.
+//
+// This also matches the new default for github.com/klauspost/pgzip.
+//
+// TODO: Make this configurable, with a warning to only change it in
+// exceptional circumstances.
+const gzipBlockSize = 1 << 20
+
 func (gz gzipAlgo) Compress(reader io.Reader) (io.ReadCloser, error) {
 	pipeReader, pipeWriter := io.Pipe()
 
 	gzw := gzip.NewWriter(pipeWriter)
-	if err := gzw.SetConcurrency(256<<10, 2*runtime.NumCPU()); err != nil {
+	if err := gzw.SetConcurrency(gzipBlockSize, 2*runtime.NumCPU()); err != nil {
 		return nil, fmt.Errorf("set concurrency level to %v blocks: %w", 2*runtime.NumCPU(), err)
 	}
 	go func() {

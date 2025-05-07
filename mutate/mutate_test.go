@@ -25,6 +25,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math/rand"
 	"path/filepath"
 	"testing"
 
@@ -43,15 +44,15 @@ import (
 // These come from just running the code.
 // TODO: Auto-generate these in a much more sane way.
 const (
-	expectedLayerDigest digest.Digest = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
-	expectedLayerDiffID digest.Digest = "sha256:96338a7c847bc582c82e4962a4285afcaf568e3913b0542b8745be27a418a806"
-	expectedLayerSize   int64         = 2048
+	expectedLayerDigest digest.Digest = "sha256:53d15a54123290a2316508a4fba65f1b568d34fcf2b88e69adcef02632e33ad8"
+	expectedLayerDiffID digest.Digest = "sha256:53d15a54123290a2316508a4fba65f1b568d34fcf2b88e69adcef02632e33ad8"
+	expectedLayerSize   int64         = 16778752
 
-	expectedConfigDigest digest.Digest = "sha256:ddcc2a93d5b0bcdcb571431c3607d84abe3752406f7c631a898340e6e7e61ed0"
+	expectedConfigDigest digest.Digest = "sha256:84207a85750d5d08c3489191c692ff2665e00b5c03a5730d9f2139b15d42aac2"
 	expectedConfigSize   int64         = 190
 
-	expectedManifestDigest digest.Digest = "sha256:a4f6551691241fd52bcabb6af7994c30e9f8c8fe3d5b6b0c1ffd137386689675"
-	expectedManifestSize   int64         = 403
+	expectedManifestDigest digest.Digest = "sha256:132e9c5067776320f2dc9451f2ae74330fffe31e6cf7fd88fd2a7441a57209a7"
+	expectedManifestSize   int64         = 407
 )
 
 func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
@@ -63,17 +64,29 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	require.NoError(t, err)
 	engineExt := casext.NewEngine(engine)
 
+	// We need to have a large enough file (16MiB) to make sure we hit the gzip
+	// buffer size (which can affect the compressed output).
+	randSrc := rand.New(rand.NewSource(19970325))
+	dataSize := int64(1 << 24)
+
 	// Write a tar layer.
 	var buffer bytes.Buffer
 	tw := tar.NewWriter(&buffer)
-	data := []byte("some contents")
-	tw.WriteHeader(&tar.Header{
+
+	// Header.
+	err = tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     "test",
 		Mode:     0644,
-		Size:     int64(len(data)),
+		Size:     dataSize,
 	})
-	tw.Write(data)
+	require.NoError(t, err, "write header")
+
+	// File data.
+	n, err := io.CopyN(tw, randSrc, dataSize)
+	require.NoError(t, err, "write file data")
+	require.Equal(t, dataSize, n, "written file data should match expected data size")
+
 	tw.Close()
 
 	// Push the base layer.
