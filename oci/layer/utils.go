@@ -74,7 +74,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	//
 	// TODO: We should probably add a flag to opt-out of this (though I'm not
 	//       sure why anyone would intentionally use this incorrectly).
-	if value, ok := hdr.Xattrs[rootlesscontainers.Keyname]; !ok {
+	if value, ok := hdr.Xattrs[rootlesscontainers.Keyname]; !ok { //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		// noop
 	} else if !mapOptions.Rootless {
 		log.Warnf("suspicious filesystem: saw special rootless xattr %s in non-rootless invocation", rootlesscontainers.Keyname)
@@ -96,7 +96,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 		// Drop the xattr since it's just a marker for us and shouldn't be in
 		// layers. This is technically out-of-spec, but so is
 		// "user.rootlesscontainers".
-		delete(hdr.Xattrs, rootlesscontainers.Keyname)
+		delete(hdr.Xattrs, rootlesscontainers.Keyname) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	}
 
 	hdr.Uid = newUID
@@ -110,6 +110,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 // mappings. Returns an error if it's not possible to map the given UID.
 func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	// To avoid nil references.
+	//nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	if hdr.Xattrs == nil {
 		hdr.Xattrs = make(map[string]string)
 	}
@@ -117,10 +118,10 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	// If there is already a "user.rootlesscontainers" we give a warning in
 	// both rootless and root cases -- but in rootless we explicitly delete the
 	// entry because we might replace it.
-	if _, ok := hdr.Xattrs[rootlesscontainers.Keyname]; ok {
+	if _, ok := hdr.Xattrs[rootlesscontainers.Keyname]; ok { //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		if mapOptions.Rootless {
 			log.Warnf("rootless{%s} ignoring special xattr %s stored in layer", hdr.Name, rootlesscontainers.Keyname)
-			delete(hdr.Xattrs, rootlesscontainers.Keyname)
+			delete(hdr.Xattrs, rootlesscontainers.Keyname) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		} else {
 			log.Warnf("suspicious layer: saw special xattr %s in non-rootless invocation", rootlesscontainers.Keyname)
 		}
@@ -158,7 +159,7 @@ func unmapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 			// actually be arbitrary bytes (in case you didn't know this and
 			// were confused like me when this worked). See
 			// <https://blog.golang.org/strings> for more detail.
-			hdr.Xattrs[rootlesscontainers.Keyname] = string(valueBytes)
+			hdr.Xattrs[rootlesscontainers.Keyname] = string(valueBytes) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		}
 
 		hdr.Uid = 0

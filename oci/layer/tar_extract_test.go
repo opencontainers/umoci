@@ -280,7 +280,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
 			{tarDentry{path: "dir", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
 			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
@@ -290,7 +290,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
 			{tarDentry{path: "dir", ftype: tar.TypeDir}, false, false},
-			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, false, false},
 			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
@@ -299,7 +299,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "level1a", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, true, true},
 			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
 			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
@@ -321,7 +321,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, false, false},
 			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "level1a", ftype: tar.TypeDir}, false, false},
-			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, false, false},
 			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
 			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
@@ -365,13 +365,13 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: whPrefix + "dir2", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
 			{tarDentry{path: "dir1", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir1/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir1/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir1/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir1/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
 			{tarDentry{path: "dir1/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
 			{tarDentry{path: whPrefix + "dir1", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "dir2", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir2/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir2/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir2/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 		}},
 	} {

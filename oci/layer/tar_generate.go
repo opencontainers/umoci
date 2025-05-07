@@ -131,7 +131,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 	if err != nil {
 		return fmt.Errorf("convert fi to hdr: %w", err)
 	}
-	hdr.Xattrs = map[string]string{}
+	hdr.Xattrs = map[string]string{} //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	// Usually incorrect for containers and was added in Go 1.10 causing
 	// changes to our output on a compiler bump...
 	hdr.Uname = ""
@@ -218,7 +218,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		}
 		// Note that Go strings can actually be arbitrary byte sequences, so
 		// this conversion (while it might look a bit wrong) is actually fine.
-		hdr.Xattrs[mappedName] = string(value)
+		hdr.Xattrs[mappedName] = string(value) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	}
 
 	// Not all systems have the concept of an inode, but I'm not in the mood to

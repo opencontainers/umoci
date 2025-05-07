@@ -45,7 +45,7 @@ type tarDentry struct {
 func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
 	var r io.Reader
 	var size int64
-	if de.ftype == tar.TypeReg || de.ftype == tar.TypeRegA {
+	if de.ftype == tar.TypeReg || de.ftype == tar.TypeRegA { //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 		size = int64(len(de.contents))
 		r = bytes.NewBufferString(de.contents)
 	}
@@ -61,7 +61,7 @@ func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
 		Typeflag:   de.ftype,
 		Mode:       int64(mode),
 		Size:       size,
-		Xattrs:     de.xattrs,
+		Xattrs:     de.xattrs, //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		ModTime:    testutils.Unix(1210393, 4528036),
 		AccessTime: testutils.Unix(7892829, 2341211),
 		ChangeTime: testutils.Unix(8731293, 8218947),
@@ -81,7 +81,7 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 
 		contents, err := io.ReadAll(tr)
 		require.NoErrorf(t, err, "read data after tar header for %q", hdr.Name)
-		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
+		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA { //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			assert.Lenf(t, contents, int(hdr.Size), "data for %q should have same size as in tar header", hdr.Name)
 		} else {
 			assert.Zerof(t, hdr.Size, "non-regular-file tar header for %q should have an empty size", hdr.Name)
@@ -92,7 +92,7 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 			path:     hdr.Name,
 			ftype:    hdr.Typeflag,
 			linkname: hdr.Linkname,
-			xattrs:   hdr.Xattrs,
+			xattrs:   hdr.Xattrs, //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			contents: string(contents),
 		})
 	}

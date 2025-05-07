@@ -184,7 +184,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		}
 	}
 
-	for xattr, value := range hdr.Xattrs {
+	for xattr, value := range hdr.Xattrs { //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		value := []byte(value)
 
 		// Some xattrs need to be skipped for sanity reasons, such as
@@ -559,7 +559,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			}
 		}
 		if len(xattrs) > 0 {
-			dirHdr.Xattrs = map[string]string{}
+			dirHdr.Xattrs = map[string]string{} //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			for _, xattr := range xattrs {
 				value, err := te.fsEval.Lgetxattr(dir, xattr)
 				if err != nil {
@@ -592,7 +592,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 						log.Debugf("xattr{%s} remapping xattr %q to %q for later restoreMetadata", unsafeDir, xattr, mappedName)
 					}
 				}
-				dirHdr.Xattrs[mappedName] = string(value)
+				dirHdr.Xattrs[mappedName] = string(value) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			}
 		}
 
@@ -698,7 +698,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// will fix all of that for us.
 	switch hdr.Typeflag {
 	// regular file
-	case tar.TypeReg, tar.TypeRegA:
+	case tar.TypeReg, tar.TypeRegA: //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 		// Create a new file, then just copy the data.
 		fh, err := te.fsEval.Create(path)
 		if err != nil {
