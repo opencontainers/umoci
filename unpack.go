@@ -33,7 +33,7 @@ import (
 )
 
 // Unpack unpacks an image to the specified bundle path.
-func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackOptions layer.UnpackOptions) error {
+func Unpack(engineExt casext.Engine, fromName, bundlePath string, unpackOptions layer.UnpackOptions) error {
 	meta := Meta{
 		Version:    MetaVersion,
 		MapOptions: unpackOptions.MapOptions,

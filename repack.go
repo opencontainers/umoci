@@ -40,7 +40,14 @@ import (
 // data in the bundle.
 //
 // If layerCompressor is nil, the compression algorithm is auto-selected.
-func Repack(engineExt casext.Engine, tagName string, bundlePath string, meta Meta, history *ispec.History, filters []mtreefilter.FilterFunc, refreshBundle bool, mutator *mutate.Mutator, layerCompressor mutate.Compressor) error {
+func Repack(engineExt casext.Engine, tagName, bundlePath string,
+	meta Meta,
+	history *ispec.History,
+	filters []mtreefilter.FilterFunc,
+	refreshBundle bool,
+	mutator *mutate.Mutator,
+	layerCompressor mutate.Compressor, //nolint:staticcheck // SA1019: this interface is defined by us and we keep it for compatibility
+) error {
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
