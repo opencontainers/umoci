@@ -20,6 +20,7 @@ package layer
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -282,7 +283,7 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 	idx := 0
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err, "read tar archive")

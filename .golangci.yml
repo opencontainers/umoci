@@ -23,6 +23,7 @@ linters:
     - containedctx
     - contextcheck
     - errcheck
+    - errorlint
     - godot
     - govet
     - importas

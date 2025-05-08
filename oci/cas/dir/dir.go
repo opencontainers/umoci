@@ -352,7 +352,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	}
 	for _, path := range matches {
 		err = e.cleanPath(ctx, path)
-		if err != nil && err != filepath.SkipDir {
+		if err != nil && !errors.Is(err, filepath.SkipDir) {
 			return err
 		}
 	}

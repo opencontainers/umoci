@@ -115,7 +115,7 @@ func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath)
 
 	// Run walkFunc.
 	if err := ws.walkFunc(descriptorPath); err != nil {
-		if err == ErrSkipDescriptor {
+		if errors.Is(err, ErrSkipDescriptor) {
 			return nil
 		}
 		return err
@@ -137,7 +137,7 @@ func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath)
 	if err != nil {
 		// Ignore cases where the descriptor points to an object we don't know
 		// how to parse.
-		if err == cas.ErrUnknownType {
+		if errors.Is(err, cas.ErrUnknownType) {
 			log.Infof("skipping walk into unknown media-type %v of blob %v", descriptor.MediaType, descriptor.Digest)
 			return nil
 		}

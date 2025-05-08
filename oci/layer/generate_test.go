@@ -21,6 +21,7 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"io"
 	"os"
 	"path/filepath"
@@ -74,7 +75,7 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 	var sawEntries []tarDentry
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err, "read next tar header")
