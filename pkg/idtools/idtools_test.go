@@ -23,6 +23,7 @@ import (
 
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func TestToHost(t *testing.T) {
@@ -47,7 +48,7 @@ func TestToHost(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map container id %d", test.container)
 			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
@@ -62,7 +63,7 @@ func TestToHostNil(t *testing.T) {
 		1,
 	} {
 		id, err := ToHost(test, nil)
-		assert.NoErrorf(t, err, "should be able to map container id %d", test)
+		require.NoErrorf(t, err, "should be able to map container id %d", test)
 		assert.Equalf(t, test, id, "map container id %d", test)
 	}
 }
@@ -91,7 +92,7 @@ func TestToHostLarger(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map container id %d", test.container)
 			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
@@ -134,7 +135,7 @@ func TestToHostMultiple(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a host id", "should get an error with container id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map container id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map container id %d", test.container)
 			assert.Equalf(t, test.host, id, "map container id %d", test.container)
 		}
 	}
@@ -162,7 +163,7 @@ func TestToContainer(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map host id %d", test.container)
 			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
@@ -177,7 +178,7 @@ func TestToContainerNil(t *testing.T) {
 		1,
 	} {
 		id, err := ToContainer(test, nil)
-		assert.NoErrorf(t, err, "should be able to map host id %d", test)
+		require.NoErrorf(t, err, "should be able to map host id %d", test)
 		assert.Equalf(t, test, id, "map host id %d", test)
 	}
 }
@@ -206,7 +207,7 @@ func TestToContainerLarger(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map host id %d", test.container)
 			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
@@ -249,14 +250,13 @@ func TestToContainerMultiple(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "cannot be mapped to a container id", "should get an error with host id %d", test.container)
 		} else {
-			assert.NoErrorf(t, err, "should be able to map host id %d", test.container)
+			require.NoErrorf(t, err, "should be able to map host id %d", test.container)
 			assert.Equalf(t, test.container, id, "map host id %d", test.container)
 		}
 	}
 }
 
 func TestParseIDMapping(t *testing.T) {
-
 	for _, test := range []struct {
 		spec                  string
 		host, container, size uint32
@@ -278,10 +278,10 @@ func TestParseIDMapping(t *testing.T) {
 		if test.failure {
 			assert.ErrorContainsf(t, err, "invalid", "should get an error with mapping %q", test.spec)
 		} else {
-			assert.NoErrorf(t, err, "should be able to parse mapping %q", test.spec)
-			assert.EqualValuesf(t, test.host, idMap.HostID, "invalid host id for mapping %q", test.spec)
-			assert.EqualValuesf(t, test.container, idMap.ContainerID, "invalid container id for mapping %q", test.spec)
-			assert.EqualValuesf(t, test.size, idMap.Size, "invalid size for mapping %q", test.spec)
+			require.NoErrorf(t, err, "should be able to parse mapping %q", test.spec)
+			assert.Equalf(t, test.host, idMap.HostID, "invalid host id for mapping %q", test.spec)
+			assert.Equalf(t, test.container, idMap.ContainerID, "invalid container id for mapping %q", test.spec)
+			assert.Equalf(t, test.size, idMap.Size, "invalid size for mapping %q", test.spec)
 		}
 	}
 }

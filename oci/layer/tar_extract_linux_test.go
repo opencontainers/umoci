@@ -103,7 +103,7 @@ func TestUnpackEntry_OverlayFSWhiteout(t *testing.T) {
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
-		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+		require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
 	assertIsPlainWhiteout(t, filepath.Join(dir, "file"))
@@ -133,7 +133,7 @@ func TestUnpackEntry_OverlayFSOpaqueWhiteout(t *testing.T) {
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
-		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+		require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "dir"))
@@ -169,7 +169,7 @@ func TestUnpackEntry_OverlayFSWhiteout_MissingDirs(t *testing.T) {
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
-		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+		require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-noparent/a/b/c"))
@@ -210,7 +210,7 @@ func TestUnpackEntry_OverlayFSWhiteout_Nested(t *testing.T) {
 	for _, de := range dentries {
 		hdr, rdr := tarFromDentry(de)
 		err := te.UnpackEntry(dir, hdr, rdr)
-		assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+		require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 	}
 
 	assertIsOpaqueWhiteout(t, filepath.Join(dir, "opaque-innerplain"))

@@ -291,7 +291,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 	}
 
 	// The media-type should be what we expected.
-	assert.Equalf(t, newLayerDescriptor.MediaType, expectedMediaType, "unexpected media type of new layer with compression algo %q", usedCompressName)
+	assert.Equalf(t, expectedMediaType, newLayerDescriptor.MediaType, "unexpected media type of new layer with compression algo %q", usedCompressName)
 
 	// Double-check that the blob actually used the expected compression
 	// algorithm.

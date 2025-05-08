@@ -252,16 +252,16 @@ func TestLayerCompressionCheck(t *testing.T) {
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equalf(t, isLayerType(test.mediaType), test.expectedIsLayer, "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
+			assert.Equalf(t, test.expectedIsLayer, isLayerType(test.mediaType), "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
 
 			if test.expectedIsLayer {
 				gotAlgoName, gotAlgo, err := getLayerCompressAlgorithm(test.mediaType)
 				if test.expectedAlgorithm == nil {
 					assert.Errorf(t, err, "getLayerCompressAlgorithm(%q) should be unsupported", test.mediaType)
 				} else {
-					assert.NoErrorf(t, err, "getLayerCompressAlgorithm(%q) should succeed", test.mediaType)
+					require.NoErrorf(t, err, "getLayerCompressAlgorithm(%q) should succeed", test.mediaType)
 					assert.Equalf(t, gotAlgoName, test.expectedAlgorithm.MediaTypeSuffix(), "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
-					assert.Equalf(t, gotAlgo, test.expectedAlgorithm, "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
+					assert.Equalf(t, test.expectedAlgorithm, gotAlgo, "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
 				}
 			}
 		})

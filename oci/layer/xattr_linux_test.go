@@ -60,7 +60,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &RepackOptions{
 			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
@@ -180,7 +180,7 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 			for _, de := range dentries {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 			}
 
 			for _, de := range dentries {
@@ -293,7 +293,7 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 			for _, de := range dentries {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 				// Apply the "auto" xattrs -- in order to make it seem like this
 				// was done automatically during extraction when the inode was

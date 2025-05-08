@@ -59,7 +59,7 @@ func TestCreateLayout(t *testing.T) {
 
 	// We should get an error if we try to create a new image atop an old one.
 	err = Create(image)
-	assert.Error(t, err, "trying to clobber existing image should fail")
+	assert.Error(t, err, "trying to clobber existing image should fail") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestEngineBlob(t *testing.T) {
@@ -83,7 +83,7 @@ func TestEngineBlob(t *testing.T) {
 		digester := cas.BlobAlgorithm.Digester()
 		expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes))
 		require.NoError(t, err)
-		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher")
+		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 		expectedDigest := digester.Digest()
 
 		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
@@ -103,12 +103,12 @@ func TestEngineBlob(t *testing.T) {
 		require.NoError(t, err, "delete blob")
 
 		blobReader2, err := engine.GetBlob(ctx, digest)
-		assert.ErrorIs(t, err, os.ErrNotExist, "get blob should fail for non-existent blob")
+		assert.ErrorIs(t, err, os.ErrNotExist, "get blob should fail for non-existent blob") //nolint:testifylint // assert.*Error* makes more sense
 		assert.Nil(t, blobReader2, "get blob should return nil blob reader for non-existent blob")
 
 		// DeleteBlob is idempotent. It shouldn't cause an error.
 		err = engine.DeleteBlob(ctx, digest)
-		assert.NoError(t, err, "delete non-existent blob should still succeed")
+		require.NoError(t, err, "delete non-existent blob should still succeed")
 	}
 
 	// Should be no blobs left.
@@ -123,7 +123,7 @@ func TestEngineValidate(t *testing.T) {
 		image := t.TempDir()
 
 		engine, err := Open(image)
-		assert.Error(t, err, "empty directory is not a valid image")
+		require.Error(t, err, "empty directory is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -133,7 +133,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "non-json oci-layout is not a valid image")
+		require.Error(t, err, "non-json oci-layout is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -143,7 +143,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "empty oci-layout is not a valid image")
+		require.Error(t, err, "empty oci-layout is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -155,7 +155,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, os.RemoveAll(filepath.Join(image, blobDirectory)))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "missing blob directory is not a valid image")
+		require.Error(t, err, "missing blob directory is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -168,7 +168,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "blob directory as file is not a valid image")
+		require.Error(t, err, "blob directory as file is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -180,7 +180,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, os.RemoveAll(filepath.Join(image, indexFile)))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "missing index.json is not a valid image")
+		require.Error(t, err, "missing index.json is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -193,7 +193,7 @@ func TestEngineValidate(t *testing.T) {
 		require.NoError(t, os.Mkdir(filepath.Join(image, indexFile), 0755))
 
 		engine, err := Open(image)
-		assert.Error(t, err, "index.json as directory is not a valid image")
+		require.Error(t, err, "index.json as directory is not a valid image")
 		assert.Nil(t, engine)
 	})
 
@@ -202,7 +202,7 @@ func TestEngineValidate(t *testing.T) {
 		image := filepath.Join(t.TempDir(), "non-exist")
 
 		engine, err := Open(image)
-		assert.Error(t, err, "non-existent path is not a valid image")
+		require.Error(t, err, "non-existent path is not a valid image")
 		assert.Nil(t, engine)
 	})
 }
@@ -226,7 +226,7 @@ func TestEngineGCLocking(t *testing.T) {
 	digester := cas.BlobAlgorithm.Digester()
 	expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(content))
 	require.NoError(t, err)
-	assert.EqualValues(t, len(content), expectedSize, "whole blob should be written to hasher")
+	assert.EqualValues(t, len(content), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 	expectedDigest := digester.Digest()
 
 	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
@@ -313,7 +313,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		digester := cas.BlobAlgorithm.Digester()
 		expectedSize, err := io.Copy(digester.Hash(), bytes.NewReader(test.bytes))
 		require.NoError(t, err)
-		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher")
+		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 		expectedDigest := digester.Digest()
 
 		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))

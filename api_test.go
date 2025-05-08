@@ -32,20 +32,20 @@ func TestCreateExistingFails(t *testing.T) {
 
 	// opening a bad layout should fail
 	_, err := OpenLayout(dir)
-	require.Error(t, err, "open invalid layout")
+	assert.Error(t, err, "open invalid layout") //nolint:testifylint // assert.*Error* makes more sense
 
 	// remove directory so that create can create it
 	require.NoError(t, os.RemoveAll(dir))
 
 	// create should work
 	_, err = CreateLayout(dir)
-	require.NoError(t, err, "create new layout")
+	assert.NoError(t, err, "create new layout") //nolint:testifylint // assert.*Error* makes more sense
 
 	// but not twice
 	_, err = CreateLayout(dir)
-	assert.Error(t, err, "create should not work on existing layout")
+	assert.Error(t, err, "create should not work on existing layout") //nolint:testifylint // assert.*Error* makes more sense
 
 	// but open should work now
 	_, err = OpenLayout(dir)
-	assert.NoError(t, err, "open layout")
+	assert.NoError(t, err, "open layout") //nolint:testifylint // assert.*Error* makes more sense
 }

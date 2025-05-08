@@ -366,12 +366,12 @@ func TestEngineReference(t *testing.T) {
 			require.NoErrorf(t, err, "delete reference %s", name)
 
 			gotDescriptorPaths, err = engineExt.ResolveReference(ctx, name)
-			assert.NoErrorf(t, err, "resolve reference %s", name)
+			require.NoErrorf(t, err, "resolve reference %s", name)
 			assert.Empty(t, gotDescriptorPaths, "resolve reference after deleting should find no references")
 
 			// DeleteReference is idempotent. It shouldn't cause an error.
 			err = engineExt.DeleteReference(ctx, name)
-			assert.NoErrorf(t, err, "delete non-existent reference %s", name)
+			require.NoErrorf(t, err, "delete non-existent reference %s", name)
 		})
 	}
 }
@@ -392,7 +392,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	err = engine.Close()
-	assert.NoError(t, err, "close read-write engine")
+	require.NoError(t, err, "close read-write engine")
 
 	for idx, test := range descMap {
 		test := test // copy iterator
@@ -407,7 +407,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			require.NoErrorf(t, err, "update reference %s", name)
 
 			err = engine.Close()
-			assert.NoError(t, err, "close read-write engine")
+			require.NoError(t, err, "close read-write engine")
 
 			// make it readonly
 			testutils.MakeReadOnly(t, image)
@@ -426,10 +426,10 @@ func TestEngineReferenceReadonly(t *testing.T) {
 
 			// Make sure that writing will FAIL.
 			err = newEngineExt.UpdateReference(ctx, name+"new", test.index)
-			assert.Errorf(t, err, "update reference %s for read-only image should fail", name)
+			assert.Errorf(t, err, "update reference %s for read-only image should fail", name) //nolint:testifylint // assert.*Error* makes more sense
 
 			err = newEngine.Close()
-			assert.NoError(t, err, "close read-only engine")
+			require.NoError(t, err, "close read-only engine")
 		})
 	}
 }

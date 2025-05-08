@@ -236,7 +236,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 
 			// Make sure that the path is gone.
 			_, err = os.Lstat(filepath.Join(dir, test.path))
-			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path")
+			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path") //nolint:testifylint // assert.*Error* makes more sense
 
 			// Make sure the parent directory wasn't modified.
 			fi, err := os.Lstat(filepath.Join(dir, rawDir))
@@ -405,7 +405,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
 			}
 
 			// Now we apply the upper files in another TarExtractor.
@@ -418,7 +418,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
 			}
 
 			// And now apply a whiteout for the whiteoutRoot.
@@ -427,7 +427,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 			err = te.UnpackEntry(dir, whHdr, nil)
-			assert.NoErrorf(t, err, "UnpackEntry %s whiteout", whiteoutRoot)
+			require.NoErrorf(t, err, "UnpackEntry %s whiteout", whiteoutRoot)
 
 			// Now we double-check it worked. If the file was in "upper" it
 			// should have survived. If it was in lower it shouldn't. We don't
@@ -443,9 +443,9 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				fullPath := filepath.Join(whiteoutRoot, de.path)
 				_, err := te.fsEval.Lstat(fullPath)
 				if de.shouldSurvive {
-					assert.NoError(t, err)
+					assert.NoError(t, err, "upper layer file should have survived") //nolint:testifylint // assert.*Error* makes more sense
 				} else {
-					assert.ErrorIs(t, err, os.ErrNotExist)
+					assert.ErrorIs(t, err, os.ErrNotExist, "lower layer file should have been removed") //nolint:testifylint // assert.*Error* makes more sense
 				}
 			}
 
@@ -565,9 +565,9 @@ func TestUnpackHardlink(t *testing.T) {
 
 	// Double-check readlink.
 	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
-	assert.NoError(t, err, "readlink symlink")
+	require.NoError(t, err, "readlink symlink")
 	linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
-	assert.NoError(t, err, "readlink symlink to hardlink")
+	require.NoError(t, err, "readlink symlink to hardlink")
 	assert.Equal(t, linknameA, linknameB, "hardlink to symlink should have same readlink data")
 
 	// Make sure that uid and gid don't apply to hardlinks.
@@ -725,15 +725,15 @@ func TestIsDirlink(t *testing.T) {
 
 	// "Read" a non-existent link.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "doesnt-exist"))
-	assert.Error(t, err, "isDirlink non-existent path")
+	assert.Error(t, err, "isDirlink non-existent path") //nolint:testifylint // assert.*Error* makes more sense
 
 	// "Read" a directory.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "test_dir"))
-	assert.Error(t, err, "isDirlink directory")
+	assert.Error(t, err, "isDirlink directory") //nolint:testifylint // assert.*Error* makes more sense
 
 	// "Read" a file.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "test_file"))
-	assert.Error(t, err, "isDirlink file")
+	assert.Error(t, err, "isDirlink file") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Break the symlink.
 	err = os.Remove(filepath.Join(dir, "test_dir"))

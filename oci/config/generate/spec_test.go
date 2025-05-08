@@ -42,10 +42,10 @@ func TestWriteTo(t *testing.T) {
 	defer fh.Close()
 
 	size, err := g.WriteTo(fh)
-	assert.NoError(t, err, "generator WriteTo")
+	require.NoError(t, err, "generator WriteTo")
 
 	fi, err := fh.Stat()
-	assert.NoError(t, err, "stat target")
+	require.NoError(t, err, "stat target")
 	assert.Equal(t, size, fi.Size(), "returned WriteTo size should be the final file size")
 }
 

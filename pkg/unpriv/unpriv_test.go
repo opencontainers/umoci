@@ -50,7 +50,7 @@ func TestWrapNoTricks(t *testing.T) {
 	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
 		return nil
 	})
-	assert.NoError(t, err, "wrap should not return error in simple case")
+	require.NoError(t, err, "wrap should not return error in simple case")
 
 	// Now make sure that Wrap doesn't mess with any directories in the same case.
 	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0755)
@@ -60,7 +60,7 @@ func TestWrapNoTricks(t *testing.T) {
 	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
 		return nil
 	})
-	assert.NoError(t, err, "wrap should not return error in simple case")
+	require.NoError(t, err, "wrap should not return error in simple case")
 }
 
 // assert that the given path has 0o000 permissions and is thus inaccessible.
@@ -76,7 +76,7 @@ func assertInaccessibleMode(t *testing.T, path string) os.FileInfo {
 func assertFileMode(t *testing.T, path string, mode os.FileMode) os.FileInfo {
 	fi, err := Lstat(path)
 	if assert.NoErrorf(t, err, "checking %q is accesssible", path) {
-		assert.EqualValuesf(t, mode, fi.Mode()&os.ModePerm, "incorrect permissions on %q", path)
+		assert.Equalf(t, mode, fi.Mode()&os.ModePerm, "incorrect permissions on %q", path)
 	}
 	return fi
 }
@@ -84,13 +84,13 @@ func assertFileMode(t *testing.T, path string, mode os.FileMode) os.FileInfo {
 // assert that the file does not exist.
 func assertNotExist(t *testing.T, path string) {
 	_, err := Lstat(path)
-	assert.ErrorIsf(t, err, os.ErrNotExist, "expected path %q to not exist", path)
+	assert.ErrorIsf(t, err, os.ErrNotExist, "expected path %q to not exist", path) //nolint:testifylint // assert.*Error* makes more sense
 }
 
 // assert that the file does exist.
 func assertExist(t *testing.T, path string) {
 	_, err := Lstat(path)
-	assert.NoErrorf(t, err, "expected path %q to exist", path)
+	require.NoErrorf(t, err, "expected path %q to exist", path)
 }
 
 func TestLstat(t *testing.T) {
@@ -133,7 +133,7 @@ func TestLstat(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestReadlink(t *testing.T) {
@@ -178,9 +178,9 @@ func TestReadlink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestSymlink(t *testing.T) {
@@ -227,9 +227,9 @@ func TestSymlink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestOpen(t *testing.T) {
@@ -286,7 +286,7 @@ func TestOpen(t *testing.T) {
 
 	// Now change the mode using fh.Chmod.
 	err = fh.Chmod(0755)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Double check it was changed.
 	if fi, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "file")); assert.NoErrorf(t, err, "checking %q is accesssible", fh.Name()) {
@@ -295,7 +295,7 @@ func TestOpen(t *testing.T) {
 
 	// Change it back.
 	err = fh.Chmod(0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Double check it was changed.
 	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -307,7 +307,7 @@ func TestOpen(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestReaddir(t *testing.T) {
@@ -357,7 +357,7 @@ func TestReaddir(t *testing.T) {
 	defer fh.Close()
 
 	_, err = fh.Readdir(-1)
-	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail")
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Check that Readdir() only returns the relevant results.
 	infos, err := Readdir(filepath.Join(dir, "some", "parent", "directories"))
@@ -374,7 +374,7 @@ func TestReaddir(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Make sure that the naive Open.Readdir will still fail.
 	fh, err = Open(filepath.Join(dir, "some", "parent", "directories"))
@@ -382,7 +382,7 @@ func TestReaddir(t *testing.T) {
 	defer fh.Close()
 
 	_, err = fh.Readdir(-1)
-	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail")
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestWrapWrite(t *testing.T) {
@@ -431,7 +431,7 @@ func TestWrapWrite(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestLink(t *testing.T) {
@@ -511,11 +511,11 @@ func TestLink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestChtimes(t *testing.T) {
@@ -575,11 +575,11 @@ func TestChtimes(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestLutimes(t *testing.T) {
@@ -668,11 +668,11 @@ func TestLutimes(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestRemove(t *testing.T) {
@@ -720,13 +720,13 @@ func TestRemove(t *testing.T) {
 
 	// Now try removing all of the things.
 	err = Remove(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "parent", "directories"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "parent", "file2"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "cousin", "directories"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that they are gone.
 	assertNotExist(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -780,7 +780,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// Now try to removeall the entire tree.
 	err = RemoveAll(filepath.Join(dir, "some", "parent"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that they are gone.
 	assertNotExist(t, filepath.Join(dir, "some", "parent"))
@@ -788,7 +788,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// Make sure that trying to remove the directory after it's gone still won't fail.
 	err = RemoveAll(filepath.Join(dir, "some", "parent"))
-	assert.NoError(t, err, "removeall after path is gone should still succeed")
+	require.NoError(t, err, "removeall after path is gone should still succeed")
 }
 
 func TestMkdir(t *testing.T) {
@@ -826,11 +826,11 @@ func TestMkdir(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestMkdirAll(t *testing.T) {
@@ -873,11 +873,11 @@ func TestMkdirAll(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestMkdirAllMissing(t *testing.T) {
@@ -954,7 +954,7 @@ func TestMkdirRWPerm(t *testing.T) {
 
 	n, err := fh.Write(fileContent)
 	require.NoError(t, err)
-	require.EqualValues(t, len(fileContent), n, "incomplete write")
+	require.Equal(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
 	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0)
@@ -1016,7 +1016,7 @@ func TestMkdirRPerm(t *testing.T) {
 
 	n, err := fh.Write(fileContent)
 	require.NoError(t, err)
-	require.EqualValues(t, len(fileContent), n, "incomplete write")
+	require.Equal(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
 	err = MkdirAll(filepath.Join(dir, "var", "log", "anaconda2", "childdir"), 0)
@@ -1067,7 +1067,7 @@ func TestWalk(t *testing.T) {
 	seen := map[string]struct{}{}
 	err = Walk(dir, func(path string, info os.FileInfo, err error) error {
 		// Don't expect errors.
-		if !assert.NoErrorf(t, err, "unexpected error in walkfunc(%q)", path) {
+		if !assert.NoErrorf(t, err, "unexpected error in walkfunc(%q)", path) { //nolint:testifylint
 			return err
 		}
 
@@ -1095,7 +1095,7 @@ func TestWalk(t *testing.T) {
 		}
 
 		// Check the mode.
-		assert.EqualValuesf(t, expectedMode, info.Mode(), "unexpected file mode for %q", path)
+		assert.Equalf(t, expectedMode, info.Mode(), "unexpected file mode for %q", path)
 		assert.EqualExportedValues(t, info, newFi, "should get the same FileInfo before and after lstat")
 
 		// Update seen map.

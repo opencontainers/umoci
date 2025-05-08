@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
@@ -58,10 +57,10 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
+		require.NoError(t, err, "generate layer")
 		defer reader.Close()
 
 		checkLayerEntries(t, reader, []tarDentry{
@@ -107,10 +106,10 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
+		require.NoError(t, err, "generate layer")
 		defer reader.Close()
 
 		checkLayerEntries(t, reader, []tarDentry{
@@ -158,10 +157,10 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
+		require.NoError(t, err, "generate layer")
 		defer reader.Close()
 
 		checkLayerEntries(t, reader, []tarDentry{

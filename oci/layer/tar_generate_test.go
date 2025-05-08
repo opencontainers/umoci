@@ -299,6 +299,5 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 
 		idx++
 	}
-
-	assert.Equal(t, len(paths), idx, "all paths should have a whiteout entry generated")
+	assert.Len(t, paths, idx, "all paths should have a whiteout entry generated")
 }
