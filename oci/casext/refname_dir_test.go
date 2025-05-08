@@ -91,7 +91,8 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 // fakeSetupEngine injects a variety of "fake" blobs which may not include a
 // full blob tree to test whether Walk and ResolveReference act sanely in the
 // face of unknown media types as well as arbitrary nesting of known media
-// types. The returned
+// types. The returned mapping is for a given index -> descriptor you would
+// expect to get from ResolveReference.
 func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 	ctx := context.Background()
 	mapping := []descriptorMap{}

@@ -109,7 +109,7 @@ func (forbiddenXattrFilter) ToDisk(WhiteoutMode, string) *string    { return nil
 func (forbiddenXattrFilter) ToTar(WhiteoutMode, string) *string     { return nil }
 
 // overlayXattrFilter is a filter for all trusted.overlay.* xattrs which will
-// escape the xattrs on unpack and unescape them when
+// escape the xattrs on unpack and unescape them when.
 type overlayXattrFilter struct{}
 
 var _ xattrFilter = overlayXattrFilter{}

@@ -236,7 +236,7 @@ func Lstat(path string) (os.FileInfo, error) {
 	return fi, nil
 }
 
-// Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead
+// Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead.
 func Lstatx(path string) (unix.Stat_t, error) {
 	var s unix.Stat_t
 	err := Wrap(path, func(path string) error {

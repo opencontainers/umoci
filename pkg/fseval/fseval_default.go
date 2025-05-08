@@ -116,27 +116,27 @@ func (fs osFsEval) MkdirAll(path string, perm os.FileMode) error {
 	return os.MkdirAll(path, perm)
 }
 
-// Llistxattr is equivalent to system.Llistxattr
+// Llistxattr is equivalent to system.Llistxattr.
 func (fs osFsEval) Llistxattr(path string) ([]string, error) {
 	return system.Llistxattr(path)
 }
 
-// Lremovexattr is equivalent to system.Lremovexattr
+// Lremovexattr is equivalent to system.Lremovexattr.
 func (fs osFsEval) Lremovexattr(path, name string) error {
 	return unix.Lremovexattr(path, name)
 }
 
-// Lsetxattr is equivalent to system.Lsetxattr
+// Lsetxattr is equivalent to system.Lsetxattr.
 func (fs osFsEval) Lsetxattr(path, name string, value []byte, flags int) error {
 	return unix.Lsetxattr(path, name, value, flags)
 }
 
-// Lgetxattr is equivalent to system.Lgetxattr
+// Lgetxattr is equivalent to system.Lgetxattr.
 func (fs osFsEval) Lgetxattr(path string, name string) ([]byte, error) {
 	return system.Lgetxattr(path, name)
 }
 
-// Lclearxattrs is equivalent to system.Lclearxattrs
+// Lclearxattrs is equivalent to system.Lclearxattrs.
 func (fs osFsEval) Lclearxattrs(path string, skipFn func(xattrName string) bool) error {
 	return system.Lclearxattrs(path, skipFn)
 }

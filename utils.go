@@ -272,7 +272,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 }
 
 // GenerateBundleManifest creates and writes an mtree of the rootfs in the given
-// bundle path, using the supplied fsEval method
+// bundle path, using the supplied fsEval method.
 func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) (Err error) {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
@@ -306,7 +306,7 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 }
 
 // ParseIdmapOptions sets up the mapping options for Meta, using
-// the arguments specified on the command line
+// the arguments specified on the command line.
 func ParseIdmapOptions(meta *Meta, ctx *cli.Context) error {
 	// We need to set mappings if we're in rootless mode.
 	meta.MapOptions.Rootless = ctx.Bool("rootless")
