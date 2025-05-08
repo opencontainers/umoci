@@ -70,7 +70,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 	}
 
 	// Recurse into all the types.
-	switch V.Kind() {
+	switch V.Kind() { //nolint:exhaustive // no need to handle other types explicitly
 	case reflect.Ptr, reflect.Interface:
 		// Just deref the pointer/interface.
 		if V.IsNil() {

@@ -129,6 +129,13 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 					log.Warnf("generate layer: could not add whiteout %q: %s", name, err)
 					return fmt.Errorf("generate whiteout layer file: %w", err)
 				}
+
+			case mtree.Same, mtree.ErrorDifference:
+				fallthrough
+			default:
+				// We should never see these delta types because they are not
+				// generated for regular mtree.Compare.
+				return fmt.Errorf("generate layer: unsupported mtree delta type %v for path %q", delta.Type(), name)
 			}
 		}
 

@@ -24,6 +24,7 @@ linters:
     - contextcheck
     - errcheck
     - errorlint
+    - exhaustive
     - godot
     - govet
     - importas
