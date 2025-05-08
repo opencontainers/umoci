@@ -28,7 +28,7 @@ func updateHeader(hdr *tar.Header, s unix.Stat_t) {
 	// Currently the Go stdlib doesn't fill in the major/minor numbers of
 	// devices, so we have to do it manually.
 	if s.Mode&unix.S_IFBLK == unix.S_IFBLK || s.Mode&unix.S_IFCHR == unix.S_IFCHR {
-		hdr.Devmajor = int64(unix.Major(uint64(s.Rdev)))
-		hdr.Devminor = int64(unix.Minor(uint64(s.Rdev)))
+		hdr.Devmajor = int64(unix.Major(uint64(s.Rdev))) //nolint:unconvert // 32-bit systems have different sized types
+		hdr.Devminor = int64(unix.Minor(uint64(s.Rdev))) //nolint:unconvert // 32-bit systems have different sized types
 	}
 }

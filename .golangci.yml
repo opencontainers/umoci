@@ -35,6 +35,7 @@ linters:
     - nilnil
     - staticcheck
     - testifylint
+    - unconvert
     - unparam
     - unused
   settings:

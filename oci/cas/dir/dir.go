@@ -191,7 +191,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (_ digest.Dig
 		return "", -1, fmt.Errorf("rename temporary blob: %w", err)
 	}
 
-	return digester.Digest(), int64(size), nil
+	return digester.Digest(), size, nil
 }
 
 // GetBlob returns a reader for retrieving a blob from the image, which the

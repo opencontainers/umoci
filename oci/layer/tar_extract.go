@@ -707,7 +707,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 
 		// We need to make sure that we copy all of the bytes.
 		n, err := system.Copy(fh, r)
-		if int64(n) != hdr.Size {
+		if n != hdr.Size {
 			if err != nil {
 				err = fmt.Errorf("short write: %w", err)
 			} else {
