@@ -414,7 +414,7 @@ func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
 			}
 		}
 	}
-	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+	if err := te.fsEval.MkdirAll(dir, 0o777); err != nil {
 		return fmt.Errorf("mkdir overlayfs whiteout parent %q: %w", dir, err)
 	}
 
@@ -475,7 +475,7 @@ func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
 			}
 		}
 		if !insideOpaqueWhiteout {
-			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0o666, unix.Mkdev(0, 0)); err != nil {
 				return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
 			}
 			te.upperWhiteouts.Set(upperPath, overlayWhiteoutPlain)
@@ -644,7 +644,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
-	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+	if err := te.fsEval.MkdirAll(dir, 0o777); err != nil {
 		return fmt.Errorf("mkdir parent: %w", err)
 	}
 
@@ -733,7 +733,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Attempt to create the directory. We do a MkdirAll here because even
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
-		if err := te.fsEval.MkdirAll(path, 0777); err != nil {
+		if err := te.fsEval.MkdirAll(path, 0o777); err != nil {
 			return fmt.Errorf("mkdirall: %w", err)
 		}
 

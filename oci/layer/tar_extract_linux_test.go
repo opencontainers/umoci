@@ -41,7 +41,7 @@ func testNeedsMknod(t *testing.T) {
 	dir := t.TempDir()
 	path := filepath.Join(dir, "test-inode")
 
-	err := system.Mknod(path, unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	err := system.Mknod(path, unix.S_IFCHR|0o666, unix.Mkdev(0, 0))
 	if errors.Is(err, os.ErrPermission) {
 		t.Skipf("skipping test -- cannot mknod: %v", err)
 	}

@@ -53,7 +53,7 @@ func TestWrapNoTricks(t *testing.T) {
 	require.NoError(t, err, "wrap should not return error in simple case")
 
 	// Now make sure that Wrap doesn't mess with any directories in the same case.
-	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "parent"), 0)
 	require.NoError(t, err)
@@ -107,9 +107,9 @@ func TestLstat(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -150,7 +150,7 @@ func TestReadlink(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1"))
 	require.NoError(t, err)
@@ -197,7 +197,7 @@ func TestSymlink(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
 	require.NoError(t, err)
@@ -248,15 +248,15 @@ func TestOpen(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -285,12 +285,12 @@ func TestOpen(t *testing.T) {
 	assert.Equal(t, fileContent, gotContent, "unpriv open content should match actual file contents")
 
 	// Now change the mode using fh.Chmod.
-	err = fh.Chmod(0755)
+	err = fh.Chmod(0o755)
 	require.NoError(t, err)
 
 	// Double check it was changed.
 	if fi, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "file")); assert.NoErrorf(t, err, "checking %q is accesssible", fh.Name()) {
-		assert.EqualValues(t, 0755, fi.Mode()&os.ModePerm, "permissions on accessible path should be 0o755")
+		assert.EqualValues(t, 0o755, fi.Mode()&os.ModePerm, "permissions on accessible path should be 0o755")
 	}
 
 	// Change it back.
@@ -326,15 +326,15 @@ func TestReaddir(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0755)
+	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file1"), 0)
 	require.NoError(t, err)
@@ -401,7 +401,7 @@ func TestWrapWrite(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
 	require.NoError(t, err)
@@ -411,7 +411,7 @@ func TestWrapWrite(t *testing.T) {
 	require.NoError(t, err)
 
 	err = Wrap(filepath.Join(dir, "some", "parent", "directories", "lolpath"), func(path string) error {
-		return ioutil.WriteFile(path, fileContent, 0755)
+		return ioutil.WriteFile(path, fileContent, 0o755)
 	})
 	require.NoError(t, err, "unwrap wrap WriteFile")
 
@@ -450,9 +450,9 @@ func TestLink(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -534,9 +534,9 @@ func TestChtimes(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -598,9 +598,9 @@ func TestLutimes(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Symlink(".", filepath.Join(dir, "some", "parent", "directories", "link2"))
 	require.NoError(t, err)
@@ -691,13 +691,13 @@ func TestRemove(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -751,13 +751,13 @@ func TestRemoveAll(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -805,7 +805,7 @@ func TestMkdir(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create no structure.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
@@ -847,7 +847,7 @@ func TestMkdirAll(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create no structure.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
@@ -894,7 +894,7 @@ func TestMkdirAllMissing(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create no structure, but with read access.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 
 	// Make some subdirectories.
@@ -938,9 +938,9 @@ func TestMkdirRWPerm(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some small structure. This is modelled after /var/log/anaconda/pre-anaconda-logs/lvmdump.
-	err = os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0o755)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0600)
+	err = os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0o600)
 	require.NoError(t, err)
 
 	// Make sure the os.Create fails with the path.
@@ -996,11 +996,11 @@ func TestMkdirRPerm(t *testing.T) {
 	fileContent := []byte("some content")
 
 	// Create some small structure.
-	err = os.MkdirAll(filepath.Join(dir, "var", "log"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "var", "log"), 0o755)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var", "log"), 0555)
+	err = os.Chmod(filepath.Join(dir, "var", "log"), 0o555)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var"), 0555)
+	err = os.Chmod(filepath.Join(dir, "var"), 0o555)
 	require.NoError(t, err)
 
 	// Make sure the os.Create fails with the path.
@@ -1026,8 +1026,8 @@ func TestMkdirRPerm(t *testing.T) {
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda"))
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2", "childdir"))
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2"))
-	assertFileMode(t, filepath.Join(dir, "var", "log"), 0555)
-	assertFileMode(t, filepath.Join(dir, "var"), 0555)
+	assertFileMode(t, filepath.Join(dir, "var", "log"), 0o555)
+	assertFileMode(t, filepath.Join(dir, "var"), 0o555)
 }
 
 func TestWalk(t *testing.T) {
@@ -1048,19 +1048,19 @@ func TestWalk(t *testing.T) {
 	defer RemoveAll(dir)
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0123)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0o123)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
-	err = os.Chmod(dir, 0755)
+	err = os.Chmod(dir, 0o755)
 	require.NoError(t, err)
 
 	// Walk over it.
@@ -1081,12 +1081,12 @@ func TestWalk(t *testing.T) {
 		expectedMode := os.FileMode(0xFFFFFFFF)
 		switch path {
 		case dir:
-			expectedMode = 0755 | os.ModeDir
+			expectedMode = 0o755 | os.ModeDir
 		case filepath.Join(dir, "some"),
 			filepath.Join(dir, "some", "parent"):
 			expectedMode = os.ModeDir
 		case filepath.Join(dir, "some", "parent", "directories"):
-			expectedMode = 0123 | os.ModeDir
+			expectedMode = 0o123 | os.ModeDir
 		case filepath.Join(dir, "some", "parent", "directories", "file"):
 			expectedMode = 0
 		default:

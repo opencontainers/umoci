@@ -112,14 +112,14 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
-	if err := os.MkdirAll(bundle, 0755); err != nil {
+	if err := os.MkdirAll(bundle, 0o755); err != nil {
 		return fmt.Errorf("mkdir bundle: %w", err)
 	}
 	// We change the mode of the bundle directory to 0700. A user can easily
 	// change this after-the-fact, but we do this explicitly to avoid cases
 	// where an unprivileged user could recurse into an otherwise unsafe image
 	// (giving them potential root access through setuid binaries for example).
-	if err := os.Chmod(bundle, 0700); err != nil {
+	if err := os.Chmod(bundle, 0o700); err != nil {
 		return fmt.Errorf("chmod bundle 0700: %w", err)
 	}
 
@@ -183,7 +183,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 
 	engineExt := casext.NewEngine(engine)
 
-	if err := os.Mkdir(rootfsPath, 0755); err != nil && !os.IsExist(err) {
+	if err := os.Mkdir(rootfsPath, 0o755); err != nil && !os.IsExist(err) {
 		return fmt.Errorf("mkdir rootfs: %w", err)
 	}
 

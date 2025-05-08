@@ -22,25 +22,11 @@
 package layer
 
 import (
+	"archive/tar"
 	"bytes"
+	"context"
 	"encoding/base64"
 	"io"
-
-	"github.com/opencontainers/go-digest"
-
-	"github.com/opencontainers/umoci/oci/cas/dir"
-
-	"context"
-
-	"github.com/apex/log"
-	"github.com/opencontainers/image-spec/specs-go"
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
-	rspec "github.com/opencontainers/runtime-spec/specs-go"
-
-	"github.com/opencontainers/umoci/oci/casext"
-
-	"archive/tar"
-
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -48,13 +34,21 @@ import (
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
 	fuzzheaders "github.com/AdaLogics/go-fuzz-headers"
+	"github.com/apex/log"
+	"github.com/opencontainers/go-digest"
+	"github.com/opencontainers/image-spec/specs-go"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/vbatts/go-mtree"
+
+	"github.com/opencontainers/umoci/oci/cas/dir"
+	"github.com/opencontainers/umoci/oci/casext"
 )
 
 // createRandomFile is a helper function
 func createRandomFile(dirpath string, filename []byte, filecontents []byte) error {
 	fileP := filepath.Join(dirpath, string(filename))
-	if err := ioutil.WriteFile(fileP, filecontents, 0644); err != nil {
+	if err := ioutil.WriteFile(fileP, filecontents, 0o644); err != nil {
 		return err
 	}
 	defer os.Remove(fileP)
@@ -64,7 +58,7 @@ func createRandomFile(dirpath string, filename []byte, filecontents []byte) erro
 // createRandomDir is a helper function
 func createRandomDir(basedir string, dirname []byte, dirArray []string) ([]string, error) {
 	dirPath := filepath.Join(basedir, string(dirname))
-	if err := os.MkdirAll(dirPath, 0755); err != nil {
+	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		return dirArray, err
 	}
 	defer os.RemoveAll(dirPath)
@@ -107,7 +101,7 @@ func FuzzGenerateLayer(data []byte) int {
 		return -1
 	}
 	baseDir := "fuzz-base-dir"
-	if err := os.MkdirAll(baseDir, 0755); err != nil {
+	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return -1
 	}
 	defer os.RemoveAll(baseDir)
@@ -116,8 +110,8 @@ func FuzzGenerateLayer(data []byte) int {
 	iteration := 0
 	chunkSize := len(f1.RestOfArray) / f1.NumberOfCalls
 	for i := 0; i < len(f1.RestOfArray); i = i + chunkSize {
-		from := i           //lower
-		to := i + chunkSize //upper
+		from := i           // lower
+		to := i + chunkSize // upper
 		inputData := firstHalf[from:to]
 		if len(inputData) > 6 && isLetter(inputData[:5]) {
 			dirArray, err = createRandomDir(baseDir, inputData[:5], dirArray)
@@ -149,8 +143,8 @@ func FuzzGenerateLayer(data []byte) int {
 	iteration = 0
 	chunkSize = len(f2.RestOfArray) / f2.NumberOfCalls
 	for i := 0; i < len(f2.RestOfArray); i = i + chunkSize {
-		from := i           //lower
-		to := i + chunkSize //upper
+		from := i           // lower
+		to := i + chunkSize // upper
 		inputData := secondHalf[from:to]
 		if len(inputData) > 6 && isLetter(inputData[:5]) {
 			dirArray, err = createRandomDir(baseDir, inputData[:5], dirArray)
@@ -208,10 +202,9 @@ func mustDecodeString(s string) []byte {
 
 // makeImage is a helper function
 func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, error) {
-
 	ctx := context.Background()
 
-	var layers = []struct {
+	layers := []struct {
 		base64 string
 		digest digest.Digest
 	}{

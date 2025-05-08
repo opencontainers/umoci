@@ -50,7 +50,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	rootfs := filepath.Join(dir, "rootfs")
 
 	// Create a host file that we want to make sure doesn't get overwrittern.
-	err := ioutil.WriteFile(filepath.Join(dir, file), hostValue, 0644)
+	err := ioutil.WriteFile(filepath.Join(dir, file), hostValue, 0o644)
 	require.NoError(t, err)
 
 	// Create our header. We raw prepend the prefix because we are generating
@@ -59,7 +59,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 		Name:       prefix + "/" + filepath.Base(file),
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -95,7 +95,7 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			err := os.Mkdir(rootfs, 0755)
+			err := os.Mkdir(rootfs, 0o755)
 			require.NoError(t, err, "mkdir rootfs")
 
 			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), test.prefix)
@@ -122,7 +122,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			err := os.Mkdir(rootfs, 0755)
+			err := os.Mkdir(rootfs, 0o755)
 			require.NoError(t, err, "mkdir rootfs")
 
 			// Create the symlink.
@@ -139,7 +139,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 // directories.
 func TestUnpackEntryParentDir(t *testing.T) {
 	rootfs := filepath.Join(t.TempDir(), "rootfs")
-	err := os.Mkdir(rootfs, 0755)
+	err := os.Mkdir(rootfs, 0o755)
 	require.NoError(t, err, "mkdir rootfs")
 
 	ctrValue := []byte("creating parentdirs")
@@ -150,7 +150,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		Name:       "a/b/c/file",
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -195,28 +195,28 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			wh := filepath.Join(rawDir, whPrefix+rawFile)
 
 			// Create the parent directory.
-			err := os.MkdirAll(filepath.Join(dir, rawDir), 0755)
+			err := os.MkdirAll(filepath.Join(dir, rawDir), 0o755)
 			require.NoError(t, err, "mkdir parent directory")
 
 			// Create the path itself.
 			if test.dir {
-				err := os.Mkdir(filepath.Join(dir, test.path), 0755)
+				err := os.Mkdir(filepath.Join(dir, test.path), 0o755)
 				require.NoError(t, err)
 
 				// Make some subfiles and directories.
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0644)
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0644)
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0755)
+				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0o755)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0644)
+				err = ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			} else {
-				err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0644)
+				err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			}
 
@@ -388,7 +388,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			// We do all whiteouts in a subdirectory.
 			whiteoutDir := "test-subdir"
 			whiteoutRoot := filepath.Join(dir, whiteoutDir)
-			err := os.MkdirAll(whiteoutRoot, 0755)
+			err := os.MkdirAll(whiteoutRoot, 0o755)
 			require.NoError(t, err, "mkdir whiteout root")
 
 			// Track if we have upper entries.
@@ -492,7 +492,7 @@ func TestUnpackHardlink(t *testing.T) {
 		Name:       regFile,
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -588,15 +588,21 @@ func TestUnpackEntryMap(t *testing.T) {
 		uidMap rspec.LinuxIDMapping
 		gidMap rspec.LinuxIDMapping
 	}{
-		{"IdentityRoot",
+		{
+			"IdentityRoot",
 			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}},
-		{"MapSelfToRoot",
+			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100},
+		},
+		{
+			"MapSelfToRoot",
 			rspec.LinuxIDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
-		{"MapOtherToRoot",
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100},
+		},
+		{
+			"MapOtherToRoot",
 			rspec.LinuxIDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// Create the files we're going to play with.
@@ -626,7 +632,7 @@ func TestUnpackEntryMap(t *testing.T) {
 				Name:       regFile,
 				Uid:        hdrUid,
 				Gid:        hdrGid,
-				Mode:       0644,
+				Mode:       0o644,
 				Size:       int64(len(ctrValue)),
 				Typeflag:   tar.TypeReg,
 				ModTime:    time.Now(),
@@ -647,7 +653,7 @@ func TestUnpackEntryMap(t *testing.T) {
 				Name:       regDir,
 				Uid:        hdrUid,
 				Gid:        hdrGid,
-				Mode:       0755,
+				Mode:       0o755,
 				Typeflag:   tar.TypeDir,
 				ModTime:    time.Now(),
 				AccessTime: time.Now(),
@@ -707,7 +713,7 @@ func TestUnpackEntryMap(t *testing.T) {
 func TestIsDirlink(t *testing.T) {
 	dir := t.TempDir()
 
-	err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755)
+	err := os.Mkdir(filepath.Join(dir, "test_dir"), 0o755)
 	require.NoError(t, err)
 
 	file, err := os.Create(filepath.Join(dir, "test_file"))

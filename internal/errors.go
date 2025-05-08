@@ -22,6 +22,4 @@ import (
 	"errors"
 )
 
-var (
-	ErrUnimplemented = errors.New("unimplemented umoci feature")
-)
+var ErrUnimplemented = errors.New("unimplemented umoci feature")

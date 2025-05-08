@@ -44,7 +44,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 
 	expectedHdr := &tar.Header{
 		Name:       file,
-		Mode:       0644,
+		Mode:       0o644,
 		ModTime:    time.Unix(123, 0),
 		AccessTime: time.Unix(888, 0),
 		Uid:        os.Getuid(),
@@ -54,7 +54,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	err := ioutil.WriteFile(path, data, 0777)
+	err := ioutil.WriteFile(path, data, 0o777)
 	require.NoError(t, err)
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
@@ -113,7 +113,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 
 	expectedHdr := &tar.Header{
 		Name:       file,
-		Mode:       0644,
+		Mode:       0o644,
 		ModTime:    time.Unix(123, 0),
 		AccessTime: time.Unix(888, 0),
 		Uid:        os.Getuid(),
@@ -123,7 +123,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	err := os.Mkdir(path, 0777)
+	err := os.Mkdir(path, 0o777)
 	require.NoError(t, err)
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")

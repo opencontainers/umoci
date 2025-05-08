@@ -285,7 +285,7 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	log.Info("... done")
 
 	flags := os.O_CREATE | os.O_WRONLY | os.O_EXCL
-	fh, err := os.OpenFile(mtreePath, flags, 0644)
+	fh, err := os.OpenFile(mtreePath, flags, 0o644)
 	if err != nil {
 		return fmt.Errorf("open mtree: %w", err)
 	}

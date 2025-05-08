@@ -60,7 +60,7 @@ func fuzzSetup(dir string, data []byte) (cas.Engine, ispec.Descriptor, error) {
 	tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     "test",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     int64(len(data)),
 	})
 	tw.Write(data)

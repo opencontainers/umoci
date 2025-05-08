@@ -73,7 +73,7 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 
 		if err := tw.WriteHeader(&tar.Header{
 			Name:     testutils.RandomString(16),
-			Mode:     0755,
+			Mode:     0o755,
 			Uid:      rand.Intn(1337),
 			Gid:      rand.Intn(1337),
 			Size:     int64(size),

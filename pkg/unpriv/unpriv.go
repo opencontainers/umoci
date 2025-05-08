@@ -107,7 +107,7 @@ func Wrap(path string, fn WrapFunc) error {
 		}
 		// Add +rwx permissions to directories. If we have the access to change
 		// the mode at all then we are the user owner (not just a group owner).
-		if err := os.Chmod(current, fi.Mode()|0700); err != nil {
+		if err := os.Chmod(current, fi.Mode()|0o700); err != nil {
 			return fmt.Errorf("unpriv.wrap: chmod parent: %s: %w", current, err)
 		}
 		defer fiRestore(current, fi)
@@ -132,9 +132,9 @@ func Open(path string) (*os.File, error) {
 			return fmt.Errorf("lstat file: %w", err)
 		}
 
-		if fi.Mode()&0400 != 0400 {
+		if fi.Mode()&0o400 != 0o400 {
 			// Add +r permissions to the file.
-			if err := os.Chmod(path, fi.Mode()|0400); err != nil {
+			if err := os.Chmod(path, fi.Mode()|0o400); err != nil {
 				return fmt.Errorf("chmod +r: %w", err)
 			}
 			defer fiRestore(path, fi)
@@ -184,7 +184,7 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		}
 
 		// Add +rx permissions to the file.
-		if err := os.Chmod(path, fi.Mode()|0500); err != nil {
+		if err := os.Chmod(path, fi.Mode()|0o500); err != nil {
 			return fmt.Errorf("chmod +rx: %w", err)
 		}
 		defer fiRestore(path, fi)
@@ -369,7 +369,7 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 	// is at least a+rx. However, because we are calling wrapFn we need to
 	// restore the original mode immediately.
 	// #nosec G104
-	_ = os.Chmod(path, fi.Mode()|0444)
+	_ = os.Chmod(path, fi.Mode()|0o444)
 	names, err := fd.Readdirnames(-1)
 	fiRestore(path, fi)
 	if err != nil {

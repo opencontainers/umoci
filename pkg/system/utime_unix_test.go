@@ -39,7 +39,7 @@ func TestLutimesFile(t *testing.T) {
 
 	path := filepath.Join(dir, "some file")
 
-	err := ioutil.WriteFile(path, []byte("some contents"), 0755)
+	err := ioutil.WriteFile(path, []byte("some contents"), 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)
@@ -78,7 +78,7 @@ func TestLutimesDirectory(t *testing.T) {
 
 	path := filepath.Join(dir, " a directory  ")
 
-	err := os.Mkdir(path, 0755)
+	err := os.Mkdir(path, 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
@@ -161,7 +161,7 @@ func TestLutimesRelative(t *testing.T) {
 
 	path := filepath.Join("some parent", " !! symlink here")
 
-	err = os.MkdirAll(filepath.Dir(path), 0755)
+	err = os.MkdirAll(filepath.Dir(path), 0o755)
 	require.NoError(t, err)
 	err = os.Symlink(".", path)
 	require.NoError(t, err)

@@ -52,7 +52,7 @@ func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) {
 	ctx := context.Background()
 	// These layers were manually generated using GNU tar + GNU gzip.
 	// XXX: In future we should also add libarchive tar archives.
-	var layers = []struct {
+	layers := []struct {
 		base64 string
 		digest digest.Digest
 	}{

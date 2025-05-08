@@ -130,7 +130,7 @@ func TestEngineValidate(t *testing.T) {
 	// Invalid oci-layout.
 	t.Run("InvalidLayoutJSON-NonJSON", func(t *testing.T) {
 		image := t.TempDir()
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0644))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("invalid JSON"), 0o644))
 
 		engine, err := Open(image)
 		require.Error(t, err, "non-json oci-layout is not a valid image")
@@ -140,7 +140,7 @@ func TestEngineValidate(t *testing.T) {
 	// Invalid oci-layout.
 	t.Run("InvalidLayoutJSON-Empty", func(t *testing.T) {
 		image := t.TempDir()
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0644))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, layoutFile), []byte("{}"), 0o644))
 
 		engine, err := Open(image)
 		require.Error(t, err, "empty oci-layout is not a valid image")
@@ -165,7 +165,7 @@ func TestEngineValidate(t *testing.T) {
 		err := Create(image)
 		require.NoError(t, err, "create image")
 		require.NoError(t, os.RemoveAll(filepath.Join(image, blobDirectory)))
-		require.NoError(t, ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0755))
+		require.NoError(t, ioutil.WriteFile(filepath.Join(image, blobDirectory), []byte(""), 0o755))
 
 		engine, err := Open(image)
 		require.Error(t, err, "blob directory as file is not a valid image")
@@ -190,7 +190,7 @@ func TestEngineValidate(t *testing.T) {
 		err := Create(image)
 		require.NoError(t, err, "create image")
 		require.NoError(t, os.RemoveAll(filepath.Join(image, indexFile)))
-		require.NoError(t, os.Mkdir(filepath.Join(image, indexFile), 0755))
+		require.NoError(t, os.Mkdir(filepath.Join(image, indexFile), 0o755))
 
 		engine, err := Open(image)
 		require.Error(t, err, "index.json as directory is not a valid image")

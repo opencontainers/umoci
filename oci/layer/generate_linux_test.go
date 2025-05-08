@@ -40,9 +40,9 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 
 	testNeedsMknod(t)
 
-	err := system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	err := system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0o666, unix.Mkdev(0, 0))
 	require.NoError(t, err, "mknod")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -87,11 +87,11 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 
 	testNeedsTrustedOverlayXattrs(t)
 
-	err := os.Mkdir(filepath.Join(dir, "wodir"), 0755)
+	err := os.Mkdir(filepath.Join(dir, "wodir"), 0o755)
 	require.NoError(t, err)
 	err = unix.Lsetxattr(filepath.Join(dir, "wodir"), "trusted.overlay.opaque", []byte("y"), 0)
 	require.NoError(t, err, "lsetxattr trusted.overlay.opaque")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -138,11 +138,11 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 
 	testNeedsTrustedOverlayXattrs(t)
 
-	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0755)
+	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0o755)
 	require.NoError(t, err)
 	err = unix.Lsetxattr(filepath.Join(dir, "woreg"), "trusted.overlay.whiteout", []byte("foobar"), 0)
 	require.NoError(t, err, "lsetxattr trusted.overlay.whiteout")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}

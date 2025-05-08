@@ -208,7 +208,7 @@ func config(ctx *cli.Context) error {
 			case "config.volume":
 				g.ClearConfigVolumes()
 			case "rootfs.diffids":
-				//g.ClearRootfsDiffIDs()
+				// g.ClearRootfsDiffIDs()
 				return errors.New("--clear=rootfs.diffids is not safe")
 			case "config.cmd":
 				g.ClearConfigCmd()

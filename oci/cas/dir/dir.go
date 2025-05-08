@@ -425,19 +425,19 @@ func Create(path string) error {
 	// parent paths.
 	dir := filepath.Dir(path)
 	if dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("mkdir parent: %w", err)
 		}
 	}
-	if err := os.Mkdir(path, 0755); err != nil {
+	if err := os.Mkdir(path, 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
 	// Create the necessary directories and "oci-layout" file.
-	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0o755); err != nil {
 		return fmt.Errorf("mkdir blobdir: %w", err)
 	}
-	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0o755); err != nil {
 		return fmt.Errorf("mkdir algorithm: %w", err)
 	}
 

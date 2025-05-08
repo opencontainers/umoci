@@ -77,7 +77,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	err = tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     "test",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     dataSize,
 	})
 	require.NoError(t, err, "write header")

@@ -77,7 +77,7 @@ func Unpack(engineExt casext.Engine, fromName string, bundlePath string, unpackO
 	}
 
 	// Unpack the runtime bundle.
-	if err := os.MkdirAll(bundlePath, 0755); err != nil {
+	if err := os.MkdirAll(bundlePath, 0o755); err != nil {
 		return fmt.Errorf("create bundle path: %w", err)
 	}
 	// XXX: We should probably defer os.RemoveAll(bundlePath).
