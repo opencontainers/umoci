@@ -360,7 +360,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	return nil
 }
 
-func (e *dirEngine) cleanPath(ctx context.Context, path string) (Err error) {
+func (e *dirEngine) cleanPath(_ context.Context, path string) (Err error) {
 	cfh, err := os.Open(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("open for locking: %w", err)

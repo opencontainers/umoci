@@ -66,7 +66,7 @@ type descriptorMap struct {
 	result ispec.Descriptor
 }
 
-func randomTarData(t *testing.T, tw *tar.Writer) error {
+func randomTarData(tw *tar.Writer) error {
 	// Add some files with random contents and random names.
 	for n := 0; n < 32; n++ {
 		size := rand.Intn(512 * 1024)
@@ -93,7 +93,7 @@ func randomTarData(t *testing.T, tw *tar.Writer) error {
 // face of unknown media types as well as arbitrary nesting of known media
 // types. The returned mapping is for a given index -> descriptor you would
 // expect to get from ResolveReference.
-func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
+func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 	ctx := context.Background()
 	mapping := []descriptorMap{}
 
@@ -110,7 +110,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		// Generate layer data.
 		for idx := range layerData {
 			tw := tar.NewWriter(&layerData[idx])
-			err := randomTarData(t, tw)
+			err := randomTarData(tw)
 			require.NoErrorf(t, err, "%s: generate layer%d data", name, idx)
 			_ = tw.Close()
 		}
@@ -329,7 +329,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 		})
 	}
 
-	return mapping, nil
+	return mapping
 }
 
 func TestEngineReference(t *testing.T) {
@@ -344,8 +344,7 @@ func TestEngineReference(t *testing.T) {
 	engineExt := NewEngine(engine)
 	defer engine.Close() //nolint:errcheck
 
-	descMap, err := fakeSetupEngine(t, engineExt)
-	require.NoError(t, err, "fakeSetupEngine")
+	descMap := fakeSetupEngine(t, engineExt)
 	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	for idx, test := range descMap {
@@ -388,8 +387,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	require.NoError(t, err, "open read-write engine")
 	engineExt := NewEngine(engine)
 
-	descMap, err := fakeSetupEngine(t, engineExt)
-	require.NoError(t, err, "fakeSetupEngine")
+	descMap := fakeSetupEngine(t, engineExt)
 	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	err = engine.Close()

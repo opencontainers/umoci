@@ -47,7 +47,7 @@ func mustDecodeString(s string) []byte {
 	return b
 }
 
-func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) {
+func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) { //nolint:unparam
 	ctx := context.Background()
 	// These layers were manually generated using GNU tar + GNU gzip.
 	// XXX: In future we should also add libarchive tar archives.

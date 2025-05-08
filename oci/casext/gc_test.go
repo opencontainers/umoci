@@ -49,8 +49,7 @@ func TestGCWithEmptyIndex(t *testing.T) {
 	defer engine.Close() //nolint:errcheck
 
 	// creates an empty index.json and several orphan blobs which should be pruned
-	descMap, err := fakeSetupEngine(t, engineExt)
-	require.NoError(t, err, "fakeSetupEngine")
+	descMap := fakeSetupEngine(t, engineExt)
 	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	b, err := engine.ListBlobs(ctx)
@@ -78,8 +77,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	defer engine.Close() //nolint:errcheck
 
 	// creates an empty index.json and several orphan blobs which should be pruned
-	descMap, err := fakeSetupEngine(t, engineExt)
-	require.NoError(t, err, "fakeSetupEngine")
+	descMap := fakeSetupEngine(t, engineExt)
 	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	b, err := engine.ListBlobs(ctx)
