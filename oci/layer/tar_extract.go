@@ -685,7 +685,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				return fmt.Errorf("check is dirlink: %w", err)
 			}
 		}
-		if !(isDirlink && te.keepDirlinks) {
+		if !(isDirlink && te.keepDirlinks) { //nolint:staticcheck // QF1001: this form is easier to understand
 			if err := te.fsEval.RemoveAll(path); err != nil {
 				return fmt.Errorf("clobber old path: %w", err)
 			}

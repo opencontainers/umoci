@@ -584,20 +584,25 @@ func walk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 	}
 
 	// Now just execute walkFn over each subpath.
+	// TODO: We should handle the Readdirnames failing case that stdlib does.
 	return foreachSubpath(path, func(subpath string) error {
 		info, err := Lstat(subpath)
 		if err != nil {
 			// If it doesn't exist, just pass it directly to walkFn.
 			if err := walkFn(subpath, info, err); err != nil {
-				// Ignore SkipDir.
+				// To match stdlib, SkipDir assumes a non-existent path is a
+				// directory and so SkipDir just skips that path.
 				if errors.Is(err, filepath.SkipDir) {
 					return err
 				}
 			}
 		} else {
 			if err := walk(subpath, info, walkFn); err != nil {
-				// Ignore error if it's SkipDir and subpath is a directory.
-				if !(info.IsDir() && errors.Is(err, filepath.SkipDir)) {
+				// If this entry is a directory then SkipDir will just skip
+				// this entry and continue walking the current directory, but
+				// otherwise we need to skip the whole directory. This matches
+				// the stdlib behaviour.
+				if !(info.IsDir() && errors.Is(err, filepath.SkipDir)) { //nolint:staticcheck // QF1001: this form is easier to understand
 					return err
 				}
 			}

@@ -104,9 +104,9 @@ type forbiddenXattrFilter struct{}
 
 var _ xattrFilter = forbiddenXattrFilter{}
 
-func (_ forbiddenXattrFilter) MaskedOnDisk(_ WhiteoutMode, _ string) bool { return true }
-func (_ forbiddenXattrFilter) ToDisk(_ WhiteoutMode, _ string) *string    { return nil }
-func (_ forbiddenXattrFilter) ToTar(_ WhiteoutMode, _ string) *string     { return nil }
+func (forbiddenXattrFilter) MaskedOnDisk(WhiteoutMode, string) bool { return true }
+func (forbiddenXattrFilter) ToDisk(WhiteoutMode, string) *string    { return nil }
+func (forbiddenXattrFilter) ToTar(WhiteoutMode, string) *string     { return nil }
 
 // overlayXattrFilter is a filter for all trusted.overlay.* xattrs which will
 // escape the xattrs on unpack and unescape them when
@@ -114,7 +114,7 @@ type overlayXattrFilter struct{}
 
 var _ xattrFilter = overlayXattrFilter{}
 
-func (_ overlayXattrFilter) MaskedOnDisk(woMode WhiteoutMode, xattr string) bool {
+func (overlayXattrFilter) MaskedOnDisk(woMode WhiteoutMode, xattr string) bool {
 	// Only trusted.overlay.* top-level xattrs are masked in overlayfs mode.
 	// Escaped xattrs and xattrs in regular mode are allowed.
 	return woMode == OverlayFSWhiteout &&
@@ -122,7 +122,7 @@ func (_ overlayXattrFilter) MaskedOnDisk(woMode WhiteoutMode, xattr string) bool
 		!doesXattrMatch(xattr, "trusted.overlay.overlay.")
 }
 
-func (_ overlayXattrFilter) ToDisk(woMode WhiteoutMode, xattr string) *string {
+func (overlayXattrFilter) ToDisk(woMode WhiteoutMode, xattr string) *string {
 	if woMode != OverlayFSWhiteout {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange
@@ -141,7 +141,7 @@ func (_ overlayXattrFilter) ToDisk(woMode WhiteoutMode, xattr string) *string {
 	return &escaped
 }
 
-func (_ overlayXattrFilter) ToTar(woMode WhiteoutMode, xattr string) *string {
+func (overlayXattrFilter) ToTar(woMode WhiteoutMode, xattr string) *string {
 	if woMode != OverlayFSWhiteout {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange

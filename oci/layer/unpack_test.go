@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -95,12 +94,10 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 	var layerDigests []digest.Digest
 	var layerDescriptors []ispec.Descriptor
 	for _, layer := range layers {
-		var layerReader io.Reader
-
 		// Since we already have the digests we don't need to jump through the
 		// hoops of decompressing our already-compressed blobs above to get the
 		// DiffIDs.
-		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
+		layerReader := bytes.NewBuffer(mustDecodeString(layer.base64))
 		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
 		require.NoError(t, err)
 

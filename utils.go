@@ -171,9 +171,9 @@ func (ms ManifestStat) Format(w io.Writer) error {
 	fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n")
 	for _, histEntry := range ms.History {
 		var (
-			created   = strings.Replace(histEntry.Created.Format(igen.ISO8601), "\t", " ", -1)
-			createdBy = strings.Replace(histEntry.CreatedBy, "\t", " ", -1)
-			comment   = strings.Replace(histEntry.Comment, "\t", " ", -1)
+			created   = strings.ReplaceAll(histEntry.Created.Format(igen.ISO8601), "\t", " ")
+			createdBy = strings.ReplaceAll(histEntry.CreatedBy, "\t", " ")
+			comment   = strings.ReplaceAll(histEntry.Comment, "\t", " ")
 			layerID   = "<none>"
 			size      = "<none>"
 		)
