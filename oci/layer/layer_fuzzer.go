@@ -26,9 +26,9 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"unicode"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
@@ -193,14 +193,8 @@ func FuzzGenerateLayer(data []byte) int {
 	return 1
 }
 
-// mustDecodeString is a helper function
-func mustDecodeString(s string) []byte {
-	b, _ := base64.StdEncoding.DecodeString(s)
-	return b
-}
-
-// makeImage is a helper function
-func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, error) {
+// makeFuzzImage is a helper function
+func makeFuzzImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, error) {
 	ctx := context.Background()
 
 	layers := []struct {
@@ -237,9 +231,8 @@ func makeImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, 
 	var layerDigests []digest.Digest
 	var layerDescriptors []ispec.Descriptor
 	for _, layer := range layers {
-		var layerReader io.Reader
-
-		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
+		layerData, _ := base64.StdEncoding.DecodeString(layer.base64)
+		layerReader := bytes.NewBuffer(layerData)
 		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
 		if err != nil {
 			return "nil", ispec.Manifest{}, casext.Engine{}, err
@@ -304,7 +297,7 @@ func FuzzUnpack(data []byte) int {
 	if err != nil {
 		return -1
 	}
-	root, manifest, engineExt, err := makeImage(base641, base642)
+	root, manifest, engineExt, err := makeFuzzImage(base641, base642)
 	if err != nil {
 		return 0
 	}
@@ -333,6 +326,7 @@ func FuzzUnpack(data []byte) int {
 		called = true
 		return nil
 	}
+	runtime.KeepAlive(called)
 
 	_ = UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
 

@@ -158,7 +158,7 @@ func FuzzMutate(data []byte) int {
 	// Add a new layer.
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor)
+	}, GzipCompressor, nil)
 	if err != nil {
 		return 0
 	}
