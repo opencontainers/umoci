@@ -1078,7 +1078,7 @@ func TestWalk(t *testing.T) {
 		}
 
 		// Figure out the expected mode.
-		expectedMode := os.FileMode(0xFFFFFFFF)
+		var expectedMode os.FileMode
 		switch path {
 		case dir:
 			expectedMode = 0o755 | os.ModeDir
