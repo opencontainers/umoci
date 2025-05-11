@@ -19,7 +19,6 @@
 package unpriv
 
 import (
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -38,13 +37,13 @@ func TestLutimesFile(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, "some file")
 
-	err = ioutil.WriteFile(path, []byte("some contents"), 0755)
+	err = os.WriteFile(path, []byte("some contents"), 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(125812851, 128518257)
@@ -86,13 +85,13 @@ func TestLutimesDirectory(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, " a directory  ")
 
-	err = os.Mkdir(path, 0755)
+	err = os.Mkdir(path, 0o755)
 	require.NoError(t, err)
 
 	atime := testutils.Unix(128551231, 273285257)
@@ -134,9 +133,9 @@ func TestLutimesSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, " !! symlink here")
 
@@ -199,18 +198,18 @@ func TestLutimesRelative(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	oldwd, err := os.Getwd()
 	require.NoError(t, err)
-	os.Chdir(dir)
-	defer os.Chdir(oldwd)
+	_ = os.Chdir(dir)
+	defer os.Chdir(oldwd) //nolint:errcheck
 
 	path := filepath.Join("some parent", " !! symlink here")
 
-	err = os.MkdirAll(filepath.Dir(path), 0755)
+	err = os.MkdirAll(filepath.Dir(path), 0o755)
 	require.NoError(t, err)
 	err = os.Symlink(".", path)
 	require.NoError(t, err)

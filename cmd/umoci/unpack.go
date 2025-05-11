@@ -28,6 +28,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var unpackCommand = uxRemap(cli.Command{
@@ -67,7 +68,7 @@ creation with umoci-repack(1).`,
 	},
 })
 
-func unpack(ctx *cli.Context) error {
+func unpack(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
@@ -91,6 +92,7 @@ func unpack(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
+
 	return umoci.Unpack(engineExt, fromName, bundlePath, unpackOptions)
 }

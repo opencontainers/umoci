@@ -68,13 +68,11 @@ func (gz gzipAlgo) Compress(reader io.Reader) (io.ReadCloser, error) {
 		_, err := system.Copy(gzw, reader)
 		if err != nil {
 			log.Warnf("gzip blobcompress: could not blobcompress layer: %v", err)
-			// #nosec G104
 			_ = pipeWriter.CloseWithError(fmt.Errorf("blobcompressing layer: %w", err))
 			return
 		}
 		if err := gzw.Close(); err != nil {
 			log.Warnf("gzip blobcompress: could not close gzip writer: %v", err)
-			// #nosec G104
 			_ = pipeWriter.CloseWithError(fmt.Errorf("close gzip writer: %w", err))
 			return
 		}

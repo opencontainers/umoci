@@ -27,6 +27,7 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var gcCommand = cli.Command{
@@ -56,7 +57,7 @@ root set of references. All other blobs will be removed.`,
 	Action: gc,
 }
 
-func gc(ctx *cli.Context) error {
+func gc(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
@@ -65,7 +66,7 @@ func gc(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	// Run the GC.
 	if err := engineExt.GC(context.Background()); err != nil {

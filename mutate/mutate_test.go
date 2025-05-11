@@ -24,7 +24,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"path/filepath"
 	"testing"
@@ -77,7 +76,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	err = tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     "test",
-		Mode:     0644,
+		Mode:     0o644,
 		Size:     dataSize,
 	})
 	require.NoError(t, err, "write header")
@@ -87,7 +86,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	require.NoError(t, err, "write file data")
 	require.Equal(t, dataSize, n, "written file data should match expected data size")
 
-	tw.Close()
+	_ = tw.Close()
 
 	// Push the base layer.
 	diffidDigester := cas.BlobAlgorithm.Digester()
@@ -155,7 +154,7 @@ func TestMutateCache(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -203,7 +202,7 @@ func TestMutateAdd(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -291,7 +290,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 	}
 
 	// The media-type should be what we expected.
-	assert.Equalf(t, newLayerDescriptor.MediaType, expectedMediaType, "unexpected media type of new layer with compression algo %q", usedCompressName)
+	assert.Equalf(t, expectedMediaType, newLayerDescriptor.MediaType, "unexpected media type of new layer with compression algo %q", usedCompressName)
 
 	// Double-check that the blob actually used the expected compression
 	// algorithm.
@@ -307,7 +306,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 		require.NoError(t, plainLayerRdr.Close())
 	}()
 
-	plainLayerData, err := ioutil.ReadAll(plainLayerRdr)
+	plainLayerData, err := io.ReadAll(plainLayerRdr)
 	require.NoError(t, err)
 
 	assert.Equal(t, fakeLayerData, string(plainLayerData), "layer data should match after round-trip")
@@ -317,7 +316,7 @@ func TestMutateAddCompression(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -371,7 +370,7 @@ func TestMutateAddExisting(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -421,7 +420,7 @@ func TestMutateSet(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -467,7 +466,7 @@ func TestMutateSetNoHistory(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -527,7 +526,7 @@ func TestMutatePath(t *testing.T) {
 
 	engine, manifestDescriptor := setup(t, dir)
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// Create some additional structure.
 	expectedPaths := []casext.DescriptorPath{

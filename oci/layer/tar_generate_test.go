@@ -20,9 +20,9 @@ package layer
 
 import (
 	"archive/tar"
+	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -44,7 +44,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 
 	expectedHdr := &tar.Header{
 		Name:       file,
-		Mode:       0644,
+		Mode:       0o644,
 		ModTime:    time.Unix(123, 0),
 		AccessTime: time.Unix(888, 0),
 		Uid:        os.Getuid(),
@@ -54,7 +54,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	err := ioutil.WriteFile(path, data, 0777)
+	err := os.WriteFile(path, data, 0o777)
 	require.NoError(t, err)
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
@@ -95,7 +95,7 @@ func TestTarGenerateAddFileNormal(t *testing.T) {
 		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
-	gotBytes, err := ioutil.ReadAll(tr)
+	gotBytes, err := io.ReadAll(tr)
 	require.NoError(t, err, "read file data from tar reader")
 	assert.Equal(t, data, gotBytes, "file data from tar reader should match input")
 
@@ -113,7 +113,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 
 	expectedHdr := &tar.Header{
 		Name:       file,
-		Mode:       0644,
+		Mode:       0o644,
 		ModTime:    time.Unix(123, 0),
 		AccessTime: time.Unix(888, 0),
 		Uid:        os.Getuid(),
@@ -123,7 +123,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 	}
 
 	te := NewTarExtractor(UnpackOptions{})
-	err := os.Mkdir(path, 0777)
+	err := os.Mkdir(path, 0o777)
 	require.NoError(t, err)
 	err = te.applyMetadata(path, expectedHdr)
 	require.NoError(t, err, "apply metadata")
@@ -164,7 +164,7 @@ func TestTarGenerateAddFileDirectory(t *testing.T) {
 		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
-	gotBytes, err := ioutil.ReadAll(tr)
+	gotBytes, err := io.ReadAll(tr)
 	require.NoError(t, err, "read file data from tar reader")
 	assert.Empty(t, gotBytes, "directory should have no tar data")
 
@@ -234,7 +234,7 @@ func TestTarGenerateAddFileSymlink(t *testing.T) {
 		assert.Equal(t, expectedHdr.AccessTime, hdr.AccessTime, "generated tar header AccessTime")
 	}
 
-	gotBytes, err := ioutil.ReadAll(tr)
+	gotBytes, err := io.ReadAll(tr)
 	require.NoError(t, err, "read file data from tar reader")
 	assert.Empty(t, gotBytes, "directory should have no tar data")
 
@@ -283,7 +283,7 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 	idx := 0
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err, "read tar archive")
@@ -299,6 +299,5 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 
 		idx++
 	}
-
-	assert.Equal(t, len(paths), idx, "all paths should have a whiteout entry generated")
+	assert.Len(t, paths, idx, "all paths should have a whiteout entry generated")
 }

@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/pathtrie"
 	"github.com/opencontainers/umoci/pkg/system"
 )
@@ -184,7 +185,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		}
 	}
 
-	for xattr, value := range hdr.Xattrs {
+	for xattr, value := range hdr.Xattrs { //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		value := []byte(value)
 
 		// Some xattrs need to be skipped for sanity reasons, such as
@@ -414,7 +415,7 @@ func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
 			}
 		}
 	}
-	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+	if err := te.fsEval.MkdirAll(dir, 0o777); err != nil {
 		return fmt.Errorf("mkdir overlayfs whiteout parent %q: %w", dir, err)
 	}
 
@@ -475,7 +476,7 @@ func (te *TarExtractor) overlayFSWhiteout(root, dir, file string) error {
 			}
 		}
 		if !insideOpaqueWhiteout {
-			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0666, unix.Mkdev(0, 0)); err != nil {
+			if err := te.fsEval.Mknod(subpath, unix.S_IFCHR|0o666, unix.Mkdev(0, 0)); err != nil {
 				return fmt.Errorf("couldn't create overlayfs whiteout %q: %w", subpath, err)
 			}
 			te.upperWhiteouts.Set(upperPath, overlayWhiteoutPlain)
@@ -527,7 +528,6 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// directory will be fixed by later archive entries.
 	if dirFi, err := te.fsEval.Lstat(dir); err == nil && path != dir {
 		// FIXME: This is really stupid.
-		// #nosec G104
 		link, _ := te.fsEval.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
@@ -559,7 +559,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			}
 		}
 		if len(xattrs) > 0 {
-			dirHdr.Xattrs = map[string]string{}
+			dirHdr.Xattrs = map[string]string{} //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			for _, xattr := range xattrs {
 				value, err := te.fsEval.Lgetxattr(dir, xattr)
 				if err != nil {
@@ -592,7 +592,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 						log.Debugf("xattr{%s} remapping xattr %q to %q for later restoreMetadata", unsafeDir, xattr, mappedName)
 					}
 				}
-				dirHdr.Xattrs[mappedName] = string(value)
+				dirHdr.Xattrs[mappedName] = string(value) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			}
 		}
 
@@ -644,7 +644,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
-	if err := te.fsEval.MkdirAll(dir, 0777); err != nil {
+	if err := te.fsEval.MkdirAll(dir, 0o777); err != nil {
 		return fmt.Errorf("mkdir parent: %w", err)
 	}
 
@@ -685,7 +685,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				return fmt.Errorf("check is dirlink: %w", err)
 			}
 		}
-		if !(isDirlink && te.keepDirlinks) {
+		if !(isDirlink && te.keepDirlinks) { //nolint:staticcheck // QF1001: this form is easier to understand
 			if err := te.fsEval.RemoveAll(path); err != nil {
 				return fmt.Errorf("clobber old path: %w", err)
 			}
@@ -698,30 +698,28 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// will fix all of that for us.
 	switch hdr.Typeflag {
 	// regular file
-	case tar.TypeReg, tar.TypeRegA:
+	case tar.TypeReg, tar.TypeRegA: //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 		// Create a new file, then just copy the data.
 		fh, err := te.fsEval.Create(path)
 		if err != nil {
 			return fmt.Errorf("create regular: %w", err)
 		}
-		defer fh.Close()
 
 		// We need to make sure that we copy all of the bytes.
 		n, err := system.Copy(fh, r)
-		if int64(n) != hdr.Size {
+		if n != hdr.Size {
 			if err != nil {
 				err = fmt.Errorf("short write: %w", err)
 			} else {
 				err = io.ErrShortWrite
 			}
 		}
+		// Force close here so that we don't affect the metadata.
+		if closeErr := fh.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close unpacked regular file: %w", closeErr)
+		}
 		if err != nil {
 			return fmt.Errorf("unpack to regular file: %w", err)
-		}
-
-		// Force close here so that we don't affect the metadata.
-		if err := fh.Close(); err != nil {
-			return fmt.Errorf("close unpacked regular file: %w", err)
 		}
 
 	// directory
@@ -733,7 +731,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Attempt to create the directory. We do a MkdirAll here because even
 		// though you need to have a tar entry for every component of a new
 		// path, applyMetadata will correct any inconsistencies.
-		if err := te.fsEval.MkdirAll(path, 0777); err != nil {
+		if err := te.fsEval.MkdirAll(path, 0o777); err != nil {
 			return fmt.Errorf("mkdirall: %w", err)
 		}
 
@@ -789,7 +787,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			if err != nil {
 				return fmt.Errorf("create rootless block: %w", err)
 			}
-			defer fh.Close()
+			defer funchelpers.VerifyClose(&Err, fh)
 			if err := fh.Chmod(0); err != nil {
 				return fmt.Errorf("chmod 0 rootless block: %w", err)
 			}

@@ -20,7 +20,6 @@ package system
 
 import (
 	"errors"
-	"io/ioutil"
 	"os"
 	"testing"
 
@@ -32,12 +31,12 @@ import (
 func TestClearxattrFilter(t *testing.T) {
 	dir := t.TempDir()
 
-	file, err := ioutil.TempFile(dir, "TestClearxattrFilter")
+	file, err := os.CreateTemp(dir, "TestClearxattrFilter")
 	require.NoError(t, err)
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	path := file.Name()
-	defer os.RemoveAll(path)
+	defer os.RemoveAll(path) //nolint:errcheck
 
 	xattrs := []struct {
 		name, value string

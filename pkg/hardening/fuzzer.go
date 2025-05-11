@@ -24,7 +24,7 @@ package hardening
 import (
 	"bytes"
 	_ "crypto/sha256" // Import is necessary for go-digest
-	"io/ioutil"
+	"io"
 
 	"github.com/opencontainers/go-digest"
 )
@@ -38,7 +38,7 @@ func Fuzz(data []byte) int {
 	}
 	expectedDigest := digest.SHA256.FromBytes(buffer.Bytes())
 	verifiedReader := &VerifiedReadCloser{
-		Reader:         ioutil.NopCloser(buffer),
+		Reader:         io.NopCloser(buffer),
 		ExpectedDigest: expectedDigest,
 		ExpectedSize:   int64(size),
 	}

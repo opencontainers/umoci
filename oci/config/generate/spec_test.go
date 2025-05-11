@@ -20,7 +20,6 @@ package generate
 
 import (
 	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
@@ -36,16 +35,15 @@ import (
 func TestWriteTo(t *testing.T) {
 	g := New()
 
-	fh, err := ioutil.TempFile("", "umoci-TestWriteTo")
+	fh, err := os.CreateTemp(t.TempDir(), "umoci-TestWriteTo")
 	require.NoError(t, err)
-	defer os.RemoveAll(fh.Name())
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	size, err := g.WriteTo(fh)
-	assert.NoError(t, err, "generator WriteTo")
+	require.NoError(t, err, "generator WriteTo")
 
 	fi, err := fh.Stat()
-	assert.NoError(t, err, "stat target")
+	require.NoError(t, err, "stat target")
 	assert.Equal(t, size, fi.Size(), "returned WriteTo size should be the final file size")
 }
 

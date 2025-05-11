@@ -20,7 +20,7 @@ package unpriv
 
 import (
 	"archive/tar"
-	"io/ioutil"
+	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -40,9 +40,9 @@ func TestWrapNoTricks(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Make sure that no error is returned an no trickery is done if fn() works
 	// the first time. This is important to make sure that we're not doing
@@ -50,17 +50,17 @@ func TestWrapNoTricks(t *testing.T) {
 	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
 		return nil
 	})
-	assert.NoError(t, err, "wrap should not return error in simple case")
+	require.NoError(t, err, "wrap should not return error in simple case")
 
 	// Now make sure that Wrap doesn't mess with any directories in the same case.
-	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "parent", "directory"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "parent"), 0)
 	require.NoError(t, err)
 	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
 		return nil
 	})
-	assert.NoError(t, err, "wrap should not return error in simple case")
+	require.NoError(t, err, "wrap should not return error in simple case")
 }
 
 // assert that the given path has 0o000 permissions and is thus inaccessible.
@@ -76,7 +76,7 @@ func assertInaccessibleMode(t *testing.T, path string) os.FileInfo {
 func assertFileMode(t *testing.T, path string, mode os.FileMode) os.FileInfo {
 	fi, err := Lstat(path)
 	if assert.NoErrorf(t, err, "checking %q is accesssible", path) {
-		assert.EqualValuesf(t, mode, fi.Mode()&os.ModePerm, "incorrect permissions on %q", path)
+		assert.Equalf(t, mode, fi.Mode()&os.ModePerm, "incorrect permissions on %q", path)
 	}
 	return fi
 }
@@ -84,13 +84,13 @@ func assertFileMode(t *testing.T, path string, mode os.FileMode) os.FileInfo {
 // assert that the file does not exist.
 func assertNotExist(t *testing.T, path string) {
 	_, err := Lstat(path)
-	assert.ErrorIsf(t, err, os.ErrNotExist, "expected path %q to not exist", path)
+	assert.ErrorIsf(t, err, os.ErrNotExist, "expected path %q to not exist", path) //nolint:testifylint // assert.*Error* makes more sense
 }
 
 // assert that the file does exist.
 func assertExist(t *testing.T, path string) {
 	_, err := Lstat(path)
-	assert.NoErrorf(t, err, "expected path %q to exist", path)
+	require.NoErrorf(t, err, "expected path %q to exist", path)
 }
 
 func TestLstat(t *testing.T) {
@@ -102,14 +102,14 @@ func TestLstat(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -133,7 +133,7 @@ func TestLstat(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestReadlink(t *testing.T) {
@@ -145,12 +145,12 @@ func TestReadlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Symlink("some path", filepath.Join(dir, "some", "parent", "directories", "link1"))
 	require.NoError(t, err)
@@ -178,9 +178,9 @@ func TestReadlink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestSymlink(t *testing.T) {
@@ -192,12 +192,12 @@ func TestSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
 	require.NoError(t, err)
@@ -227,9 +227,9 @@ func TestSymlink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link1"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestOpen(t *testing.T) {
@@ -241,22 +241,22 @@ func TestOpen(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file"), []byte("parent"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "file"), []byte("some"), 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0555)
+	err = os.WriteFile(filepath.Join(dir, "file"), []byte("dir"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -269,7 +269,7 @@ func TestOpen(t *testing.T) {
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
 	require.NoError(t, err, "unpriv open")
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Check that the mode was unchanged.
 	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -280,22 +280,22 @@ func TestOpen(t *testing.T) {
 	}
 
 	// Read the file contents.
-	gotContent, err := ioutil.ReadAll(fh)
+	gotContent, err := io.ReadAll(fh)
 	require.NoError(t, err)
 	assert.Equal(t, fileContent, gotContent, "unpriv open content should match actual file contents")
 
 	// Now change the mode using fh.Chmod.
-	err = fh.Chmod(0755)
-	assert.NoError(t, err)
+	err = fh.Chmod(0o755)
+	require.NoError(t, err)
 
 	// Double check it was changed.
 	if fi, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "file")); assert.NoErrorf(t, err, "checking %q is accesssible", fh.Name()) {
-		assert.EqualValues(t, 0755, fi.Mode()&os.ModePerm, "permissions on accessible path should be 0o755")
+		assert.EqualValues(t, 0o755, fi.Mode()&os.ModePerm, "permissions on accessible path should be 0o755")
 	}
 
 	// Change it back.
 	err = fh.Chmod(0)
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Double check it was changed.
 	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -307,7 +307,7 @@ func TestOpen(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestReaddir(t *testing.T) {
@@ -319,22 +319,22 @@ func TestReaddir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file1"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file3"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0755)
+	err = os.Mkdir(filepath.Join(dir, "some", "parent", "directories", "dir"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file1"), 0)
 	require.NoError(t, err)
@@ -354,10 +354,10 @@ func TestReaddir(t *testing.T) {
 	// Make sure that the naive Open+Readdir will fail.
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	_, err = fh.Readdir(-1)
-	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail")
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Check that Readdir() only returns the relevant results.
 	infos, err := Readdir(filepath.Join(dir, "some", "parent", "directories"))
@@ -374,15 +374,15 @@ func TestReaddir(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Make sure that the naive Open.Readdir will still fail.
 	fh, err = Open(filepath.Join(dir, "some", "parent", "directories"))
 	require.NoError(t, err, "unpriv open")
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	_, err = fh.Readdir(-1)
-	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail")
+	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestWrapWrite(t *testing.T) {
@@ -394,14 +394,14 @@ func TestWrapWrite(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0)
 	require.NoError(t, err)
@@ -411,16 +411,16 @@ func TestWrapWrite(t *testing.T) {
 	require.NoError(t, err)
 
 	err = Wrap(filepath.Join(dir, "some", "parent", "directories", "lolpath"), func(path string) error {
-		return ioutil.WriteFile(path, fileContent, 0755)
+		return os.WriteFile(path, fileContent, 0o755)
 	})
 	require.NoError(t, err, "unwrap wrap WriteFile")
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "lolpath"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Read the file contents.
-	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
 
@@ -431,7 +431,7 @@ func TestWrapWrite(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestLink(t *testing.T) {
@@ -443,16 +443,16 @@ func TestLink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -465,10 +465,10 @@ func TestLink(t *testing.T) {
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Read the file contents.
-	if gotContent, err := ioutil.ReadAll(fh); assert.NoError(t, err) {
+	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content should match original content")
 	}
 
@@ -481,16 +481,16 @@ func TestLink(t *testing.T) {
 	// Check the contents.
 	fh1, err := Open(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	require.NoError(t, err)
-	defer fh1.Close()
-	if gotContent, err := ioutil.ReadAll(fh1); assert.NoError(t, err) {
+	defer fh1.Close() //nolint:errcheck
+	if gotContent, err := io.ReadAll(fh1); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link1 should match original content")
 	}
 
 	// And the other link.
 	fh2, err := Open(filepath.Join(dir, "some", "parent", "file2"))
 	require.NoError(t, err)
-	defer fh2.Close()
-	if gotContent, err := ioutil.ReadAll(fh2); assert.NoError(t, err) {
+	defer fh2.Close() //nolint:errcheck
+	if gotContent, err := io.ReadAll(fh2); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link2 should match original content")
 	}
 
@@ -511,11 +511,11 @@ func TestLink(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestChtimes(t *testing.T) {
@@ -527,16 +527,16 @@ func TestChtimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -575,11 +575,11 @@ func TestChtimes(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestLutimes(t *testing.T) {
@@ -591,16 +591,16 @@ func TestLutimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Symlink(".", filepath.Join(dir, "some", "parent", "directories", "link2"))
 	require.NoError(t, err)
@@ -668,11 +668,11 @@ func TestLutimes(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "directories", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "parent", "file2"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestRemove(t *testing.T) {
@@ -684,20 +684,20 @@ func TestRemove(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -720,13 +720,13 @@ func TestRemove(t *testing.T) {
 
 	// Now try removing all of the things.
 	err = Remove(filepath.Join(dir, "some", "parent", "directories", "file"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "parent", "directories"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "parent", "file2"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 	err = Remove(filepath.Join(dir, "some", "cousin", "directories"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that they are gone.
 	assertNotExist(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -744,20 +744,20 @@ func TestRemoveAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "cousin", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), fileContent, 0o555)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "file2"), fileContent, 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
@@ -780,7 +780,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// Now try to removeall the entire tree.
 	err = RemoveAll(filepath.Join(dir, "some", "parent"))
-	assert.NoError(t, err)
+	require.NoError(t, err)
 
 	// Check that they are gone.
 	assertNotExist(t, filepath.Join(dir, "some", "parent"))
@@ -788,7 +788,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// Make sure that trying to remove the directory after it's gone still won't fail.
 	err = RemoveAll(filepath.Join(dir, "some", "parent"))
-	assert.NoError(t, err, "removeall after path is gone should still succeed")
+	require.NoError(t, err, "removeall after path is gone should still succeed")
 }
 
 func TestMkdir(t *testing.T) {
@@ -800,12 +800,12 @@ func TestMkdir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
@@ -826,11 +826,11 @@ func TestMkdir(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestMkdirAll(t *testing.T) {
@@ -842,12 +842,12 @@ func TestMkdirAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
@@ -873,11 +873,11 @@ func TestMkdirAll(t *testing.T) {
 
 	// Make sure that os.Lstat still fails.
 	_, err = os.Lstat(filepath.Join(dir, "some", "child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "other-child"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 	_, err = os.Lstat(filepath.Join(dir, "some", "child", "dir"))
-	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES")
+	assert.ErrorIs(t, err, os.ErrPermission, "os lstat should fail with EACCES") //nolint:testifylint // assert.*Error* makes more sense
 }
 
 func TestMkdirAllMissing(t *testing.T) {
@@ -889,12 +889,12 @@ func TestMkdirAllMissing(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure, but with read access.
-	err = os.MkdirAll(filepath.Join(dir, "some"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
 	require.NoError(t, err)
 
 	// Make some subdirectories.
@@ -931,16 +931,16 @@ func TestMkdirRWPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some small structure. This is modelled after /var/log/anaconda/pre-anaconda-logs/lvmdump.
-	err = os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump"), 0o755)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0600)
+	err = os.Chmod(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs"), 0o600)
 	require.NoError(t, err)
 
 	// Make sure the os.Create fails with the path.
@@ -950,11 +950,11 @@ func TestMkdirRWPerm(t *testing.T) {
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump", "config_diff"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	n, err := fh.Write(fileContent)
 	require.NoError(t, err)
-	require.EqualValues(t, len(fileContent), n, "incomplete write")
+	require.Equal(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
 	err = MkdirAll(filepath.Join(dir, "some", "a", "b", "c", "child"), 0)
@@ -989,18 +989,18 @@ func TestMkdirRPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
 	// Create some small structure.
-	err = os.MkdirAll(filepath.Join(dir, "var", "log"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "var", "log"), 0o755)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var", "log"), 0555)
+	err = os.Chmod(filepath.Join(dir, "var", "log"), 0o555)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "var"), 0555)
+	err = os.Chmod(filepath.Join(dir, "var"), 0o555)
 	require.NoError(t, err)
 
 	// Make sure the os.Create fails with the path.
@@ -1010,13 +1010,13 @@ func TestMkdirRPerm(t *testing.T) {
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 	err = fh.Chmod(0)
 	require.NoError(t, err)
 
 	n, err := fh.Write(fileContent)
 	require.NoError(t, err)
-	require.EqualValues(t, len(fileContent), n, "incomplete write")
+	require.Equal(t, len(fileContent), n, "incomplete write")
 
 	// Make some subdirectories.
 	err = MkdirAll(filepath.Join(dir, "var", "log", "anaconda2", "childdir"), 0)
@@ -1026,8 +1026,8 @@ func TestMkdirRPerm(t *testing.T) {
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda"))
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2", "childdir"))
 	assertInaccessibleMode(t, filepath.Join(dir, "var", "log", "anaconda2"))
-	assertFileMode(t, filepath.Join(dir, "var", "log"), 0555)
-	assertFileMode(t, filepath.Join(dir, "var"), 0555)
+	assertFileMode(t, filepath.Join(dir, "var", "log"), 0o555)
+	assertFileMode(t, filepath.Join(dir, "var"), 0o555)
 }
 
 func TestWalk(t *testing.T) {
@@ -1043,31 +1043,31 @@ func TestWalk(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := ioutil.TempDir(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
-	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0755)
+	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0555)
+	err = os.WriteFile(filepath.Join(dir, "some", "parent", "directories", "file"), []byte("some content"), 0o555)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories", "file"), 0)
 	require.NoError(t, err)
-	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0123)
+	err = os.Chmod(filepath.Join(dir, "some", "parent", "directories"), 0o123)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some", "parent"), 0)
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "some"), 0)
 	require.NoError(t, err)
-	err = os.Chmod(dir, 0755)
+	err = os.Chmod(dir, 0o755)
 	require.NoError(t, err)
 
 	// Walk over it.
 	seen := map[string]struct{}{}
 	err = Walk(dir, func(path string, info os.FileInfo, err error) error {
 		// Don't expect errors.
-		if !assert.NoErrorf(t, err, "unexpected error in walkfunc(%q)", path) {
+		if !assert.NoErrorf(t, err, "unexpected error in walkfunc(%q)", path) { //nolint:testifylint
 			return err
 		}
 
@@ -1078,15 +1078,15 @@ func TestWalk(t *testing.T) {
 		}
 
 		// Figure out the expected mode.
-		expectedMode := os.FileMode(0xFFFFFFFF)
+		var expectedMode os.FileMode
 		switch path {
 		case dir:
-			expectedMode = 0755 | os.ModeDir
+			expectedMode = 0o755 | os.ModeDir
 		case filepath.Join(dir, "some"),
 			filepath.Join(dir, "some", "parent"):
 			expectedMode = os.ModeDir
 		case filepath.Join(dir, "some", "parent", "directories"):
-			expectedMode = 0123 | os.ModeDir
+			expectedMode = 0o123 | os.ModeDir
 		case filepath.Join(dir, "some", "parent", "directories", "file"):
 			expectedMode = 0
 		default:
@@ -1095,7 +1095,7 @@ func TestWalk(t *testing.T) {
 		}
 
 		// Check the mode.
-		assert.EqualValuesf(t, expectedMode, info.Mode(), "unexpected file mode for %q", path)
+		assert.Equalf(t, expectedMode, info.Mode(), "unexpected file mode for %q", path)
 		assert.EqualExportedValues(t, info, newFi, "should get the same FileInfo before and after lstat")
 
 		// Update seen map.

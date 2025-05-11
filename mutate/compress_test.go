@@ -21,12 +21,12 @@ package mutate
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	zstd "github.com/klauspost/compress/zstd"
 	gzip "github.com/klauspost/pgzip"
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 const (
@@ -34,53 +34,48 @@ const (
 )
 
 func TestNoopCompressor(t *testing.T) {
-	assert := assert.New(t)
 	buf := bytes.NewBufferString(fact)
 
 	r, err := NoopCompressor.Compress(buf)
-	assert.NoError(err)
-	assert.Equal(NoopCompressor.MediaTypeSuffix(), "")
+	require.NoError(t, err, "noop compress buffer")
+	assert.Empty(t, NoopCompressor.MediaTypeSuffix(), "noop compressor MediaTypeSuffix")
 
-	content, err := ioutil.ReadAll(r)
-	assert.NoError(err)
+	content, err := io.ReadAll(r)
+	require.NoError(t, err, "read from noop compressor")
 
-	assert.Equal(string(content), fact)
+	assert.Equal(t, fact, string(content), "noop compressed data")
 }
 
 func TestGzipCompressor(t *testing.T) {
-	assert := assert.New(t)
-
 	buf := bytes.NewBufferString(fact)
 	c := GzipCompressor
 
 	r, err := c.Compress(buf)
-	assert.NoError(err)
-	assert.Equal(c.MediaTypeSuffix(), "gzip")
+	require.NoError(t, err, "gzip compress buffer")
+	assert.Equal(t, "gzip", c.MediaTypeSuffix(), "gzip compressor MediaTypeSuffix")
 
 	r, err = gzip.NewReader(r)
-	assert.NoError(err)
+	require.NoError(t, err, "read gzip data")
 
-	content, err := ioutil.ReadAll(r)
-	assert.NoError(err)
+	content, err := io.ReadAll(r)
+	require.NoError(t, err, "read from round-tripped gzip")
 
-	assert.Equal(string(content), fact)
+	assert.Equal(t, fact, string(content), "gzip round-trip data")
 }
 
 func TestZstdCompressor(t *testing.T) {
-	assert := assert.New(t)
-
 	buf := bytes.NewBufferString(fact)
 	c := ZstdCompressor
 
 	r, err := c.Compress(buf)
-	assert.NoError(err)
-	assert.Equal(c.MediaTypeSuffix(), "zstd")
+	require.NoError(t, err, "zstd compress buffer")
+	assert.Equal(t, "zstd", c.MediaTypeSuffix(), "zstd compressor MediaTypeSuffix")
 
 	dec, err := zstd.NewReader(r)
-	assert.NoError(err)
+	require.NoError(t, err, "read zstd data")
 
-	var content bytes.Buffer
-	_, err = io.Copy(&content, dec)
-	assert.NoError(err)
-	assert.Equal(content.String(), fact)
+	content, err := io.ReadAll(dec)
+	require.NoError(t, err, "read from round-tripped zstd")
+
+	assert.Equal(t, fact, string(content), "zstd round-trip data")
 }

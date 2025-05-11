@@ -16,19 +16,6 @@
  * limitations under the License.
  */
 
-package layer
-
-import (
-	"archive/tar"
-
-	"golang.org/x/sys/unix"
-)
-
-func updateHeader(hdr *tar.Header, s unix.Stat_t) {
-	// Currently the Go stdlib doesn't fill in the major/minor numbers of
-	// devices, so we have to do it manually.
-	if s.Mode&unix.S_IFBLK == unix.S_IFBLK || s.Mode&unix.S_IFCHR == unix.S_IFCHR {
-		hdr.Devmajor = int64(unix.Major(uint64(s.Rdev))) //nolint:unconvert // 32-bit systems have different sized types
-		hdr.Devminor = int64(unix.Minor(uint64(s.Rdev))) //nolint:unconvert // 32-bit systems have different sized types
-	}
-}
+// Package provides small helpers related to writing easy-to-understand Go
+// functions.
+package funchelpers

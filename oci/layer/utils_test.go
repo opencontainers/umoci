@@ -48,7 +48,7 @@ func TestMapRootless(t *testing.T) {
 	baseHdr := tar.Header{
 		Name:     "etc/passwd",
 		Typeflag: tar.TypeReg,
-		Xattrs:   make(map[string]string),
+		Xattrs:   make(map[string]string), //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	}
 
 	for _, test := range []struct {
@@ -77,11 +77,11 @@ func TestMapRootless(t *testing.T) {
 			// Update baseHdr.
 			baseHdr.Uid = test.uid
 			baseHdr.Gid = test.gid
-			delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
+			delete(baseHdr.Xattrs, rootlesscontainers.Keyname) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			if test.proto != nil {
 				payload, err := proto.Marshal(test.proto)
 				require.NoError(t, err, "marshal proto")
-				baseHdr.Xattrs[rootlesscontainers.Keyname] = string(payload)
+				baseHdr.Xattrs[rootlesscontainers.Keyname] = string(payload) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			}
 
 			// Map.
@@ -93,7 +93,7 @@ func TestMapRootless(t *testing.T) {
 			}
 
 			// Output header shouldn't contain "user.rootlesscontainers".
-			assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "user.rootlesscontainers should not be mapped")
+			assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "user.rootlesscontainers should not be mapped") //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			// Make sure that the uid and gid are what we wanted.
 			assert.Equal(t, test.outUid, baseHdr.Uid, "mapped uid")
 			assert.Equal(t, test.outGid, baseHdr.Gid, "mapped uid")
@@ -134,7 +134,7 @@ func TestUnmapRootless(t *testing.T) {
 			// Update baseHdr.
 			baseHdr.Uid = test.uid
 			baseHdr.Gid = test.gid
-			delete(baseHdr.Xattrs, rootlesscontainers.Keyname)
+			delete(baseHdr.Xattrs, rootlesscontainers.Keyname) //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 
 			// Unmap.
 			err := unmapHeader(&baseHdr, mapOptions)
@@ -146,10 +146,10 @@ func TestUnmapRootless(t *testing.T) {
 
 			// Check that the xattr is what we wanted.
 			if test.proto == nil {
-				assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping shouldn't create user.rootlesscontainers")
+				assert.NotContains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping shouldn't create user.rootlesscontainers") //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			} else {
-				assert.Contains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping should create user.rootlesscontainers")
-				payload := baseHdr.Xattrs[rootlesscontainers.Keyname]
+				assert.Contains(t, baseHdr.Xattrs, rootlesscontainers.Keyname, "mapping should create user.rootlesscontainers") //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
+				payload := baseHdr.Xattrs[rootlesscontainers.Keyname]                                                           //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 
 				var parsed rootlesscontainers.Resource
 				err := proto.Unmarshal([]byte(payload), &parsed)

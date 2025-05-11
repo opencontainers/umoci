@@ -34,6 +34,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/iohelpers"
 
 	"github.com/apex/log"
@@ -102,14 +103,14 @@ type Meta struct {
 // cache ensures that the cached versions of the related configurations have
 // been loaded. Calling this function more than once will do nothing, unless
 // you've explicitly cleared the cache.
-func (m *Mutator) cache(ctx context.Context) error {
+func (m *Mutator) cache(ctx context.Context) (Err error) {
 	// We need the manifest
 	if m.manifest == nil {
 		blob, err := m.engine.FromDescriptor(ctx, m.source.Descriptor())
 		if err != nil {
 			return fmt.Errorf("cache source manifest: %w", err)
 		}
-		defer blob.Close()
+		defer funchelpers.VerifyClose(&Err, blob)
 
 		manifest, ok := blob.Data.(ispec.Manifest)
 		if !ok {
@@ -126,7 +127,7 @@ func (m *Mutator) cache(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("cache source config: %w", err)
 		}
-		defer blob.Close()
+		defer funchelpers.VerifyClose(&Err, blob)
 
 		config, ok := blob.Data.(ispec.Image)
 		if !ok {
@@ -288,8 +289,8 @@ func (m *Mutator) PickDefaultCompressAlgorithm(ctx context.Context) (Compressor,
 // generate the DiffIDs for the image metatadata. The provided history entry is
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
-func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (ispec.Descriptor, error) {
-	desc := ispec.Descriptor{}
+func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (_ ispec.Descriptor, Err error) {
+	var desc ispec.Descriptor
 	if err := m.cache(ctx); err != nil {
 		return desc, fmt.Errorf("getting cache failed: %w", err)
 	}
@@ -311,7 +312,7 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	if err != nil {
 		return desc, fmt.Errorf("couldn't create compression for blob: %w", err)
 	}
-	defer compressed.Close()
+	defer funchelpers.VerifyClose(&Err, compressed)
 
 	layerDigest, layerSize, err := m.engine.PutBlob(ctx, compressed)
 	if err != nil {
@@ -361,7 +362,7 @@ func (m *Mutator) AddExisting(ctx context.Context, desc ispec.Descriptor, histor
 // metadata and manifest to the engine. It then returns a new manifest
 // descriptor (which can be used in place of the source descriptor provided to
 // New).
-func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
+func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err error) {
 	if err := m.cache(ctx); err != nil {
 		return casext.DescriptorPath{}, fmt.Errorf("getting cache failed: %w", err)
 	}
@@ -405,7 +406,7 @@ func (m *Mutator) Commit(ctx context.Context) (casext.DescriptorPath, error) {
 		if err != nil {
 			return casext.DescriptorPath{}, fmt.Errorf("get parent-%d blob: %w", idx, err)
 		}
-		defer parentBlob.Close()
+		defer funchelpers.VerifyClose(&Err, parentBlob)
 
 		// Replace all references to the child blob with the new one.
 		old := m.source.Walk[idx]

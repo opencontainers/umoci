@@ -22,40 +22,38 @@ import (
 	"bytes"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 )
 
 func testAlgo(t *testing.T, algo Algorithm, expectedName string, expectedDiff bool) {
-	assert := assert.New(t)
-
 	const data = "meshuggah rocks!!!"
 
 	plainBuf := bytes.NewBufferString(data)
 
 	r, err := algo.Compress(plainBuf)
-	assert.NoError(err)
-	assert.Equal(algo.MediaTypeSuffix(), expectedName)
+	require.NoErrorf(t, err, "compress with %T (%q)", algo, expectedName)
+	assert.Equalf(t, expectedName, algo.MediaTypeSuffix(), "algo %T.MediaTypeSuffix", algo)
 
-	compressed, err := ioutil.ReadAll(r)
-	assert.NoError(err)
+	compressed, err := io.ReadAll(r)
+	require.NoError(t, err, "read compressed data")
 	if expectedDiff {
-		assert.NotEqual(string(compressed), data)
+		assert.NotEqualf(t, data, string(compressed), "compressed data with %T", algo)
 	} else {
-		assert.Equal(string(compressed), data)
+		assert.Equalf(t, data, string(compressed), "compressed data with %T", algo)
 	}
 
 	compressedBuf := bytes.NewBuffer(compressed)
 
 	r, err = algo.Decompress(compressedBuf)
-	assert.NoError(err)
+	require.NoErrorf(t, err, "decompress with %T (%q)", algo, expectedName)
 
-	content, err := ioutil.ReadAll(r)
-	assert.NoError(err)
+	content, err := io.ReadAll(r)
+	require.NoErrorf(t, err, "read decompressed data")
 
-	assert.Equal(string(content), data)
+	assert.Equal(t, data, string(content), "%T (%q) round-tripped data", algo, expectedName)
 }
 
 type fakeAlgo struct{ name string }
@@ -67,40 +65,34 @@ func (f fakeAlgo) Compress(r io.Reader) (io.ReadCloser, error)   { return nil, f
 func (f fakeAlgo) Decompress(r io.Reader) (io.ReadCloser, error) { return nil, fmt.Errorf("err") }
 
 func TestRegister(t *testing.T) {
-	assert := assert.New(t)
-
 	var fakeAlgo Algorithm = fakeAlgo{"fake-algo1"}
 	fakeAlgoName := fakeAlgo.MediaTypeSuffix()
 
 	err := RegisterAlgorithm(fakeAlgo)
-	assert.NoError(err)
+	require.NoError(t, err, "register new algorithm")
 
 	gotAlgo := GetAlgorithm(fakeAlgoName)
-	assert.NotNil(gotAlgo)
-	assert.Equal(gotAlgo, fakeAlgo)
+	assert.NotNil(t, gotAlgo, "get registered algorithm")
+	assert.Equal(t, gotAlgo, fakeAlgo, "get registered algorithm")
 }
 
 func TestRegisterFail(t *testing.T) {
-	assert := assert.New(t)
-
 	var fakeAlgo Algorithm = fakeAlgo{"fake-algo2"}
 	fakeAlgoName := fakeAlgo.MediaTypeSuffix()
 
 	err1 := RegisterAlgorithm(fakeAlgo)
-	assert.NoError(err1)
+	require.NoError(t, err1, "register new algorithm")
 
 	// Registering the same algorithm again should fail.
 	err2 := RegisterAlgorithm(fakeAlgo)
-	assert.Error(err2)
+	assert.Error(t, err2, "re-register algorithm with same name") //nolint:testifylint // assert.*Error* makes more sense
 
 	gotAlgo := GetAlgorithm(fakeAlgoName)
-	assert.NotNil(gotAlgo)
-	assert.Equal(gotAlgo, fakeAlgo)
+	assert.NotNil(t, gotAlgo, "get registered algorithm")
+	assert.Equal(t, gotAlgo, fakeAlgo, "get registered algorithm")
 }
 
 func TestGetFail(t *testing.T) {
-	assert := assert.New(t)
-
 	algo := GetAlgorithm("doesnotexist")
-	assert.Nil(algo, "GetAlgorithm for non-existent compression algorithm should return nil")
+	assert.Nil(t, algo, "GetAlgorithm for non-existent compression algorithm should return nil")
 }

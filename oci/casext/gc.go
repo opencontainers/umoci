@@ -27,7 +27,7 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
-// GCPolicy is a policy function that returns 'true' if a blob can be GC'ed
+// GCPolicy is a policy function that returns 'true' if a blob can be GC'ed.
 type GCPolicy func(ctx context.Context, digest digest.Digest) (bool, error)
 
 // GC will perform a mark-and-sweep garbage collection of the OCI image

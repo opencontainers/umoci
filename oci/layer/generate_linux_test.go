@@ -27,7 +27,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
@@ -41,9 +40,9 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 
 	testNeedsMknod(t)
 
-	err := system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0666, unix.Mkdev(0, 0))
+	err := system.Mknod(filepath.Join(dir, "test"), unix.S_IFCHR|0o666, unix.Mkdev(0, 0))
 	require.NoError(t, err, "mknod")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -58,11 +57,11 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
-		defer reader.Close()
+		require.NoError(t, err, "generate layer")
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -73,7 +72,7 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},
@@ -88,11 +87,11 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 
 	testNeedsTrustedOverlayXattrs(t)
 
-	err := os.Mkdir(filepath.Join(dir, "wodir"), 0755)
+	err := os.Mkdir(filepath.Join(dir, "wodir"), 0o755)
 	require.NoError(t, err)
 	err = unix.Lsetxattr(filepath.Join(dir, "wodir"), "trusted.overlay.opaque", []byte("y"), 0)
 	require.NoError(t, err, "lsetxattr trusted.overlay.opaque")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -107,11 +106,11 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
-		defer reader.Close()
+		require.NoError(t, err, "generate layer")
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -123,7 +122,7 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},
@@ -139,11 +138,11 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 
 	testNeedsTrustedOverlayXattrs(t)
 
-	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0755)
+	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0o755)
 	require.NoError(t, err)
 	err = unix.Lsetxattr(filepath.Join(dir, "woreg"), "trusted.overlay.whiteout", []byte("foobar"), 0)
 	require.NoError(t, err, "lsetxattr trusted.overlay.whiteout")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
 	packOptions := RepackOptions{TranslateOverlayWhiteouts: true}
@@ -158,11 +157,11 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 			"mode",
 		}
 		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		assert.NoError(t, err, "mtree check")
+		require.NoError(t, err, "mtree check")
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		assert.NoError(t, err, "generate layer")
-		defer reader.Close()
+		require.NoError(t, err, "generate layer")
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -173,7 +172,7 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},

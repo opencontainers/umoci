@@ -22,7 +22,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 
 	"github.com/apex/log"
@@ -136,7 +135,7 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 	case left == 0:
 		// We just want to know whether we read something (n>0). Whatever we
 		// read is irrelevant because if we read something that means the
-		// reader will fail to verify. #nosec G104
+		// reader will fail to verify.
 		nTmp, _ := v.Reader.Read(make([]byte, 1))
 		v.currentSize += int64(nTmp)
 	}
@@ -172,7 +171,7 @@ func (v *VerifiedReadCloser) sourceName() string {
 		return inner.Name()
 	case fmt.Stringer:
 		return inner.String()
-	// TODO: Maybe handle things like ioutil.NopCloser by using reflection?
+	// TODO: Maybe handle things like io.NopCloser by using reflection?
 	default:
 		return fmt.Sprintf("%#v", inner)
 	}
@@ -184,7 +183,7 @@ func (v *VerifiedReadCloser) Close() error {
 	// Consume any remaining bytes to make sure that we've actually read to the
 	// end of the stream. VerifiedReadCloser.Read will not read past
 	// ExpectedSize+1, so we don't need to add a limit here.
-	if n, err := system.Copy(ioutil.Discard, v); err != nil {
+	if n, err := system.Copy(io.Discard, v); err != nil {
 		return fmt.Errorf("consume remaining unverified stream: %w", err)
 	} else if n != 0 {
 		// If there's trailing bytes being discarded at this point, that

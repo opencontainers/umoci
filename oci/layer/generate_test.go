@@ -21,8 +21,8 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
+	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"testing"
@@ -46,12 +46,12 @@ type tarDentry struct {
 func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
 	var r io.Reader
 	var size int64
-	if de.ftype == tar.TypeReg || de.ftype == tar.TypeRegA {
+	if de.ftype == tar.TypeReg || de.ftype == tar.TypeRegA { //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 		size = int64(len(de.contents))
 		r = bytes.NewBufferString(de.contents)
 	}
 
-	mode := os.FileMode(0777)
+	mode := os.FileMode(0o777)
 	if de.ftype == tar.TypeDir {
 		mode |= os.ModeDir
 	}
@@ -62,7 +62,7 @@ func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
 		Typeflag:   de.ftype,
 		Mode:       int64(mode),
 		Size:       size,
-		Xattrs:     de.xattrs,
+		Xattrs:     de.xattrs, //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		ModTime:    testutils.Unix(1210393, 4528036),
 		AccessTime: testutils.Unix(7892829, 2341211),
 		ChangeTime: testutils.Unix(8731293, 8218947),
@@ -75,14 +75,14 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 	var sawEntries []tarDentry
 	for {
 		hdr, err := tr.Next()
-		if err == io.EOF {
+		if errors.Is(err, io.EOF) {
 			break
 		}
 		require.NoError(t, err, "read next tar header")
 
-		contents, err := ioutil.ReadAll(tr)
+		contents, err := io.ReadAll(tr)
 		require.NoErrorf(t, err, "read data after tar header for %q", hdr.Name)
-		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA {
+		if hdr.Typeflag == tar.TypeReg || hdr.Typeflag == tar.TypeRegA { //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			assert.Lenf(t, contents, int(hdr.Size), "data for %q should have same size as in tar header", hdr.Name)
 		} else {
 			assert.Zerof(t, hdr.Size, "non-regular-file tar header for %q should have an empty size", hdr.Name)
@@ -93,7 +93,7 @@ func checkLayerEntries(t *testing.T, rdr io.Reader, wantEntries []tarDentry) {
 			path:     hdr.Name,
 			ftype:    hdr.Typeflag,
 			linkname: hdr.Linkname,
-			xattrs:   hdr.Xattrs,
+			xattrs:   hdr.Xattrs, //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 			contents: string(contents),
 		})
 	}
@@ -104,13 +104,13 @@ func TestGenerate(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial.
@@ -124,7 +124,7 @@ func TestGenerate(t *testing.T) {
 	time.Sleep(1 * time.Second)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)
@@ -138,7 +138,7 @@ func TestGenerate(t *testing.T) {
 
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	checkLayerEntries(t, reader, []tarDentry{
 		{path: "some/parents/", ftype: tar.TypeDir},
@@ -152,13 +152,13 @@ func TestGenerateMissingFileError(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial from the main directory.
@@ -166,7 +166,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)
@@ -185,7 +185,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	// Generate a layer where the changed file is missing after the diff.
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	tr := tar.NewReader(reader)
 	// TODO: Should we use assert.Eventually?
@@ -204,13 +204,13 @@ func TestGenerateWrongRootError(t *testing.T) {
 	dir := t.TempDir()
 
 	// Create some files and other fun things.
-	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0755)
+	err := os.MkdirAll(filepath.Join(dir, "some", "parents"), 0o755)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "fileunchanged"), []byte("unchanged"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("changed"), 0o644)
 	require.NoError(t, err)
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "deleted"), []byte("deleted"), 0o644)
 	require.NoError(t, err)
 
 	// Get initial from the main directory.
@@ -218,7 +218,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	require.NoError(t, err)
 
 	// Modify some files.
-	err = ioutil.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0644)
+	err = os.WriteFile(filepath.Join(dir, "some", "parents", "filechanged"), []byte("new contents"), 0o644)
 	require.NoError(t, err)
 	err = os.Remove(filepath.Join(dir, "some", "parents", "deleted"))
 	require.NoError(t, err)
@@ -233,7 +233,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	// Generate a layer with the wrong root directory.
 	reader, err := GenerateLayer(filepath.Join(dir, "some"), diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	tr := tar.NewReader(reader)
 	// TODO: Should we use assert.Eventually?

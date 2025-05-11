@@ -198,14 +198,13 @@ func ToRootless(spec *rspec.Spec) error {
 	// Remove additional groups.
 	spec.Process.User.AdditionalGids = nil
 
-	// Remove networkns from the spec.
+	// Remove networkns from the spec, as well as userns (for us to add it
+	// later without duplicates).
 	for _, ns := range spec.Linux.Namespaces {
-		switch ns.Type {
-		case rspec.NetworkNamespace, rspec.UserNamespace:
-			// Do nothing.
-		default:
-			namespaces = append(namespaces, ns)
+		if ns.Type == rspec.NetworkNamespace || ns.Type == rspec.UserNamespace {
+			continue
 		}
+		namespaces = append(namespaces, ns)
 	}
 	// Add userns to the spec.
 	namespaces = append(namespaces, rspec.LinuxNamespace{

@@ -104,27 +104,27 @@ func (fs unprivFsEval) MkdirAll(path string, perm os.FileMode) error {
 	return unpriv.MkdirAll(path, perm)
 }
 
-// Llistxattr is equivalent to unpriv.Llistxattr
+// Llistxattr is equivalent to unpriv.Llistxattr.
 func (fs unprivFsEval) Llistxattr(path string) ([]string, error) {
 	return unpriv.Llistxattr(path)
 }
 
-// Lremovexattr is equivalent to unpriv.Lremovexattr
+// Lremovexattr is equivalent to unpriv.Lremovexattr.
 func (fs unprivFsEval) Lremovexattr(path, name string) error {
 	return unpriv.Lremovexattr(path, name)
 }
 
-// Lsetxattr is equivalent to unpriv.Lsetxattr
+// Lsetxattr is equivalent to unpriv.Lsetxattr.
 func (fs unprivFsEval) Lsetxattr(path, name string, value []byte, flags int) error {
 	return unpriv.Lsetxattr(path, name, value, flags)
 }
 
-// Lgetxattr is equivalent to unpriv.Lgetxattr
+// Lgetxattr is equivalent to unpriv.Lgetxattr.
 func (fs unprivFsEval) Lgetxattr(path string, name string) ([]byte, error) {
 	return unpriv.Lgetxattr(path, name)
 }
 
-// Lclearxattrs is equivalent to unpriv.Lclearxattrs
+// Lclearxattrs is equivalent to unpriv.Lclearxattrs.
 func (fs unprivFsEval) Lclearxattrs(path string, skipFn func(xattrName string) bool) error {
 	return unpriv.Lclearxattrs(path, skipFn)
 }

@@ -87,7 +87,7 @@ func GetParser(mediaType string) ParseFunc {
 // return a struct.
 func RegisterParser(mediaType string, parser ParseFunc) {
 	// Get the return type so we know what packages are white-listed for
-	// recursion. #nosec G104
+	// recursion.
 	v, _ := parser(nil)
 	t := reflect.TypeOf(v)
 

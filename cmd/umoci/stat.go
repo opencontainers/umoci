@@ -31,6 +31,7 @@ import (
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var statCommand = cli.Command{
@@ -65,7 +66,7 @@ humans to read, and might change in future versions.`,
 	Action: stat,
 }
 
-func stat(ctx *cli.Context) error {
+func stat(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
@@ -75,7 +76,7 @@ func stat(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	manifestDescriptorPaths, err := engineExt.ResolveReference(context.Background(), tagName)
 	if err != nil {

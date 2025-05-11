@@ -24,7 +24,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 
@@ -35,6 +34,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/oci/cas"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/hardening"
 	"github.com/opencontainers/umoci/pkg/system"
 )
@@ -83,7 +83,7 @@ type dirEngine struct {
 
 func (e *dirEngine) ensureTempDir() error {
 	if e.temp == "" {
-		tempDir, err := ioutil.TempDir(e.path, ".umoci-")
+		tempDir, err := os.MkdirTemp(e.path, ".umoci-")
 		if err != nil {
 			return fmt.Errorf("create tempdir: %w", err)
 		}
@@ -107,7 +107,7 @@ func (e *dirEngine) ensureTempDir() error {
 
 // verify ensures that the image is valid.
 func (e *dirEngine) validate() error {
-	content, err := ioutil.ReadFile(filepath.Join(e.path, layoutFile))
+	content, err := os.ReadFile(filepath.Join(e.path, layoutFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
@@ -154,7 +154,7 @@ func (e *dirEngine) validate() error {
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
-func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Digest, int64, error) {
+func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (_ digest.Digest, _ int64, Err error) {
 	if err := e.ensureTempDir(); err != nil {
 		return "", -1, fmt.Errorf("ensure tempdir: %w", err)
 	}
@@ -163,20 +163,20 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 
 	// We copy this into a temporary file because we need to get the blob hash,
 	// but also to avoid half-writing an invalid blob.
-	fh, err := ioutil.TempFile(e.temp, "blob-")
+	fh, err := os.CreateTemp(e.temp, "blob-")
 	if err != nil {
 		return "", -1, fmt.Errorf("create temporary blob: %w", err)
 	}
 	tempPath := fh.Name()
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 
 	writer := io.MultiWriter(fh, digester.Hash())
 	size, err := system.Copy(writer, reader)
 	if err != nil {
 		return "", -1, fmt.Errorf("copy to temporary blob: %w", err)
 	}
-	if err := fh.Close(); err != nil {
-		return "", -1, fmt.Errorf("close temporary blob: %w", err)
+	if err := fh.Sync(); err != nil {
+		return "", -1, fmt.Errorf("sync temporary blob: %w", err)
 	}
 
 	// Get the digest.
@@ -191,7 +191,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (digest.Diges
 		return "", -1, fmt.Errorf("rename temporary blob: %w", err)
 	}
 
-	return digester.Digest(), int64(size), nil
+	return digester.Digest(), size, nil
 }
 
 // GetBlob returns a reader for retrieving a blob from the image, which the
@@ -245,7 +245,7 @@ func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, e
 // previously existing index. This operation is atomic; any readers attempting
 // to access the OCI image while it is being modified will only ever see the
 // new or old index.
-func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
+func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) (Err error) {
 	if err := e.ensureTempDir(); err != nil {
 		return fmt.Errorf("ensure tempdir: %w", err)
 	}
@@ -255,19 +255,19 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 
 	// We copy this into a temporary index to ensure the atomicity of this
 	// operation.
-	fh, err := ioutil.TempFile(e.temp, "index-")
+	fh, err := os.CreateTemp(e.temp, "index-")
 	if err != nil {
 		return fmt.Errorf("create temporary index: %w", err)
 	}
 	tempPath := fh.Name()
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 
 	// Encode the index.
 	if err := json.NewEncoder(fh).Encode(index); err != nil {
 		return fmt.Errorf("write temporary index: %w", err)
 	}
-	if err := fh.Close(); err != nil {
-		return fmt.Errorf("close temporary index: %w", err)
+	if err := fh.Sync(); err != nil {
+		return fmt.Errorf("sync temporary index: %w", err)
 	}
 
 	// Move the blob to its correct path.
@@ -288,7 +288,7 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) error {
 // that implements various reference resolution functions that should work for
 // most users.
 func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
-	content, err := ioutil.ReadFile(filepath.Join(e.path, indexFile))
+	content, err := os.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
 			err = cas.ErrInvalid
@@ -352,7 +352,7 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	}
 	for _, path := range matches {
 		err = e.cleanPath(ctx, path)
-		if err != nil && err != filepath.SkipDir {
+		if err != nil && !errors.Is(err, filepath.SkipDir) {
 			return err
 		}
 	}
@@ -360,19 +360,21 @@ func (e *dirEngine) Clean(ctx context.Context) error {
 	return nil
 }
 
-func (e *dirEngine) cleanPath(ctx context.Context, path string) error {
+func (e *dirEngine) cleanPath(_ context.Context, path string) (Err error) {
 	cfh, err := os.Open(path)
 	if err != nil && !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("open for locking: %w", err)
 	}
-	defer cfh.Close()
+	defer funchelpers.VerifyClose(&Err, cfh)
 
 	if err := unix.Flock(int(cfh.Fd()), unix.LOCK_EX|unix.LOCK_NB); err != nil {
 		// If we fail to get a flock(2) then it's probably already locked,
 		// so we shouldn't touch it.
 		return filepath.SkipDir
 	}
-	defer unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
+	defer funchelpers.VerifyError(&Err, func() error {
+		return unix.Flock(int(cfh.Fd()), unix.LOCK_UN)
+	})
 
 	if err := os.RemoveAll(path); errors.Is(err, os.ErrNotExist) {
 		return nil // somebody else beat us to it
@@ -420,24 +422,24 @@ func Open(path string) (cas.Engine, error) {
 // Create creates a new OCI image layout at the given path. If the path already
 // exists, os.ErrExist is returned. However, all of the parent components of
 // the path will be created if necessary.
-func Create(path string) error {
+func Create(path string) (Err error) {
 	// We need to fail if path already exists, but we first create all of the
 	// parent paths.
 	dir := filepath.Dir(path)
 	if dir != "." {
-		if err := os.MkdirAll(dir, 0755); err != nil {
+		if err := os.MkdirAll(dir, 0o755); err != nil {
 			return fmt.Errorf("mkdir parent: %w", err)
 		}
 	}
-	if err := os.Mkdir(path, 0755); err != nil {
+	if err := os.Mkdir(path, 0o755); err != nil {
 		return fmt.Errorf("mkdir: %w", err)
 	}
 
 	// Create the necessary directories and "oci-layout" file.
-	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(path, blobDirectory), 0o755); err != nil {
 		return fmt.Errorf("mkdir blobdir: %w", err)
 	}
-	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0755); err != nil {
+	if err := os.Mkdir(filepath.Join(path, blobDirectory, cas.BlobAlgorithm.String()), 0o755); err != nil {
 		return fmt.Errorf("mkdir algorithm: %w", err)
 	}
 
@@ -445,7 +447,7 @@ func Create(path string) error {
 	if err != nil {
 		return fmt.Errorf("create index.json: %w", err)
 	}
-	defer indexFh.Close()
+	defer funchelpers.VerifyClose(&Err, indexFh)
 
 	defaultIndex := ispec.Index{
 		Versioned: imeta.Versioned{
@@ -461,7 +463,7 @@ func Create(path string) error {
 	if err != nil {
 		return fmt.Errorf("create oci-layout: %w", err)
 	}
-	defer layoutFh.Close()
+	defer funchelpers.VerifyClose(&Err, layoutFh)
 
 	ociLayout := ispec.ImageLayout{
 		Version: ImageLayoutVersion,

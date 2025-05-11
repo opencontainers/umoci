@@ -27,6 +27,7 @@ import (
 	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var newCommand = cli.Command{
@@ -55,7 +56,7 @@ needing a base image to start from.`,
 	Action: newImage,
 }
 
-func newImage(ctx *cli.Context) error {
+func newImage(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
@@ -65,7 +66,7 @@ func newImage(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	return umoci.NewImage(engineExt, tagName)
 }

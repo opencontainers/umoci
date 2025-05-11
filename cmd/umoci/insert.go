@@ -35,6 +35,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var insertCommand = uxCompress(uxRemap(uxHistory(uxTag(cli.Command{
@@ -112,7 +113,7 @@ Some examples:
 	},
 }))))
 
-func insert(ctx *cli.Context) error {
+func insert(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	sourcePath := ctx.App.Metadata["--source-path"].(string)
@@ -135,7 +136,7 @@ func insert(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
@@ -166,7 +167,7 @@ func insert(ctx *cli.Context) error {
 
 	packOptions := layer.RepackOptions{MapOptions: meta.MapOptions}
 	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &packOptions)
-	defer reader.Close()
+	defer funchelpers.VerifyClose(&Err, reader)
 
 	var history *ispec.History
 	if !ctx.Bool("no-history") {

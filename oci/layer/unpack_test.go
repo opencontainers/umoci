@@ -22,7 +22,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/base64"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -48,11 +47,11 @@ func mustDecodeString(s string) []byte {
 	return b
 }
 
-func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) {
+func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) { //nolint:unparam
 	ctx := context.Background()
 	// These layers were manually generated using GNU tar + GNU gzip.
 	// XXX: In future we should also add libarchive tar archives.
-	var layers = []struct {
+	layers := []struct {
 		base64 string
 		digest digest.Digest
 	}{
@@ -95,12 +94,10 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 	var layerDigests []digest.Digest
 	var layerDescriptors []ispec.Descriptor
 	for _, layer := range layers {
-		var layerReader io.Reader
-
 		// Since we already have the digests we don't need to jump through the
 		// hoops of decompressing our already-compressed blobs above to get the
 		// DiffIDs.
-		layerReader = bytes.NewBuffer(mustDecodeString(layer.base64))
+		layerReader := bytes.NewBuffer(mustDecodeString(layer.base64))
 		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
 		require.NoError(t, err)
 
@@ -252,16 +249,16 @@ func TestLayerCompressionCheck(t *testing.T) {
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
-			assert.Equalf(t, isLayerType(test.mediaType), test.expectedIsLayer, "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
+			assert.Equalf(t, test.expectedIsLayer, isLayerType(test.mediaType), "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
 
 			if test.expectedIsLayer {
 				gotAlgoName, gotAlgo, err := getLayerCompressAlgorithm(test.mediaType)
 				if test.expectedAlgorithm == nil {
 					assert.Errorf(t, err, "getLayerCompressAlgorithm(%q) should be unsupported", test.mediaType)
 				} else {
-					assert.NoErrorf(t, err, "getLayerCompressAlgorithm(%q) should succeed", test.mediaType)
+					require.NoErrorf(t, err, "getLayerCompressAlgorithm(%q) should succeed", test.mediaType)
 					assert.Equalf(t, gotAlgoName, test.expectedAlgorithm.MediaTypeSuffix(), "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
-					assert.Equalf(t, gotAlgo, test.expectedAlgorithm, "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
+					assert.Equalf(t, test.expectedAlgorithm, gotAlgo, "getLayerCompressAlgorithm(%q) should be %v", test.mediaType, test.expectedAlgorithm)
 				}
 			}
 		})

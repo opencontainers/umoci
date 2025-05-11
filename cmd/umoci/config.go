@@ -33,6 +33,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 // FIXME: We should also implement a raw mode that just does modifications of
@@ -139,7 +140,7 @@ func parseKV(input string) (string, string, error) {
 	return name, value, nil
 }
 
-func config(ctx *cli.Context) error {
+func config(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 
@@ -155,7 +156,7 @@ func config(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
@@ -208,7 +209,7 @@ func config(ctx *cli.Context) error {
 			case "config.volume":
 				g.ClearConfigVolumes()
 			case "rootfs.diffids":
-				//g.ClearRootfsDiffIDs()
+				// g.ClearRootfsDiffIDs()
 				return errors.New("--clear=rootfs.diffids is not safe")
 			case "config.cmd":
 				g.ClearConfigCmd()

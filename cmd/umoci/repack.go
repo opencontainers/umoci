@@ -34,6 +34,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 )
 
@@ -93,7 +94,7 @@ manifest and configuration information uses the new diff atop the old manifest.`
 	},
 }))
 
-func repack(ctx *cli.Context) error {
+func repack(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 	bundlePath := ctx.App.Metadata["bundle"].(string)
@@ -125,7 +126,7 @@ func repack(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	// Create the mutator.
 	mutator, err := mutate.New(engineExt, meta.From)

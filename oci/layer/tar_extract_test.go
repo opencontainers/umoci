@@ -21,7 +21,6 @@ package layer
 import (
 	"archive/tar"
 	"bytes"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -50,7 +49,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	rootfs := filepath.Join(dir, "rootfs")
 
 	// Create a host file that we want to make sure doesn't get overwrittern.
-	err := ioutil.WriteFile(filepath.Join(dir, file), hostValue, 0644)
+	err := os.WriteFile(filepath.Join(dir, file), hostValue, 0o644)
 	require.NoError(t, err)
 
 	// Create our header. We raw prepend the prefix because we are generating
@@ -59,7 +58,7 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 		Name:       prefix + "/" + filepath.Base(file),
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -71,10 +70,10 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-	hostValueGot, err := ioutil.ReadFile(filepath.Join(dir, file))
+	hostValueGot, err := os.ReadFile(filepath.Join(dir, file))
 	require.NoError(t, err, "read host file")
 
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, file))
+	ctrValueGot, err := os.ReadFile(filepath.Join(rootfs, file))
 	require.NoError(t, err, "read ctr file")
 
 	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
@@ -95,7 +94,7 @@ func TestUnpackEntrySanitiseScoping(t *testing.T) {
 			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			err := os.Mkdir(rootfs, 0755)
+			err := os.Mkdir(rootfs, 0o755)
 			require.NoError(t, err, "mkdir rootfs")
 
 			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), test.prefix)
@@ -122,7 +121,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 			dir := t.TempDir()
 
 			rootfs := filepath.Join(dir, "rootfs")
-			err := os.Mkdir(rootfs, 0755)
+			err := os.Mkdir(rootfs, 0o755)
 			require.NoError(t, err, "mkdir rootfs")
 
 			// Create the symlink.
@@ -139,7 +138,7 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 // directories.
 func TestUnpackEntryParentDir(t *testing.T) {
 	rootfs := filepath.Join(t.TempDir(), "rootfs")
-	err := os.Mkdir(rootfs, 0755)
+	err := os.Mkdir(rootfs, 0o755)
 	require.NoError(t, err, "mkdir rootfs")
 
 	ctrValue := []byte("creating parentdirs")
@@ -150,7 +149,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 		Name:       "a/b/c/file",
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -163,7 +162,7 @@ func TestUnpackEntryParentDir(t *testing.T) {
 	err = te.UnpackEntry(rootfs, hdr, bytes.NewBuffer(ctrValue))
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
+	ctrValueGot, err := os.ReadFile(filepath.Join(rootfs, "a/b/c/file"))
 	require.NoError(t, err, "read ctr file")
 	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
 }
@@ -195,28 +194,28 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 			wh := filepath.Join(rawDir, whPrefix+rawFile)
 
 			// Create the parent directory.
-			err := os.MkdirAll(filepath.Join(dir, rawDir), 0755)
+			err := os.MkdirAll(filepath.Join(dir, rawDir), 0o755)
 			require.NoError(t, err, "mkdir parent directory")
 
 			// Create the path itself.
 			if test.dir {
-				err := os.Mkdir(filepath.Join(dir, test.path), 0755)
+				err := os.Mkdir(filepath.Join(dir, test.path), 0o755)
 				require.NoError(t, err)
 
 				// Make some subfiles and directories.
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0644)
+				err = os.WriteFile(filepath.Join(dir, test.path, "file1"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0644)
+				err = os.WriteFile(filepath.Join(dir, test.path, "file2"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 
-				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0755)
+				err = os.Mkdir(filepath.Join(dir, test.path, ".subdir"), 0o755)
 				require.NoError(t, err)
 
-				err = ioutil.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0644)
+				err = os.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			} else {
-				err := ioutil.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0644)
+				err := os.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			}
 
@@ -236,7 +235,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 
 			// Make sure that the path is gone.
 			_, err = os.Lstat(filepath.Join(dir, test.path))
-			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path")
+			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path") //nolint:testifylint // assert.*Error* makes more sense
 
 			// Make sure the parent directory wasn't modified.
 			fi, err := os.Lstat(filepath.Join(dir, rawDir))
@@ -281,7 +280,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
 			{tarDentry{path: "dir", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
 			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
@@ -291,7 +290,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "badlink", ftype: tar.TypeSymlink, linkname: "./nothing"}, false, false},
 			{tarDentry{path: "dir", ftype: tar.TypeDir}, false, false},
-			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "dir/file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, false, false},
 			{tarDentry{path: "dir/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
@@ -300,7 +299,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "level1a", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, true, true},
 			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
 			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
@@ -322,7 +321,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: "level1_file", ftype: tar.TypeReg}, false, false},
 			{tarDentry{path: "level1_link", ftype: tar.TypeSymlink, linkname: ".."}, false, false},
 			{tarDentry{path: "level1a", ftype: tar.TypeDir}, false, false},
-			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false},
+			{tarDentry{path: "level1a/level2_file", ftype: tar.TypeRegA}, false, false}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "level1a/level2_link", ftype: tar.TypeSymlink, linkname: "../../../"}, false, false},
 			{tarDentry{path: "level1a/level2a", ftype: tar.TypeDir}, false, false},
 			{tarDentry{path: "level1a/level2a/level3_fileA", ftype: tar.TypeReg}, false, false},
@@ -366,13 +365,13 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			{tarDentry{path: whPrefix + "dir2", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "file", ftype: tar.TypeReg}, false, false},
 			{tarDentry{path: "dir1", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir1/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir1/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir1/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 			{tarDentry{path: "dir1/verybadlink", ftype: tar.TypeSymlink, linkname: "../../../../../../../../../../../../etc/shadow"}, true, true},
 			{tarDentry{path: "dir1/verybadlink2", ftype: tar.TypeSymlink, linkname: "/../../../../../../../../../../../../etc/shadow"}, false, false},
 			{tarDentry{path: whPrefix + "dir1", ftype: tar.TypeReg}, true, true},
 			{tarDentry{path: "dir2", ftype: tar.TypeDir}, true, true},
-			{tarDentry{path: "dir2/file", ftype: tar.TypeRegA}, true, true},
+			{tarDentry{path: "dir2/file", ftype: tar.TypeRegA}, true, true}, //nolint:staticcheck // SA1019: TypeRegA is deprecated but for compatibility we need to support it
 			{tarDentry{path: "dir2/link", ftype: tar.TypeSymlink, linkname: "../badlink"}, false, false},
 		}},
 	} {
@@ -388,7 +387,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 			// We do all whiteouts in a subdirectory.
 			whiteoutDir := "test-subdir"
 			whiteoutRoot := filepath.Join(dir, whiteoutDir)
-			err := os.MkdirAll(whiteoutRoot, 0755)
+			err := os.MkdirAll(whiteoutRoot, 0o755)
 			require.NoError(t, err, "mkdir whiteout root")
 
 			// Track if we have upper entries.
@@ -405,7 +404,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s lower", hdr.Name)
 			}
 
 			// Now we apply the upper files in another TarExtractor.
@@ -418,7 +417,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				hdr, rdr := tarFromDentry(de.tarDentry)
 				hdr.Name = filepath.Join(whiteoutDir, hdr.Name)
 				err := te.UnpackEntry(dir, hdr, rdr)
-				assert.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
+				require.NoErrorf(t, err, "UnpackEntry %s upper", hdr.Name)
 			}
 
 			// And now apply a whiteout for the whiteoutRoot.
@@ -427,7 +426,7 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				Typeflag: tar.TypeReg,
 			}
 			err = te.UnpackEntry(dir, whHdr, nil)
-			assert.NoErrorf(t, err, "UnpackEntry %s whiteout", whiteoutRoot)
+			require.NoErrorf(t, err, "UnpackEntry %s whiteout", whiteoutRoot)
 
 			// Now we double-check it worked. If the file was in "upper" it
 			// should have survived. If it was in lower it shouldn't. We don't
@@ -443,9 +442,9 @@ func TestUnpackOpaqueWhiteout(t *testing.T) {
 				fullPath := filepath.Join(whiteoutRoot, de.path)
 				_, err := te.fsEval.Lstat(fullPath)
 				if de.shouldSurvive {
-					assert.NoError(t, err)
+					assert.NoError(t, err, "upper layer file should have survived") //nolint:testifylint // assert.*Error* makes more sense
 				} else {
-					assert.ErrorIs(t, err, os.ErrNotExist)
+					assert.ErrorIs(t, err, os.ErrNotExist, "lower layer file should have been removed") //nolint:testifylint // assert.*Error* makes more sense
 				}
 			}
 
@@ -492,7 +491,7 @@ func TestUnpackHardlink(t *testing.T) {
 		Name:       regFile,
 		Uid:        os.Getuid(),
 		Gid:        os.Getgid(),
-		Mode:       0644,
+		Mode:       0o644,
 		Size:       int64(len(ctrValue)),
 		Typeflag:   tar.TypeReg,
 		ModTime:    time.Now(),
@@ -538,7 +537,7 @@ func TestUnpackHardlink(t *testing.T) {
 	require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
 
 	// Make sure that the contents are as expected.
-	ctrValueGot, err := ioutil.ReadFile(filepath.Join(dir, regFile))
+	ctrValueGot, err := os.ReadFile(filepath.Join(dir, regFile))
 	require.NoError(t, err, "read regular file contents")
 	assert.Equal(t, ctrValue, ctrValueGot, "regular file contents should match tar entry")
 
@@ -565,9 +564,9 @@ func TestUnpackHardlink(t *testing.T) {
 
 	// Double-check readlink.
 	linknameA, err := os.Readlink(filepath.Join(dir, symFile))
-	assert.NoError(t, err, "readlink symlink")
+	require.NoError(t, err, "readlink symlink")
 	linknameB, err := os.Readlink(filepath.Join(dir, hardFileB))
-	assert.NoError(t, err, "readlink symlink to hardlink")
+	require.NoError(t, err, "readlink symlink to hardlink")
 	assert.Equal(t, linknameA, linknameB, "hardlink to symlink should have same readlink data")
 
 	// Make sure that uid and gid don't apply to hardlinks.
@@ -588,15 +587,21 @@ func TestUnpackEntryMap(t *testing.T) {
 		uidMap rspec.LinuxIDMapping
 		gidMap rspec.LinuxIDMapping
 	}{
-		{"IdentityRoot",
+		{
+			"IdentityRoot",
 			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100}},
-		{"MapSelfToRoot",
+			rspec.LinuxIDMapping{HostID: 0, ContainerID: 0, Size: 100},
+		},
+		{
+			"MapSelfToRoot",
 			rspec.LinuxIDMapping{HostID: uint32(os.Getuid()), ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100}},
-		{"MapOtherToRoot",
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid()), ContainerID: 0, Size: 100},
+		},
+		{
+			"MapOtherToRoot",
 			rspec.LinuxIDMapping{HostID: uint32(os.Getuid() + 100), ContainerID: 0, Size: 100},
-			rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100}},
+			rspec.LinuxIDMapping{HostID: uint32(os.Getgid() + 200), ContainerID: 0, Size: 100},
+		},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			// Create the files we're going to play with.
@@ -626,7 +631,7 @@ func TestUnpackEntryMap(t *testing.T) {
 				Name:       regFile,
 				Uid:        hdrUid,
 				Gid:        hdrGid,
-				Mode:       0644,
+				Mode:       0o644,
 				Size:       int64(len(ctrValue)),
 				Typeflag:   tar.TypeReg,
 				ModTime:    time.Now(),
@@ -647,7 +652,7 @@ func TestUnpackEntryMap(t *testing.T) {
 				Name:       regDir,
 				Uid:        hdrUid,
 				Gid:        hdrGid,
-				Mode:       0755,
+				Mode:       0o755,
 				Typeflag:   tar.TypeDir,
 				ModTime:    time.Now(),
 				AccessTime: time.Now(),
@@ -707,12 +712,12 @@ func TestUnpackEntryMap(t *testing.T) {
 func TestIsDirlink(t *testing.T) {
 	dir := t.TempDir()
 
-	err := os.Mkdir(filepath.Join(dir, "test_dir"), 0755)
+	err := os.Mkdir(filepath.Join(dir, "test_dir"), 0o755)
 	require.NoError(t, err)
 
 	file, err := os.Create(filepath.Join(dir, "test_file"))
 	require.NoError(t, err)
-	file.Close()
+	_ = file.Close()
 
 	err = os.Symlink("test_dir", filepath.Join(dir, "link"))
 	require.NoError(t, err)
@@ -725,15 +730,15 @@ func TestIsDirlink(t *testing.T) {
 
 	// "Read" a non-existent link.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "doesnt-exist"))
-	assert.Error(t, err, "isDirlink non-existent path")
+	assert.Error(t, err, "isDirlink non-existent path") //nolint:testifylint // assert.*Error* makes more sense
 
 	// "Read" a directory.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "test_dir"))
-	assert.Error(t, err, "isDirlink directory")
+	assert.Error(t, err, "isDirlink directory") //nolint:testifylint // assert.*Error* makes more sense
 
 	// "Read" a file.
 	_, err = te.isDirlink(dir, filepath.Join(dir, "test_file"))
-	assert.Error(t, err, "isDirlink file")
+	assert.Error(t, err, "isDirlink file") //nolint:testifylint // assert.*Error* makes more sense
 
 	// Break the symlink.
 	err = os.Remove(filepath.Join(dir, "test_dir"))

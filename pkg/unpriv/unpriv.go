@@ -31,24 +31,29 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given
 // path by ensuring that an Lstat(path) will return as-close-to the same
 // os.FileInfo.
-//
-// #nosec G104
-func fiRestore(path string, fi os.FileInfo) {
+func fiRestore(path string, fi os.FileInfo) error {
 	// archive/tar handles the OS-specific syscall stuff required to get atime
 	// and mtime information for a file.
-	hdr, _ := tar.FileInfoHeader(fi, "")
+	hdr, err := tar.FileInfoHeader(fi, "")
+	if err != nil {
+		return err
+	}
 
 	// Apply the relevant information from the FileInfo.
-	// XXX: Should we return errors here to ensure that everything is
-	//      deterministic or we fail?
-	os.Chmod(path, fi.Mode())
-	os.Chtimes(path, hdr.AccessTime, hdr.ModTime)
+	if err := os.Chmod(path, fi.Mode()); err != nil {
+		return fmt.Errorf("restore mode: %w", err)
+	}
+	if err := os.Chtimes(path, hdr.AccessTime, hdr.ModTime); err != nil {
+		return fmt.Errorf("restore times: %w", err)
+	}
+	return nil
 }
 
 // splitpath splits the given path into each of the path components.
@@ -73,7 +78,7 @@ type WrapFunc func(path string) error
 // if the error returned is such that !os.IsPermission(err), then no trickery
 // will be performed. If fn returns an error, so will this function. All of the
 // trickery is reverted when this function returns (which is when fn returns).
-func Wrap(path string, fn WrapFunc) error {
+func Wrap(path string, fn WrapFunc) (Err error) {
 	// FIXME: Should we be calling fn() here first?
 	if err := fn(path); err == nil || !errors.Is(err, os.ErrPermission) {
 		return err
@@ -107,10 +112,12 @@ func Wrap(path string, fn WrapFunc) error {
 		}
 		// Add +rwx permissions to directories. If we have the access to change
 		// the mode at all then we are the user owner (not just a group owner).
-		if err := os.Chmod(current, fi.Mode()|0700); err != nil {
+		if err := os.Chmod(current, fi.Mode()|0o700); err != nil {
 			return fmt.Errorf("unpriv.wrap: chmod parent: %s: %w", current, err)
 		}
-		defer fiRestore(current, fi)
+		defer funchelpers.VerifyError(&Err, func() error {
+			return fiRestore(current, fi)
+		})
 	}
 
 	// Everything is wrapped. Return from this nightmare.
@@ -125,19 +132,21 @@ func Wrap(path string, fn WrapFunc) error {
 // doing lstat(2) may fail.
 func Open(path string) (*os.File, error) {
 	var fh *os.File
-	err := Wrap(path, func(path string) error {
+	err := Wrap(path, func(path string) (Err error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
 			return fmt.Errorf("lstat file: %w", err)
 		}
 
-		if fi.Mode()&0400 != 0400 {
+		if fi.Mode()&0o400 != 0o400 {
 			// Add +r permissions to the file.
-			if err := os.Chmod(path, fi.Mode()|0400); err != nil {
+			if err := os.Chmod(path, fi.Mode()|0o400); err != nil {
 				return fmt.Errorf("chmod +r: %w", err)
 			}
-			defer fiRestore(path, fi)
+			defer funchelpers.VerifyError(&Err, func() error {
+				return fiRestore(path, fi)
+			})
 		}
 
 		// Open the damn thing.
@@ -176,7 +185,7 @@ func Create(path string) (*os.File, error) {
 // resolveable).
 func Readdir(path string) ([]os.FileInfo, error) {
 	var infos []os.FileInfo
-	err := Wrap(path, func(path string) error {
+	err := Wrap(path, func(path string) (Err error) {
 		// Get information so we can revert it.
 		fi, err := os.Lstat(path)
 		if err != nil {
@@ -184,17 +193,19 @@ func Readdir(path string) ([]os.FileInfo, error) {
 		}
 
 		// Add +rx permissions to the file.
-		if err := os.Chmod(path, fi.Mode()|0500); err != nil {
+		if err := os.Chmod(path, fi.Mode()|0o500); err != nil {
 			return fmt.Errorf("chmod +rx: %w", err)
 		}
-		defer fiRestore(path, fi)
+		defer funchelpers.VerifyError(&Err, func() error {
+			return fiRestore(path, fi)
+		})
 
 		// Open the damn thing.
 		fh, err := os.Open(path)
 		if err != nil {
 			return fmt.Errorf("opendir: %w", err)
 		}
-		defer fh.Close()
+		defer funchelpers.VerifyClose(&Err, fh)
 
 		// Get the set of dirents.
 		infos, err = fh.Readdir(-1)
@@ -225,7 +236,7 @@ func Lstat(path string) (os.FileInfo, error) {
 	return fi, nil
 }
 
-// Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead
+// Lstatx is like Lstat but uses unix.Lstat and returns unix.Stat_t instead.
 func Lstatx(path string) (unix.Stat_t, error) {
 	var s unix.Stat_t
 	err := Wrap(path, func(path string) error {
@@ -347,7 +358,7 @@ func Remove(path string) error {
 // not be called and no error will be returned. This should be called within a
 // context where path has already been made resolveable, however the . If WrapFunc returns an
 // error, the first error is returned and iteration is halted.
-func foreachSubpath(path string, wrapFn WrapFunc) error {
+func foreachSubpath(path string, wrapFn WrapFunc) (Err error) {
 	// Is the path a directory?
 	fi, err := os.Lstat(path)
 	if err != nil {
@@ -362,16 +373,20 @@ func foreachSubpath(path string, wrapFn WrapFunc) error {
 	if err != nil {
 		return err
 	}
-	defer fd.Close()
+	defer funchelpers.VerifyClose(&Err, fd)
 
 	// We need to change the mode to Readdirnames. We don't need to worry about
 	// permissions because we're already in a context with filepath.Dir(path)
 	// is at least a+rx. However, because we are calling wrapFn we need to
 	// restore the original mode immediately.
-	// #nosec G104
-	_ = os.Chmod(path, fi.Mode()|0444)
+	if err := os.Chmod(path, fi.Mode()|0o444); err != nil {
+		return fmt.Errorf("chmod +r to readdir: %w", err)
+	}
+	defer funchelpers.VerifyError(&Err, func() error {
+		return fiRestore(path, fi)
+	})
+
 	names, err := fd.Readdirnames(-1)
-	fiRestore(path, fi)
 	if err != nil {
 		return err
 	}
@@ -584,20 +599,25 @@ func walk(path string, info os.FileInfo, walkFn filepath.WalkFunc) error {
 	}
 
 	// Now just execute walkFn over each subpath.
+	// TODO: We should handle the Readdirnames failing case that stdlib does.
 	return foreachSubpath(path, func(subpath string) error {
 		info, err := Lstat(subpath)
 		if err != nil {
 			// If it doesn't exist, just pass it directly to walkFn.
 			if err := walkFn(subpath, info, err); err != nil {
-				// Ignore SkipDir.
+				// To match stdlib, SkipDir assumes a non-existent path is a
+				// directory and so SkipDir just skips that path.
 				if errors.Is(err, filepath.SkipDir) {
 					return err
 				}
 			}
 		} else {
 			if err := walk(subpath, info, walkFn); err != nil {
-				// Ignore error if it's SkipDir and subpath is a directory.
-				if !(info.IsDir() && errors.Is(err, filepath.SkipDir)) {
+				// If this entry is a directory then SkipDir will just skip
+				// this entry and continue walking the current directory, but
+				// otherwise we need to skip the whole directory. This matches
+				// the stdlib behaviour.
+				if !(info.IsDir() && errors.Is(err, filepath.SkipDir)) { //nolint:staticcheck // QF1001: this form is easier to understand
 					return err
 				}
 			}
