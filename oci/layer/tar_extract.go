@@ -599,14 +599,13 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		// Ensure that after everything we correctly re-apply the old metadata.
 		// We don't map this header because we're restoring files that already
 		// existed on the filesystem, not from a tar layer.
-		defer func() {
-			// Only overwrite the error if there wasn't one already.
-			if err := te.restoreMetadata(dir, dirHdr); err != nil {
-				if Err == nil {
-					Err = fmt.Errorf("restore parent directory: %w", err)
-				}
+		defer funchelpers.VerifyError(&Err, func() error {
+			err := te.restoreMetadata(dir, dirHdr)
+			if err != nil {
+				err = fmt.Errorf("restore parent directory: %w", err)
 			}
-		}()
+			return err
+		})
 	}
 
 	// Currently the spec doesn't specify what the hdr.Typeflag of whiteout

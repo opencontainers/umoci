@@ -28,6 +28,7 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 // childDescriptors is a wrapper around MapDescriptors which just creates a
@@ -143,14 +144,13 @@ func (ws *walkState) recurse(ctx context.Context, descriptorPath DescriptorPath)
 		}
 		return err
 	}
-	defer func() {
-		if err := blob.Close(); err != nil {
+	defer funchelpers.VerifyError(&Err, func() error {
+		err := blob.Close()
+		if err != nil {
 			log.Warnf("during recursion blob %v had error on Close: %v", descriptor.Digest, err)
-			if Err == nil {
-				Err = err
-			}
 		}
-	}()
+		return err
+	})
 
 	// Recurse into children.
 	for _, child := range childDescriptors(blob.Data) {
