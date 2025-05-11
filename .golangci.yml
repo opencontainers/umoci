@@ -16,6 +16,10 @@
 
 version: "2"
 
+run:
+  build-tags:
+    - gofuzz
+
 linters:
   enable:
     - asasalint

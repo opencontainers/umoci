@@ -32,7 +32,6 @@ import (
 	"unicode"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
-	fuzzheaders "github.com/AdaLogics/go-fuzz-headers"
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 	"github.com/opencontainers/image-spec/specs-go"
@@ -44,28 +43,23 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 )
 
-// createRandomFile is a helper function
 func createRandomFile(dirpath string, filename []byte, filecontents []byte) error {
 	fileP := filepath.Join(dirpath, string(filename))
 	if err := os.WriteFile(fileP, filecontents, 0o644); err != nil {
 		return err
 	}
-	defer os.Remove(fileP)
 	return nil
 }
 
-// createRandomDir is a helper function
 func createRandomDir(basedir string, dirname []byte, dirArray []string) ([]string, error) {
 	dirPath := filepath.Join(basedir, string(dirname))
 	if err := os.MkdirAll(dirPath, 0o755); err != nil {
 		return dirArray, err
 	}
-	defer os.RemoveAll(dirPath)
 	dirArray = append(dirArray, string(dirname))
 	return dirArray, nil
 }
 
-// isLetter is a helper function
 func isLetter(input []byte) bool {
 	s := string(input)
 	for _, r := range s {
@@ -76,25 +70,24 @@ func isLetter(input []byte) bool {
 	return true
 }
 
-// FuzzGenerateLayer implements a fuzzer
-// that targets layer.GenerateLayer().
+// FuzzGenerateLayer implements a fuzzer that targets layer.GenerateLayer().
 func FuzzGenerateLayer(data []byte) int {
 	if len(data) < 5 {
 		return -1
 	}
-	if !fuzzheaders.IsDivisibleBy(len(data), 2) {
+	if !fuzz.IsDivisibleBy(len(data), 2) {
 		return -1
 	}
 	half := len(data) / 2
 	firstHalf := data[:half]
-	f1 := fuzzheaders.NewConsumer(firstHalf)
+	f1 := fuzz.NewConsumer(firstHalf)
 	err := f1.Split(3, 30)
 	if err != nil {
 		return -1
 	}
 
 	secondHalf := data[half:]
-	f2 := fuzzheaders.NewConsumer(secondHalf)
+	f2 := fuzz.NewConsumer(secondHalf)
 	err = f2.Split(3, 30)
 	if err != nil {
 		return -1
@@ -103,7 +96,7 @@ func FuzzGenerateLayer(data []byte) int {
 	if err := os.MkdirAll(baseDir, 0o755); err != nil {
 		return -1
 	}
-	defer os.RemoveAll(baseDir)
+	defer os.RemoveAll(baseDir) //nolint:errcheck
 
 	var dirArray []string
 	iteration := 0
@@ -181,7 +174,7 @@ func FuzzGenerateLayer(data []byte) int {
 	if err != nil {
 		return -1
 	}
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	tr := tar.NewReader(reader)
 	for {
@@ -193,7 +186,6 @@ func FuzzGenerateLayer(data []byte) int {
 	return 1
 }
 
-// makeFuzzImage is a helper function
 func makeFuzzImage(base641, base642 string) (string, ispec.Manifest, casext.Engine, error) {
 	ctx := context.Background()
 
@@ -277,8 +269,7 @@ func makeFuzzImage(base641, base642 string) (string, ispec.Manifest, casext.Engi
 	return root, manifest, engineExt, nil
 }
 
-// FuzzUnpack implements a fuzzer
-// that targets UnpackManifest().
+// FuzzUnpack implements a fuzzer that targets UnpackManifest().
 func FuzzUnpack(data []byte) int {
 	// We would like as little log output as possible:
 	level, err := log.ParseLevel("fatal")
@@ -301,13 +292,13 @@ func FuzzUnpack(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	defer os.RemoveAll(root)
+	defer os.RemoveAll(root) //nolint:errcheck
 
 	bundle, err := os.MkdirTemp("", "umoci-TestUnpackManifestCustomLayer_bundle")
 	if err != nil {
 		return 0
 	}
-	defer os.RemoveAll(bundle)
+	defer os.RemoveAll(bundle) //nolint:errcheck
 
 	unpackOptions := &UnpackOptions{MapOptions: MapOptions{
 		UIDMappings: []rspec.LinuxIDMapping{

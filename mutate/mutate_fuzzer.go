@@ -39,8 +39,8 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 )
 
-// fuzzSetup() does the necessary setup for the fuzzer
-// It takes a data parameter provided by the fuzzer
+// fuzzSetup() does the necessary setup for the fuzzer, it takes a data
+// parameter provided by the fuzzer.
 func fuzzSetup(dir string, data []byte) (cas.Engine, ispec.Descriptor, error) {
 	dir = filepath.Join(dir, "image")
 	if err := casdir.Create(dir); err != nil {
@@ -56,14 +56,18 @@ func fuzzSetup(dir string, data []byte) (cas.Engine, ispec.Descriptor, error) {
 	// Write a tar layer.
 	var buffer bytes.Buffer
 	tw := tar.NewWriter(&buffer)
-	tw.WriteHeader(&tar.Header{
+	if err := tw.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeReg,
 		Name:     "test",
 		Mode:     0o644,
 		Size:     int64(len(data)),
-	})
-	tw.Write(data)
-	tw.Close()
+	}); err != nil {
+		return nil, ispec.Descriptor{}, err
+	}
+	if _, err := tw.Write(data); err != nil {
+		return nil, ispec.Descriptor{}, err
+	}
+	_ = tw.Close()
 
 	// Push the base layer.
 	diffidDigester := cas.BlobAlgorithm.Digester()
@@ -124,7 +128,7 @@ func fuzzSetup(dir string, data []byte) (cas.Engine, ispec.Descriptor, error) {
 	}, nil
 }
 
-// FuzzMutate implements the fuzzer
+// FuzzMutate implements the fuzzer.
 func FuzzMutate(data []byte) int {
 	c := fuzz.NewConsumer(data)
 	byteArray, err := c.GetBytes()
@@ -135,13 +139,13 @@ func FuzzMutate(data []byte) int {
 	if err != nil {
 		return -1
 	}
-	defer os.RemoveAll(dir)
+	defer os.RemoveAll(dir) //nolint:errcheck
 
 	engine, fromDescriptor, err := fuzzSetup(dir, byteArray)
 	if err != nil {
 		return 0
 	}
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	if err != nil {

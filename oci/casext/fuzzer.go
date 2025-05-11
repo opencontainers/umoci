@@ -37,7 +37,7 @@ func Fuzz(data []byte) int {
 	if err != nil {
 		return -1
 	}
-	defer os.RemoveAll(root)
+	defer os.RemoveAll(root) //nolint:errcheck
 
 	image := filepath.Join(root, "image")
 	if err := dir.Create(image); err != nil {
@@ -49,7 +49,7 @@ func Fuzz(data []byte) int {
 		return -1
 	}
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	digest, _, err := engineExt.PutBlobJSON(ctx, string(data))
 	if err != nil {
@@ -59,7 +59,7 @@ func Fuzz(data []byte) int {
 	if err != nil {
 		return 0
 	}
-	defer blobReader.Close()
+	defer blobReader.Close() //nolint:errcheck
 
 	_, err = io.ReadAll(blobReader)
 	if err != nil {
