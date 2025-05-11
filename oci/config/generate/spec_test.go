@@ -37,8 +37,7 @@ func TestWriteTo(t *testing.T) {
 
 	fh, err := os.CreateTemp(t.TempDir(), "umoci-TestWriteTo")
 	require.NoError(t, err)
-	defer os.RemoveAll(fh.Name())
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	size, err := g.WriteTo(fh)
 	require.NoError(t, err, "generator WriteTo")

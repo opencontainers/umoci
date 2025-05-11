@@ -33,10 +33,10 @@ func TestClearxattrFilter(t *testing.T) {
 
 	file, err := os.CreateTemp(dir, "TestClearxattrFilter")
 	require.NoError(t, err)
-	defer file.Close()
+	defer file.Close() //nolint:errcheck
 
 	path := file.Name()
-	defer os.RemoveAll(path)
+	defer os.RemoveAll(path) //nolint:errcheck
 
 	xattrs := []struct {
 		name, value string

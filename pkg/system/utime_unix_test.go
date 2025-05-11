@@ -155,8 +155,8 @@ func TestLutimesRelative(t *testing.T) {
 
 	oldwd, err := os.Getwd()
 	require.NoError(t, err)
-	os.Chdir(dir)
-	defer os.Chdir(oldwd)
+	_ = os.Chdir(dir)
+	defer os.Chdir(oldwd) //nolint:errcheck
 
 	path := filepath.Join("some parent", " !! symlink here")
 

@@ -61,7 +61,7 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
 		require.NoError(t, err, "generate layer")
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -72,7 +72,7 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},
@@ -110,7 +110,7 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
 		require.NoError(t, err, "generate layer")
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -122,7 +122,7 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},
@@ -161,7 +161,7 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 
 		reader, err := GenerateLayer(dir, deltas, &packOptions)
 		require.NoError(t, err, "generate layer")
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
@@ -172,7 +172,7 @@ func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
 
 	t.Run("GenerateInsertLayer", func(t *testing.T) {
 		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},

@@ -26,6 +26,7 @@ import (
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -49,12 +50,12 @@ func (fs osFsEval) Create(path string) (*os.File, error) {
 }
 
 // Readdir is equivalent to os.Readdir.
-func (fs osFsEval) Readdir(path string) ([]os.FileInfo, error) {
+func (fs osFsEval) Readdir(path string) (_ []os.FileInfo, Err error) {
 	fh, err := os.Open(path)
 	if err != nil {
 		return nil, err
 	}
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 	return fh.Readdir(-1)
 }
 

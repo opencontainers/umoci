@@ -66,7 +66,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
 		})
 		require.NoError(t, err, "generate layer")
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		// We expect to get the exact same thing as the original archive
 		// entries in the new archive.
@@ -77,7 +77,7 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 		reader := GenerateInsertLayer(dir, ".", false, &RepackOptions{
 			TranslateOverlayWhiteouts: woType == OverlayFSWhiteout,
 		})
-		defer reader.Close()
+		defer reader.Close() //nolint:errcheck
 
 		// We expect to get the exact same thing as the original archive
 		// entries in the new archive.

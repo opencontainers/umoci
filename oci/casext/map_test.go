@@ -41,7 +41,8 @@ func randomDescriptor(t *testing.T) ispec.Descriptor {
 	// Generate a random digest and length.
 	descriptor.Size = int64(rand.Intn(512 * 1024))
 	digester := digest.SHA256.Digester()
-	io.CopyN(digester.Hash(), crand.Reader, descriptor.Size)
+	copied, _ := io.CopyN(digester.Hash(), crand.Reader, descriptor.Size)
+	require.Equal(t, descriptor.Size, copied, "copy random to descriptor digest data")
 	descriptor.Digest = digester.Digest()
 
 	// Generate a random number of annotations, with random key/values.

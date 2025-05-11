@@ -35,6 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/pathtrie"
 	"github.com/opencontainers/umoci/pkg/system"
 )
@@ -527,7 +528,6 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// directory will be fixed by later archive entries.
 	if dirFi, err := te.fsEval.Lstat(dir); err == nil && path != dir {
 		// FIXME: This is really stupid.
-		// #nosec G104
 		link, _ := te.fsEval.Readlink(dir)
 		dirHdr, err := tar.FileInfoHeader(dirFi, link)
 		if err != nil {
@@ -704,7 +704,6 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		if err != nil {
 			return fmt.Errorf("create regular: %w", err)
 		}
-		defer fh.Close()
 
 		// We need to make sure that we copy all of the bytes.
 		n, err := system.Copy(fh, r)
@@ -715,13 +714,12 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				err = io.ErrShortWrite
 			}
 		}
+		// Force close here so that we don't affect the metadata.
+		if closeErr := fh.Close(); closeErr != nil && err == nil {
+			err = fmt.Errorf("close unpacked regular file: %w", closeErr)
+		}
 		if err != nil {
 			return fmt.Errorf("unpack to regular file: %w", err)
-		}
-
-		// Force close here so that we don't affect the metadata.
-		if err := fh.Close(); err != nil {
-			return fmt.Errorf("close unpacked regular file: %w", err)
 		}
 
 	// directory
@@ -789,7 +787,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 			if err != nil {
 				return fmt.Errorf("create rootless block: %w", err)
 			}
-			defer fh.Close()
+			defer funchelpers.VerifyClose(&Err, fh)
 			if err := fh.Chmod(0); err != nil {
 				return fmt.Errorf("chmod 0 rootless block: %w", err)
 			}

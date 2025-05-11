@@ -43,7 +43,7 @@ func TestEngineBlobJSON(t *testing.T) {
 	engine, err := dir.Open(image)
 	require.NoError(t, err)
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	type object struct {
 		A string `json:"A"`
@@ -62,7 +62,7 @@ func TestEngineBlobJSON(t *testing.T) {
 
 		blobReader, err := engine.GetBlob(ctx, digest)
 		require.NoError(t, err, "get blob")
-		defer blobReader.Close()
+		defer blobReader.Close() //nolint:errcheck
 
 		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err, "read entire blob")
@@ -128,7 +128,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 
 		blobReader, err := newEngine.GetBlob(ctx, digest)
 		require.NoError(t, err, "get blob")
-		defer blobReader.Close()
+		defer blobReader.Close() //nolint:errcheck
 
 		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err, "read entire blob")

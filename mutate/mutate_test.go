@@ -86,7 +86,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 	require.NoError(t, err, "write file data")
 	require.Equal(t, dataSize, n, "written file data should match expected data size")
 
-	tw.Close()
+	_ = tw.Close()
 
 	// Push the base layer.
 	diffidDigester := cas.BlobAlgorithm.Digester()
@@ -154,7 +154,7 @@ func TestMutateCache(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -202,7 +202,7 @@ func TestMutateAdd(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -316,7 +316,7 @@ func TestMutateAddCompression(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -370,7 +370,7 @@ func TestMutateAddExisting(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -420,7 +420,7 @@ func TestMutateSet(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -466,7 +466,7 @@ func TestMutateSetNoHistory(t *testing.T) {
 	dir := t.TempDir()
 
 	engine, fromDescriptor := setup(t, dir)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
 	require.NoError(t, err)
@@ -526,7 +526,7 @@ func TestMutatePath(t *testing.T) {
 
 	engine, manifestDescriptor := setup(t, dir)
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// Create some additional structure.
 	expectedPaths := []casext.DescriptorPath{

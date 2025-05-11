@@ -135,7 +135,7 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 	case left == 0:
 		// We just want to know whether we read something (n>0). Whatever we
 		// read is irrelevant because if we read something that means the
-		// reader will fail to verify. #nosec G104
+		// reader will fail to verify.
 		nTmp, _ := v.Reader.Read(make([]byte, 1))
 		v.currentSize += int64(nTmp)
 	}

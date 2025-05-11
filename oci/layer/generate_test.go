@@ -137,7 +137,7 @@ func TestGenerate(t *testing.T) {
 
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	checkLayerEntries(t, reader, []tarDentry{
 		{path: "some/parents/", ftype: tar.TypeDir},
@@ -184,7 +184,7 @@ func TestGenerateMissingFileError(t *testing.T) {
 	// Generate a layer where the changed file is missing after the diff.
 	reader, err := GenerateLayer(dir, diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	tr := tar.NewReader(reader)
 	// TODO: Should we use assert.Eventually?
@@ -232,7 +232,7 @@ func TestGenerateWrongRootError(t *testing.T) {
 	// Generate a layer with the wrong root directory.
 	reader, err := GenerateLayer(filepath.Join(dir, "some"), diffs, &RepackOptions{})
 	require.NoError(t, err, "generate layer")
-	defer reader.Close()
+	defer reader.Close() //nolint:errcheck
 
 	tr := tar.NewReader(reader)
 	// TODO: Should we use assert.Eventually?

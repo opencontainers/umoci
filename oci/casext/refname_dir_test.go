@@ -111,7 +111,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) ([]descriptorMap, error) {
 			tw := tar.NewWriter(&layerData[idx])
 			err := randomTarData(t, tw)
 			require.NoErrorf(t, err, "%s: generate layer%d data", name, idx)
-			tw.Close()
+			_ = tw.Close()
 		}
 
 		// Insert all of the layers.
@@ -341,7 +341,7 @@ func TestEngineReference(t *testing.T) {
 	engine, err := dir.Open(image)
 	require.NoError(t, err)
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	descMap, err := fakeSetupEngine(t, engineExt)
 	require.NoError(t, err, "fakeSetupEngine")

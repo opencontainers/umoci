@@ -45,7 +45,7 @@ func TestCreateLayout(t *testing.T) {
 
 	engine, err := Open(image)
 	require.NoError(t, err)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// We should have an empty index and no blobs.
 	index, err := engine.GetIndex(ctx)
@@ -70,7 +70,7 @@ func TestEngineBlob(t *testing.T) {
 
 	engine, err := Open(image)
 	require.NoError(t, err)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	for _, test := range []struct {
 		bytes []byte
@@ -92,7 +92,7 @@ func TestEngineBlob(t *testing.T) {
 
 		blobReader, err := engine.GetBlob(ctx, digest)
 		require.NoError(t, err, "get blob")
-		defer blobReader.Close()
+		defer blobReader.Close() //nolint:errcheck
 
 		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err)
@@ -217,7 +217,7 @@ func TestEngineGCLocking(t *testing.T) {
 
 	engine, err := Open(image)
 	require.NoError(t, err)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// Open a reference to the CAS, and make sure that it has a .temp set up.
 	content := []byte("here's some sample content")
@@ -280,7 +280,7 @@ func TestCreateLayoutReadonly(t *testing.T) {
 
 	engine, err := Open(image)
 	require.NoError(t, err)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// We should have an empty index and no blobs.
 	index, err := engine.GetIndex(ctx)
@@ -330,7 +330,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 
 		blobReader, err := engine.GetBlob(ctx, digest)
 		require.NoError(t, err, "get blob")
-		defer blobReader.Close()
+		defer blobReader.Close() //nolint:errcheck
 
 		gotBytes, err := io.ReadAll(blobReader)
 		require.NoError(t, err)

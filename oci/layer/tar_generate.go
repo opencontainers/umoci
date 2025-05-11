@@ -31,6 +31,7 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
@@ -114,7 +115,7 @@ func normalise(rawPath string, isDir bool) (string, error) {
 // the relevant stat information about the file, and also attempts to track
 // hardlinks. This should be functionally equivalent to adding entries with GNU
 // tar.
-func (tg *tarGenerator) AddFile(name, path string) error {
+func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 	fi, err := tg.fsEval.Lstat(path)
 	if err != nil {
 		return fmt.Errorf("add file lstat: %w", err)
@@ -247,7 +248,7 @@ func (tg *tarGenerator) AddFile(name, path string) error {
 		if err != nil {
 			return fmt.Errorf("open file: %w", err)
 		}
-		defer fh.Close()
+		defer funchelpers.VerifyClose(&Err, fh)
 
 		n, err := system.Copy(tg.tw, fh)
 		if err != nil {

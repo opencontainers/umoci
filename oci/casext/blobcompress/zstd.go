@@ -48,13 +48,11 @@ func (zs zstdAlgo) Compress(reader io.Reader) (io.ReadCloser, error) {
 		_, err := system.Copy(zw, reader)
 		if err != nil {
 			log.Warnf("zstd blobcompress: could not blobcompress layer: %v", err)
-			// #nosec G104
 			_ = pipeWriter.CloseWithError(fmt.Errorf("blobcompressing layer: %w", err))
 			return
 		}
 		if err := zw.Close(); err != nil {
 			log.Warnf("zstd blobcompress: could not close gzip writer: %v", err)
-			// #nosec G104
 			_ = pipeWriter.CloseWithError(fmt.Errorf("close zstd writer: %w", err))
 			return
 		}

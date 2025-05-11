@@ -39,7 +39,7 @@ func TestLutimesFile(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, "some file")
 
@@ -87,7 +87,7 @@ func TestLutimesDirectory(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, " a directory  ")
 
@@ -135,7 +135,7 @@ func TestLutimesSymlink(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	path := filepath.Join(dir, " !! symlink here")
 
@@ -200,12 +200,12 @@ func TestLutimesRelative(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	oldwd, err := os.Getwd()
 	require.NoError(t, err)
-	os.Chdir(dir)
-	defer os.Chdir(oldwd)
+	_ = os.Chdir(dir)
+	defer os.Chdir(oldwd) //nolint:errcheck
 
 	path := filepath.Join("some parent", " !! symlink here")
 

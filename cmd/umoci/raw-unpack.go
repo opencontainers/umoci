@@ -31,6 +31,7 @@ import (
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var rawUnpackCommand = uxRemap(cli.Command{
@@ -66,7 +67,7 @@ is the destination to unpack the image to.`,
 	},
 })
 
-func rawUnpack(ctx *cli.Context) error {
+func rawUnpack(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	rootfsPath := ctx.App.Metadata["rootfs"].(string)
@@ -91,7 +92,7 @@ func rawUnpack(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
@@ -110,7 +111,7 @@ func rawUnpack(ctx *cli.Context) error {
 	if err != nil {
 		return fmt.Errorf("get manifest: %w", err)
 	}
-	defer manifestBlob.Close()
+	defer funchelpers.VerifyClose(&Err, manifestBlob)
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
 		return fmt.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)

@@ -35,6 +35,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var rawAddLayerCommand = uxCompress(uxHistory(uxTag(cli.Command{
@@ -70,7 +71,7 @@ only supports uncompressed archives.`,
 	},
 })))
 
-func rawAddLayer(ctx *cli.Context) error {
+func rawAddLayer(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	newLayerPath := ctx.App.Metadata["newlayer"].(string)
@@ -95,7 +96,7 @@ func rawAddLayer(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	fromDescriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
 	if err != nil {
@@ -126,7 +127,7 @@ func rawAddLayer(ctx *cli.Context) error {
 		return errors.New("new layer archive is a directory")
 	}
 	// TODO: Verify that the layer is actually uncompressed.
-	defer newLayer.Close()
+	defer funchelpers.VerifyClose(&Err, newLayer)
 
 	imageMeta, err := mutator.Meta(context.Background())
 	if err != nil {

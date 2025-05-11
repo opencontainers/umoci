@@ -64,7 +64,6 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 				log.Warnf("could not generate layer: %v", Err)
 				closeErr = fmt.Errorf("generate layer: %w", Err)
 			}
-			// #nosec G104
 			_ = writer.CloseWithError(closeErr)
 		}()
 
@@ -139,7 +138,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 		}
 
 		return nil
-	}()
+	}() //nolint:errcheck // errors are handled in defer func
 
 	return reader, nil
 }
@@ -170,7 +169,6 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 				log.Warnf("could not generate insert layer: %v", Err)
 				closeErr = fmt.Errorf("generate insert layer: %w", Err)
 			}
-			// #nosec G104
 			_ = writer.CloseWithError(closeErr)
 		}()
 
@@ -230,6 +228,6 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 
 			return tg.AddFile(name, fullPath)
 		})
-	}()
+	}() //nolint:errcheck // errors are handled in defer func
 	return reader
 }

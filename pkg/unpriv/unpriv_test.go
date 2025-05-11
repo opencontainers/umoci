@@ -42,7 +42,7 @@ func TestWrapNoTricks(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Make sure that no error is returned an no trickery is done if fn() works
 	// the first time. This is important to make sure that we're not doing
@@ -104,7 +104,7 @@ func TestLstat(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
@@ -147,7 +147,7 @@ func TestReadlink(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
@@ -194,7 +194,7 @@ func TestSymlink(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)
@@ -243,7 +243,7 @@ func TestOpen(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -269,7 +269,7 @@ func TestOpen(t *testing.T) {
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
 	require.NoError(t, err, "unpriv open")
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Check that the mode was unchanged.
 	assertInaccessibleMode(t, filepath.Join(dir, "some", "parent", "directories", "file"))
@@ -321,7 +321,7 @@ func TestReaddir(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -354,7 +354,7 @@ func TestReaddir(t *testing.T) {
 	// Make sure that the naive Open+Readdir will fail.
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	_, err = fh.Readdir(-1)
 	assert.Error(t, err, "unwrapped readdir of an unpriv open should fail") //nolint:testifylint // assert.*Error* makes more sense
@@ -379,7 +379,7 @@ func TestReaddir(t *testing.T) {
 	// Make sure that the naive Open.Readdir will still fail.
 	fh, err = Open(filepath.Join(dir, "some", "parent", "directories"))
 	require.NoError(t, err, "unpriv open")
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	_, err = fh.Readdir(-1)
 	assert.Error(t, err, "unwrapped readdir of an unpriv open should still fail") //nolint:testifylint // assert.*Error* makes more sense
@@ -396,7 +396,7 @@ func TestWrapWrite(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -417,7 +417,7 @@ func TestWrapWrite(t *testing.T) {
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "lolpath"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Read the file contents.
 	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
@@ -445,7 +445,7 @@ func TestLink(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -465,7 +465,7 @@ func TestLink(t *testing.T) {
 
 	fh, err := Open(filepath.Join(dir, "some", "parent", "directories", "file"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	// Read the file contents.
 	if gotContent, err := io.ReadAll(fh); assert.NoError(t, err) {
@@ -481,7 +481,7 @@ func TestLink(t *testing.T) {
 	// Check the contents.
 	fh1, err := Open(filepath.Join(dir, "some", "parent", "directories", "file2"))
 	require.NoError(t, err)
-	defer fh1.Close()
+	defer fh1.Close() //nolint:errcheck
 	if gotContent, err := io.ReadAll(fh1); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link1 should match original content")
 	}
@@ -489,7 +489,7 @@ func TestLink(t *testing.T) {
 	// And the other link.
 	fh2, err := Open(filepath.Join(dir, "some", "parent", "file2"))
 	require.NoError(t, err)
-	defer fh2.Close()
+	defer fh2.Close() //nolint:errcheck
 	if gotContent, err := io.ReadAll(fh2); assert.NoError(t, err) {
 		assert.Equal(t, fileContent, gotContent, "file content through link2 should match original content")
 	}
@@ -529,7 +529,7 @@ func TestChtimes(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -593,7 +593,7 @@ func TestLutimes(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -686,7 +686,7 @@ func TestRemove(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -746,7 +746,7 @@ func TestRemoveAll(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -802,7 +802,7 @@ func TestMkdir(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure.
 	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
@@ -844,7 +844,7 @@ func TestMkdirAll(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure.
 	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
@@ -891,7 +891,7 @@ func TestMkdirAllMissing(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create no structure, but with read access.
 	err = os.MkdirAll(filepath.Join(dir, "some"), 0o755)
@@ -933,7 +933,7 @@ func TestMkdirRWPerm(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -950,7 +950,7 @@ func TestMkdirRWPerm(t *testing.T) {
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda", "pre-anaconda-logs", "lvmdump", "config_diff"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 
 	n, err := fh.Write(fileContent)
 	require.NoError(t, err)
@@ -991,7 +991,7 @@ func TestMkdirRPerm(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	fileContent := []byte("some content")
 
@@ -1010,7 +1010,7 @@ func TestMkdirRPerm(t *testing.T) {
 	// Try to do it with unpriv.
 	fh, err := Create(filepath.Join(dir, "var", "log", "anaconda"))
 	require.NoError(t, err)
-	defer fh.Close()
+	defer fh.Close() //nolint:errcheck
 	err = fh.Chmod(0)
 	require.NoError(t, err)
 
@@ -1045,7 +1045,7 @@ func TestWalk(t *testing.T) {
 	// will get permission errors with the way we structure the paths.
 	dir, err := os.MkdirTemp(dir, "inner")
 	require.NoError(t, err)
-	defer RemoveAll(dir)
+	defer RemoveAll(dir) //nolint:errcheck
 
 	// Create some structure.
 	err = os.MkdirAll(filepath.Join(dir, "some", "parent", "directories"), 0o755)

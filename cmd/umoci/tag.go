@@ -28,6 +28,7 @@ import (
 
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var tagAddCommand = cli.Command{
@@ -58,7 +59,7 @@ the tag and "<new-tag>" is the new name of the tag.`,
 	},
 }
 
-func tagAdd(ctx *cli.Context) error {
+func tagAdd(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	fromName := ctx.App.Metadata["--image-tag"].(string)
 	tagName := ctx.App.Metadata["new-tag"].(string)
@@ -69,7 +70,7 @@ func tagAdd(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	// Get original descriptor.
 	descriptorPaths, err := engineExt.ResolveReference(context.Background(), fromName)
@@ -117,7 +118,7 @@ tag to remove.`,
 	Action: tagRemove,
 }
 
-func tagRemove(ctx *cli.Context) error {
+func tagRemove(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 	tagName := ctx.App.Metadata["--image-tag"].(string)
 
@@ -127,7 +128,7 @@ func tagRemove(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	// Remove it.
 	if err := engineExt.DeleteReference(context.Background(), tagName); err != nil {
@@ -162,7 +163,7 @@ line. See umoci-stat(1) to get more information about each tagged image.`,
 	Action: tagList,
 }
 
-func tagList(ctx *cli.Context) error {
+func tagList(ctx *cli.Context) (Err error) {
 	imagePath := ctx.App.Metadata["--image-path"].(string)
 
 	// Get a reference to the CAS.
@@ -171,7 +172,7 @@ func tagList(ctx *cli.Context) error {
 		return fmt.Errorf("open CAS: %w", err)
 	}
 	engineExt := casext.NewEngine(engine)
-	defer engine.Close()
+	defer funchelpers.VerifyClose(&Err, engine)
 
 	names, err := engineExt.ListReferences(context.Background())
 	if err != nil {

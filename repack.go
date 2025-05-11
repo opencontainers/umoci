@@ -33,6 +33,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 )
 
@@ -47,7 +48,7 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 	refreshBundle bool,
 	mutator *mutate.Mutator,
 	layerCompressor mutate.Compressor, //nolint:staticcheck // SA1019: this interface is defined by us and we keep it for compatibility
-) error {
+) (Err error) {
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
@@ -62,7 +63,7 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 	if err != nil {
 		return fmt.Errorf("open mtree: %w", err)
 	}
-	defer mfh.Close()
+	defer funchelpers.VerifyClose(&Err, mfh)
 
 	spec, err := mtree.ParseSpec(mfh)
 	if err != nil {
@@ -119,7 +120,7 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 		if err != nil {
 			return fmt.Errorf("generate diff layer: %w", err)
 		}
-		defer reader.Close()
+		defer funchelpers.VerifyClose(&Err, reader)
 
 		if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, reader, history, layerCompressor, nil); err != nil {
 			return fmt.Errorf("add diff layer: %w", err)

@@ -44,6 +44,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/idtools"
 	"github.com/opencontainers/umoci/pkg/system"
 )
@@ -107,7 +108,7 @@ func getLayerCompressAlgorithm(mediaType string) (string, blobcompress.Algorithm
 // <bundle>/<layer.RootfsName>.
 //
 // FIXME: This interface is ugly.
-func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *UnpackOptions) (err error) {
+func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manifest ispec.Manifest, opt *UnpackOptions) (Err error) {
 	// Create the bundle directory. We only error out if config.json or rootfs/
 	// already exists, because we cannot be sure that the user intended us to
 	// extract over an existing bundle.
@@ -133,13 +134,12 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	}
 
 	defer func() {
-		if err != nil {
+		if Err != nil {
 			fsEval := fseval.Default
 			if opt != nil && opt.MapOptions.Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
-			// #nosec G104
 			_ = fsEval.RemoveAll(rootfsPath)
 		}
 	}()
@@ -161,7 +161,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 	if err != nil {
 		return fmt.Errorf("open config.json: %w", err)
 	}
-	defer configFile.Close()
+	defer funchelpers.VerifyClose(&Err, configFile)
 
 	if err := UnpackRuntimeJSON(ctx, engine, configFile, rootfsPath, manifest, &opt.MapOptions); err != nil {
 		return fmt.Errorf("unpack config.json: %w", err)
@@ -171,7 +171,7 @@ func UnpackManifest(ctx context.Context, engine cas.Engine, bundle string, manif
 
 // UnpackRootfs extracts all of the layers in the given manifest.
 // Some verification is done during image extraction.
-func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *UnpackOptions) (err error) {
+func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, manifest ispec.Manifest, opt *UnpackOptions) (Err error) {
 	// TODO: For now, unpacking layers into a bundle with the overlayfs on-disk
 	// format is not supported, because we still unpack everything into a
 	// single rootfs directory. For more information about outstanding issues,
@@ -190,13 +190,12 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	// remove the rootfs. In the case of rootless this is particularly
 	// important (`rm -rf` won't work on most distro rootfs's).
 	defer func() {
-		if err != nil {
+		if Err != nil {
 			fsEval := fseval.Default
 			if opt != nil && opt.MapOptions.Rootless {
 				fsEval = fseval.Rootless
 			}
 			// It's too late to care about errors.
-			// #nosec G104
 			_ = fsEval.RemoveAll(rootfsPath)
 		}
 	}()
@@ -231,7 +230,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 	if err != nil {
 		return fmt.Errorf("get config blob: %w", err)
 	}
-	defer configBlob.Close()
+	defer funchelpers.VerifyClose(&Err, configBlob)
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
 		return fmt.Errorf("unpack rootfs: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}
@@ -261,7 +260,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		if err != nil {
 			return fmt.Errorf("get layer blob: %w", err)
 		}
-		defer layerBlob.Close()
+		defer layerBlob.Close() //nolint:errcheck // in the non-error path this is a double-close we can ignore
 		if !isLayerType(layerBlob.Descriptor.MediaType) {
 			return fmt.Errorf("unpack rootfs: layer %s: layer data is an unsupported mediatype: %s", layerBlob.Descriptor.Digest, layerBlob.Descriptor.MediaType)
 		}
@@ -344,7 +343,7 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 // values.
 //
 // XXX: I don't like this API. It has way too many arguments.
-func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Writer, rootfs string, manifest ispec.Manifest, opt *MapOptions) error {
+func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Writer, rootfs string, manifest ispec.Manifest, opt *MapOptions) (Err error) {
 	engineExt := casext.NewEngine(engine)
 
 	var mapOptions MapOptions
@@ -359,7 +358,7 @@ func UnpackRuntimeJSON(ctx context.Context, engine cas.Engine, configFile io.Wri
 	if err != nil {
 		return fmt.Errorf("get config blob: %w", err)
 	}
-	defer configBlob.Close()
+	defer funchelpers.VerifyClose(&Err, configBlob)
 	if configBlob.Descriptor.MediaType != ispec.MediaTypeImageConfig {
 		return fmt.Errorf("unpack manifest: config blob is not correct mediatype %s: %s", ispec.MediaTypeImageConfig, configBlob.Descriptor.MediaType)
 	}

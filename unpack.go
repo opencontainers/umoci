@@ -30,10 +30,11 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 // Unpack unpacks an image to the specified bundle path.
-func Unpack(engineExt casext.Engine, fromName, bundlePath string, unpackOptions layer.UnpackOptions) error {
+func Unpack(engineExt casext.Engine, fromName, bundlePath string, unpackOptions layer.UnpackOptions) (Err error) {
 	meta := Meta{
 		Version:    MetaVersion,
 		MapOptions: unpackOptions.MapOptions,
@@ -56,7 +57,7 @@ func Unpack(engineExt casext.Engine, fromName, bundlePath string, unpackOptions 
 	if err != nil {
 		return fmt.Errorf("get manifest: %w", err)
 	}
-	defer manifestBlob.Close()
+	defer funchelpers.VerifyClose(&Err, manifestBlob)
 
 	if manifestBlob.Descriptor.MediaType != ispec.MediaTypeImageManifest {
 		return fmt.Errorf("invalid --image tag: descriptor does not point to ispec.MediaTypeImageManifest: not implemented: %s", manifestBlob.Descriptor.MediaType)

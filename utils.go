@@ -38,6 +38,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
+	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/idtools"
 )
 
@@ -107,12 +108,12 @@ func (m Meta) WriteTo(w io.Writer) (int64, error) {
 }
 
 // WriteBundleMeta writes an umoci.json file to the given bundle path.
-func WriteBundleMeta(bundle string, meta Meta) error {
+func WriteBundleMeta(bundle string, meta Meta) (Err error) {
 	fh, err := os.Create(filepath.Join(bundle, MetaName))
 	if err != nil {
 		return fmt.Errorf("create metadata: %w", err)
 	}
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 
 	if _, err := meta.WriteTo(fh); err != nil {
 		return fmt.Errorf("write metadata: %w", err)
@@ -121,14 +122,14 @@ func WriteBundleMeta(bundle string, meta Meta) error {
 }
 
 // ReadBundleMeta reads and parses the umoci.json file from a given bundle path.
-func ReadBundleMeta(bundle string) (Meta, error) {
+func ReadBundleMeta(bundle string) (_ Meta, Err error) {
 	var meta Meta
 
 	fh, err := os.Open(filepath.Join(bundle, MetaName))
 	if err != nil {
 		return meta, fmt.Errorf("open metadata: %w", err)
 	}
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 
 	err = json.NewDecoder(fh).Decode(&meta)
 	if err != nil {
@@ -168,7 +169,9 @@ type ManifestStat struct {
 func (ms ManifestStat) Format(w io.Writer) error {
 	// Output history information.
 	tw := tabwriter.NewWriter(w, 4, 2, 1, ' ', 0)
-	fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n")
+	if _, err := fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n"); err != nil {
+		return err
+	}
 	for _, histEntry := range ms.History {
 		var (
 			created   = strings.ReplaceAll(histEntry.Created.Format(igen.ISO8601), "\t", " ")
@@ -184,7 +187,9 @@ func (ms ManifestStat) Format(w io.Writer) error {
 		}
 
 		// TODO: We need to truncate some of the fields.
-		fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", layerID, created, createdBy, size, comment)
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", layerID, created, createdBy, size, comment); err != nil {
+			return err
+		}
 	}
 	return tw.Flush()
 }
@@ -268,7 +273,7 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 
 // GenerateBundleManifest creates and writes an mtree of the rootfs in the given
 // bundle path, using the supplied fsEval method
-func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) error {
+func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.FsEval) (Err error) {
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
 	fullRootfsPath := filepath.Join(bundlePath, layer.RootfsName)
 
@@ -289,7 +294,7 @@ func GenerateBundleManifest(mtreeName string, bundlePath string, fsEval mtree.Fs
 	if err != nil {
 		return fmt.Errorf("open mtree: %w", err)
 	}
-	defer fh.Close()
+	defer funchelpers.VerifyClose(&Err, fh)
 
 	log.Debugf("umoci: saving mtree manifest")
 

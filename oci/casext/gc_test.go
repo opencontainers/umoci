@@ -46,7 +46,7 @@ func TestGCWithEmptyIndex(t *testing.T) {
 	engine, err := dir.Open(image)
 	require.NoError(t, err)
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// creates an empty index.json and several orphan blobs which should be pruned
 	descMap, err := fakeSetupEngine(t, engineExt)
@@ -75,7 +75,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	engine, err := dir.Open(image)
 	require.NoError(t, err)
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// creates an empty index.json and several orphan blobs which should be pruned
 	descMap, err := fakeSetupEngine(t, engineExt)
@@ -175,7 +175,7 @@ func TestGCWithPolicy(t *testing.T) {
 	engine, err := dir.Open(image)
 	require.NoError(t, err)
 	engineExt := NewEngine(engine)
-	defer engine.Close()
+	defer engine.Close() //nolint:errcheck
 
 	// build a orphan blob that should be GC'ed
 	content := "this is a orphan blob"

@@ -717,7 +717,7 @@ func TestIsDirlink(t *testing.T) {
 
 	file, err := os.Create(filepath.Join(dir, "test_file"))
 	require.NoError(t, err)
-	file.Close()
+	_ = file.Close()
 
 	err = os.Symlink("test_dir", filepath.Join(dir, "link"))
 	require.NoError(t, err)
