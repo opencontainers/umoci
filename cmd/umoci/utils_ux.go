@@ -29,13 +29,14 @@ import (
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 )
 
-func flattenCommands(cmds []cli.Command) []*cli.Command {
-	var flatten []*cli.Command
+// foreachSubcommand runs the given closure on every command and (recursively)
+// every subcommand, allowing you to apply filters to all commands and
+// subcommands.
+func foreachSubcommand(cmds []cli.Command, fn func(*cli.Command)) {
 	for idx, cmd := range cmds {
-		flatten = append(flatten, &cmds[idx])
-		flatten = append(flatten, flattenCommands(cmd.Subcommands)...)
+		fn(&cmds[idx])
+		foreachSubcommand(cmd.Subcommands, fn)
 	}
-	return flatten
 }
 
 // uxHistory adds the full set of --history.* flags to the given cli.Command as

@@ -126,7 +126,7 @@ func Main(args []string) error {
 	// In order to make the uxXyz wrappers not too cumbersome we automatically
 	// add them to images with categories set to categoryImage or
 	// categoryLayout. Monkey patching was never this neat.
-	for _, cmd := range flattenCommands(app.Commands) {
+	foreachSubcommand(app.Commands, func(cmd *cli.Command) {
 		switch cmd.Category {
 		case categoryImage:
 			oldBefore := cmd.Before
@@ -156,7 +156,7 @@ func Main(args []string) error {
 			}
 			*cmd = uxLayout(*cmd)
 		}
-	}
+	})
 
 	err := app.Run(args)
 	if err != nil {
