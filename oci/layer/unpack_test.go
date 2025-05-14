@@ -91,8 +91,8 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 	engineExt := casext.NewEngine(engine)
 
 	// Set up the CAS and an image from the above layers.
-	var layerDigests []digest.Digest
-	var layerDescriptors []ispec.Descriptor
+	layerDigests := make([]digest.Digest, 0, len(layers))
+	layerDescriptors := make([]ispec.Descriptor, 0, len(layers))
 	for _, layer := range layers {
 		// Since we already have the digests we don't need to jump through the
 		// hoops of decompressing our already-compressed blobs above to get the

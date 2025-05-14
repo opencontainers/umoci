@@ -46,23 +46,23 @@ type GCPolicy func(ctx context.Context, digest digest.Digest) (bool, error)
 // blob is skipped for garbage collection if a policy returns false.
 func (e Engine) GC(ctx context.Context, policies ...GCPolicy) error {
 	// Generate the root set of descriptors.
-	var root []ispec.Descriptor
 
 	index, err := e.GetIndex(ctx)
 	if err != nil {
 		return fmt.Errorf("get top-level index: %w", err)
 	}
 
+	roots := make([]ispec.Descriptor, 0, len(index.Manifests))
 	for _, descriptor := range index.Manifests {
 		log.WithFields(log.Fields{
 			"digest": descriptor.Digest,
 		}).Debugf("GC: got reference")
-		root = append(root, descriptor)
+		roots = append(roots, descriptor)
 	}
 
 	// Mark from the root sets.
 	black := map[digest.Digest]struct{}{}
-	for idx, descriptor := range root {
+	for idx, descriptor := range roots {
 		log.WithFields(log.Fields{
 			"digest": descriptor.Digest,
 		}).Debugf("GC: marking from root")

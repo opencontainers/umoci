@@ -193,13 +193,12 @@ func Example() rspec.Spec {
 // containers. This is done by removing options and other settings that clash
 // with unprivileged user namespaces.
 func ToRootless(spec *rspec.Spec) error {
-	var namespaces []rspec.LinuxNamespace
-
 	// Remove additional groups.
 	spec.Process.User.AdditionalGids = nil
 
 	// Remove networkns from the spec, as well as userns (for us to add it
 	// later without duplicates).
+	namespaces := make([]rspec.LinuxNamespace, 0, len(spec.Linux.Namespaces))
 	for _, ns := range spec.Linux.Namespaces {
 		if ns.Type == rspec.NetworkNamespace || ns.Type == rspec.UserNamespace {
 			continue
@@ -213,7 +212,7 @@ func ToRootless(spec *rspec.Spec) error {
 	spec.Linux.Namespaces = namespaces
 
 	// Fix up mounts.
-	var mounts []rspec.Mount
+	mounts := make([]rspec.Mount, 0, len(spec.Mounts))
 	for _, mount := range spec.Mounts {
 		// Ignore all mounts that are under /sys.
 		if strings.HasPrefix(mount.Destination, "/sys") {
@@ -221,7 +220,7 @@ func ToRootless(spec *rspec.Spec) error {
 		}
 
 		// Remove all gid= and uid= mappings.
-		var options []string
+		options := make([]string, 0, len(mount.Options))
 		for _, option := range mount.Options {
 			if !strings.HasPrefix(option, "gid=") && !strings.HasPrefix(option, "uid=") {
 				options = append(options, option)

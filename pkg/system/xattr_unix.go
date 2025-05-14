@@ -30,7 +30,7 @@ import (
 // Llistxattr is a wrapper around unix.Llistattr, to abstract the NUL-splitting
 // and resizing of the returned []string.
 func Llistxattr(path string) ([]string, error) {
-	var buffer []byte
+	var buffer []byte //nolint:prealloc // we do pre-allocate later
 	for {
 		// Find the size.
 		sz, err := unix.Llistxattr(path, nil)
@@ -56,7 +56,7 @@ func Llistxattr(path string) ([]string, error) {
 	}
 
 	// Split the buffer.
-	var xattrs []string
+	xattrs := make([]string, 0, bytes.Count(buffer, []byte{'\x00'}))
 	for _, name := range bytes.Split(buffer, []byte{'\x00'}) {
 		// "" is not a valid xattr (weirdly you get ERANGE -- not EINVAL -- if
 		// you try to touch it). So just skip it.
@@ -71,7 +71,7 @@ func Llistxattr(path string) ([]string, error) {
 // Lgetxattr is a wrapper around unix.Lgetattr, to abstract the resizing of the
 // returned []string.
 func Lgetxattr(path string, name string) ([]byte, error) {
-	var buffer []byte
+	var buffer []byte //nolint:prealloc // we do pre-allocate later
 	for {
 		// Find the size.
 		sz, err := unix.Lgetxattr(path, name, nil)

@@ -133,7 +133,7 @@ func (g *Generator) ConfigExposedPorts() map[string]struct{} {
 
 // ConfigExposedPortsArray returns a sorted array of ports to expose from a container running this image.
 func (g *Generator) ConfigExposedPortsArray() []string {
-	var ports []string
+	ports := make([]string, 0, len(g.image.Config.ExposedPorts))
 	for port := range g.image.Config.ExposedPorts {
 		ports = append(ports, port)
 	}

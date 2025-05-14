@@ -199,7 +199,7 @@ func (e Engine) reachable(ctx context.Context, root ispec.Descriptor) ([]digest.
 	}); err != nil {
 		return nil, err
 	}
-	var reachable []digest.Digest
+	reachable := make([]digest.Digest, 0, len(seen))
 	for node := range seen {
 		reachable = append(reachable, node)
 	}

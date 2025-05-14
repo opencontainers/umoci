@@ -38,6 +38,7 @@ linters:
     - nilerr
     - nilnesserr
     - nilnil
+    - prealloc
     - staticcheck
     - testifylint
     - unconvert
