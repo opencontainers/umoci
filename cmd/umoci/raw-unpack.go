@@ -68,9 +68,9 @@ is the destination to unpack the image to.`,
 })
 
 func rawUnpack(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-	rootfsPath := ctx.App.Metadata["rootfs"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
+	rootfsPath := mustFetchMeta[string](ctx, "rootfs")
 
 	var unpackOptions layer.UnpackOptions
 	var meta umoci.Meta

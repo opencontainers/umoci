@@ -72,19 +72,19 @@ only supports uncompressed archives.`,
 })))
 
 func rawAddLayer(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-	newLayerPath := ctx.App.Metadata["newlayer"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
+	newLayerPath := mustFetchMeta[string](ctx, "newlayer")
 
 	var compressAlgo blobcompress.Algorithm
-	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+	if algo, ok := fetchMeta[blobcompress.Algorithm](ctx, "--compress"); ok {
 		compressAlgo = algo
 	}
 
 	// Overide the from tag by default, otherwise use the one specified.
 	tagName := fromName
-	if overrideTagName, ok := ctx.App.Metadata["--tag"]; ok {
-		tagName = overrideTagName.(string)
+	if overrideTagName, ok := fetchMeta[string](ctx, "--tag"); ok {
+		tagName = overrideTagName
 	}
 
 	var meta umoci.Meta

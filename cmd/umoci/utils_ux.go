@@ -106,20 +106,20 @@ func uxCompress(cmd cli.Command) cli.Command {
 	oldBefore := cmd.Before
 	cmd.Before = func(ctx *cli.Context) error {
 		// Verify compression algorithm value.
-		var layerCompressor blobcompress.Algorithm
 		if ctx.IsSet("compress") {
 			compressType := ctx.String("compress")
 			if compressType == "none" {
 				compressType = ""
 			}
+			var layerCompressor blobcompress.Algorithm
 			if compressType != "auto" {
 				layerCompressor = blobcompress.GetAlgorithm(compressType)
 				if layerCompressor == nil {
 					return fmt.Errorf("invalid --compress: unknown layer compression type %q", ctx.String("compress"))
 				}
 			}
+			ctx.App.Metadata["--compress"] = layerCompressor
 		}
-		ctx.App.Metadata["--compress"] = layerCompressor
 
 		// Include any old befores set.
 		if oldBefore != nil {
@@ -269,4 +269,30 @@ func uxRemap(cmd cli.Command) cli.Command {
 	}...)
 
 	return cmd
+}
+
+// fetchMeta returns the requested metadata from the current [cli.Context] as
+// the requested type. fetchMeta will panic if the type parameter T does not
+// match the actual type of the metadata entry.
+func fetchMeta[T any](ctx *cli.Context, metaName string) (T, bool) {
+	val, ok := ctx.App.Metadata[metaName]
+	if !ok || val == nil {
+		return *new(T), false
+	}
+	realVal, ok := val.(T)
+	if !ok {
+		// this is a programmer error
+		panic(fmt.Sprintf("umoci cli internal error: fetching cli metadata %s with wrong type %T", metaName, *new(T)))
+	}
+	return realVal, true
+}
+
+// mustFetchMeta is like fetchMeta except that it will also panic if the
+// metadata is not present in the current [cli.Context].
+func mustFetchMeta[T any](ctx *cli.Context, metaName string) T {
+	val, ok := fetchMeta[T](ctx, metaName)
+	if !ok {
+		panic("umoci cli internal error: required cli metadata " + metaName + " missing")
+	}
+	return val
 }

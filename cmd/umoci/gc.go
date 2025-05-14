@@ -58,7 +58,7 @@ root set of references. All other blobs will be removed.`,
 }
 
 func gc(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
 
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)

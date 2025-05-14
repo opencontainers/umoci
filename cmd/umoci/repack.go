@@ -95,12 +95,12 @@ manifest and configuration information uses the new diff atop the old manifest.`
 }))
 
 func repack(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	tagName := ctx.App.Metadata["--image-tag"].(string)
-	bundlePath := ctx.App.Metadata["bundle"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	tagName := mustFetchMeta[string](ctx, "--image-tag")
+	bundlePath := mustFetchMeta[string](ctx, "bundle")
 
 	var compressAlgo blobcompress.Algorithm
-	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+	if algo, ok := fetchMeta[blobcompress.Algorithm](ctx, "--compress"); ok {
 		compressAlgo = algo
 	}
 

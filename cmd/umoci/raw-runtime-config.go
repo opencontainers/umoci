@@ -75,9 +75,9 @@ Note that the results of this may not agree with umoci-unpack(1) because the
 })
 
 func rawConfig(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-	configPath := ctx.App.Metadata["config"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
+	configPath := mustFetchMeta[string](ctx, "config")
 
 	var meta umoci.Meta
 	meta.Version = umoci.MetaVersion

@@ -141,13 +141,13 @@ func parseKV(input string) (string, string, error) {
 }
 
 func config(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
 
 	// By default we clobber the old tag.
 	tagName := fromName
-	if val, ok := ctx.App.Metadata["--tag"]; ok {
-		tagName = val.(string)
+	if val, ok := fetchMeta[string](ctx, "--tag"); ok {
+		tagName = val
 	}
 
 	// Get a reference to the CAS.

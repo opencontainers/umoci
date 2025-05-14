@@ -29,6 +29,7 @@ linters:
     - errcheck
     - errorlint
     - exhaustive
+    - forcetypeassert
     - godot
     - govet
     - importas

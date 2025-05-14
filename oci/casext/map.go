@@ -53,7 +53,7 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 	// First check that V isn't actually a ispec.Descriptor, if it is then
 	// we're done.
 	if isDescriptor(V.Type()) {
-		oldDesc := V.Interface().(ispec.Descriptor)
+		oldDesc := V.Interface().(ispec.Descriptor) //nolint:forcetypeassert // already checked with reflection in isDescriptor
 		newDesc := mapFunc(oldDesc)
 
 		// We only need to do any assignment if the two are not equal.

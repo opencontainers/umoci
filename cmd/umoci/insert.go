@@ -114,20 +114,20 @@ Some examples:
 }))))
 
 func insert(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-	sourcePath := ctx.App.Metadata["--source-path"].(string)
-	targetPath := ctx.App.Metadata["--target-path"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
+	sourcePath := mustFetchMeta[string](ctx, "--source-path")
+	targetPath := mustFetchMeta[string](ctx, "--target-path")
 
 	var compressAlgo blobcompress.Algorithm
-	if algo, ok := ctx.App.Metadata["--compress"].(blobcompress.Algorithm); ok {
+	if algo, ok := fetchMeta[blobcompress.Algorithm](ctx, "--compress"); ok {
 		compressAlgo = algo
 	}
 
 	// By default we clobber the old tag.
 	tagName := fromName
-	if val, ok := ctx.App.Metadata["--tag"]; ok {
-		tagName = val.(string)
+	if val, ok := fetchMeta[string](ctx, "--tag"); ok {
+		tagName = val
 	}
 
 	// Get a reference to the CAS.
