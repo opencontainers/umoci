@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+// Package dir implements the basic local directory-backed layout backend for
+// the OCI content-addressible store.
 package dir
 
 import (
@@ -154,7 +156,7 @@ func (e *dirEngine) validate() error {
 // PutBlob adds a new blob to the image. This is idempotent; a nil error
 // means that "the content is stored at DIGEST" without implying "because
 // of this PutBlob() call".
-func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (_ digest.Digest, _ int64, Err error) {
+func (e *dirEngine) PutBlob(_ context.Context, reader io.Reader) (_ digest.Digest, _ int64, Err error) {
 	if err := e.ensureTempDir(); err != nil {
 		return "", -1, fmt.Errorf("ensure tempdir: %w", err)
 	}
@@ -205,7 +207,7 @@ func (e *dirEngine) PutBlob(ctx context.Context, reader io.Reader) (_ digest.Dig
 // from disk and hash it (even if you didn't read any bytes before calling
 // Close), so if you wish to only check if a blob exists you should use
 // StatBlob() instead.
-func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadCloser, error) {
+func (e *dirEngine) GetBlob(_ context.Context, digest digest.Digest) (io.ReadCloser, error) {
 	path, err := blobPath(digest)
 	if err != nil {
 		return nil, fmt.Errorf("compute blob path: %w", err)
@@ -226,7 +228,7 @@ func (e *dirEngine) GetBlob(ctx context.Context, digest digest.Digest) (io.ReadC
 // occurred.
 //
 // NOTE: In future this API may change to return additional information.
-func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, error) {
+func (e *dirEngine) StatBlob(_ context.Context, digest digest.Digest) (bool, error) {
 	path, err := blobPath(digest)
 	if err != nil {
 		return false, fmt.Errorf("compute blob path: %w", err)
@@ -245,7 +247,7 @@ func (e *dirEngine) StatBlob(ctx context.Context, digest digest.Digest) (bool, e
 // previously existing index. This operation is atomic; any readers attempting
 // to access the OCI image while it is being modified will only ever see the
 // new or old index.
-func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) (Err error) {
+func (e *dirEngine) PutIndex(_ context.Context, index ispec.Index) (Err error) {
 	if err := e.ensureTempDir(); err != nil {
 		return fmt.Errorf("ensure tempdir: %w", err)
 	}
@@ -287,7 +289,7 @@ func (e *dirEngine) PutIndex(ctx context.Context, index ispec.Index) (Err error)
 // handling nested indexes. casext.Engine provides a wrapper for cas.Engine
 // that implements various reference resolution functions that should work for
 // most users.
-func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
+func (e *dirEngine) GetIndex(_ context.Context) (ispec.Index, error) {
 	content, err := os.ReadFile(filepath.Join(e.path, indexFile))
 	if err != nil {
 		if errors.Is(err, os.ErrNotExist) {
@@ -307,7 +309,7 @@ func (e *dirEngine) GetIndex(ctx context.Context) (ispec.Index, error) {
 // DeleteBlob removes a blob from the image. This is idempotent; a nil
 // error means "the content is not in the store" without implying "because
 // of this DeleteBlob() call".
-func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error {
+func (e *dirEngine) DeleteBlob(_ context.Context, digest digest.Digest) error {
 	path, err := blobPath(digest)
 	if err != nil {
 		return fmt.Errorf("compute blob path: %w", err)
@@ -321,7 +323,7 @@ func (e *dirEngine) DeleteBlob(ctx context.Context, digest digest.Digest) error 
 }
 
 // ListBlobs returns the set of blob digests stored in the image.
-func (e *dirEngine) ListBlobs(ctx context.Context) ([]digest.Digest, error) {
+func (e *dirEngine) ListBlobs(_ context.Context) ([]digest.Digest, error) {
 	digests := []digest.Digest{}
 	blobDir := filepath.Join(e.path, blobDirectory, cas.BlobAlgorithm.String())
 

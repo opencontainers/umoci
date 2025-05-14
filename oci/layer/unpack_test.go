@@ -163,7 +163,7 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 		Rootless: os.Geteuid() != 0,
 	}}
 	called := false
-	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
+	unpackOptions.AfterLayerUnpack = func(ispec.Manifest, ispec.Descriptor) error {
 		called = true
 		return nil
 	}

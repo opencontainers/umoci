@@ -38,8 +38,8 @@ import (
 // (both for user.rootlesscontainers and the more general case).
 func TestMapRootless(t *testing.T) {
 	// Just a basic "*archive/tar.Header" that we use for testing.
-	rootUid := 1000
-	rootGid := 100
+	rootUid := 1000 //nolint:revive // Uid is preferred
+	rootGid := 100  //nolint:revive // Gid is preferred
 	mapOptions := MapOptions{
 		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUid), ContainerID: 0, Size: 1}},
 		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGid), ContainerID: 0, Size: 1}},
@@ -55,7 +55,7 @@ func TestMapRootless(t *testing.T) {
 		name           string
 		uid, gid       int                          // (uid, gid) for hdr
 		proto          *rootlesscontainers.Resource // (uid, gid) for xattr
-		outUid, outGid int                          // (uid, gid) after map
+		outUid, outGid int                          //nolint:revive // (uid, gid) after map
 		errorExpected  bool
 	}{
 		// Noop values.
@@ -105,8 +105,8 @@ func TestMapRootless(t *testing.T) {
 // case (both for user.rootlesscontainers and the more general case).
 func TestUnmapRootless(t *testing.T) {
 	// Just a basic "*archive/tar.Header" that we use for testing.
-	rootUid := 1000
-	rootGid := 100
+	rootUid := 1000 //nolint:revive // Uid is preferred
+	rootGid := 100  //nolint:revive // Gid is preferred
 	mapOptions := MapOptions{
 		UIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootUid), ContainerID: 0, Size: 1}},
 		GIDMappings: []rspec.LinuxIDMapping{{HostID: uint32(rootGid), ContainerID: 0, Size: 1}},

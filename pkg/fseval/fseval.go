@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 
+// Package fseval provides a generic interface for all filesystem operations
+// done by umoci when working in the image rootfs, which allows for alternative
+// implementations of the filesystem operations to be easily swapped in.
 package fseval
 
 import (

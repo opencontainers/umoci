@@ -16,6 +16,10 @@
  * limitations under the License.
  */
 
+// Package cas provides a generic interface for the content-addressable store
+// that underlies OCI images. In most cases you should try to use
+// "github.com/opencontainers/umoci/oci/casext" which provides more friendly
+// wrappers around the content-addressible store.
 package cas
 
 import (

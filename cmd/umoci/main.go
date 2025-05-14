@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+// Package main is the cli implementation of umoci.
 package main
 
 import (
@@ -101,7 +102,7 @@ func Main(args []string) error {
 		return nil
 	}
 
-	app.After = func(ctx *cli.Context) error {
+	app.After = func(*cli.Context) error {
 		pprof.StopCPUProfile()
 		return nil
 	}

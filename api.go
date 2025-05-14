@@ -17,6 +17,10 @@
  * limitations under the License.
  */
 
+// Package umoci provides the top-level Go APIs for umoci functionality. Note
+// that the umoci Go API is not yet considered stable -- we will aim to
+// document any breaking changes in our changelogs but users should verify that
+// updates will not break their usage of umoci.
 package umoci
 
 import (

@@ -313,7 +313,7 @@ func FuzzUnpack(data []byte) int {
 	}}
 
 	called := false
-	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
+	unpackOptions.AfterLayerUnpack = func(ispec.Manifest, ispec.Descriptor) error {
 		called = true
 		return nil
 	}

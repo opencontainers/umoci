@@ -608,7 +608,7 @@ func TestUnpackEntryMap(t *testing.T) {
 			dir := t.TempDir()
 
 			var (
-				hdrUid, hdrGid int
+				hdrUid, hdrGid int //nolint:revive // Uid/Gid preferred
 				hdr            *tar.Header
 				fi             unix.Stat_t
 				err            error

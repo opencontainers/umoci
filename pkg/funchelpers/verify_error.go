@@ -20,7 +20,7 @@ package funchelpers
 
 import "io"
 
-// VerifyClose is a helper designed to make verifying deferred functions that
+// VerifyError is a helper designed to make verifying deferred functions that
 // return errors more ergonomic (most notably Close). This helper is intended
 // to be used with named return values.
 //

@@ -16,12 +16,6 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package iohelpers provides basic extensions to the helpers provided by the
+// Go stdlib "io" module.
+package iohelpers

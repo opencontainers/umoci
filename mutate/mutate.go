@@ -409,12 +409,12 @@ func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err erro
 		defer funchelpers.VerifyClose(&Err, parentBlob)
 
 		// Replace all references to the child blob with the new one.
-		old := m.source.Walk[idx]
-		new := newPath.Walk[idx]
+		oldDesc := m.source.Walk[idx]
+		newDesc := newPath.Walk[idx]
 		if err := casext.MapDescriptors(parentBlob.Data, func(d ispec.Descriptor) ispec.Descriptor {
 			// XXX: Maybe we should just be comparing the Digest?
-			if reflect.DeepEqual(d, old) {
-				d = new
+			if reflect.DeepEqual(d, oldDesc) {
+				d = newDesc
 			}
 			return d
 		}); err != nil {

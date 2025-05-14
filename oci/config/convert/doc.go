@@ -16,12 +16,6 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package convert implements the OCI image specification "default runtime
+// configuration" conversion specification in a fairly unopinionated way.
+package convert

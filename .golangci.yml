@@ -39,6 +39,7 @@ linters:
     - nilnesserr
     - nilnil
     - prealloc
+    - revive
     - staticcheck
     - testifylint
     - unconvert

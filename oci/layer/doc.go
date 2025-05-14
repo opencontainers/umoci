@@ -16,12 +16,8 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package layer implements the creation and extraction of OCI specification
+// layers. At the moment, only plain tar extractions into a single directory
+// (with mtree manifests for diff generation) and overlayfs-style extractions
+// are supported.
+package layer

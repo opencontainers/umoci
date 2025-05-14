@@ -16,12 +16,7 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package mediatype provides OCI-mimetype-based extensibility of umoci by
+// allowing umoci Go API users to extend the set of supported mimetypes to a
+// somewhat-limited extent.
+package mediatype

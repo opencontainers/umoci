@@ -47,7 +47,7 @@ func TestWrapNoTricks(t *testing.T) {
 	// Make sure that no error is returned an no trickery is done if fn() works
 	// the first time. This is important to make sure that we're not doing
 	// dodgy stuff if unnecessary.
-	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error { //nolint:revive // unused-parameter doesn't make sense for this test
 		return nil
 	})
 	require.NoError(t, err, "wrap should not return error in simple case")
@@ -57,7 +57,7 @@ func TestWrapNoTricks(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "parent"), 0)
 	require.NoError(t, err)
-	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error { //nolint:revive // unused-parameter doesn't make sense for this test
 		return nil
 	})
 	require.NoError(t, err, "wrap should not return error in simple case")

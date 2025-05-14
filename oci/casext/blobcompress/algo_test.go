@@ -60,9 +60,9 @@ type fakeAlgo struct{ name string }
 
 var _ Algorithm = fakeAlgo{"foo"}
 
-func (f fakeAlgo) MediaTypeSuffix() string                       { return f.name }
-func (f fakeAlgo) Compress(r io.Reader) (io.ReadCloser, error)   { return nil, fmt.Errorf("err") }
-func (f fakeAlgo) Decompress(r io.Reader) (io.ReadCloser, error) { return nil, fmt.Errorf("err") }
+func (f fakeAlgo) MediaTypeSuffix() string                     { return f.name }
+func (f fakeAlgo) Compress(io.Reader) (io.ReadCloser, error)   { return nil, fmt.Errorf("err") }
+func (f fakeAlgo) Decompress(io.Reader) (io.ReadCloser, error) { return nil, fmt.Errorf("err") }
 
 func TestRegister(t *testing.T) {
 	var fakeAlgo Algorithm = fakeAlgo{"fake-algo1"}

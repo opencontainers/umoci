@@ -53,18 +53,18 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 	// First check that V isn't actually a ispec.Descriptor, if it is then
 	// we're done.
 	if isDescriptor(V.Type()) {
-		old := V.Interface().(ispec.Descriptor)
-		new := mapFunc(old)
+		oldDesc := V.Interface().(ispec.Descriptor)
+		newDesc := mapFunc(oldDesc)
 
 		// We only need to do any assignment if the two are not equal.
-		if !reflect.DeepEqual(new, old) {
+		if !reflect.DeepEqual(newDesc, oldDesc) {
 			// P is a ptr to V (or just V if it's already a pointer).
 			P := V
 			if !P.CanSet() {
 				// This is a programmer error.
 				return fmt.Errorf("[internal error] cannot apply map function to %v: %v is not settable", P, P.Type())
 			}
-			P.Set(reflect.ValueOf(new))
+			P.Set(reflect.ValueOf(newDesc))
 		}
 		return nil
 	}

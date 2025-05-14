@@ -16,6 +16,8 @@
  * limitations under the License.
  */
 
+// Package testutils provides helpers for umoci's test suite. None of the code
+// in this package is enabled when building a non-test umoci binary.
 package testutils
 
 // binaryType is set during umoci.cover building.

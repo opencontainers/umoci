@@ -16,12 +16,7 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package mtreefilter provides helpers to construct filters that can be
+// applied on mtree manifests, allowing you to filter out changes from being
+// included in a tar diff layer.
+package mtreefilter

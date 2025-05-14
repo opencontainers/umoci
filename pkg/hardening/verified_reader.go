@@ -73,8 +73,8 @@ func (v *VerifiedReadCloser) init() {
 	if v.digester == nil {
 		alg := v.ExpectedDigest.Algorithm()
 		if !alg.Available() {
-			log.Fatalf("verified reader: unsupported hash algorithm %s", alg)
-			panic("verified reader: unreachable section") // should never be hit
+			log.Fatalf("verified reader: unsupported hash algorithm %s", alg) //nolint:revive // panic is for extra safety
+			panic("verified reader: unreachable section")                     // should never be hit
 		}
 		v.digester = alg.Digester()
 	}
@@ -150,8 +150,8 @@ func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
 		// hash.Hash guarantees Write() never fails and is never short.
 		nWrite, err := v.digester.Hash().Write(p[:n])
 		if nWrite != n || err != nil {
-			log.Fatalf("verified reader: short write to %s Digester (err=%v)", v.ExpectedDigest.Algorithm(), err)
-			panic("verified reader: unreachable section") // should never be hit
+			log.Fatalf("verified reader: short write to %s Digester (err=%v)", v.ExpectedDigest.Algorithm(), err) //nolint:revive // panic is for extra safety
+			panic("verified reader: unreachable section")                                                         // should never be hit
 		}
 	}
 	// We have finished reading -- let's verify the state!

@@ -146,20 +146,20 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 }
 
 func gcOkFunc(t *testing.T, expectedDigest digest.Digest) GCPolicy {
-	return func(ctx context.Context, digest digest.Digest) (bool, error) {
+	return func(ctx context.Context, digest digest.Digest) (bool, error) { //nolint:revive // unused-parameter doesn't make sense for this test
 		assert.Equal(t, expectedDigest, digest, "unexpected digest with gc callback")
 		return true, nil
 	}
 }
 
 func gcSkipFunc(t *testing.T, expectedDigest digest.Digest) GCPolicy {
-	return func(ctx context.Context, digest digest.Digest) (bool, error) {
+	return func(ctx context.Context, digest digest.Digest) (bool, error) { //nolint:revive // unused-parameter doesn't make sense for this test
 		assert.Equal(t, expectedDigest, digest, "unexpected digest with gc callback")
 		return false, nil
 	}
 }
 
-func errFunc(ctx context.Context, digest digest.Digest) (bool, error) {
+func errFunc(ctx context.Context, digest digest.Digest) (bool, error) { //nolint:revive // unused-parameter doesn't make sense for this test
 	return false, errors.New("err policy")
 }
 
