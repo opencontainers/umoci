@@ -192,7 +192,7 @@ func TestMapDescriptors_Identity(t *testing.T) {
 
 	for _, test := range tests {
 		test := test // copy iterator
-		t.Run(test.name, func(*testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			// Make a copy for later comparison.
 			original := deepcopy.Copy(test.obj)
 
