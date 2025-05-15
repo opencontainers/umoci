@@ -16,6 +16,18 @@
  * limitations under the License.
  */
 
+// Package unpriv provides rootless emulation of CAP_DAC_READ_SEARCH without
+// the need for rootless user namespaces. This is necessary in general because
+// it turns out that a lot of distributions have a rootfs with `chmod 000`
+// directories that rely on root having CAP_DAC_READ_SEARCH to be normally
+// accessible.
+//
+// Note that the implementation of CAP_DAC_READ_SEARCH requires write access to
+// any normally-inaccessible components of paths.
+//
+// Users should use fseval.FsEval instead to allow programs to switch between
+// fseval.Rootless and fseval.Default based on whether the program is
+// privileged or not.
 package unpriv
 
 import (

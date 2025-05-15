@@ -69,9 +69,9 @@ creation with umoci-repack(1).`,
 })
 
 func unpack(ctx *cli.Context) (Err error) {
-	imagePath := ctx.App.Metadata["--image-path"].(string)
-	fromName := ctx.App.Metadata["--image-tag"].(string)
-	bundlePath := ctx.App.Metadata["bundle"].(string)
+	imagePath := mustFetchMeta[string](ctx, "--image-path")
+	fromName := mustFetchMeta[string](ctx, "--image-tag")
+	bundlePath := mustFetchMeta[string](ctx, "bundle")
 
 	var unpackOptions layer.UnpackOptions
 	var meta umoci.Meta

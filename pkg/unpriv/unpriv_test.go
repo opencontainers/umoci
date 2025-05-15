@@ -40,14 +40,14 @@ func TestWrapNoTricks(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
 	// Make sure that no error is returned an no trickery is done if fn() works
 	// the first time. This is important to make sure that we're not doing
 	// dodgy stuff if unnecessary.
-	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "nonexistant", "path"), func(path string) error { //nolint:revive // unused-parameter doesn't make sense for this test
 		return nil
 	})
 	require.NoError(t, err, "wrap should not return error in simple case")
@@ -57,7 +57,7 @@ func TestWrapNoTricks(t *testing.T) {
 	require.NoError(t, err)
 	err = os.Chmod(filepath.Join(dir, "parent"), 0)
 	require.NoError(t, err)
-	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error {
+	err = Wrap(filepath.Join(dir, "parent", "directory"), func(path string) error { //nolint:revive // unused-parameter doesn't make sense for this test
 		return nil
 	})
 	require.NoError(t, err, "wrap should not return error in simple case")
@@ -102,7 +102,7 @@ func TestLstat(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -145,7 +145,7 @@ func TestReadlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -192,7 +192,7 @@ func TestSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -241,7 +241,7 @@ func TestOpen(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -319,7 +319,7 @@ func TestReaddir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -394,7 +394,7 @@ func TestWrapWrite(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -443,7 +443,7 @@ func TestLink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -527,7 +527,7 @@ func TestChtimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -591,7 +591,7 @@ func TestLutimes(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -684,7 +684,7 @@ func TestRemove(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -744,7 +744,7 @@ func TestRemoveAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -800,7 +800,7 @@ func TestMkdir(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -842,7 +842,7 @@ func TestMkdirAll(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -889,7 +889,7 @@ func TestMkdirAllMissing(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -931,7 +931,7 @@ func TestMkdirRWPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -989,7 +989,7 @@ func TestMkdirRPerm(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -1043,7 +1043,7 @@ func TestWalk(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 

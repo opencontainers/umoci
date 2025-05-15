@@ -234,13 +234,14 @@ func TestEngineGCLocking(t *testing.T) {
 	assert.Equal(t, expectedSize, size, "put blob should return same size as content")
 
 	// We need a live tmpdir that has an advisory lock set.
-	require.NotEmpty(t, engine.(*dirEngine).temp, "engine should have a tmpdir after adding a blob")
+	engineTempDir := engine.(*dirEngine).temp //nolint:forcetypeassert
+	require.NotEmpty(t, engineTempDir, "engine should have a tmpdir after adding a blob")
 
 	// Create subpaths to make sure our GC will only clean things that we can
 	// be sure can be removed.
-	umociTestDir, err := os.MkdirTemp(image, ".umoci-dead-")
+	umociTestDir, err := os.MkdirTemp(image, ".umoci-dead-") //nolint:usetesting // we are intentionally creating a tempdir inside an image dir
 	require.NoError(t, err)
-	otherTestDir, err := os.MkdirTemp(image, "other-")
+	otherTestDir, err := os.MkdirTemp(image, "other-") //nolint:usetesting // we are intentionally creating a tempdir inside an image dir
 	require.NoError(t, err)
 
 	// Open a new reference and GC it.
@@ -252,7 +253,7 @@ func TestEngineGCLocking(t *testing.T) {
 	require.NoError(t, err, "engine clean")
 
 	for _, path := range []string{
-		engine.(*dirEngine).temp,
+		engineTempDir,
 		otherTestDir,
 	} {
 		_, err := os.Lstat(path)

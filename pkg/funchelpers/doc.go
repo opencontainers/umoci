@@ -16,6 +16,6 @@
  * limitations under the License.
  */
 
-// Package provides small helpers related to writing easy-to-understand Go
-// functions.
+// Package funchelpers provides small helpers related to writing
+// easy-to-understand Go functions.
 package funchelpers

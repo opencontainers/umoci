@@ -16,12 +16,5 @@
  * limitations under the License.
  */
 
-package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")
+// Package system provides ergonomic wrappers for operating system APIs.
+package system

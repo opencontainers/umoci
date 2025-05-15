@@ -98,7 +98,7 @@ func FuzzGenerateLayer(data []byte) int {
 	}
 	defer os.RemoveAll(baseDir) //nolint:errcheck
 
-	var dirArray []string
+	var dirArray []string //nolint:prealloc
 	iteration := 0
 	chunkSize := len(f1.RestOfArray) / f1.NumberOfCalls
 	for i := 0; i < len(f1.RestOfArray); i = i + chunkSize {
@@ -220,8 +220,8 @@ func makeFuzzImage(base641, base642 string) (string, ispec.Manifest, casext.Engi
 	engineExt := casext.NewEngine(engine)
 
 	// Set up the CAS and an image from the above layers.
-	var layerDigests []digest.Digest
-	var layerDescriptors []ispec.Descriptor
+	layerDigests := make([]digest.Digest, 0, len(layers))
+	layerDescriptors := make([]ispec.Descriptor, 0, len(layers))
 	for _, layer := range layers {
 		layerData, _ := base64.StdEncoding.DecodeString(layer.base64)
 		layerReader := bytes.NewBuffer(layerData)
@@ -313,7 +313,7 @@ func FuzzUnpack(data []byte) int {
 	}}
 
 	called := false
-	unpackOptions.AfterLayerUnpack = func(m ispec.Manifest, d ispec.Descriptor) error {
+	unpackOptions.AfterLayerUnpack = func(ispec.Manifest, ispec.Descriptor) error {
 		called = true
 		return nil
 	}

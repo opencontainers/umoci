@@ -74,7 +74,7 @@ func mapHeader(hdr *tar.Header, mapOptions MapOptions) error {
 	//
 	// TODO: We should probably add a flag to opt-out of this (though I'm not
 	//       sure why anyone would intentionally use this incorrectly).
-	if value, ok := hdr.Xattrs[rootlesscontainers.Keyname]; !ok { //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
+	if value, ok := hdr.Xattrs[rootlesscontainers.Keyname]; !ok { //nolint:staticcheck,revive // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 		// noop
 	} else if !mapOptions.Rootless {
 		log.Warnf("suspicious filesystem: saw special rootless xattr %s in non-rootless invocation", rootlesscontainers.Keyname)

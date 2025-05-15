@@ -16,6 +16,10 @@
  * limitations under the License.
  */
 
+// Package generate provides an API for modifying the OCI image configuration
+// object in a slightly less manual way than constructing structs and doing nil
+// checks manually. It is analogous to the runtime-tools generate package, and
+// is a properly working version of the image-tools generate package.
 package generate
 
 import (
@@ -124,16 +128,16 @@ func (g *Generator) RemoveConfigExposedPort(port string) {
 // ConfigExposedPorts returns the set of ports to expose from a container running this image.
 func (g *Generator) ConfigExposedPorts() map[string]struct{} {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	copy := map[string]struct{}{}
+	cp := map[string]struct{}{}
 	for k, v := range g.image.Config.ExposedPorts {
-		copy[k] = v
+		cp[k] = v
 	}
-	return copy
+	return cp
 }
 
 // ConfigExposedPortsArray returns a sorted array of ports to expose from a container running this image.
 func (g *Generator) ConfigExposedPortsArray() []string {
-	var ports []string
+	ports := make([]string, 0, len(g.image.Config.ExposedPorts))
 	for port := range g.image.Config.ExposedPorts {
 		ports = append(ports, port)
 	}
@@ -162,9 +166,8 @@ func (g *Generator) AddConfigEnv(name, value string) {
 
 // ConfigEnv returns the list of environment variables to be used in a container.
 func (g *Generator) ConfigEnv() []string {
-	copy := []string{}
-	copy = append(copy, g.image.Config.Env...)
-	return copy
+	// We have to make a copy to preserve the privacy of g.image.Config.
+	return append([]string{}, g.image.Config.Env...)
 }
 
 // ClearConfigEntrypoint clears the list of arguments to use as the command to execute when the container starts.
@@ -174,17 +177,13 @@ func (g *Generator) ClearConfigEntrypoint() {
 
 // SetConfigEntrypoint sets the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
-	copy := []string{}
-	copy = append(copy, entrypoint...)
-	g.image.Config.Entrypoint = copy
+	g.image.Config.Entrypoint = append([]string{}, entrypoint...)
 }
 
 // ConfigEntrypoint returns the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) ConfigEntrypoint() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	copy := []string{}
-	copy = append(copy, g.image.Config.Entrypoint...)
-	return copy
+	return append([]string{}, g.image.Config.Entrypoint...)
 }
 
 // ClearConfigCmd clears the list of default arguments to the entrypoint of the container.
@@ -194,17 +193,13 @@ func (g *Generator) ClearConfigCmd() {
 
 // SetConfigCmd sets the list of default arguments to the entrypoint of the container.
 func (g *Generator) SetConfigCmd(cmd []string) {
-	copy := []string{}
-	copy = append(copy, cmd...)
-	g.image.Config.Cmd = copy
+	g.image.Config.Cmd = append([]string{}, cmd...)
 }
 
 // ConfigCmd returns the list of default arguments to the entrypoint of the container.
 func (g *Generator) ConfigCmd() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	copy := []string{}
-	copy = append(copy, g.image.Config.Cmd...)
-	return copy
+	return append([]string{}, g.image.Config.Cmd...)
 }
 
 // ClearConfigVolumes clears the set of directories which should be created as data volumes in a container running this image.
@@ -225,11 +220,11 @@ func (g *Generator) RemoveConfigVolume(volume string) {
 // ConfigVolumes returns the set of directories which should be created as data volumes in a container running this image.
 func (g *Generator) ConfigVolumes() map[string]struct{} {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	copy := map[string]struct{}{}
+	cp := map[string]struct{}{}
 	for k, v := range g.image.Config.Volumes {
-		copy[k] = v
+		cp[k] = v
 	}
-	return copy
+	return cp
 }
 
 // ClearConfigLabels clears the set of arbitrary metadata for the container.
@@ -250,11 +245,11 @@ func (g *Generator) RemoveConfigLabel(label string) {
 // ConfigLabels returns the set of arbitrary metadata for the container.
 func (g *Generator) ConfigLabels() map[string]string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	copy := map[string]string{}
+	cp := map[string]string{}
 	for k, v := range g.image.Config.Labels {
-		copy[k] = v
+		cp[k] = v
 	}
-	return copy
+	return cp
 }
 
 // SetConfigWorkingDir sets the current working directory of the entrypoint process in the container.
@@ -299,9 +294,8 @@ func (g *Generator) AddRootfsDiffID(diffid digest.Digest) {
 
 // RootfsDiffIDs returns the the array of layer content hashes (DiffIDs), in order from bottom-most to top-most.
 func (g *Generator) RootfsDiffIDs() []digest.Digest {
-	copy := []digest.Digest{}
-	copy = append(copy, g.image.RootFS.DiffIDs...)
-	return copy
+	// We have to make a copy to preserve the privacy of g.image.RootFS.
+	return append([]digest.Digest{}, g.image.RootFS.DiffIDs...)
 }
 
 // ClearHistory clears the history of each layer.
@@ -316,9 +310,8 @@ func (g *Generator) AddHistory(history ispec.History) {
 
 // History returns the history of each layer.
 func (g *Generator) History() []ispec.History {
-	copy := []ispec.History{}
-	copy = append(copy, g.image.History...)
-	return copy
+	// We have to make a copy to preserve the privacy of g.image.History.
+	return append([]ispec.History{}, g.image.History...)
 }
 
 // ISO8601 represents the format of an ISO-8601 time string, which is identical

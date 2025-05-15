@@ -16,6 +16,7 @@
  * limitations under the License.
  */
 
+// Package idtools provides helpers for dealing with Linux ID mappings.
 package idtools
 
 import (

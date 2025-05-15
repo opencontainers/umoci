@@ -37,7 +37,7 @@ func TestLutimesFile(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -85,7 +85,7 @@ func TestLutimesDirectory(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -133,7 +133,7 @@ func TestLutimesSymlink(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 
@@ -198,7 +198,7 @@ func TestLutimesRelative(t *testing.T) {
 
 	// We need to delete the directory manually because the stdlib RemoveAll
 	// will get permission errors with the way we structure the paths.
-	dir, err := os.MkdirTemp(dir, "inner")
+	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
 

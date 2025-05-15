@@ -585,7 +585,7 @@ func TestWalk(t *testing.T) {
 
 	t.Run("Error", func(t *testing.T) {
 		testErr := fmt.Errorf("test error")
-		err := trie.WalkFrom("/", func(path, value string) error {
+		err := trie.WalkFrom("/", func(path, value string) error { //nolint:revive // unused-parameter doesn't make sense for this test
 			if path == "/a/b/cc" {
 				return testErr
 			}

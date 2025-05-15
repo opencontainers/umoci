@@ -16,12 +16,5 @@
  * limitations under the License.
  */
 
+// Package internal (and all subpackages) are for internal-to-umoci APIs.
 package internal
-
-import (
-	"errors"
-)
-
-// ErrUnimplemented is returned as a source error for umoci features that are
-// not yet implemented.
-var ErrUnimplemented = errors.New("unimplemented umoci feature")

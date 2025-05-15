@@ -192,7 +192,7 @@ func TestMapDescriptors_Identity(t *testing.T) {
 
 	for _, test := range tests {
 		test := test // copy iterator
-		t.Run(test.name, func(*testing.T) {
+		t.Run(test.name, func(t *testing.T) {
 			// Make a copy for later comparison.
 			original := deepcopy.Copy(test.obj)
 
@@ -286,7 +286,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 			original := deepcopy.Copy(test.obj)
 
 			newDescriptors := map[digest.Digest]bool{}
-			require.NoError(t, MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor {
+			require.NoError(t, MapDescriptors(test.obj, func(descriptor ispec.Descriptor) ispec.Descriptor { //nolint:revive // unused-parameter doesn't make sense for this test
 				// Create an entirely new descriptor.
 				newDesc := randomDescriptor(t)
 				newDescriptors[newDesc.Digest] = true

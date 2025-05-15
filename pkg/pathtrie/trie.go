@@ -16,6 +16,9 @@
  * limitations under the License.
  */
 
+// Package pathtrie provides a minimal implementation of a trie where each node
+// is a path component, allowing you to efficiently store metadata about a
+// path-based structure and iterate over subtrees within said structure.
 package pathtrie
 
 import (
@@ -77,6 +80,7 @@ func (root *trieNode[V]) lookupNode(path pathKey, alloc bool) *trieNode[V] {
 	return next.lookupNode(pathKey(remaining), alloc)
 }
 
+// PathTrie represents a trie with each node being a path component.
 type PathTrie[V any] struct {
 	*trieNode[V]
 }
@@ -117,7 +121,7 @@ func (t *PathTrie[V]) Set(path string, value V) (old V, found bool) {
 	return old, found
 }
 
-func (t *PathTrie[V]) delete(path string, recursive bool) (old V, found bool) {
+func (t *PathTrie[V]) remove(path string, recursive bool) (old V, found bool) {
 	// Need to look up the parent node of the path.
 	dir, file := filepath.Split(filepath.Clean(path))
 	dirKey := pathToKey(dir)
@@ -161,14 +165,14 @@ func (t *PathTrie[V]) delete(path string, recursive bool) (old V, found bool) {
 // was a value at the given path, the old value is returned and found will be
 // true.
 func (t *PathTrie[V]) Delete(path string) (old V, found bool) {
-	return t.delete(path, false)
+	return t.remove(path, false)
 }
 
 // DeleteAll removes the entry at the given path and all child entries. To only
 // delete the value at the path use [Delete]. If there was a value at the given
 // path, the old value is returned and found will be true.
 func (t *PathTrie[V]) DeleteAll(path string) (old V, found bool) {
-	return t.delete(path, true)
+	return t.remove(path, true)
 }
 
 // WalkFunc is the callback function called by [WalkFrom].
