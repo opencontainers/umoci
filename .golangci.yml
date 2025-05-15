@@ -31,14 +31,17 @@ linters:
     - exhaustive
     - forcetypeassert
     - godot
+    - goprintffuncname
     - govet
     - importas
     - ineffassign
     - makezero
     - misspell
+    - musttag
     - nilerr
     - nilnesserr
     - nilnil
+    - noctx
     - prealloc
     - revive
     - staticcheck
