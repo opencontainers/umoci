@@ -46,6 +46,7 @@ linters:
     - unconvert
     - unparam
     - unused
+    - usetesting
   settings:
     govet:
       enable:

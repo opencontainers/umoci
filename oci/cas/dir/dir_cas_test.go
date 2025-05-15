@@ -239,9 +239,9 @@ func TestEngineGCLocking(t *testing.T) {
 
 	// Create subpaths to make sure our GC will only clean things that we can
 	// be sure can be removed.
-	umociTestDir, err := os.MkdirTemp(image, ".umoci-dead-")
+	umociTestDir, err := os.MkdirTemp(image, ".umoci-dead-") //nolint:usetesting // we are intentionally creating a tempdir inside an image dir
 	require.NoError(t, err)
-	otherTestDir, err := os.MkdirTemp(image, "other-")
+	otherTestDir, err := os.MkdirTemp(image, "other-") //nolint:usetesting // we are intentionally creating a tempdir inside an image dir
 	require.NoError(t, err)
 
 	// Open a new reference and GC it.
