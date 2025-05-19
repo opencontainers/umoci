@@ -78,21 +78,19 @@ func TestGetXattrFilter(t *testing.T) {
 	}
 }
 
-func ptr[T any](t T) *T { return &t }
-
 func TestOverlayXattrFilter(t *testing.T) {
 	for _, test := range []struct {
 		name          string
 		xattr         string
 		onDiskFmt     OnDiskFormat
-		toDisk, toTar *string
+		toDisk, toTar string
 	}{
-		{"NormalXattr", "trusted.example.xattr", OverlayfsRootfs{}, ptr("trusted.example.xattr"), ptr("trusted.example.xattr")},
-		{"TrustedOverlayXattr", "trusted.overlay.foo", OverlayfsRootfs{}, ptr("trusted.overlay.overlay.foo"), nil},
-		{"TrustedOverlayXattr-Escaped", "trusted.overlay.overlay.foo", OverlayfsRootfs{}, ptr("trusted.overlay.overlay.overlay.foo"), ptr("trusted.overlay.foo")},
+		{"NormalXattr", "trusted.example.xattr", OverlayfsRootfs{}, "trusted.example.xattr", "trusted.example.xattr"},
+		{"TrustedOverlayXattr", "trusted.overlay.foo", OverlayfsRootfs{}, "trusted.overlay.overlay.foo", ""},
+		{"TrustedOverlayXattr-Escaped", "trusted.overlay.overlay.foo", OverlayfsRootfs{}, "trusted.overlay.overlay.overlay.foo", "trusted.overlay.foo"},
 		// TODO: Implement support for these.
-		{"UserOverlayXattr", "user.overlay.foo", OverlayfsRootfs{}, ptr("user.overlay.foo"), ptr("user.overlay.foo")},
-		{"UserOverlayXattr-Escaped", "user.overlay.overlay.foo", OverlayfsRootfs{}, ptr("user.overlay.overlay.foo"), ptr("user.overlay.overlay.foo")},
+		{"UserOverlayXattr", "user.overlay.foo", OverlayfsRootfs{}, "user.overlay.foo", "user.overlay.foo"},
+		{"UserOverlayXattr-Escaped", "user.overlay.overlay.foo", OverlayfsRootfs{}, "user.overlay.overlay.foo", "user.overlay.overlay.foo"},
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
@@ -103,7 +101,7 @@ func TestOverlayXattrFilter(t *testing.T) {
 				filter = overlayXattrFilter{}
 			}
 
-			expectMasked := test.toTar == nil
+			expectMasked := test.toTar == ""
 			gotMasked := filter.MaskedOnDisk(test.onDiskFmt, test.xattr)
 			assert.Equal(t, expectMasked, gotMasked, "MaskedOnDisk(%#v, %q)", test.onDiskFmt, test.xattr)
 

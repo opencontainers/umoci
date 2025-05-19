@@ -58,7 +58,7 @@ type xattrFilter interface {
 	//
 	// In particular, due to the implementation details of UnpackEntry
 	// (described in [ToTar]), MaskedOnDisk must only return true *if and only
-	// if* (for the same xattr and [OnDiskFormat]) [ToTar] would return nil and
+	// if* (for the same xattr and [OnDiskFormat]) [ToTar] would return "" and
 	// [ToDisk] would never generate it. Otherwise, it is impossible for this
 	// on-disk xattr to have come from or be stored in the archive.
 	MaskedOnDisk(onDiskFmt OnDiskFormat, xattr string) bool
@@ -66,17 +66,17 @@ type xattrFilter interface {
 	// ToDisk returns what name a tar archive xattr should be stored with
 	// on-disk (with the provided [OnDiskFormat]). The returned string will be
 	// used for as the on-disk xattr name instead of the original xattr -- if
-	// nil is returned then the xattr will not be extracted.
+	// an empty string is returned then the xattr will not be extracted.
 	//
 	// [MaskedOnDisk] must only return true if [ToDisk] would never generate
 	// the same xattr.
-	ToDisk(onDiskFmt OnDiskFormat, xattr string) (newName *string)
+	ToDisk(onDiskFmt OnDiskFormat, xattr string) (newName string)
 
 	// ToTar returns what an on-disk xattr name should be converted to when
 	// storing in a tar archive (with the provided [OnDiskFormat]). The
 	// returned string will be stored inside tar archives as the xattr name
-	// instead of the original xattr -- if nil is returned then the xattr will
-	// not be included in the tar archive.
+	// instead of the original xattr -- if an empty string is returned then the
+	// xattr will not be included in the tar archive.
 	//
 	// Note that ToTar is not exclusively called on tar archive entries from
 	// layer archives. When doing UnpackEntry we need to restore the metadata
@@ -90,9 +90,9 @@ type xattrFilter interface {
 	//
 	// [MaskedOnDisk] must only return true for a given xattr and
 	// [OnDiskFormat] *if and only if*, ToTar with the same arguments returns
-	// nil. Otherwise, when the metadata is re-applied with on-disk data you
+	// "", Otherwise, when the metadata is re-applied with on-disk data you
 	// will end up losing on-disk xattrs or adding new nonsense xattrs.
-	ToTar(onDiskFmt OnDiskFormat, xattr string) (newName *string)
+	ToTar(onDiskFmt OnDiskFormat, xattr string) (newName string)
 }
 
 // forbiddenXattrFilter is a dummy filter that will block all xattrs that are
@@ -102,8 +102,8 @@ type forbiddenXattrFilter struct{}
 var _ xattrFilter = forbiddenXattrFilter{}
 
 func (forbiddenXattrFilter) MaskedOnDisk(OnDiskFormat, string) bool { return true }
-func (forbiddenXattrFilter) ToDisk(OnDiskFormat, string) *string    { return nil }
-func (forbiddenXattrFilter) ToTar(OnDiskFormat, string) *string     { return nil }
+func (forbiddenXattrFilter) ToDisk(OnDiskFormat, string) string     { return "" }
+func (forbiddenXattrFilter) ToTar(OnDiskFormat, string) string      { return "" }
 
 // overlayXattrFilter is a filter for all trusted.overlay.* xattrs which will
 // escape the xattrs on unpack and unescape them when.
@@ -121,11 +121,11 @@ func (overlayXattrFilter) MaskedOnDisk(onDiskFmt OnDiskFormat, xattr string) boo
 		!doesXattrMatch(xattr, "trusted.overlay.overlay.")
 }
 
-func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) *string {
+func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) string {
 	if !doesXattrMatch(xattr, "trusted.overlay.") {
 		// For some inexplicable reason, we were called with a different xattr
 		// namespace. Act as a no-op in that case.
-		return &xattr
+		return xattr
 	}
 
 	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
@@ -133,20 +133,19 @@ func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) *string {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange
 		// to see them.)
-		return &xattr
+		return xattr
 	}
 
 	// We know it has the prefix so no need for CutPrefix.
 	subXattr := strings.TrimPrefix(xattr, "trusted.overlay.")
-	escaped := "trusted.overlay.overlay." + subXattr
-	return &escaped
+	return "trusted.overlay.overlay." + subXattr
 }
 
-func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) *string {
+func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) string {
 	if !doesXattrMatch(xattr, "trusted.overlay.") {
 		// For some inexplicable reason, we were called with a different xattr
 		// namespace. Act as a no-op in that case.
-		return &xattr
+		return xattr
 	}
 
 	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
@@ -154,7 +153,7 @@ func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) *string {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
 		// treated like any other xattr. (Though it would be a little strange
 		// to see them.)
-		return &xattr
+		return xattr
 	}
 
 	subXattr, isEscapedXattr := strings.CutPrefix(xattr, "trusted.overlay.overlay.")
@@ -162,10 +161,9 @@ func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) *string {
 		// Clear any non-escaped xattrs entirely, as they may have been
 		// auto-set by overlayfs or set by the user when configuring overlayfs.
 		// This matches the behaviour of MaskedOnDisk.
-		return nil
+		return ""
 	}
-	unescaped := "trusted.overlay." + subXattr
-	return &unescaped
+	return "trusted.overlay." + subXattr
 }
 
 // specialXattrs is a list of xattr names (or prefixes) that may need have to

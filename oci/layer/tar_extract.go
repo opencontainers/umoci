@@ -196,7 +196,7 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		// when in overlayfs mode) to have correct values.
 		mappedName := xattr
 		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
-			if newName := filter.ToDisk(te.onDiskFmt, xattr); newName == nil {
+			if newName := filter.ToDisk(te.onDiskFmt, xattr); newName == "" {
 				// Avoid outputting a warning if a must-skip xattr already has
 				// the expected value we wanted.
 				//
@@ -212,8 +212,8 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 				}
 				log.Warnf("xattr{%s} ignoring forbidden xattr %q", hdr.Name, xattr)
 				continue
-			} else if *newName != xattr {
-				mappedName = *newName
+			} else if newName != xattr {
+				mappedName = newName
 				log.Debugf("xattr{%s} remapping xattr %q to %q during extraction", hdr.Name, xattr, mappedName)
 			}
 		}
@@ -575,7 +575,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 				// we don't need to provide any user warnings.
 				mappedName := xattr
 				if filter, isSpecial := getXattrFilter(xattr); isSpecial {
-					if newName := filter.ToTar(te.onDiskFmt, xattr); newName == nil {
+					if newName := filter.ToTar(te.onDiskFmt, xattr); newName == "" {
 						log.Debugf("xattr{%s} ignoring masked xattr %q while generating fake parent directory header for restoreMetadata", unsafeDir, xattr)
 						// If the xattr should be ignored we can safely skip it
 						// here because MaskedOnDisk will also stop them from
@@ -588,8 +588,8 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 							log.Fatalf("[internal error] xattr{%s} masked %q is being hidden by (%T).GenerateEntry but UnpackShouldClear returns true", unsafeDir, xattr, filter)
 						}
 						continue
-					} else if *newName != xattr {
-						mappedName = *newName
+					} else if newName != xattr {
+						mappedName = newName
 						log.Debugf("xattr{%s} remapping xattr %q to %q for later restoreMetadata", unsafeDir, xattr, mappedName)
 					}
 				}

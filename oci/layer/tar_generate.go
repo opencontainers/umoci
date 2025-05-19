@@ -180,11 +180,11 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 		// when in overlayfs mode) to have correct values.
 		mappedName := xattr
 		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
-			if newName := filter.ToTar(tg.onDiskFmt, xattr); newName == nil {
+			if newName := filter.ToTar(tg.onDiskFmt, xattr); newName == "" {
 				log.Debugf("xattr{%s} skipping the inclusion of xattr %q in generated tar archive", hdr.Name, xattr)
 				continue
-			} else if *newName != xattr {
-				mappedName = *newName
+			} else if newName != xattr {
+				mappedName = newName
 				log.Debugf("xattr{%s} remapping xattr %q to %q in generated tar archive", hdr.Name, xattr, mappedName)
 			}
 		}
