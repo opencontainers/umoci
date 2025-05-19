@@ -35,7 +35,7 @@ import (
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
-func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
+func testTranslateOverlayWhiteouts_Char00(t *testing.T, onDiskFmt OverlayfsRootfs) { //nolint:revive // var-naming is less important than matching the func TestXyz name
 	dir := t.TempDir()
 
 	testNeedsMknod(t)
@@ -45,7 +45,7 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
-	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
+	packOptions := RepackOptions{OnDiskFormat: onDiskFmt}
 
 	t.Run("GenerateLayer", func(t *testing.T) {
 		// something reasonable
@@ -78,23 +78,100 @@ func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
 			{path: "/", ftype: tar.TypeDir},
 			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
 			{path: whPrefix + "test", ftype: tar.TypeReg},
+		})
+	})
+}
+
+func TestTranslateOverlayWhiteouts_Char00(t *testing.T) {
+	t.Run("trusted.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_Char00(t, OverlayfsRootfs{})
+	})
+
+	t.Run("user.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_Char00(t, OverlayfsRootfs{UserXattr: true})
+	})
+}
+
+func testTranslateOverlayWhiteouts_XattrOpaque(t *testing.T, onDiskFmt OverlayfsRootfs) { //nolint:revive // var-naming is less important than matching the func TestXyz name
+	dir := t.TempDir()
+
+	if !onDiskFmt.UserXattr {
+		testNeedsTrustedOverlayXattrs(t)
+	}
+	opaqueXattr := onDiskFmt.xattr("opaque")
+
+	err := os.Mkdir(filepath.Join(dir, "wodir"), 0o755)
+	require.NoError(t, err)
+	err = unix.Lsetxattr(filepath.Join(dir, "wodir"), opaqueXattr, []byte("y"), 0)
+	require.NoErrorf(t, err, "lsetxattr %s", opaqueXattr)
+	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
+	require.NoError(t, err)
+
+	packOptions := RepackOptions{OnDiskFormat: onDiskFmt}
+
+	t.Run("GenerateLayer", func(t *testing.T) {
+		// something reasonable
+		mtreeKeywords := []mtree.Keyword{
+			"size",
+			"type",
+			"uid",
+			"gid",
+			"mode",
+		}
+		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
+		require.NoError(t, err, "mtree check")
+
+		reader, err := GenerateLayer(dir, deltas, &packOptions)
+		require.NoError(t, err, "generate layer")
+		defer reader.Close() //nolint:errcheck
+
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: ".", ftype: tar.TypeDir},
+			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+			{path: "wodir/", ftype: tar.TypeDir},
+			{path: "wodir/" + whOpaque, ftype: tar.TypeReg},
+		})
+	})
+
+	t.Run("GenerateInsertLayer", func(t *testing.T) {
+		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
+		defer reader.Close() //nolint:errcheck
+
+		checkLayerEntries(t, reader, []tarDentry{
+			{path: "/", ftype: tar.TypeDir},
+			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
+			{path: "wodir/", ftype: tar.TypeDir},
+			{path: "wodir/" + whOpaque, ftype: tar.TypeReg},
 		})
 	})
 }
 
 func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
+	t.Run("trusted.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_XattrOpaque(t, OverlayfsRootfs{})
+	})
+
+	t.Run("user.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_XattrOpaque(t, OverlayfsRootfs{UserXattr: true})
+	})
+}
+
+func testTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T, onDiskFmt OverlayfsRootfs) { //nolint:revive // var-naming is less important than matching the func TestXyz name
 	dir := t.TempDir()
 
-	testNeedsTrustedOverlayXattrs(t)
+	if !onDiskFmt.UserXattr {
+		testNeedsTrustedOverlayXattrs(t)
+	}
+	whiteoutXattr := onDiskFmt.xattr("whiteout")
 
-	err := os.Mkdir(filepath.Join(dir, "wodir"), 0o755)
+	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0o755)
 	require.NoError(t, err)
-	err = unix.Lsetxattr(filepath.Join(dir, "wodir"), "trusted.overlay.opaque", []byte("y"), 0)
-	require.NoError(t, err, "lsetxattr trusted.overlay.opaque")
+	err = unix.Lsetxattr(filepath.Join(dir, "woreg"), whiteoutXattr, []byte("foobar"), 0)
+	require.NoErrorf(t, err, "lsetxattr %s", whiteoutXattr)
 	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
 	require.NoError(t, err)
 
-	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
+	packOptions := RepackOptions{OnDiskFormat: onDiskFmt}
 
 	t.Run("GenerateLayer", func(t *testing.T) {
 		// something reasonable
@@ -115,8 +192,7 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: ".", ftype: tar.TypeDir},
 			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-			{path: "wodir/", ftype: tar.TypeDir},
-			{path: "wodir/" + whOpaque, ftype: tar.TypeReg},
+			{path: whPrefix + "woreg", ftype: tar.TypeReg},
 		})
 	})
 
@@ -127,57 +203,17 @@ func TestTranslateOverlayWhiteouts_XattrOpaque(t *testing.T) {
 		checkLayerEntries(t, reader, []tarDentry{
 			{path: "/", ftype: tar.TypeDir},
 			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-			{path: "wodir/", ftype: tar.TypeDir},
-			{path: "wodir/" + whOpaque, ftype: tar.TypeReg},
+			{path: whPrefix + "woreg", ftype: tar.TypeReg},
 		})
 	})
 }
 
 func TestTranslateOverlayWhiteouts_XattrWhiteout(t *testing.T) {
-	dir := t.TempDir()
-
-	testNeedsTrustedOverlayXattrs(t)
-
-	err := os.WriteFile(filepath.Join(dir, "woreg"), []byte{}, 0o755)
-	require.NoError(t, err)
-	err = unix.Lsetxattr(filepath.Join(dir, "woreg"), "trusted.overlay.whiteout", []byte("foobar"), 0)
-	require.NoError(t, err, "lsetxattr trusted.overlay.whiteout")
-	err = os.WriteFile(filepath.Join(dir, "reg"), []byte("dummy file"), 0o644)
-	require.NoError(t, err)
-
-	packOptions := RepackOptions{OnDiskFormat: OverlayfsRootfs{}}
-
-	t.Run("GenerateLayer", func(t *testing.T) {
-		// something reasonable
-		mtreeKeywords := []mtree.Keyword{
-			"size",
-			"type",
-			"uid",
-			"gid",
-			"mode",
-		}
-		deltas, err := mtree.Check(dir, nil, mtreeKeywords, fseval.Default)
-		require.NoError(t, err, "mtree check")
-
-		reader, err := GenerateLayer(dir, deltas, &packOptions)
-		require.NoError(t, err, "generate layer")
-		defer reader.Close() //nolint:errcheck
-
-		checkLayerEntries(t, reader, []tarDentry{
-			{path: ".", ftype: tar.TypeDir},
-			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-			{path: whPrefix + "woreg", ftype: tar.TypeReg},
-		})
+	t.Run("trusted.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_XattrWhiteout(t, OverlayfsRootfs{})
 	})
 
-	t.Run("GenerateInsertLayer", func(t *testing.T) {
-		reader := GenerateInsertLayer(dir, "/", false, &packOptions)
-		defer reader.Close() //nolint:errcheck
-
-		checkLayerEntries(t, reader, []tarDentry{
-			{path: "/", ftype: tar.TypeDir},
-			{path: "reg", ftype: tar.TypeReg, contents: "dummy file"},
-			{path: whPrefix + "woreg", ftype: tar.TypeReg},
-		})
+	t.Run("user.overlay", func(t *testing.T) {
+		testTranslateOverlayWhiteouts_XattrWhiteout(t, OverlayfsRootfs{UserXattr: true})
 	})
 }

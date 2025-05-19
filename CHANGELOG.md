@@ -138,6 +138,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   (called `TranslateOverlayWhiteouts` in [umoci 0.4.7](#0.4.7)) now support
   converting `trusted.overlay.opaque=y` and `trusted.overlay.whiteout`
   whiteouts into OCI whiteouts when generating OCI layers.
+- `OverlayfsRootfs` now supports compatibility with the `userxattr` mount
+  option for overlayfs (where `user.overlay.*` xattrs are used rather than
+  the default `trusted.overlay.*`). This is a pretty key compatibility feature
+  for users that use unprivileged overlayfs mounts and will hopefully remove
+  the need for most downstream forks hacking in this functionality (such as
+  stacker). For Go API users, to enable this just set `UserXattr: true` in
+  `OverlayfsRootfs`. Note that (as with upstream overlayfs), only one xattr
+  namespace is ever used (so if `OverlayfsRootfs.UserXattr == true` then
+  `trusted.overlay.*` xattrs will be treated like any other non-overlayfs
+  xattr).
 
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.

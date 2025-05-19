@@ -192,8 +192,8 @@ func (te *TarExtractor) restoreMetadata(path string, hdr *tar.Header) error {
 		// Some xattrs need to be skipped for sanity reasons, such as
 		// security.selinux, because they are very much host-specific and
 		// extracting them from layers would be a really bad idea. Also, other
-		// xattrs may need to be remapped (such as trusted.overlay.* xattrs
-		// when in overlayfs mode) to have correct values.
+		// xattrs may need to be remapped (such as {user,trusted}.overlay.*
+		// xattrs when in overlayfs mode) to have correct values.
 		mappedName := xattr
 		if filter, isSpecial := getXattrFilter(xattr); isSpecial {
 			if newName := filter.ToDisk(te.onDiskFmt, xattr); newName == "" {
@@ -313,7 +313,7 @@ func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
 	return targetInfo.IsDir(), nil
 }
 
-func (te *TarExtractor) ociWhiteout(root, dir, file string) error {
+func (te *TarExtractor) ociWhiteout(_ DirRootfs, root, dir, file string) error {
 	isOpaque := file == ""
 
 	// We have to be quite careful here. While the most intuitive way of
@@ -398,7 +398,7 @@ func (te *TarExtractor) ociWhiteout(root, dir, file string) error {
 	return nil
 }
 
-func (te *TarExtractor) overlayfsWhiteout(root, dir, file string) error {
+func (te *TarExtractor) overlayfsWhiteout(onDiskFmt OverlayfsRootfs, root, dir, file string) error {
 	// Unlike standard dir whiteouts, we need to ensure that the path we are
 	// whiting out exists, because this layer is applied to lower layers where
 	// the target path might exist. As with UnpackEntry, we expect the tar
@@ -433,7 +433,7 @@ func (te *TarExtractor) overlayfsWhiteout(root, dir, file string) error {
 		// directory. Any files already there were added in this layer (since
 		// OverlayfsRootfs is used to generate each layer in separate
 		// directories) and so shouldn't be removed anyway.
-		if err := te.fsEval.Lsetxattr(dir, "trusted.overlay.opaque", []byte("y"), 0); err != nil {
+		if err := te.fsEval.Lsetxattr(dir, onDiskFmt.xattr("opaque"), []byte("y"), 0); err != nil {
 			return fmt.Errorf("couldn't set overlayfs whiteout attr for %q: %w", dir, err)
 		}
 
@@ -620,9 +620,9 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 		}
 		switch onDiskFmt := te.onDiskFmt.(type) {
 		case DirRootfs:
-			return te.ociWhiteout(root, dir, woFile)
+			return te.ociWhiteout(onDiskFmt, root, dir, woFile)
 		case OverlayfsRootfs:
-			return te.overlayfsWhiteout(root, dir, woFile)
+			return te.overlayfsWhiteout(onDiskFmt, root, dir, woFile)
 		default:
 			return fmt.Errorf("unknown whiteout mode %T", onDiskFmt)
 		}

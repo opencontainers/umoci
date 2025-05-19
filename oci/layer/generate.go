@@ -51,7 +51,6 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 	if opt.MapOptions().Rootless {
 		fsEval = fseval.Rootless
 	}
-	_, translateOverlayWhiteouts := opt.OnDiskFormat.(OverlayfsRootfs)
 
 	reader, writer := io.Pipe()
 
@@ -87,8 +86,8 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
-				if translateOverlayWhiteouts {
-					woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
+				if onDiskFmt, isOverlayfs := opt.OnDiskFormat.(OverlayfsRootfs); isOverlayfs {
+					woType, isWo, err := isOverlayWhiteout(onDiskFmt, fullPath, fsEval)
 					if err != nil {
 						return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
 					}
@@ -162,7 +161,6 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 	if opt.MapOptions().Rootless {
 		fsEval = fseval.Rootless
 	}
-	_, translateOverlayWhiteouts := opt.OnDiskFormat.(OverlayfsRootfs)
 
 	reader, writer := io.Pipe()
 
@@ -204,8 +202,8 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 			}
 			name := filepath.Join(target, relName)
 
-			if translateOverlayWhiteouts {
-				woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
+			if onDiskFmt, isOverlayfs := opt.OnDiskFormat.(OverlayfsRootfs); isOverlayfs {
+				woType, isWo, err := isOverlayWhiteout(onDiskFmt, fullPath, fsEval)
 				if err != nil {
 					return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
 				}

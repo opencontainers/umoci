@@ -38,7 +38,7 @@ const (
 
 // isOverlayWhiteout returns true if the given path is an overlayfs whiteout,
 // and what kind of whiteout it represents.
-func isOverlayWhiteout(path string, fsEval fseval.FsEval) (overlayWhiteoutType, bool, error) {
+func isOverlayWhiteout(onDiskFmt OverlayfsRootfs, path string, fsEval fseval.FsEval) (overlayWhiteoutType, bool, error) {
 	stat, err := fsEval.Lstatx(path)
 	if err != nil {
 		return "", false, err
@@ -52,7 +52,7 @@ func isOverlayWhiteout(path string, fsEval fseval.FsEval) (overlayWhiteoutType, 
 		}
 	case unix.S_IFDIR:
 		// opaque whiteouts
-		val, err := fsEval.Lgetxattr(path, "trusted.overlay.opaque")
+		val, err := fsEval.Lgetxattr(path, onDiskFmt.xattr("opaque"))
 		if err != nil {
 			// If we are missing privileges to read the xattr (ENODATA) or the
 			// filesystem doesn't support xattrs (EOPNOTSUPP) we ignore the
@@ -85,7 +85,7 @@ func isOverlayWhiteout(path string, fsEval fseval.FsEval) (overlayWhiteoutType, 
 				}
 				names = []string{}
 			}
-			if slices.Contains(names, "trusted.overlay.whiteout") {
+			if slices.Contains(names, onDiskFmt.xattr("whiteout")) {
 				return overlayWhiteoutPlain, true, nil
 			}
 		}

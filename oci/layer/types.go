@@ -19,6 +19,8 @@
 package layer
 
 import (
+	"strings"
+
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 )
@@ -82,12 +84,33 @@ type OverlayfsRootfs struct {
 	// MapOptions represent the userns mappings that should be applied ot this
 	// rootfs.
 	MapOptions MapOptions
+
+	// UserXattr indicates whether this overlayfs rootfs is going to be mounted
+	// using the "userxattr" mount option for overlayfs. If set, then rather
+	// than using the "trusted.overlay.*" xattr namespace (the default),
+	// "user.overlay.*" will be used instead.
+	UserXattr bool
 }
 
 func (OverlayfsRootfs) onDiskFormatInternal() {}
 
 // Map returns the format-agnostic information about userns mapping.
 func (fs OverlayfsRootfs) Map() MapOptions { return fs.MapOptions }
+
+// xattrNamespace returns the correct top-level xattr namespace for the
+// overlayfs mount that this on-disk format was intended for.
+func (fs OverlayfsRootfs) xattrNamespace() string {
+	if fs.UserXattr {
+		return "user."
+	}
+	return "trusted."
+}
+
+// xattr returns the given sub-xattr with the appropriate overlayfs xattr
+// prefix applied.
+func (fs OverlayfsRootfs) xattr(parts ...string) string {
+	return fs.xattrNamespace() + "overlay." + strings.Join(parts, ".")
+}
 
 var _ OnDiskFormat = OverlayfsRootfs{}
 

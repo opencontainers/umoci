@@ -85,9 +85,10 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, onDiskFmt OnDiskFo
 	})
 }
 
-func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
-	testNeedsMknod(t)
-	testNeedsTrustedOverlayXattrs(t)
+func testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T, tarXattrNamespace string) { //nolint:revive // var-naming is less important than matching the func TestXyz name
+	if tarXattrNamespace == "trusted." {
+		testNeedsTrustedOverlayXattrs(t)
+	}
 
 	dentries := []struct {
 		tarDentry
@@ -95,12 +96,12 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
 	}{
 		{
 			tarDentry{path: ".", ftype: tar.TypeDir, xattrs: map[string]string{
-				"trusted.overlay.opaque": "x",
-				"user.dummy.xattr":       "foobar",
+				tarXattrNamespace + "overlay.opaque": "x",
+				"user.dummy.xattr":                   "foobar",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.opaque": "x",
-				"user.dummy.xattr":               "foobar",
+				tarXattrNamespace + "overlay.overlay.opaque": "x",
+				"user.dummy.xattr":                           "foobar",
 			},
 		},
 		// Set a fake overlayfs xattr in the trusted.overlay namespace on a
@@ -111,58 +112,64 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
 		// escaping even after being called multiple times.
 		{
 			tarDentry{path: "foo/", ftype: tar.TypeDir, xattrs: map[string]string{
-				"trusted.overlay.fakexattr": "fakexattr",
+				tarXattrNamespace + "overlay.fakexattr": "fakexattr",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.fakexattr": "fakexattr",
+				tarXattrNamespace + "overlay.overlay.fakexattr": "fakexattr",
 			},
 		},
 		// Some subpaths with dummy overlayfs xattrs.
 		{
 			tarDentry{path: "foo/bar", ftype: tar.TypeReg, contents: "file", xattrs: map[string]string{
-				"trusted.overlay.whiteout": "foo",
+				tarXattrNamespace + "overlay.whiteout": "foo",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.whiteout": "foo",
+				tarXattrNamespace + "overlay.overlay.whiteout": "foo",
 			},
 		},
 		{
 			tarDentry{path: "foo/baz/", ftype: tar.TypeDir, xattrs: map[string]string{
-				"trusted.overlay.opaque": "y",
+				tarXattrNamespace + "overlay.opaque": "y",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.opaque": "y",
+				tarXattrNamespace + "overlay.overlay.opaque": "y",
 			},
 		},
 		// Several levels nested overlayfs xattrs.
 		{
 			tarDentry{path: "foo/extra-nesting/", ftype: tar.TypeDir, xattrs: map[string]string{
-				"trusted.overlay.overlay.opaque":                                "x",
-				"trusted.overlay.overlay.overlay.whiteout":                      "foobar",
-				"trusted.overlay.overlay.overlay.overlay.overlay.overlay.dummy": "dummy xattr",
+				tarXattrNamespace + "overlay.overlay.opaque":                                "x",
+				tarXattrNamespace + "overlay.overlay.overlay.whiteout":                      "foobar",
+				tarXattrNamespace + "overlay.overlay.overlay.overlay.overlay.overlay.dummy": "dummy xattr",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.overlay.opaque":                                "x",
-				"trusted.overlay.overlay.overlay.overlay.whiteout":                      "foobar",
-				"trusted.overlay.overlay.overlay.overlay.overlay.overlay.overlay.dummy": "dummy xattr",
+				tarXattrNamespace + "overlay.overlay.overlay.opaque":                                "x",
+				tarXattrNamespace + "overlay.overlay.overlay.overlay.whiteout":                      "foobar",
+				tarXattrNamespace + "overlay.overlay.overlay.overlay.overlay.overlay.overlay.dummy": "dummy xattr",
 			},
 		},
 		{
 			tarDentry{path: "foo/extra-nesting/reg", ftype: tar.TypeReg, contents: "reg", xattrs: map[string]string{
-				"trusted.overlay.overlay.overlay.overlay.overlay.dummy123": "dummy xattr 123",
+				tarXattrNamespace + "overlay.overlay.overlay.overlay.overlay.dummy123": "dummy xattr 123",
 			}},
 			map[string]string{
-				"trusted.overlay.overlay.overlay.overlay.overlay.overlay.dummy123": "dummy xattr 123",
+				tarXattrNamespace + "overlay.overlay.overlay.overlay.overlay.overlay.dummy123": "dummy xattr 123",
 			},
 		},
 	}
 
 	for _, test := range []struct {
-		name      string
-		onDiskFmt OnDiskFormat
+		name        string
+		onDiskFmt   OnDiskFormat
+		expectRemap bool
 	}{
-		{"DirRootfs", DirRootfs{}},
-		{"OverlayfsRootfs", OverlayfsRootfs{}},
+		// DirRootfs will never remap overlayfs xattrs.
+		{"DirRootfs", DirRootfs{}, false},
+		// We only expect remapping if the OverlayfsRootfs on-disk xattr
+		// namespace matches the tar xattr namespace. Otherwise the xattrs
+		// should be treated the same as any other xattr.
+		{"OverlayfsRootfs-TrustedXattr", OverlayfsRootfs{UserXattr: false}, tarXattrNamespace == "trusted."},
+		{"OverlayfsRootfs-UserXattr", OverlayfsRootfs{UserXattr: true}, tarXattrNamespace == "user."},
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
@@ -195,20 +202,16 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
 
 				xattrs := getAllXattrs(t, fullPath)
 
-				switch test.onDiskFmt.(type) {
-				case OverlayfsRootfs:
-					// With extraction on OverlayfsRootfs we expect to get the
-					// remapped xattrs.
+				if test.expectRemap {
 					assert.Equalf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v remapped properly", path, de.xattrs)
 
-					// And so none of the inodes should be actual whiteouts.
-					_, isWo, err := isOverlayWhiteout(fullPath, fseval.Default)
+					onDiskFmt, isOverlayfs := test.onDiskFmt.(OverlayfsRootfs)
+					require.True(t, isOverlayfs, "expectRemap must only be true for OverlayfsRootfs")
+					// None of the inodes should be actual whiteouts.
+					_, isWo, err := isOverlayWhiteout(onDiskFmt, fullPath, fseval.Default)
 					require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
 					assert.Falsef(t, isWo, "isOverlayWhiteout(%q): regular entries with overlayfs xattrs should not end up being unpacked with overlayfs whiteout xattrs", path)
-
-				case DirRootfs:
-					// For DirRootfs, trusted.overlay.* is not treated as a
-					// special xattr and so should not be remapped.
+				} else {
 					xattrs := getAllXattrs(t, fullPath)
 					assert.Equalf(t, de.xattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
 					assert.NotEqualf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
@@ -224,6 +227,16 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
 			testGenerateLayersForRoundTrip(t, dir, unpackOptions.OnDiskFormat, wantDentries)
 		})
 	}
+}
+
+func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T) {
+	t.Run("TarEntries=trusted.overlay.", func(t *testing.T) {
+		testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t, "trusted.")
+	})
+
+	t.Run("TarEntries=user.overlay.", func(t *testing.T) {
+		testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t, "user.")
+	})
 }
 
 func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
