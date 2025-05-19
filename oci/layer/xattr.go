@@ -21,8 +21,6 @@ package layer
 import (
 	"strings"
 
-	"github.com/apex/log"
-
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -124,6 +122,12 @@ func (overlayXattrFilter) MaskedOnDisk(onDiskFmt OnDiskFormat, xattr string) boo
 }
 
 func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) *string {
+	if !doesXattrMatch(xattr, "trusted.overlay.") {
+		// For some inexplicable reason, we were called with a different xattr
+		// namespace. Act as a no-op in that case.
+		return &xattr
+	}
+
 	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
 	if !isOverlayfs {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
@@ -132,18 +136,19 @@ func (overlayXattrFilter) ToDisk(onDiskFmt OnDiskFormat, xattr string) *string {
 		return &xattr
 	}
 
-	subXattr, found := strings.CutPrefix(xattr, "trusted.overlay.")
-	if !found {
-		// We should never hit this case in practice.
-		// TODO: Should we just panic here?
-		log.Warnf("[internal error] overlayfs xattr filter called for non-overlayfs xattr %q", xattr)
-		return &xattr
-	}
+	// We know it has the prefix so no need for CutPrefix.
+	subXattr := strings.TrimPrefix(xattr, "trusted.overlay.")
 	escaped := "trusted.overlay.overlay." + subXattr
 	return &escaped
 }
 
 func (overlayXattrFilter) ToTar(onDiskFmt OnDiskFormat, xattr string) *string {
+	if !doesXattrMatch(xattr, "trusted.overlay.") {
+		// For some inexplicable reason, we were called with a different xattr
+		// namespace. Act as a no-op in that case.
+		return &xattr
+	}
+
 	_, isOverlayfs := onDiskFmt.(OverlayfsRootfs)
 	if !isOverlayfs {
 		// In non-overlayfs mode, overlay xattrs are not special and can be
