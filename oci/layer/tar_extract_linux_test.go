@@ -266,3 +266,50 @@ func TestUnpackEntry_OverlayfsRootfs_Whiteout_Nested(t *testing.T) {
 		})
 	}
 }
+
+func TestUnpackEntry_OverlayfsRootfs_OpaqueWhiteoutConvert(t *testing.T) {
+	testNeedsMknod(t)
+
+	for _, userxattr := range []bool{true, false} {
+		userxattr := userxattr // copy iterator
+		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
+			dir := t.TempDir()
+
+			if !userxattr {
+				testNeedsTrustedOverlayXattrs(t)
+			}
+
+			onDiskFmt := OverlayfsRootfs{
+				MapOptions: MapOptions{
+					Rootless: os.Geteuid() != 0,
+				},
+				UserXattr: userxattr,
+			}
+
+			dentries := []tarDentry{
+				{path: "autoconvert-opaquedir/before", ftype: tar.TypeReg},
+				// a directory that got deleted...
+				{path: whPrefix + "autoconvert-opaquedir", ftype: tar.TypeReg},
+				// ... should be converted to opaque if we create a subdir
+				{path: "autoconvert-opaquedir/foo/bar", ftype: tar.TypeReg},
+				{path: "autoconvert-opaquedir/abc/def", ftype: tar.TypeReg},
+			}
+
+			unpackOptions := UnpackOptions{
+				OnDiskFormat: onDiskFmt,
+			}
+			te := NewTarExtractor(&unpackOptions)
+
+			for _, de := range dentries {
+				hdr, rdr := tarFromDentry(de)
+				err := te.UnpackEntry(dir, hdr, rdr)
+				require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+			}
+
+			assertIsOpaqueWhiteout(t, onDiskFmt, filepath.Join(dir, "autoconvert-opaquedir"))
+			assertNoPathExists(t, filepath.Join(dir, "autoconvert-opaquedir/before"))
+			assert.FileExists(t, filepath.Join(dir, "autoconvert-opaquedir/foo/bar"))
+			assert.FileExists(t, filepath.Join(dir, "autoconvert-opaquedir/abc/def"))
+		})
+	}
+}

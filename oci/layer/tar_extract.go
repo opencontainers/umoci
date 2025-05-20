@@ -525,7 +525,30 @@ func (te *TarExtractor) mkdirAll(root, subpath string, mode os.FileMode) error {
 	if err := te.fsEval.RemoveAll(inRootPath); err != nil {
 		return fmt.Errorf("remove problematic non-directory parent component %q: %w", currentPath, err)
 	}
-	return te.fsEval.MkdirAll(subpath, mode)
+	if err := te.fsEval.MkdirAll(subpath, mode); err != nil {
+		return err
+	}
+
+	// If we are in overlayfs mode, then it is possible that what happened is
+	// that the offending non-directory parent component was a regular
+	// whiteout, and then a later entry (in the same layer) added a path
+	// underneath the deleted directory. The correct behaviour in this case is
+	// to replace the whiteout with an opaque directory whiteout (this matches
+	// the upstream overlayfs behaviour).
+	if onDiskFmt, isOverlayfs := te.onDiskFmt.(OverlayfsRootfs); isOverlayfs {
+		// TODO: If there is an orphaned subpath in upperWhiteouts that we have
+		//       deleted now, what should we do? Is that even possible?
+		woType, isWo := te.upperWhiteouts.DeleteAll(currentPath)
+		if isWo {
+			// Make the directory an opaque whiteout as if there were a real
+			// opaque tar entry for consistency.
+			if err := te.overlayfsWhiteout(onDiskFmt, root, inRootPath, ""); err != nil {
+				return fmt.Errorf("convert parent %s to an opaque whiteout: %w", woType, err)
+			}
+		}
+	}
+
+	return nil
 }
 
 // UnpackEntry extracts the given tar.Header to the provided root, ensuring
