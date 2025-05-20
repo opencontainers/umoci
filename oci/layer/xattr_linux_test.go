@@ -86,8 +86,6 @@ func testGenerateLayersForRoundTrip(t *testing.T, dir string, woType WhiteoutMod
 }
 
 func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
-	dir := t.TempDir()
-
 	testNeedsMknod(t)
 	testNeedsTrustedOverlayXattrs(t)
 
@@ -168,6 +166,8 @@ func TestUnpackGenerateRoundTrip_ComplexXattr_OverlayFS(t *testing.T) {
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+
 			unpackOptions := UnpackOptions{
 				MapOptions: MapOptions{
 					Rootless: os.Geteuid() != 0,
@@ -236,8 +236,6 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 	require.Equalf(t, forbiddenXattrFilter{}, filter, "getXattrFilter(%q) should return the forbidden filter", forbiddenTestXattr)
 	require.Truef(t, filter.MaskedOnDisk(OCIStandardWhiteout, forbiddenTestXattr), "getXattrFilter(%q).MaskedOnDisk should be true", forbiddenTestXattr)
 
-	dir := t.TempDir()
-
 	dentries := []struct {
 		tarDentry
 		autoXattrs map[string]string
@@ -281,6 +279,8 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 	} {
 		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
+			dir := t.TempDir()
+
 			unpackOptions := UnpackOptions{
 				MapOptions: MapOptions{
 					Rootless: os.Geteuid() != 0,
