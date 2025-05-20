@@ -486,6 +486,48 @@ func (te *TarExtractor) overlayfsWhiteout(onDiskFmt OverlayfsRootfs, root, dir, 
 	return nil
 }
 
+// mkdirAll is like te.fsEval.MkdirAll except it handles cases of (arguably
+// invalid) tar archives where a path component of the target path is a
+// non-directory and so standard os.MkdirAll would error out with ENOTDIR. In
+// such cases the problematic component will be removed and replaced with
+// MkdirAll of the remaining components.
+func (te *TarExtractor) mkdirAll(root, subpath string, mode os.FileMode) error {
+	// Fast path -- just try MkdirAll.
+	if err := te.fsEval.MkdirAll(subpath, mode); !errors.Is(err, unix.ENOTDIR) {
+		return err
+	}
+
+	// Convert the path to a in-root path.
+	currentPath, err := filepath.Rel(root, subpath)
+	if err != nil {
+		return fmt.Errorf("find relative-to-root [should never happen]: %w", err)
+	}
+	currentPath = filepath.Join("/", currentPath)
+
+	// Look for the first parent component that exists and can be resolved
+	// (which is presumably whatever is giving us the ENOTDIR).
+	for currentPath != "/" {
+		inRootPath := filepath.Join(root, currentPath)
+		if _, err := te.fsEval.Lstatx(inRootPath); err == nil {
+			// TODO: Should we check to see if it is actually not a directory?
+			break
+		} else if !errors.Is(err, unix.ENOTDIR) {
+			return fmt.Errorf("search for problematic non-directory parent component: %w", err)
+		}
+		currentPath = filepath.Dir(currentPath)
+	}
+	if currentPath == "/" {
+		return fmt.Errorf("root appears to be problematic non-directory parent component: %w", unix.ENOTDIR)
+	}
+
+	// Clear the problematic parent component and retry MkdirAll.
+	inRootPath := filepath.Join(root, currentPath)
+	if err := te.fsEval.RemoveAll(inRootPath); err != nil {
+		return fmt.Errorf("remove problematic non-directory parent component %q: %w", currentPath, err)
+	}
+	return te.fsEval.MkdirAll(subpath, mode)
+}
+
 // UnpackEntry extracts the given tar.Header to the provided root, ensuring
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
@@ -644,7 +686,7 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// FIXME: We have to make this consistent, since if the tar archive doesn't
 	//        have entries for some of these components we won't be able to
 	//        verify that we have consistent results during unpacking.
-	if err := te.fsEval.MkdirAll(dir, 0o777); err != nil {
+	if err := te.mkdirAll(root, dir, 0o777); err != nil {
 		return fmt.Errorf("mkdir parent: %w", err)
 	}
 
