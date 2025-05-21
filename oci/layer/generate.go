@@ -45,12 +45,10 @@ func (ids inodeDeltas) Swap(i, j int)      { ids[i], ids[j] = ids[j], ids[i] }
 // returned reader is for the *raw* tar data, it is the caller's responsibility
 // to gzip it.
 func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (io.ReadCloser, error) {
-	var packOptions RepackOptions
-	if opt != nil {
-		packOptions = *opt
-	}
+	opt = opt.fill()
+
 	fsEval := fseval.Default
-	if packOptions.MapOptions.Rootless {
+	if opt.MapOptions().Rootless {
 		fsEval = fseval.Rootless
 	}
 
@@ -70,7 +68,7 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 		// We can't just dump all of the file contents into a tar file. We need
 		// to emulate a proper tar generator. Luckily there aren't that many
 		// things to emulate (and we can do them all in tar.go).
-		tg := newTarGenerator(writer, packOptions)
+		tg := newTarGenerator(writer, opt)
 
 		// Sort the delta paths.
 		// FIXME: We need to add whiteouts first, otherwise we might end up
@@ -88,8 +86,8 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 
 			switch delta.Type() {
 			case mtree.Modified, mtree.Extra:
-				if packOptions.TranslateOverlayWhiteouts {
-					woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
+				if onDiskFmt, isOverlayfs := opt.OnDiskFormat.(OverlayfsRootfs); isOverlayfs {
+					woType, isWo, err := isOverlayWhiteout(onDiskFmt, fullPath, fsEval)
 					if err != nil {
 						return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
 					}
@@ -157,13 +155,10 @@ func GenerateLayer(path string, deltas []mtree.InodeDelta, opt *RepackOptions) (
 // inside the directory), followed by the contents of the root.
 func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) io.ReadCloser {
 	root = CleanPath(root)
+	opt = opt.fill()
 
-	var packOptions RepackOptions
-	if opt != nil {
-		packOptions = *opt
-	}
 	fsEval := fseval.Default
-	if packOptions.MapOptions.Rootless {
+	if opt.MapOptions().Rootless {
 		fsEval = fseval.Rootless
 	}
 
@@ -179,7 +174,7 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 			_ = writer.CloseWithError(closeErr)
 		}()
 
-		tg := newTarGenerator(writer, packOptions)
+		tg := newTarGenerator(writer, opt)
 
 		defer func() {
 			if err := tg.tw.Close(); err != nil {
@@ -207,8 +202,8 @@ func GenerateInsertLayer(root, target string, opaque bool, opt *RepackOptions) i
 			}
 			name := filepath.Join(target, relName)
 
-			if packOptions.TranslateOverlayWhiteouts {
-				woType, isWo, err := isOverlayWhiteout(fullPath, fsEval)
+			if onDiskFmt, isOverlayfs := opt.OnDiskFormat.(OverlayfsRootfs); isOverlayfs {
+				woType, isWo, err := isOverlayWhiteout(onDiskFmt, fullPath, fsEval)
 				if err != nil {
 					return fmt.Errorf("check if %q is a whiteout: %w", fullPath, err)
 				}

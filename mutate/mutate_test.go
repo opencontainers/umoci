@@ -54,7 +54,8 @@ const (
 	expectedManifestSize   int64         = 407
 )
 
-func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
+func setup(t *testing.T) (cas.Engine, ispec.Descriptor) {
+	dir := t.TempDir()
 	dir = filepath.Join(dir, "image")
 	err := casdir.Create(dir)
 	require.NoError(t, err)
@@ -151,9 +152,7 @@ func setup(t *testing.T, dir string) (cas.Engine, ispec.Descriptor) {
 }
 
 func TestMutateCache(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -199,9 +198,7 @@ func TestMutateCache(t *testing.T) {
 }
 
 func TestMutateAdd(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -313,9 +310,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 }
 
 func TestMutateAddCompression(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -367,9 +362,7 @@ func TestMutateAddCompression(t *testing.T) {
 }
 
 func TestMutateAddExisting(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -417,9 +410,7 @@ func TestMutateAddExisting(t *testing.T) {
 }
 
 func TestMutateSet(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -463,9 +454,7 @@ func TestMutateSet(t *testing.T) {
 }
 
 func TestMutateSetNoHistory(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, fromDescriptor := setup(t, dir)
+	engine, fromDescriptor := setup(t)
 	defer engine.Close() //nolint:errcheck
 
 	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
@@ -522,9 +511,7 @@ func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.De
 }
 
 func TestMutatePath(t *testing.T) {
-	dir := t.TempDir()
-
-	engine, manifestDescriptor := setup(t, dir)
+	engine, manifestDescriptor := setup(t)
 	engineExt := casext.NewEngine(engine)
 	defer engine.Close() //nolint:errcheck
 

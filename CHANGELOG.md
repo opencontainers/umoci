@@ -22,14 +22,76 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   media-type embedding and verification. CVE-2021-41190
 
 ### Breaking ###
+- The method of configuring the on-disk format and `MapOptions` in
+  `RepackOptions` and `UnpackOptions` has been changed. The on-disk format is
+  now represented with the `OnDiskFormat` interface, with `DirRootfs` and
+  `OverlayfsRootfs` as possible options to use. `MapOptions` is now configured
+  inside the `OnDiskFormat` setting, which will require callers to adjust their
+  usage of the main umoci APIs. In particular, examples like
+
+  ```go
+  unpackOptions := &layer.UnpackOptions{
+      MapOptions: mapOptions,
+      WhiteoutMode: layer.StandardOCIWhiteout, // or layer.OverlayFSWhiteout
+  }
+  err := layer.UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+  ```
+
+  will have to now be written as
+
+  ```go
+  unpackOptions := &layer.UnpackOptions{
+      OnDiskFormat: layer.DirRootfs{ // or layer.OverlayfsRootfs
+          MapOptions: mapOptions,
+      },
+  }
+  err := layer.UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+  ```
+
+  and similarly
+
+  ```go
+  repackOptions := &layer.RepackOptions{
+      MapOptions: mapOptions,
+      TranslateOverlayWhiteouts: false, // or true
+  }
+  layerRdr, err := layer.GenerateLayer(path, deltas, repackOptions)
+  ```
+
+  will have to now be written as
+
+  ```go
+  repackOptions := &layer.RepackOptions{
+      OnDiskFormat: layer.DirRootfs{ // or layer.OverlayfsRootfs
+          MapOptions: mapOptions,
+      },
+  }
+  layerRdr, err := layer.GenerateLayer(path, deltas, repackOptions)
+  ```
+
+  Note that this means you can easily re-use the `OnDiskFormat` configuration
+  between both `UnpackOptions` and `RepackOptions`, removing the previous need
+  to translate between `WhiteoutMode` and `TranslateOverlayWhiteouts`.
+
+  For users of the API that need to extract the `MapOptions` from
+  `UnpackOptions` and `RepackOptions`, there is a new helper `MapOptions` which
+  will help extract it without doing interface type switching. For
+  `OnDiskFormat` there is also a `Map` method that gives you the inner
+  `MapOptions` regardless of type.
+
+- `layer.NewTarExtractor` now takes `*UnpackOptions` rather than
+  `UnpackOptions` to match the signatures of the other `layer.*` APIs. Passing
+  `nil` is equivalent to passing `&UnpackOptions{}`.
+
 - In [umoci 0.4.7](#0.4.7), we added support for overlayfs unpacking using the
   still-unstable Go API. However, the implementation is still missing some key
   features and so we will now return errors from APIs that are still missing
   key features:
 
    - `layer.UnpackManifest` and `layer.UnpackRootfs` will now return an error
-     if `UnpackOptions.WhiteoutMode` is set to anything other than
-     `OCIStandardWhiteout` (the default).
+     if `UnpackOptions.OnDiskFormat` is set to anything other than `DirRootfs`
+     (the default, equivalent to `WhiteoutMode` being set to
+     `OCIStandardWhiteout` in [umoci 0.4.7](#0.4.7)).
 
      This is because bundle-based unpacking currently tries to unpack all
      layers into the same `rootfs` and generate an `mtree` manifest -- this
@@ -40,15 +102,16 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
      tracks re-enabling this feature (and exposing to umoci CLI users, if
      possible).
 
-     *Note that `layer.UnpackLayer` still supports `OverlayFSWhiteout`.*
+     *Note that `layer.UnpackLayer` still supports `OverlayfsRootfs`
+     (`OverlayFSWhiteout` in [umoci 0.4.7](#0.4.7)).*
 
-   - Already-extracted bundles with `OverlayFSWhiteout` will now return an
-     error when umoci operates on them -- we included the whiteout mode in
-     our `umoci.json` but as the feature is broken, umoci will now refuse to
-     operate on such bundles. Such bundles could only have been created using
-     the now-error-inducing `UnpackRootfs` and `UnpackManifest` APIs mentioned
-     above, and as mentioned above we expect there to have been no real users
-     of this feature.
+   - Already-extracted bundles with `OverlayfsRootfs` (`OverlayFSWhiteout` in
+     [umoci 0.4.7](#0.4.7)) will now return an error when umoci operates on
+     them -- we included the whiteout mode in our `umoci.json` but as the
+     feature is broken, umoci will now refuse to operate on such bundles. Such
+     bundles could only have been created using the now-error-inducing
+     `UnpackRootfs` and `UnpackManifest` APIs mentioned above, and as mentioned
+     above we expect there to have been no real users of this feature.
 
      *Note that this only affects extracted bundles (a-la `umoci unpack`).*
      Images created from such bundles are unaffected (even though their
@@ -71,10 +134,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
     `--compress` flag. You can also disable compression entirely using
     `--compress=none` but `--compress=auto` will never automatically choose
     `none` compression.
-- `GenerateLayer` and `GenerateInsertLayer` with `TranslateOverlayWhiteouts`
-  now support converting `trusted.overlay.opaque=y` and
-  `trusted.overlay.whiteout` whiteouts into OCI whiteouts when generating OCI
-  layers.
+- `GenerateLayer` and `GenerateInsertLayer` with `OverlayfsRootfs`
+  (called `TranslateOverlayWhiteouts` in [umoci 0.4.7](#0.4.7)) now support
+  converting `trusted.overlay.opaque=y` and `trusted.overlay.whiteout`
+  whiteouts into OCI whiteouts when generating OCI layers.
+- `OverlayfsRootfs` now supports compatibility with the `userxattr` mount
+  option for overlayfs (where `user.overlay.*` xattrs are used rather than
+  the default `trusted.overlay.*`). This is a pretty key compatibility feature
+  for users that use unprivileged overlayfs mounts and will hopefully remove
+  the need for most downstream forks hacking in this functionality (such as
+  stacker). For Go API users, to enable this just set `UserXattr: true` in
+  `OverlayfsRootfs`. Note that (as with upstream overlayfs), only one xattr
+  namespace is ever used (so if `OverlayfsRootfs.UserXattr == true` then
+  `trusted.overlay.*` xattrs will be treated like any other non-overlayfs
+  xattr).
 
 ### Changes ###
 - In this release, the primary development branch was renamed to `main`.
@@ -106,8 +179,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 - umoci will now return an explicit error if you pass invalid uid or gid values
   to `--uid-map` and `--gid-map` rather than silently truncating the value.
 - For Go users of umoci, `GenerateLayer` (but not `GenerateInsertLayer`) with
-  the `TranslateOverlayWhiteouts` option enabled had several severe bugs that
-  made the feature unusable:
+  `OverlayfsRootfs` (called `TranslateOverlayWhiteouts` in [umoci
+  0.4.7](#0.4.7)) had several severe bugs that made the feature unusable:
   * All OCI whiteouts added to the archive would incorrectly have the full host
     name of the path rather than the correctly rooted path, making the whiteout
     practically useless.
@@ -117,7 +190,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the past 4 years, it seems this feature has not really been used by anyone (I
   hope...).
 - For Go users of umoci, `UnpackLayer` now correctly handles several aspects of
-  `OverlayFSWhiteout` extraction that weren't handled correctly:
+  `OverlayfsRootfs` (`OverlayFSWhiteout` in [umoci 0.4.7](#0.4.7)) extraction
+  that weren't handled correctly:
   * Unlike regular extractions, overlayfs-style extractions require us to
     create the parent directory of the whiteout (rather than ignoring or
     assuming the underlying path exists) because the whiteout is being created

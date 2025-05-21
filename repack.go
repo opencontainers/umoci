@@ -115,7 +115,9 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 		}
 	} else {
 		reader, err := layer.GenerateLayer(fullRootfsPath, diffs, &layer.RepackOptions{
-			MapOptions: meta.MapOptions,
+			OnDiskFormat: layer.DirRootfs{
+				MapOptions: meta.MapOptions,
+			},
 		})
 		if err != nil {
 			return fmt.Errorf("generate diff layer: %w", err)

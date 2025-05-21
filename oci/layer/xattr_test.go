@@ -61,19 +61,64 @@ func TestGetXattrFilter(t *testing.T) {
 		{"system.nfs4_foo", nil, false},
 		{"system.foo", nil, false},
 		// prefixes
-		{"trusted.overlay.opaque", overlayXattrFilter{}, true},
-		{"trusted.overlay.whiteout", overlayXattrFilter{}, true},
-		{"trusted.overlay.foobar", overlayXattrFilter{}, true},
-		{"trusted.overlay.a.b.c", overlayXattrFilter{}, true},
+		{"trusted.overlay.opaque", overlayXattrFilter{"trusted."}, true},
+		{"trusted.overlay.whiteout", overlayXattrFilter{"trusted."}, true},
+		{"trusted.overlay.foobar", overlayXattrFilter{"trusted."}, true},
+		{"trusted.overlay.a.b.c", overlayXattrFilter{"trusted."}, true},
 		{"trusted.overlay", nil, false},
+		{"user.overlay.opaque", overlayXattrFilter{"user."}, true},
+		{"user.overlay.whiteout", overlayXattrFilter{"user."}, true},
+		{"user.overlay.foobar", overlayXattrFilter{"user."}, true},
+		{"user.overlay.a.b.c", overlayXattrFilter{"user."}, true},
+		{"user.overlay", nil, false},
 		// unrelated
 		{"user.foo.bar", nil, false},
-		{"user.overlay.opaque", nil, false},
 		{"user.trusted.overlay.opaque", nil, false},
 		{"user.rootlesscontainers", nil, false},
 	} {
 		filter, ok := getXattrFilter(test.xattr)
 		assert.Equalf(t, test.expectedOk, ok, "getXattrFilter(%q)", test.xattr)
 		assert.Equalf(t, test.expectedFilter, filter, "getXattrFilter(%q)", test.xattr)
+	}
+}
+
+func TestOverlayXattrFilter(t *testing.T) {
+	for _, test := range []struct {
+		name          string
+		xattr         string
+		onDiskFmt     OnDiskFormat
+		toDisk, toTar string
+	}{
+		{"NormalXattr", "trusted.example.xattr", OverlayfsRootfs{}, "trusted.example.xattr", "trusted.example.xattr"},
+		// With UserXattr == false, only trusted.overlay.* xattrs are affected by the filter.
+		{"TrustedOverlayXattr", "trusted.overlay.foo", OverlayfsRootfs{}, "trusted.overlay.overlay.foo", ""},
+		{"TrustedOverlayXattr-Escaped", "trusted.overlay.overlay.foo", OverlayfsRootfs{}, "trusted.overlay.overlay.overlay.foo", "trusted.overlay.foo"},
+		{"UserOverlayXattr", "user.overlay.foo", OverlayfsRootfs{}, "user.overlay.foo", "user.overlay.foo"},
+		{"UserOverlayXattr-Escaped", "user.overlay.overlay.foo", OverlayfsRootfs{}, "user.overlay.overlay.foo", "user.overlay.overlay.foo"},
+		// But with UserXattr == true, only user.overlay.* xattrs are affected by the filter.
+		{"UserXattr-TrustedOverlayXattr", "trusted.overlay.foo", OverlayfsRootfs{UserXattr: true}, "trusted.overlay.foo", "trusted.overlay.foo"},
+		{"UserXattr-TrustedOverlayXattr-Escaped", "trusted.overlay.overlay.foo", OverlayfsRootfs{UserXattr: true}, "trusted.overlay.overlay.foo", "trusted.overlay.overlay.foo"},
+		{"UserXattr-UserOverlayXattr", "user.overlay.foo", OverlayfsRootfs{UserXattr: true}, "user.overlay.overlay.foo", ""},
+		{"UserXattr-UserOverlayXattr-Escaped", "user.overlay.overlay.foo", OverlayfsRootfs{UserXattr: true}, "user.overlay.overlay.overlay.foo", "user.overlay.foo"},
+	} {
+		test := test // copy iterator
+		t.Run(test.name, func(t *testing.T) {
+			filter, ok := getXattrFilter(test.xattr)
+			if !ok {
+				// For test purposes, use a dummy overlayXattrFilter if the
+				// xattr is not the right xattr.
+				filter = overlayXattrFilter{"trusted."}
+			}
+
+			expectMasked := test.toTar == ""
+			gotMasked := filter.MaskedOnDisk(test.onDiskFmt, test.xattr)
+			assert.Equal(t, expectMasked, gotMasked, "MaskedOnDisk(%#v, %q)", test.onDiskFmt, test.xattr)
+
+			gotToDisk := filter.ToDisk(test.onDiskFmt, test.xattr)
+			assert.Equal(t, test.toDisk, gotToDisk, "ToDisk(%#v, %q)", test.onDiskFmt, test.xattr)
+
+			gotToTar := filter.ToTar(test.onDiskFmt, test.xattr)
+			assert.Equal(t, test.toTar, gotToTar, "ToTar(%#v, %q)", test.onDiskFmt, test.xattr)
+		})
 	}
 }

@@ -97,7 +97,7 @@ type Meta struct {
 	// NOTE: This field has been deprecated, as the feature was completely
 	// broken. See <https://github.com/opencontainers/umoci/issues/574> for
 	// more details.
-	DeprecatedWhiteoutMode layer.WhiteoutMode `json:"whiteout_mode,omitempty"`
+	DeprecatedWhiteoutMode int `json:"whiteout_mode,omitempty"`
 }
 
 // WriteTo writes a JSON-serialised version of Meta to the given io.Writer.
@@ -141,8 +141,8 @@ func ReadBundleMeta(bundle string) (_ Meta, Err error) {
 	// NOTE: This field has been deprecated, as the feature was completely
 	// broken. See <https://github.com/opencontainers/umoci/issues/574> for
 	// more details.
-	if meta.DeprecatedWhiteoutMode != layer.OCIStandardWhiteout {
-		return meta, fmt.Errorf("decode metadata: deprecated (broken) whiteout_mode field set")
+	if meta.DeprecatedWhiteoutMode != 0 {
+		return meta, fmt.Errorf("decode metadata: deprecated (broken) whiteout_mode field set (%d)", meta.DeprecatedWhiteoutMode)
 	}
 	return meta, nil
 }
