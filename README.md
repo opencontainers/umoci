@@ -172,7 +172,7 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.4.6
+   0.5.0
 
 AUTHOR:
    Aleksa Sarai <asarai@suse.com>

@@ -14,6 +14,13 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+## [0.5.0] - 2025-05-21 ##
+
+> A wizard is never late, Frodo Baggins. Nor is he early; he arrives precisely
+> when he means to.
+
+This version of umoci requires Go 1.23 to build.
+
 ### Security ###
 - A security flaw was found in the OCI image-spec, where it is possible to
   cause a blob with one media-type to be interpreted as a different media-type.
@@ -710,7 +717,8 @@ systems.
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.4.7...HEAD
+[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.5.0...HEAD
+[0.5.0]: https://github.com/opencontainers/umoci/compare/v0.4.7...v0.5.0
 [0.4.7]: https://github.com/opencontainers/umoci/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/opencontainers/umoci/compare/v0.4.5...v0.4.6
 [0.4.5]: https://github.com/opencontainers/umoci/compare/v0.4.4...v0.4.5
