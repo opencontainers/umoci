@@ -32,6 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
@@ -78,6 +79,12 @@ func testUnpackEntrySanitiseHelper(t *testing.T, dir, file, prefix string) {
 
 	assert.Equal(t, ctrValue, ctrValueGot, "ctr path was not updated")
 	assert.Equal(t, hostValue, hostValueGot, "HOST PATH WAS CHANGED! THIS IS A PATH ESCAPE!")
+}
+
+func assertIsDirectory(t *testing.T, fsEval fseval.FsEval, path string) {
+	stat, err := fsEval.Lstatx(path)
+	require.NoError(t, err, "stat path")
+	assert.EqualValuesf(t, unix.S_IFDIR, stat.Mode&unix.S_IFMT, "%q should be a directory (S_IFDIR)", path)
 }
 
 // TestUnpackEntrySanitiseScoping makes sure that path sanitisation is done
@@ -131,6 +138,39 @@ func TestUnpackEntrySymlinkScoping(t *testing.T) {
 			testUnpackEntrySanitiseHelper(t, dir, filepath.Join("/", test.prefix, "file"), "link")
 		})
 	}
+}
+
+// TestUnpackEntryNonDirParent makes sure that extracting a subpath underneath
+// a non-directory will result in no errors and the directory should instead
+// https://github.com/opencontainers/umoci/issues/546
+func TestUnpackEntryNonDirParent(t *testing.T) {
+	dir := t.TempDir()
+
+	dentries := []tarDentry{
+		{path: "nondir", ftype: tar.TypeReg},
+		{path: "nondir/foo/bar/baz", ftype: tar.TypeReg},
+	}
+
+	unpackOptions := UnpackOptions{
+		OnDiskFormat: DirRootfs{
+			MapOptions: MapOptions{
+				Rootless: os.Geteuid() != 0,
+			},
+		},
+	}
+
+	te := NewTarExtractor(&unpackOptions)
+
+	for _, de := range dentries {
+		hdr, rdr := tarFromDentry(de)
+		err := te.UnpackEntry(dir, hdr, rdr)
+		require.NoErrorf(t, err, "UnpackEntry %s", hdr.Name)
+	}
+
+	assertIsDirectory(t, te.fsEval, filepath.Join(dir, "nondir"))
+	assertIsDirectory(t, te.fsEval, filepath.Join(dir, "nondir/foo"))
+	assertIsDirectory(t, te.fsEval, filepath.Join(dir, "nondir/foo/bar"))
+	assert.FileExists(t, filepath.Join(dir, "nondir/foo/bar/baz"))
 }
 
 // TestUnpackEntryParentDir ensures that when UnpackEntry hits a path that

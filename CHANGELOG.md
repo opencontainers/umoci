@@ -225,6 +225,20 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Note that in the regular extraction mode, these xattrs will be treated like
   any other xattrs (this is in contrast to the previous behaviour where they
   would be silently ignored regardless of the on-disk format being used).
+- When extracting a layer, `umoci unpack` would previously return an error if a
+  tar entry was within a non-directory. In practice such cases are quite
+  unlikely (as layer diffs would usually include an entry changing the type of
+  the non-directory parent) but this could result in spurious errors with
+  somewhat non-standard tar archive layers. Now, umoci will remove the
+  offending non-directory parent component and re-create the parent path as a
+  proper directory tree.
+  * This also has the side-effect of fixing the behaviour when unpacking
+    whiteouts with the `OverlayfsRootfs` on-disk format. If there is a plain
+    whiteout of a regular directory, followed by parent components being made
+    underneath that directory, then the directory should be converted to an
+    opaque whiteout. This matches the behaviour of overlayfs (though again, it
+    seems unlikely that a layer diff tool would generate such a layer).
+    opencontainers/umoci#546
 
 [opencontainers/umoci#574]: https://github.com/opencontainers/umoci/issues/574
 [linux-overlayfs-escaping-dad02fad84cbc]: https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/commit/?id=dad02fad84cbce30f317b69a4f2391f90045f79d
