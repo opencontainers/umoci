@@ -148,7 +148,14 @@ umoci is also available from several distributions' repositories:
 * [Arch Linux (AUR)](https://aur.archlinux.org/packages/umoci/)
 
 To build umoci from the [source code][source], a simple `make` should work on
-most machines, as should `make install`.
+most machines, as should `make install`. If you prefer to use `go install`, you
+can use
+
+```
+% go install github.com/opencontainers/umoci/cmd/umoci@latest
+```
+
+but we recommend using `make` instead.
 
 [releases]: https://github.com/opencontainers/umoci/releases
 [umoci-keyring]: /umoci.keyring
