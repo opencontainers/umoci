@@ -68,7 +68,7 @@ COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO
 # Basic build flags.
 BUILD_FLAGS ?=
 BASE_FLAGS := ${BUILD_FLAGS} -tags "${BUILDTAGS}" -buildvcs=false
-BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT} -X ${PROJECT}.version=${VERSION}
+BASE_LDFLAGS := -s -w -X ${PROJECT}.gitCommit=${COMMIT}
 
 # Specific build flags for build type.
 ifeq ($(GOOS), linux)

@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Changed ###
+* We now use `go:embed` to fill the version information of `umoci --version`,
+  allowing for users to get a reasonable binary with `go install`. However, we
+  still recommend using our official binaries, using distribution binaries, or
+  building from source with `make`.
+
 ## [0.5.0] - 2025-05-21 ##
 
 > A wizard is never late, Frodo Baggins. Nor is he early; he arrives precisely

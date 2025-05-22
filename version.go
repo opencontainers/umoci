@@ -19,29 +19,27 @@
 package umoci
 
 import (
-	"fmt"
+	_ "embed" // for go:embed
+	"strings"
 )
 
-// These are populated during "make" using -ldflags "-X ...".
-// TODO: Switch to embedding the version here so that FullVersion() makes sense
-//
-//	even when umoci is used as a library.
 var (
-	version   = "unknown"
-	gitCommit = ""
+	// version is the official release version.
+	//go:embed VERSION
+	version string
+
+	// Populated by "make".
+	gitCommit string
 )
 
 // FullVersion returns a fully-qualified version string if one is available.
-// NOTE: This function will return "unknown" if umoci is being used as a "go
-//
-//	get" dependency or binary.
 func FullVersion() string {
 	v := "unknown"
 	if version != "" {
-		v = version
+		v = strings.TrimSpace(version)
 	}
 	if gitCommit != "" {
-		v = fmt.Sprintf("%s~git%s", v, gitCommit)
+		v += "~git" + gitCommit
 	}
 	return v
 }
