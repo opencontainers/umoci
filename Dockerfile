@@ -48,10 +48,7 @@ RUN zypper -n in \
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
-RUN go install github.com/cpuguy83/go-md2man/v2@latest && \
-	go install golang.org/x/lint/golint@latest && \
-	go install github.com/securego/gosec/cmd/gosec@latest && \
-	go install github.com/client9/misspell/cmd/misspell@latest
+RUN go install github.com/cpuguy83/go-md2man/v2@latest
 
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
