@@ -78,6 +78,8 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: ${{ env.COVERAGE }}
           flags: unit,macos
@@ -133,6 +135,8 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: ${{ env.COVERAGE }}
           flags: unit,linux
@@ -169,6 +173,8 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
           files: ${{ env.COVERAGE }}
           flags: integration,linux
