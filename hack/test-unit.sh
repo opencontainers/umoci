@@ -39,15 +39,7 @@ extra_args+=("-covermode=count" "-coverprofile=$COVERAGE_FILE" "-coverpkg=$PROJE
 # Run the tests.
 "$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." 2>/dev/null
 
-if [ -n "${TRAVIS:-}" ]
-then
-	coverage_tags=unit
-	[[ "$(id -u)" == 0 ]] || coverage_tags+=",rootless"
-
-	# If we're running in Travis, upload the coverage files and don't bother
-	# with the local coverage generation.
-	"$ROOT/hack/ci-codecov.sh" codecov -cZ -f "$COVERAGE_FILE" -F "$coverage_tags"
-elif [ -n "$COVERAGE" ]
+if [ -n "$COVERAGE" ]
 then
 	# If running locally, collate the coverage information.
 	touch "$COVERAGE"

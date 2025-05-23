@@ -49,21 +49,7 @@ fi
 # Run the tests.
 bats --jobs "+8" --tap "${tests[@]}"
 
-if [ -n "${TRAVIS:-}" ]
-then
-	coverage_tags=integration
-	[[ "$(id -u)" == 0 ]] || coverage_tags+=",rootless"
-
-	# There are far too many coverage files if we just try to upload them all
-	# (Codecov seems to struggle significiantly to process them). So we
-	# pre-merge them -- but because of cmdline limits we conservatively place
-	# them in a directory and use xargs.
-	tmp_coverage="$(mktemp -t umoci-coverage-merged.XXXXXX)"
-	find "$COVERAGE_DIR" -type f -print0 | xargs -0 "$ROOT/hack/collate.awk" >"$tmp_coverage"
-
-	# Upload the merged coverage file.
-	"$ROOT/hack/ci-codecov.sh" codecov -cZ -f "$tmp_coverage" -F "$coverage_tags"
-elif [ -n "$COVERAGE" ]
+if [ -n "$COVERAGE" ]
 then
 	# If running locally, collate the coverage information.
 	touch "$COVERAGE"
