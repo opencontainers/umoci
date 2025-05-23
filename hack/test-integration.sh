@@ -20,13 +20,8 @@ source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 
 export ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
 
-# Set up the coverage directory.
-COVERAGE="${COVERAGE:-}"
-
-# -coverprofile= truncates the target file, so we need to create a
-# temporary file for each execution of the coverage-generating umoci
-# binary, which will then be collated after all the tests are run.
-export COVERAGE_DIR="$(mktemp -dt umoci-coverage.XXXXXX)"
+export GOCOVERDIR="${GOCOVERDIR:-}"
+[ -z "$GOCOVERDIR" ] || mkdir -p "$GOCOVERDIR"
 
 # Create a temporary symlink for umoci, since the --help tests require the
 # binary have the name "umoci". This is all just to make the Makefile and
@@ -48,11 +43,3 @@ fi
 
 # Run the tests.
 bats --jobs "+8" --tap "${tests[@]}"
-
-if [ -n "$COVERAGE" ]
-then
-	# If running locally, collate the coverage information.
-	touch "$COVERAGE"
-	"$ROOT/hack/collate.awk" "$COVERAGE_DIR/"* "$COVERAGE" | sponge "$COVERAGE"
-fi
-rm -rf "$COVERAGE_DIR"

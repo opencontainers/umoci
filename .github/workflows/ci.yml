@@ -63,6 +63,7 @@ jobs:
     runs-on: macos-latest
     env:
       COVERAGE: umoci.coverage
+      GOCOVERDIR: umoci.coverdir
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-go@v5
@@ -74,6 +75,7 @@ jobs:
           brew install coreutils moreutils
       - run: make local-validate-build
       - run: make local-test-unit
+      - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
         with:
@@ -83,7 +85,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
-          path: ${{ env.COVERAGE }}
+          path: ${{ env.GOCOVERDIR }}
 
   linux-ci-image:
     runs-on: ubuntu-latest
@@ -119,6 +121,7 @@ jobs:
       - linux-ci-image
     env:
       COVERAGE: umoci.coverage
+      GOCOVERDIR: umoci.coverdir
     steps:
       - uses: actions/checkout@v4
       - name: download ci image
@@ -127,6 +130,7 @@ jobs:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
       - run: make test-unit
+      - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
         with:
@@ -136,7 +140,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
-          path: ${{ env.COVERAGE }}
+          path: ${{ env.GOCOVERDIR }}
 
   integration:
     runs-on: ubuntu-latest
@@ -153,6 +157,7 @@ jobs:
     env:
       TEST_DOCKER_IMAGE: ${{ matrix.image }}
       COVERAGE: umoci.coverage
+      GOCOVERDIR: umoci.coverdir
     steps:
       - uses: actions/checkout@v4
       - name: download ci image
@@ -161,6 +166,7 @@ jobs:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
       - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-integration
+      - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
         with:
@@ -170,7 +176,7 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
-          path: ${{ env.COVERAGE }}
+          path: ${{ env.GOCOVERDIR }}
 
   coverage:
     runs-on: ubuntu-latest
@@ -179,7 +185,7 @@ jobs:
       - unit
       - integration
     env:
-      COVERAGE: umoci.coverage
+      GOCOVERDIR: umoci.coverage
     steps:
       - uses: actions/checkout@v4
       - name: download all coverage
@@ -188,10 +194,9 @@ jobs:
           path: coverage
       - name: compute coverage
         run: |
-          find coverage/ -type f -name "*coverage*" -print0 | xargs -0 ./hack/collate.awk > "$COVERAGE"
-          ./hack/ci-coverage.sh "$COVERAGE"
+          ./hack/ci-coverage.sh --merge="$GOCOVERDIR" --func coverage/*/
       - name: upload final coverage
         uses: actions/upload-artifact@v4
         with:
           name: coverage
-          path: ${{ env.COVERAGE }}
+          path: ${{ env.GOCOVERDIR }}

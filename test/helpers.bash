@@ -31,8 +31,8 @@ GOMTREE="/usr/bin/gomtree"
 SOURCE_IMAGE="${SOURCE_IMAGE:-/image}"
 SOURCE_TAG="${SOURCE_TAG:-latest}"
 
-# We need to store the coverage outputs somewhere.
-COVERAGE_DIR="${COVERAGE_DIR:-}"
+# For "go build -cover" build umoci binaries.
+GOCOVERDIR="${GOCOVERDIR:-}"
 
 # Are we rootless?
 IS_ROOTLESS="$(id -u)"
@@ -131,11 +131,6 @@ function bundle-verify() {
 
 function umoci() {
 	local args=()
-	if [ -n "$COVERAGE_DIR" ]; then
-		coverprofile="$(mktemp -p "$COVERAGE_DIR" umoci.cov.XXXXXX)"
-		args+=("-test.coverprofile=${coverprofile}" "__DEVEL--i-heard-you-like-tests")
-	fi
-
 	if [[ "$1" == "raw" ]]; then
 		args+=("$1")
 		shift 1
@@ -154,20 +149,6 @@ function umoci() {
 	shift
 	args+=("$@")
 	sane_run "$UMOCI" "${args[@]}"
-
-	# In the case of an error (because our test binary is actually a "go test"
-	# binary), we have to filter out the final "--- FAIL: TestUmoci (...s)"
-	# line that is output when $status is non-zero.
-	#
-	# TODO: Remove the need for this with "go build -cover".
-	if [ "$status" -ne 0 ]; then
-		ignore_line='^--- FAIL: TestUmoci (.*)$'
-		export output="$(echo "$output" | grep -v "$ignore_line")"
-		for (( i=1; i<="${#lines}"; i++ )); do
-			grep "$ignore_line" <<<"${lines[$i]}" >/dev/null || continue
-			unset "lines[$i]"
-		done
-	fi
 }
 
 function gomtree() {
