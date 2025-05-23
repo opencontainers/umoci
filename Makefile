@@ -43,14 +43,6 @@ DOCKER_RUN = docker run --rm -v ${PWD}:/go/src/${PROJECT} \
                         --security-opt seccomp=unconfined \
                         --security-opt systempaths=unconfined
 
-# We only add the CodeCov environment (and ping codecov) if we're running in
-# Travis, to avoid pinging third-party servers for local builds.
-ifdef TRAVIS
-$(shell echo "WARNING: This make invocation will fetch and run code from https://codecov.io/." >&2)
-DOCKER_RUN += $(shell echo "+ Running https://codecov.io/env." >&2) \
-              $(shell ./hack/ci-codecov.sh env)
-endif
-
 DOCKER_ROOTPRIV_RUN = $(DOCKER_RUN) --privileged --cap-add=SYS_ADMIN
 DOCKER_ROOTLESS_RUN = $(DOCKER_RUN) -u 1000:1000 --cap-drop=all
 
@@ -104,7 +96,7 @@ umoci.static: $(GO_SRC)
 static: umoci.static
 
 umoci.cover: $(GO_SRC)
-	$(GO) test -c -cover -covermode=count -coverpkg=./... ${TEST_BUILD_FLAGS} -o $(BUILD_DIR)/$@ ${CMD}
+	$(GO) build ${TEST_BUILD_FLAGS} -cover -covermode=count -coverpkg=./... -o $(BUILD_DIR)/$@ ${CMD}
 
 .PHONY: release
 release:
@@ -180,16 +172,16 @@ docs: $(MANPAGES)
 CI_DOCKER_IMAGE ?=$(shell sed -En 's/^FROM\s+(.*)/\1/p' Dockerfile)
 TEST_DOCKER_IMAGE ?=$(shell sed -En 's/^ARG\s+TEST_DOCKER_IMAGE=(.*)/\1/p' Dockerfile)
 
-ifndef COVERAGE
-COVERAGE := $(notdir $(shell mktemp -u umoci.cov.XXXXXX))
+ifndef GOCOVERDIR
+GOCOVERDIR := $(notdir $(shell mktemp -d -u umoci.cov.XXXXXX))
 endif
-export COVERAGE
+export GOCOVERDIR
 
 .PHONY: test-unit
 test-unit: ci-image
-	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE $(UMOCI_IMAGE) make local-test-unit
+	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
+	$(DOCKER_ROOTPRIV_RUN) -e GOCOVERDIR $(UMOCI_IMAGE) make local-test-unit
+	$(DOCKER_ROOTLESS_RUN) -e GOCOVERDIR $(UMOCI_IMAGE) make local-test-unit
 
 .PHONY: local-test-unit
 local-test-unit:
@@ -197,9 +189,9 @@ local-test-unit:
 
 .PHONY: test-integration
 test-integration: ci-image
-	touch $(COVERAGE) && chmod a+rw $(COVERAGE)
-	$(DOCKER_ROOTPRIV_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
-	$(DOCKER_ROOTLESS_RUN) -e COVERAGE -e TESTS $(UMOCI_IMAGE) make local-test-integration
+	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
+	$(DOCKER_ROOTPRIV_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
+	$(DOCKER_ROOTLESS_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
 local-test-integration: umoci.cover
@@ -251,4 +243,4 @@ ci-integration: umoci.cover
 ci:
 	@echo "NOTE: This is not identical to the upstream CI, but the tests are the same."
 	make ci-validate ci-unit ci-integration
-	hack/ci-coverage.sh $(COVERAGE)
+	hack/ci-coverage.sh --func $(GOCOVERDIR)

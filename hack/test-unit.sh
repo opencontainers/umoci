@@ -21,36 +21,35 @@ source "$(dirname "$BASH_SOURCE")/readlinkf.sh"
 export ROOT="$(readlinkf_posix "$(dirname "$BASH_SOURCE")/..")"
 
 GO="${GO:-go}"
-COVERAGE="${COVERAGE:-}"
 PROJECT="${PROJECT:-github.com/opencontainers/umoci}"
 
 extra_args=("$@")
 
-# -coverprofile= truncates the target file, so we need to create a
-# temporary file for this test run and collate it with the current
-# $COVERAGE file.
-COVERAGE_FILE="$(mktemp -t umoci-coverage.XXXXXX)"
+GOCOVERDIR="${GOCOVERDIR:-}"
+[ -z "$GOCOVERDIR" ] || mkdir -p "$GOCOVERDIR"
+
+# NOTE: As part of the <https://github.com/golang/go/issues/73842> workaround,
+# GOCOVERDIR needs to be an absolute path.
+[[ "$GOCOVERDIR" =~ ^/ ]] || GOCOVERDIR="$PWD/$GOCOVERDIR"
 
 # If we have to generate a coverage file, make sure the coverage covers the
 # entire project and not just the package being tested. This mirrors
 # ${TEST_BUILD_FLAGS} from the Makefile.
-extra_args+=("-covermode=count" "-coverprofile=$COVERAGE_FILE" "-coverpkg=$PROJECT/...")
+extra_args+=("-covermode=count" "-coverpkg=$PROJECT/...")
+if [ -n "$GOCOVERDIR" ]
+then
+	extra_args+=("-test.gocoverdir=$GOCOVERDIR")
+fi
 
 # Run the tests.
-"$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." 2>/dev/null
-
-if [ -n "${TRAVIS:-}" ]
-then
-	coverage_tags=unit
-	[[ "$(id -u)" == 0 ]] || coverage_tags+=",rootless"
-
-	# If we're running in Travis, upload the coverage files and don't bother
-	# with the local coverage generation.
-	"$ROOT/hack/ci-codecov.sh" codecov -cZ -f "$COVERAGE_FILE" -F "$coverage_tags"
-elif [ -n "$COVERAGE" ]
-then
-	# If running locally, collate the coverage information.
-	touch "$COVERAGE"
-	"$ROOT/hack/collate.awk" "$COVERAGE_FILE" "$COVERAGE" | sponge "$COVERAGE"
-fi
-rm -f "$COVERAGE_FILE"
+#
+# NOTE: To work around <https://github.com/golang/go/issues/73842>, we need to
+# run "go test" inside each subpackage directory to actually get the tests to
+# run properly.
+pkgdirs="$("$GO" list -f "{{ .Dir }}" "$ROOT/...")"
+while IFS= read -r pkgdir
+do
+	pushd "$pkgdir"
+	"${GO}" test -v -cover "${extra_args[@]}" .
+	popd
+done <<<"$pkgdirs"

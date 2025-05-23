@@ -48,10 +48,7 @@ RUN zypper -n in \
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
-RUN go install github.com/cpuguy83/go-md2man/v2@latest && \
-	go install golang.org/x/lint/golint@latest && \
-	go install github.com/securego/gosec/cmd/gosec@latest && \
-	go install github.com/client9/misspell/cmd/misspell@latest
+RUN go install github.com/cpuguy83/go-md2man/v2@latest
 
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
@@ -89,5 +86,6 @@ ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.4
 RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
+RUN git config --system --add safe.directory /go/src/github.com/opencontainers/umoci
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
 WORKDIR /go/src/github.com/opencontainers/umoci
