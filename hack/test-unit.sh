@@ -36,20 +36,16 @@ GOCOVERDIR="${GOCOVERDIR:-}"
 # entire project and not just the package being tested. This mirrors
 # ${TEST_BUILD_FLAGS} from the Makefile.
 extra_args+=("-covermode=count" "-coverpkg=$PROJECT/...")
+
+# -test.gocoverdir= needs to be put after the other arguments are parsed
+# because it is a Go internal that is not properly handled by "go test" and
+# putting it earlier will result in "./..." being misparsed. See
+# <https://github.com/golang/go/issues/73842> for more details.
+gocoverdir_args=()
 if [ -n "$GOCOVERDIR" ]
 then
-	extra_args+=("-test.gocoverdir=$GOCOVERDIR")
+	gocoverdir_args+=("-args" "-test.gocoverdir=$GOCOVERDIR")
 fi
 
 # Run the tests.
-#
-# NOTE: To work around <https://github.com/golang/go/issues/73842>, we need to
-# run "go test" inside each subpackage directory to actually get the tests to
-# run properly.
-pkgdirs="$("$GO" list -f "{{ .Dir }}" "$ROOT/...")"
-while IFS= read -r pkgdir
-do
-	pushd "$pkgdir"
-	"${GO}" test -v -cover "${extra_args[@]}" .
-	popd
-done <<<"$pkgdirs"
+"$GO" test -v -cover "${extra_args[@]}" "$PROJECT/..." "${gocoverdir_args[@]}"
