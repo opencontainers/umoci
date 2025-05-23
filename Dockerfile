@@ -86,5 +86,6 @@ ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.4
 RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 
+RUN git config --system --add safe.directory /go/src/github.com/opencontainers/umoci
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
 WORKDIR /go/src/github.com/opencontainers/umoci
