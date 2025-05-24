@@ -77,10 +77,15 @@ func blobPath(digest digest.Digest) (string, error) {
 	return filepath.Join(blobDirectory, algo.String(), hash), nil
 }
 
+type uidgid struct {
+	uid, gid int
+}
+
 type dirEngine struct {
 	path     string
 	temp     string
 	tempFile *os.File
+	owner    *uidgid
 }
 
 func (e *dirEngine) ensureTempDir() error {
@@ -105,6 +110,26 @@ func (e *dirEngine) ensureTempDir() error {
 		e.temp = tempDir
 	}
 	return nil
+}
+
+// chown changes the ownership of the provided file to match the owner of the
+// cas directory itself (in order to avoid a root "umoci repack" creating
+// inaccessible files for the original user).
+func (e *dirEngine) fchown(file *os.File) error {
+	if os.Geteuid() != 0 {
+		return nil // skip chown if not running as root
+	}
+	if e.owner == nil {
+		var stat unix.Stat_t
+		if err := unix.Stat(e.path, &stat); err != nil {
+			return fmt.Errorf("stat cas dir: %w", err)
+		}
+		e.owner = &uidgid{
+			uid: int(stat.Uid),
+			gid: int(stat.Gid),
+		}
+	}
+	return file.Chown(e.owner.uid, e.owner.gid)
 }
 
 // verify ensures that the image is valid.
@@ -176,6 +201,9 @@ func (e *dirEngine) PutBlob(_ context.Context, reader io.Reader) (_ digest.Diges
 	size, err := system.Copy(writer, reader)
 	if err != nil {
 		return "", -1, fmt.Errorf("copy to temporary blob: %w", err)
+	}
+	if err := e.fchown(fh); err != nil {
+		return "", -1, fmt.Errorf("fix ownership of new blob: %w", err)
 	}
 	if err := fh.Sync(); err != nil {
 		return "", -1, fmt.Errorf("sync temporary blob: %w", err)
@@ -267,6 +295,9 @@ func (e *dirEngine) PutIndex(_ context.Context, index ispec.Index) (Err error) {
 	// Encode the index.
 	if err := json.NewEncoder(fh).Encode(index); err != nil {
 		return fmt.Errorf("write temporary index: %w", err)
+	}
+	if err := e.fchown(fh); err != nil {
+		return fmt.Errorf("fix ownership of new index: %w", err)
 	}
 	if err := fh.Sync(); err != nil {
 		return fmt.Errorf("sync temporary index: %w", err)

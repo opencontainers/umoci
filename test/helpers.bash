@@ -82,6 +82,11 @@ function teardown_tmpdirs() {
 IMAGE="$(setup_tmpdir)/image"
 TAG="${SOURCE_TAG}"
 
+function fail() {
+	echo "FAILURE:" "$@" >&2
+	false
+}
+
 # Allows a test to specify what things it requires. If the environment can't
 # support it, the test is skipped with a message.
 function requires() {
@@ -114,6 +119,17 @@ function image-verify() {
 		}
 		echo $f: valid tar archive
 	done
+
+	# Validate that all inodes are owned by the same uid:gid as the root
+	# directory, which is the correct behaviour for us.
+	owner="$(stat -c "%u:%g" "$ocidir")"
+	allowners="$(find "$ocidir" -print0 | xargs -0 stat -c "%u:%g %n")"
+	if grep -v "^$owner" <<<"$allowners" ; then
+		echo "$allowners"
+		fail "image $ocidir contains subpaths with incorrect owners"
+	fi
+
+	# oci-spec validation
 	oci-image-tool validate --type "imageLayout" "$ocidir"
 	return $?
 }

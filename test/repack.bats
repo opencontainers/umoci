@@ -1055,3 +1055,34 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	[ "$status" -eq 0 ]
 	[[ "$output" == *"application/x-zstd"* ]]
 }
+
+@test "umoci repack [cas file ownership]" {
+	requires root
+
+	# Change the image ownership to a random uid:gid.
+	chown -R 1234:5678 "$IMAGE"
+	image-verify "$IMAGE"
+
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make some changes.
+	touch "$ROOTFS/etc"
+	echo "first file" > "$ROOTFS/newfile"
+	mkdir "$ROOTFS/newdir"
+	echo "subfile" > "$ROOTFS/newdir/anotherfile"
+	ln -s "this is a dummy symlink" "$ROOTFS/newdir/link"
+
+	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "$IMAGE"
+
+	# image-verify checks that the ownership is correct, but double-check
+	# explicitly that all of the files are owned by the user we expected.
+	sane_run bats_pipe find "$IMAGE" -print0 \| xargs -0 stat -c "%u:%g %n" \| grep -v "^1234:5678 "
+	[ "$status" -ne 0 ]
+	[ -z "$output" ]
+}
