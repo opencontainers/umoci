@@ -153,16 +153,22 @@ func FuzzMutate(data []byte) int {
 	}
 
 	// This isn't a valid image, but whatever.
-	fuzzedString, err := c.GetString()
+	fuzzedBytes, err := c.GetBytes()
 	if err != nil {
 		return -1
 	}
-	buffer := bytes.NewBufferString(fuzzedString)
+	buffer := bytes.NewReader(fuzzedBytes)
+
+	m := make(map[string]string)
+	err = c.FuzzMap(&m)
+	if err != nil {
+		return 0
+	}
 
 	// Add a new layer.
 	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
-	}, GzipCompressor, nil)
+	}, GzipCompressor, m)
 	if err != nil {
 		return 0
 	}
