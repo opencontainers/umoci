@@ -130,8 +130,8 @@ also provided.
 
 Pre-built binaries can be downloaded from [umoci's releases page][releases]. As
 umoci's builds are reproducible, a cryptographic checksum file is included in
-the release assets. All of the assets are also signed with a [release
-key][umoci-keyring], whose fingerprint is:
+the release assets. All of the assets are also signed with [one of our release
+keys][umoci-keyring], whose fingerprints are:
 
 ```text
 pub   rsa4096 2016-06-21 [SC] [expires: 2031-06-18]
@@ -139,6 +139,16 @@ pub   rsa4096 2016-06-21 [SC] [expires: 2031-06-18]
 uid           [ultimate] Aleksa Sarai <asarai@suse.com>
 uid           [ultimate] Aleksa Sarai <asarai@suse.de>
 sub   rsa4096 2016-06-21 [E] [expires: 2031-06-18]
+
+pub   ed25519 2019-06-21 [C]
+      C9C370B246B09F6DBCFC744C34401015D1D2D386
+uid           [ultimate] Aleksa Sarai <cyphar@cyphar.com>
+sub   ed25519 2022-09-30 [S] [expires: 2030-03-25]
+      B64E4955B29FA3D463F2A9062897FAD2B7E9446F
+sub   cv25519 2022-09-30 [E] [expires: 2030-03-25]
+      0C23601C4F4561640663556524325218CEA61CB8
+sub   ed25519 2022-09-30 [A] [expires: 2030-03-25]
+      A6BBD7976DBC7617FC73737D2374658C6654AF23
 ```
 
 umoci is also available from several distributions' repositories:
