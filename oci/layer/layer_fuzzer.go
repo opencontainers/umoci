@@ -28,7 +28,6 @@ import (
 	"encoding/base64"
 	"os"
 	"path/filepath"
-	"runtime"
 	"unicode"
 
 	fuzz "github.com/AdaLogics/go-fuzz-headers"
@@ -314,12 +313,9 @@ func FuzzUnpack(data []byte) int {
 		},
 	}}
 
-	called := false
 	unpackOptions.AfterLayerUnpack = func(ispec.Manifest, ispec.Descriptor) error {
-		called = true
 		return nil
 	}
-	runtime.KeepAlive(called)
 
 	_ = UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
 
