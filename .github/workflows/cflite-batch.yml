@@ -18,7 +18,7 @@ name: ClusterFuzzLite
 
 on:
   schedule:
-    - cron: '30 0/8 * * *' # once every 8 hours
+    - cron: '0 0/8 * * *' # once every 8 hours
 
 permissions: read-all
 
