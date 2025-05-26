@@ -86,30 +86,25 @@ jobs:
     runs-on: ubuntu-latest
     needs:
       - batch
-    strategy:
-      fail-fast: false
-      matrix:
-        sanitizer:
-          - coverage
     steps:
-    - name: build fuzzers (${{ matrix.sanitizer }})
+    - name: build fuzzers (coverage)
       id: build
       uses: google/clusterfuzzlite/actions/build_fuzzers@v1
       with:
         language: go
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        sanitizer: ${{ matrix.sanitizer }}
+        sanitizer: 'coverage'
         storage-repo: https://${{ secrets.FUZZ_CORPUS_TOKEN }}@github.com/cyphar/umoci-fuzz-corpus.git
         # FIXME: Workarounds for <https://github.com/google/clusterfuzzlite/pull/144>.
         storage-repo-branch: main
         storage-repo-branch-coverage: gh-pages
-    - name: run fuzzers (${{ matrix.sanitizer }})
+    - name: run fuzzers (coverage)
       id: run
       uses: google/clusterfuzzlite/actions/run_fuzzers@v1
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
         fuzz-seconds: 600
         mode: 'coverage'
-        sanitizer: ${{ matrix.sanitizer }}
+        sanitizer: 'coverage'
         output-sarif: true
         storage-repo: https://${{ secrets.FUZZ_CORPUS_TOKEN }}@github.com/cyphar/umoci-fuzz-corpus.git
