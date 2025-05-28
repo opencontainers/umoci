@@ -34,9 +34,9 @@ import (
 	"github.com/moby/sys/userns"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/pathtrie"
 	"github.com/opencontainers/umoci/pkg/fseval"
 	"github.com/opencontainers/umoci/pkg/funchelpers"
-	"github.com/opencontainers/umoci/pkg/pathtrie"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 
