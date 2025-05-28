@@ -29,10 +29,10 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/opencontainers/umoci"
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var rawConfigCommand = uxRemap(cli.Command{

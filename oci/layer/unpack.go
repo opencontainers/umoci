@@ -38,6 +38,7 @@ import (
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
 
 	"github.com/opencontainers/umoci/internal"
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/internal/idtools"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
@@ -45,7 +46,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 

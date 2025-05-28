@@ -43,7 +43,7 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"golang.org/x/sys/unix"
 
-	"github.com/opencontainers/umoci/pkg/funchelpers"
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/pkg/system"
 )
 

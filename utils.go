@@ -35,11 +35,11 @@ import (
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/internal/idtools"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 // FIXME: This should be moved to a library. Too much of this code is in the
