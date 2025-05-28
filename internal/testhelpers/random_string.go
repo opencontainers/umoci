@@ -1,6 +1,3 @@
-//go:build !darwin
-// +build !darwin
-
 // SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
@@ -19,17 +16,18 @@
  * limitations under the License.
  */
 
-package testutils
+package testhelpers
 
 import (
-	"time"
+	"math/rand"
 )
 
-// FtimeGranularity is the filesystem timestamp granularity for this system.
-// TODO: We should probably make this dependent on the path since some
-//
-//	filesystems can have different granularities...
-func FtimeGranularity() time.Duration {
-	// On Linux, most filesystems have nano-second-level granularity.
-	return time.Nanosecond
+// RandomString returns a pseudorandom alphabetical (mixed-case) string.
+func RandomString(n int) string {
+	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
+	b := make([]byte, n)
+	for i := range b {
+		b[i] = alpha[rand.Intn(len(alpha))]
+	}
+	return string(b)
 }

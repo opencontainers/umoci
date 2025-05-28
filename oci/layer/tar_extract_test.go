@@ -32,8 +32,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/testhelpers"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 // TODO: Test the parent directory metadata is kept the same when unpacking.
@@ -225,8 +225,8 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 		{"HiddenDirInSubdir", "another/path/.hiddendir", true},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			testMtime := testutils.Unix(123, 456)
-			testAtime := testutils.Unix(789, 111)
+			testMtime := testhelpers.Unix(123, 456)
+			testAtime := testhelpers.Unix(789, 111)
 
 			dir := t.TempDir()
 

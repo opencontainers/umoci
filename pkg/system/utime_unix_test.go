@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 func TestLutimesFile(t *testing.T) {
@@ -41,8 +41,8 @@ func TestLutimesFile(t *testing.T) {
 	err := os.WriteFile(path, []byte("some contents"), 0o755)
 	require.NoError(t, err)
 
-	atime := testutils.Unix(125812851, 128518257)
-	mtime := testutils.Unix(257172893, 995216512)
+	atime := testhelpers.Unix(125812851, 128518257)
+	mtime := testhelpers.Unix(257172893, 995216512)
 
 	err = unix.Lstat(path, &fiOld)
 	require.NoErrorf(t, err, "lstat %s", path)
@@ -80,8 +80,8 @@ func TestLutimesDirectory(t *testing.T) {
 	err := os.Mkdir(path, 0o755)
 	require.NoError(t, err)
 
-	atime := testutils.Unix(128551231, 273285257)
-	mtime := testutils.Unix(185726393, 752135712)
+	atime := testhelpers.Unix(128551231, 273285257)
+	mtime := testhelpers.Unix(185726393, 752135712)
 
 	err = unix.Lstat(path, &fiOld)
 	require.NoErrorf(t, err, "lstat %s", path)
@@ -119,8 +119,8 @@ func TestLutimesSymlink(t *testing.T) {
 	err := os.Symlink(".", path)
 	require.NoError(t, err)
 
-	atime := testutils.Unix(128551231, 273285257)
-	mtime := testutils.Unix(185726393, 752135712)
+	atime := testhelpers.Unix(128551231, 273285257)
+	mtime := testhelpers.Unix(185726393, 752135712)
 
 	err = unix.Lstat(path, &fiOld)
 	require.NoErrorf(t, err, "lstat %s", path)
@@ -165,8 +165,8 @@ func TestLutimesRelative(t *testing.T) {
 	err = os.Symlink(".", path)
 	require.NoError(t, err)
 
-	atime := testutils.Unix(134858232, 258921237)
-	mtime := testutils.Unix(171257291, 425815288)
+	atime := testhelpers.Unix(134858232, 258921237)
+	mtime := testhelpers.Unix(171257291, 425815288)
 
 	err = unix.Lstat(path, &fiOld)
 	require.NoErrorf(t, err, "lstat %s", path)

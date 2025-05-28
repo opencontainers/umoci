@@ -16,18 +16,14 @@
  * limitations under the License.
  */
 
-package testutils
+package testhelpers
 
 import (
-	"math/rand"
+	"time"
 )
 
-// RandomString returns a pseudorandom alphabetical (mixed-case) string.
-func RandomString(n int) string {
-	const alpha = "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ"
-	b := make([]byte, n)
-	for i := range b {
-		b[i] = alpha[rand.Intn(len(alpha))]
-	}
-	return string(b)
+// Unix returns the local Time corresponding to the given Unix time, rounded to
+// the timestamp granularity for this system.
+func Unix(sec, nsec int64) time.Time {
+	return time.Unix(sec, nsec).Round(FtimeGranularity())
 }

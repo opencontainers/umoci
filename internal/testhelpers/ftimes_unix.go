@@ -1,3 +1,6 @@
+//go:build !darwin
+// +build !darwin
+
 // SPDX-License-Identifier: Apache-2.0
 /*
  * umoci: Umoci Modifies Open Containers' Images
@@ -16,14 +19,17 @@
  * limitations under the License.
  */
 
-package testutils
+package testhelpers
 
 import (
 	"time"
 )
 
-// Unix returns the local Time corresponding to the given Unix time, rounded to
-// the timestamp granularity for this system.
-func Unix(sec, nsec int64) time.Time {
-	return time.Unix(sec, nsec).Round(FtimeGranularity())
+// FtimeGranularity is the filesystem timestamp granularity for this system.
+// TODO: We should probably make this dependent on the path since some
+//
+//	filesystems can have different granularities...
+func FtimeGranularity() time.Duration {
+	// On Linux, most filesystems have nano-second-level granularity.
+	return time.Nanosecond
 }

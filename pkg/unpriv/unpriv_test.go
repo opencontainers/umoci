@@ -28,7 +28,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 func TestWrapNoTricks(t *testing.T) {
@@ -553,8 +553,8 @@ func TestChtimes(t *testing.T) {
 	hdrOld, _ := tar.FileInfoHeader(fiOld, "")
 
 	// Modify the times.
-	atime := testutils.Unix(12345678, 12421512)
-	mtime := testutils.Unix(11245631, 13373321)
+	atime := testhelpers.Unix(12345678, 12421512)
+	mtime := testhelpers.Unix(11245631, 13373321)
 	err = Chtimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime)
 	require.NoError(t, err)
 
@@ -619,8 +619,8 @@ func TestLutimes(t *testing.T) {
 	hdrDirOld, _ := tar.FileInfoHeader(fiDirOld, "")
 
 	// Modify the times.
-	atime := testutils.Unix(12345678, 12421512)
-	mtime := testutils.Unix(11245631, 13373321)
+	atime := testhelpers.Unix(12345678, 12421512)
+	mtime := testhelpers.Unix(11245631, 13373321)
 	err = Lutimes(filepath.Join(dir, "some", "parent", "directories"), atime, mtime)
 	require.NoError(t, err)
 
@@ -635,8 +635,8 @@ func TestLutimes(t *testing.T) {
 	assert.Equal(t, mtime, hdrDirNew.ModTime, "mtime should match value given to lutimes")
 
 	// Do the same for a symlink.
-	atime = testutils.Unix(18127518, 12421122)
-	mtime = testutils.Unix(15245123, 19912991)
+	atime = testhelpers.Unix(18127518, 12421122)
+	mtime = testhelpers.Unix(15245123, 19912991)
 
 	fiOld, err := Lstat(filepath.Join(dir, "some", "parent", "directories", "link2"))
 	require.NoError(t, err)

@@ -37,9 +37,9 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opencontainers/umoci/internal/testhelpers"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 const (
@@ -72,7 +72,7 @@ func randomTarData(tw *tar.Writer) error {
 		size := rand.Intn(512 * 1024)
 
 		if err := tw.WriteHeader(&tar.Header{
-			Name:     testutils.RandomString(16),
+			Name:     testhelpers.RandomString(16),
 			Mode:     0o755,
 			Uid:      rand.Intn(1337),
 			Gid:      rand.Intn(1337),
@@ -409,8 +409,8 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			require.NoError(t, err, "close read-write engine")
 
 			// make it readonly
-			testutils.MakeReadOnly(t, image)
-			defer testutils.MakeReadWrite(t, image)
+			testhelpers.MakeReadOnly(t, image)
+			defer testhelpers.MakeReadWrite(t, image)
 
 			newEngine, err := dir.Open(image)
 			require.NoError(t, err, "open read-only engine")
