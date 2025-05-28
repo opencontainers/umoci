@@ -31,11 +31,11 @@ import (
 	"time"
 
 	"github.com/opencontainers/umoci/internal/funchelpers"
+	"github.com/opencontainers/umoci/internal/iohelpers"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/iohelpers"
 
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
