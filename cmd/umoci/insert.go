@@ -29,13 +29,13 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/opencontainers/umoci"
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
 	"github.com/opencontainers/umoci/oci/layer"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 var insertCommand = uxCompress(uxRemap(uxHistory(uxTag(cli.Command{

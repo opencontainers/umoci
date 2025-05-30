@@ -29,11 +29,11 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	igen "github.com/opencontainers/umoci/oci/config/generate"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 )
 
 // FIXME: We should also implement a raw mode that just does modifications of

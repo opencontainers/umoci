@@ -21,7 +21,7 @@ package layer
 import (
 	"strings"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 // TODO: These method names are confusing since GenerateEntry() is called
@@ -222,7 +222,7 @@ var specialXattrs = map[string]xattrFilter{
 func init() {
 	// For test purposes we add a fake forbidden attribute that an unprivileged
 	// user can easily write to (and thus we can test it).
-	if testutils.IsTestBinary() {
+	if testhelpers.IsTestBinary() {
 		specialXattrs["user.UMOCI:forbidden_xattr"] = forbiddenXattrFilter{}
 	}
 }

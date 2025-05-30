@@ -16,9 +16,9 @@
  * limitations under the License.
  */
 
-// Package testutils provides helpers for umoci's test suite. None of the code
-// in this package is enabled when building a non-test umoci binary.
-package testutils
+// Package testhelpers provides helpers for umoci's test suite. None of the
+// code in this package is enabled when building a non-test umoci binary.
+package testhelpers
 
 // binaryType is set during umoci.cover building.
 var binaryType = releaseBinary

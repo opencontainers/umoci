@@ -26,8 +26,8 @@ import (
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // Blob represents a "parsed" blob in an OCI image's blob store. MediaType

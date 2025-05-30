@@ -31,8 +31,8 @@ import (
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func testTranslateOverlayWhiteouts_Char00(t *testing.T, onDiskFmt OverlayfsRootfs) { //nolint:revive // var-naming is less important than matching the func TestXyz name

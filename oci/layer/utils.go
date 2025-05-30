@@ -28,7 +28,7 @@ import (
 	rootlesscontainers "github.com/rootless-containers/proto/go-proto"
 	"google.golang.org/protobuf/proto"
 
-	"github.com/opencontainers/umoci/pkg/idtools"
+	"github.com/opencontainers/umoci/internal/idtools"
 )
 
 // mapHeader maps a tar.Header generated from the filesystem so that it

@@ -16,7 +16,7 @@
  * limitations under the License.
  */
 
-package testutils
+package testhelpers
 
 import (
 	"time"

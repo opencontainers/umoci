@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opencontainers/umoci/internal/testhelpers"
 	"github.com/opencontainers/umoci/oci/cas/dir"
-	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 func TestEngineBlobJSON(t *testing.T) {
@@ -120,7 +120,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		require.NoError(t, err, "close engine")
 
 		// make it readonly
-		testutils.MakeReadOnly(t, image)
+		testhelpers.MakeReadOnly(t, image)
 
 		newEngine, err := dir.Open(image)
 		require.NoError(t, err, "open read-only engine")
@@ -146,6 +146,6 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		require.NoError(t, err, "close read-only engine")
 
 		// make it readwrite again.
-		testutils.MakeReadWrite(t, image)
+		testhelpers.MakeReadWrite(t, image)
 	}
 }

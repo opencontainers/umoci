@@ -30,7 +30,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 func descriptorPtr(d ispec.Descriptor) *ispec.Descriptor { return &d }
@@ -49,7 +49,7 @@ func randomDescriptor(t *testing.T) ispec.Descriptor {
 	descriptor.Annotations = map[string]string{}
 	n := rand.Intn(32)
 	for i := 0; i < n; i++ {
-		descriptor.Annotations[testutils.RandomString(32)] = testutils.RandomString(32)
+		descriptor.Annotations[testhelpers.RandomString(32)] = testhelpers.RandomString(32)
 	}
 
 	return descriptor

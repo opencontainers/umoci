@@ -29,11 +29,11 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/vbatts/go-mtree"
 
+	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/mutate"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/layer"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
 	"github.com/opencontainers/umoci/pkg/mtreefilter"
 )
 

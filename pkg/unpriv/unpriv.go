@@ -43,8 +43,8 @@ import (
 	securejoin "github.com/cyphar/filepath-securejoin"
 	"golang.org/x/sys/unix"
 
-	"github.com/opencontainers/umoci/pkg/funchelpers"
-	"github.com/opencontainers/umoci/pkg/system"
+	"github.com/opencontainers/umoci/internal/funchelpers"
+	"github.com/opencontainers/umoci/internal/system"
 )
 
 // fiRestore restores the state given by an os.FileInfo instance at the given

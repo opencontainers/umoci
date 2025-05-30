@@ -26,8 +26,8 @@ import (
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 
-	"github.com/opencontainers/umoci/pkg/funchelpers"
-	"github.com/opencontainers/umoci/pkg/system"
+	"github.com/opencontainers/umoci/internal/funchelpers"
+	"github.com/opencontainers/umoci/internal/system"
 )
 
 // Default is the "identity" form of FsEval. In particular, it does not do any

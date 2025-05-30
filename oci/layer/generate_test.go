@@ -32,7 +32,7 @@ import (
 	"github.com/stretchr/testify/require"
 	"github.com/vbatts/go-mtree"
 
-	"github.com/opencontainers/umoci/pkg/testutils"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 type tarDentry struct {
@@ -63,9 +63,9 @@ func tarFromDentry(de tarDentry) (*tar.Header, io.Reader) {
 		Mode:       int64(mode),
 		Size:       size,
 		Xattrs:     de.xattrs, //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
-		ModTime:    testutils.Unix(1210393, 4528036),
-		AccessTime: testutils.Unix(7892829, 2341211),
-		ChangeTime: testutils.Unix(8731293, 8218947),
+		ModTime:    testhelpers.Unix(1210393, 4528036),
+		AccessTime: testhelpers.Unix(7892829, 2341211),
+		ChangeTime: testhelpers.Unix(8731293, 8218947),
 	}, r
 }
 

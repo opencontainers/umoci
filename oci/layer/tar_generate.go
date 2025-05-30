@@ -30,9 +30,9 @@ import (
 	"github.com/apex/log"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/funchelpers"
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/funchelpers"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // tarGenerator is a helper for generating layer diff tars. It should be noted

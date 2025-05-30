@@ -29,8 +29,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opencontainers/umoci/internal/testhelpers"
 	"github.com/opencontainers/umoci/oci/cas"
-	"github.com/opencontainers/umoci/pkg/testutils"
 )
 
 // NOTE: These tests aren't really testing OCI-style manifests. It's all just
@@ -276,8 +276,8 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	require.NoError(t, err)
 
 	// make it readonly
-	testutils.MakeReadOnly(t, image)
-	defer testutils.MakeReadWrite(t, image)
+	testhelpers.MakeReadOnly(t, image)
+	defer testhelpers.MakeReadWrite(t, image)
 
 	engine, err := Open(image)
 	require.NoError(t, err)
@@ -324,7 +324,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		require.NoError(t, engine.Close(), "close read-write engine")
 
 		// make it readonly
-		testutils.MakeReadOnly(t, image)
+		testhelpers.MakeReadOnly(t, image)
 
 		newEngine, err := Open(image)
 		require.NoError(t, err, "open read-only image")
@@ -346,6 +346,6 @@ func TestEngineBlobReadonly(t *testing.T) {
 		require.NoError(t, newEngine.Close(), "close read-only engine")
 
 		// make it readwrite again.
-		testutils.MakeReadWrite(t, image)
+		testhelpers.MakeReadWrite(t, image)
 	}
 }
