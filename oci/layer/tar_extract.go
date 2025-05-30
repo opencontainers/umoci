@@ -36,8 +36,8 @@ import (
 
 	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/internal/pathtrie"
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // inUserNamespace is a cached return value of userns.RunningInUserNS(). We

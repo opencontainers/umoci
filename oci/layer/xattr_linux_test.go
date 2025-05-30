@@ -33,8 +33,8 @@ import (
 	"github.com/vbatts/go-mtree"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func getAllXattrs(t *testing.T, path string) map[string]string {

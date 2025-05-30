@@ -27,7 +27,7 @@ import (
 	"github.com/apex/log"
 	"github.com/opencontainers/go-digest"
 
-	"github.com/opencontainers/umoci/pkg/system"
+	"github.com/opencontainers/umoci/internal/system"
 )
 
 // Exported errors for verification issues that occur during processing within

@@ -40,13 +40,13 @@ import (
 	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/internal/idtools"
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 	iconv "github.com/opencontainers/umoci/oci/config/convert"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 // AfterLayerUnpackCallback is called after each layer is unpacked.

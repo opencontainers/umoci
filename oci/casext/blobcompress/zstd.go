@@ -22,8 +22,8 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-	"github.com/opencontainers/umoci/pkg/system"
 
 	"github.com/apex/log"
 	zstd "github.com/klauspost/compress/zstd"

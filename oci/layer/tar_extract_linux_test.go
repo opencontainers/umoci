@@ -34,8 +34,8 @@ import (
 	"github.com/stretchr/testify/require"
 	"golang.org/x/sys/unix"
 
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/pkg/fseval"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 func testNeedsMknod(t *testing.T) {

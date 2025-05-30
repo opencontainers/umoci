@@ -36,9 +36,9 @@ import (
 	"golang.org/x/sys/unix"
 
 	"github.com/opencontainers/umoci/internal/funchelpers"
+	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/pkg/hardening"
-	"github.com/opencontainers/umoci/pkg/system"
 )
 
 const (
