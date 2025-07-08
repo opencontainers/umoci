@@ -118,7 +118,7 @@ also provided.
 [umoci-ipa]: http://ipa-reader.xyz/?text=u%CB%90mo%CB%88%CA%A8i&voice=Amy
 [oci-image-spec]: https://github.com/opencontainers/image-spec
 [kiwi]: https://osinside.github.io/kiwi/
-[kiwi-container]: https://osinside.github.io/kiwi/building/build_docker_container.html
+[kiwi-container]: https://osinside.github.io/kiwi/building_images/build_container_image.html
 [obs]: https://openbuildservice.org/
 [stacker]: https://github.com/project-stacker/stacker
 [lxc]: https://linuxcontainers.org/
