@@ -51,6 +51,10 @@
     <img src="https://zenodo.org/badge/72283469.svg"/></a>
   <a href="https://matrix.to/#/#opencontainers:matrix.org" alt="Matrix Room">
     <img src="https://img.shields.io/matrix/opencontainers:matrix.org?logo=matrix"/></a>
+
+  <a href="https://repology.org/project/umoci/versions">
+    <img src="https://repology.org/badge/tiny-repos/umoci.svg" alt="Packaging Status">
+  </a>
 </p>
 <hr/>
 </div>
@@ -234,6 +238,10 @@ Note that while umoci is currently usable as a Go library (and we do have
 several users of the Go APIs), the API is explicitly considered **unstable**
 until umoci `1.0` is released. However, the umoci CLI API is considered to be
 stable despite umoci not being a `1.0` project.
+
+<a href="https://repology.org/project/umoci/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/umoci.svg?columns=4&exclude_unsupported=1" alt="Packaging Status">
+</a>
 
 [releases]: https://github.com/opencontainers/umoci/releases
 [semver]: http://semver.org/
