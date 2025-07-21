@@ -57,9 +57,9 @@ RUN go install github.com/cpuguy83/go-md2man/v2@latest
 #
 #        In addition, there is no go.mod in all released versions up to v0.9.0,
 #        which means that we will pull the latest runtime-spec automatically
-#        which causes validation errors. But we need to forcefully update to
-#        runtime-spec 1.0.2. This is fine.
-#        See <https://github.com/opencontainers/runtime-tools/pull/774>.
+#        (Go removed auto-conversion to go.mod in Go 1.22) which causes
+#        validation errors. But we need to forcefully pick runtime-spec v1.0.2.
+#        This is fine. See <https://github.com/opencontainers/runtime-tools/pull/774>.
 RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp/oci-runtime-tools && \
 	( cd /tmp/oci-runtime-tools && \
 		go mod init github.com/opencontainers/runtime-tools && \
@@ -70,13 +70,16 @@ RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp
 	rm -rf /tmp/oci-runtime-tools
 # FIXME: oci-image-tool was basically broken for our needs after v0.3.0 (it
 #        cannot scan image layouts). The source is so old we need to manually
-#        build it (including doing "go mod init").
+#        build it (including doing "go mod init"). For the same reason as
+#        above, we need to force the usage of image-spec v1.0.0 because Go 1.22
+#        stopped converting from glide to go.mod.
 RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/oci-image-tools && \
 	( cd /tmp/oci-image-tools && \
 		git ls-files --no-recurse-submodules -z | \
 			xargs -0 -I :: find :: -maxdepth 0 -type f -print0 | \
 			xargs -0 sed -Ei 's|github.com/Sirupsen/logrus|github.com/sirupsen/logrus|g' && \
 		go mod init github.com/opencontainers/image-tools && \
+		go get github.com/opencontainers/image-spec@v1.0.0 && \
 		go mod tidy && \
 		go mod vendor; ) && \
 	make -C /tmp/oci-image-tools all install && \
