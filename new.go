@@ -33,7 +33,7 @@ import (
 )
 
 // NewImage creates a new empty image (tag) in the existing layout.
-func NewImage(engineExt casext.Engine, tagName string) error {
+func NewImage(engineExt casext.Engine, tagName string, sourceDateEpoch *time.Time) error {
 	// Create a new manifest.
 	log.WithFields(log.Fields{
 		"tag": tagName,
@@ -42,6 +42,9 @@ func NewImage(engineExt casext.Engine, tagName string) error {
 	// Create a new image config.
 	g := igen.New()
 	createTime := time.Now()
+	if sourceDateEpoch != nil {
+		createTime = *sourceDateEpoch
+	}
 
 	// Set all of the defaults we need.
 	g.SetCreated(createTime)

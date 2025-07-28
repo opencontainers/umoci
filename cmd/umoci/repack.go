@@ -152,9 +152,17 @@ func repack(ctx *cli.Context) (Err error) {
 		return fmt.Errorf("get image metadata: %w", err)
 	}
 
+	sourceDateEpoch, err := parseSourceDateEpoch()
+	if err != nil {
+		return err
+	}
+
 	var history *ispec.History
 	if !ctx.Bool("no-history") {
 		created := time.Now()
+		if sourceDateEpoch != nil {
+			created = *sourceDateEpoch
+		}
 		history = &ispec.History{
 			Author:     imageMeta.Author,
 			Comment:    "",
@@ -169,6 +177,7 @@ func repack(ctx *cli.Context) (Err error) {
 		if ctx.IsSet("history.comment") {
 			history.Comment = ctx.String("history.comment")
 		}
+		// If set, takes precedence over SOURCE_DATE_EPOCH.
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
@@ -185,5 +194,5 @@ func repack(ctx *cli.Context) (Err error) {
 		mtreefilter.MaskFilter(maskedPaths),
 	}
 
-	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator, compressAlgo)
+	return umoci.Repack(engineExt, tagName, bundlePath, meta, history, filters, ctx.Bool("refresh-bundle"), mutator, compressAlgo, sourceDateEpoch)
 }

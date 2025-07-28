@@ -293,9 +293,17 @@ func config(ctx *cli.Context) (Err error) {
 		}
 	}
 
+	sourceDateEpoch, err := parseSourceDateEpoch()
+	if err != nil {
+		return err
+	}
+
 	var history *ispec.History
 	if !ctx.Bool("no-history") {
 		created := time.Now()
+		if sourceDateEpoch != nil {
+			created = *sourceDateEpoch
+		}
 		history = &ispec.History{
 			Author:     g.Author(),
 			Comment:    "",
@@ -310,6 +318,7 @@ func config(ctx *cli.Context) (Err error) {
 		if ctx.IsSet("history.comment") {
 			history.Comment = ctx.String("history.comment")
 		}
+		// If set, takes precedence over SOURCE_DATE_EPOCH.
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
