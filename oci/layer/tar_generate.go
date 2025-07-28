@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"golang.org/x/sys/unix"
@@ -52,6 +53,10 @@ type tarGenerator struct {
 	// fsEval is an fseval.FsEval used for extraction.
 	fsEval fseval.FsEval
 
+	// sourceDateEpoch, if set, clamps file timestamps in the generated tar
+	// to not be newer than this time (follows tar --clamp-mtime behavior).
+	sourceDateEpoch time.Time
+
 	// XXX: Should we add a safety check to make sure we don't generate two of
 	//      the same path in a tar archive? This is not permitted by the spec.
 }
@@ -67,10 +72,11 @@ func newTarGenerator(w io.Writer, opt *RepackOptions) *tarGenerator {
 	}
 
 	return &tarGenerator{
-		tw:        tar.NewWriter(w),
-		onDiskFmt: opt.OnDiskFormat,
-		inodes:    map[uint64]string{},
-		fsEval:    fsEval,
+		tw:              tar.NewWriter(w),
+		onDiskFmt:       opt.OnDiskFormat,
+		inodes:          map[uint64]string{},
+		fsEval:          fsEval,
+		sourceDateEpoch: opt.SourceDateEpoch,
 	}
 }
 
@@ -125,6 +131,22 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 	hdr, err := tar.FileInfoHeader(fi, linkname)
 	if err != nil {
 		return fmt.Errorf("convert fi to hdr: %w", err)
+	}
+
+	// Apply SOURCE_DATE_EPOCH timestamp clamping if set.
+	// Only clamp timestamps that are newer than SOURCE_DATE_EPOCH
+	// effectively following tar --clamp-mtime behavior.
+	if !tg.sourceDateEpoch.IsZero() {
+		sourceDateEpoch := tg.sourceDateEpoch
+		if !hdr.ModTime.IsZero() && hdr.ModTime.After(sourceDateEpoch) {
+			hdr.ModTime = sourceDateEpoch
+		}
+		if !hdr.AccessTime.IsZero() && hdr.AccessTime.After(sourceDateEpoch) {
+			hdr.AccessTime = sourceDateEpoch
+		}
+		if !hdr.ChangeTime.IsZero() && hdr.ChangeTime.After(sourceDateEpoch) {
+			hdr.ChangeTime = sourceDateEpoch
+		}
 	}
 	hdr.Xattrs = map[string]string{} //nolint:staticcheck // SA1019: Xattrs is deprecated but PAXRecords is more annoying
 	// Usually incorrect for containers and was added in Go 1.10 causing
