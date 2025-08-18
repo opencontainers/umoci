@@ -108,19 +108,37 @@ function requires() {
 }
 
 function image-verify() {
-	local ocidir="$@"
-	# test that each generated targz file is valid according to gnutar:
-	for f in $(ls $ocidir/blobs/sha256/); do
-		file $ocidir/blobs/sha256/$f | grep "gzip" || {
-			continue
+	local ocidir="$1"
+
+	# Smoke-test for our blobs.
+	while IFS= read -r blob; do
+		# Make sure tar layers are valid according to gnutar.
+		mimetype="$(file --mime "$blob")"
+		cat=
+		case "$mimetype" in
+			*application/x-tar*)
+				cat="cat"
+				;;
+			*application/zstd*)
+				cat="zstdcat"
+				;;
+			*application/gzip*)
+				cat="zcat"
+				;;
+			*)
+				continue
+				;;
+		esac
+		"$cat" <"$blob" | file --mime - | grep "application/x-tar" || {
+			fail "blob $blob is compressed but is not a tar archive?"
 		}
-		zcat $ocidir/blobs/sha256/$f | tar tvf - >/dev/null || {
+		"$cat" <"$blob" | tar tvf - >/dev/null || {
 			rc=$?
-			file $ocidir/blobs/sha256/$f
-			echo "error untarring $f: $rc"
-			return $rc
+			file "$blob"
+			echo "error untarring $blob: $rc"
+			return "$rc"
 		}
-		echo $f: valid tar archive
+		echo "$blob: valid tar archive"
 	done
 
 	# Validate that all inodes are owned by the same uid:gid as the root
