@@ -25,6 +25,15 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   allowing for users to get a reasonable binary with `go install`. However, we
   still recommend using our official binaries, using distribution binaries, or
   building from source with `make`.
+* Rather than using `oci-image-tool validate` for validating images in our
+  tests, we now make use of some hand-written smoke tests as well as the
+  `jq`-based validators maintained in [docker-library/meta-scripts][].
+
+  This is intended to act as a stop-gap until `umoci validate` is implemented
+  (and after that, we may choose to keep the `jq`-based validators as a
+  double-check that our own validators are working correctly).
+
+[docker-library/meta-scripts]: https://github.com/docker-library/meta-scripts
 
 ## [0.5.0] - 2025-05-21 ##
 

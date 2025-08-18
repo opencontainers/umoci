@@ -164,6 +164,8 @@ jobs:
       GOCOVERDIR: umoci.coverdir
     steps:
       - uses: actions/checkout@v4
+        with:
+          submodules: true
       - name: download ci image
         uses: actions/download-artifact@v4
         with:

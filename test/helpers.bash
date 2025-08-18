@@ -27,6 +27,9 @@ UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 RUNC="/usr/bin/runc"
 GOMTREE="/usr/bin/gomtree"
 
+# Used as a poor man's oci-image-tool validate.
+DOCKER_METASCRIPT_DIR="${INTEGRATION_ROOT}/../hack/docker-meta-scripts"
+
 # The source OCI image path, which we will make a copy of for each test.
 SOURCE_IMAGE="${SOURCE_IMAGE:-/image}"
 SOURCE_TAG="${SOURCE_TAG:-latest}"
@@ -128,6 +131,11 @@ function image-verify() {
 		echo "$allowners"
 		fail "image $ocidir contains subpaths with incorrect owners"
 	fi
+
+	# Use the Docker meta-scripts (which use jq internally) to do some basic
+	# validation of our image.
+	BASHBREW_META_SCRIPTS="$DOCKER_METASCRIPT_DIR" \
+		"$DOCKER_METASCRIPT_DIR/helpers/oci-validate.sh" "$ocidir"
 
 	# oci-spec validation
 	# FIXME: oci-image-tool broke due to image-spec repo changes, and so we
