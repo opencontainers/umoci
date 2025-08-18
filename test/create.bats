@@ -151,14 +151,12 @@ function teardown() {
 	# Create a new image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	# XXX: oci-image-tool validate doesn't like empty images (without layers)
-	#image-verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Modify the config.
 	umoci config --image "${IMAGE}:${TAG}" --config.user "1234:1332"
 	[ "$status" -eq 0 ]
-	# XXX: oci-image-tool validate doesn't like empty images (without layers)
-	#image-verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	new_bundle_rootfs
@@ -191,9 +189,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	# There should be no non-empty_layers.
 	[[ "$(echo "$output" | jq -SM '[.history[] | .empty_layer == null] | any')" == "false" ]]
-
-	# XXX: oci-image-tool validate doesn't like empty images (without layers)
-	#image-verify "$IMAGE"
+	image-verify "$IMAGE"
 }
 
 # Given the bad experiences we've had with Go compiler changes resulting in
@@ -225,8 +221,7 @@ function teardown() {
 	# Create a new image with another tag.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	# XXX: oci-image-tool validate doesn't like empty images (without layers)
-	#image-verify "$IMAGE"
+	image-verify "$IMAGE"
 
 	# Unpack the image.
 	new_bundle_rootfs
