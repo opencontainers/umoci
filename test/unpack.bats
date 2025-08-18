@@ -369,37 +369,37 @@ function teardown() {
 	touch "$ROOTFS/zstd1"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# gzip layer
 	touch "$ROOTFS/gzip1"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=gzip "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# plain layer
 	touch "$ROOTFS/plain1"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=none "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# zstd layer
 	touch "$ROOTFS/zstd2"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# plain layer
 	touch "$ROOTFS/plain2"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=none "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# zstd layer (auto)
 	touch "$ROOTFS/zstd3"
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	# Re-extract the latest image and make sure all of the files were correctly
 	# extracted.
