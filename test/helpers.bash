@@ -27,6 +27,9 @@ UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 RUNC="/usr/bin/runc"
 GOMTREE="/usr/bin/gomtree"
 
+# Used as a poor man's oci-image-tool validate.
+DOCKER_METASCRIPT_DIR="${INTEGRATION_ROOT}/../hack/docker-meta-scripts"
+
 # The source OCI image path, which we will make a copy of for each test.
 SOURCE_IMAGE="${SOURCE_IMAGE:-/image}"
 SOURCE_TAG="${SOURCE_TAG:-latest}"
@@ -105,19 +108,37 @@ function requires() {
 }
 
 function image-verify() {
-	local ocidir="$@"
-	# test that each generated targz file is valid according to gnutar:
-	for f in $(ls $ocidir/blobs/sha256/); do
-		file $ocidir/blobs/sha256/$f | grep "gzip" || {
-			continue
+	local ocidir="$1"
+
+	# Smoke-test for our blobs.
+	while IFS= read -r blob; do
+		# Make sure tar layers are valid according to gnutar.
+		mimetype="$(file --mime "$blob")"
+		cat=
+		case "$mimetype" in
+			*application/x-tar*)
+				cat="cat"
+				;;
+			*application/zstd*)
+				cat="zstdcat"
+				;;
+			*application/gzip*)
+				cat="zcat"
+				;;
+			*)
+				continue
+				;;
+		esac
+		"$cat" <"$blob" | file --mime - | grep "application/x-tar" || {
+			fail "blob $blob is compressed but is not a tar archive?"
 		}
-		zcat $ocidir/blobs/sha256/$f | tar tvf - >/dev/null || {
+		"$cat" <"$blob" | tar tvf - >/dev/null || {
 			rc=$?
-			file $ocidir/blobs/sha256/$f
-			echo "error untarring $f: $rc"
-			return $rc
+			file "$blob"
+			echo "error untarring $blob: $rc"
+			return "$rc"
 		}
-		echo $f: valid tar archive
+		echo "$blob: valid tar archive"
 	done
 
 	# Validate that all inodes are owned by the same uid:gid as the root
@@ -129,8 +150,16 @@ function image-verify() {
 		fail "image $ocidir contains subpaths with incorrect owners"
 	fi
 
+	# Use the Docker meta-scripts (which use jq internally) to do some basic
+	# validation of our image.
+	BASHBREW_META_SCRIPTS="$DOCKER_METASCRIPT_DIR" \
+		"$DOCKER_METASCRIPT_DIR/helpers/oci-validate.sh" "$ocidir"
+
 	# oci-spec validation
-	oci-image-tool validate --type "imageLayout" "$ocidir"
+	# FIXME: oci-image-tool broke due to image-spec repo changes, and so we
+	#        have to skip this for now. The eventual plan is to move the
+	#        validation to umoci itself.
+	#oci-image-tool validate --type "imageLayout" "$ocidir"
 	return $?
 }
 

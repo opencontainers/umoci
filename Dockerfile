@@ -68,22 +68,6 @@ RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp
 		go mod vendor; ) && \
 	make -C /tmp/oci-runtime-tools tool install && \
 	rm -rf /tmp/oci-runtime-tools
-# FIXME: oci-image-tool was basically broken for our needs after v0.3.0 (it
-#        cannot scan image layouts). The source is so old we need to manually
-#        build it (including doing "go mod init"). For the same reason as
-#        above, we need to force the usage of image-spec v1.0.0 because Go 1.22
-#        stopped converting from glide to go.mod.
-RUN git clone -b v0.3.0 https://github.com/opencontainers/image-tools.git /tmp/oci-image-tools && \
-	( cd /tmp/oci-image-tools && \
-		git ls-files --no-recurse-submodules -z | \
-			xargs -0 -I :: find :: -maxdepth 0 -type f -print0 | \
-			xargs -0 sed -Ei 's|github.com/Sirupsen/logrus|github.com/sirupsen/logrus|g' && \
-		go mod init github.com/opencontainers/image-tools && \
-		go get github.com/opencontainers/image-spec@v1.0.0 && \
-		go mod tidy && \
-		go mod vendor; ) && \
-	make -C /tmp/oci-image-tools all install && \
-	rm -rf /tmp/oci-image-tools
 
 ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
 ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.4

@@ -56,7 +56,7 @@ function teardown() {
 	# Add layers to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}"
+	image-verify "${IMAGE}"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer1.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
@@ -100,7 +100,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add layer to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}"
+	image-verify "${IMAGE}"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=gzip "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
@@ -130,10 +130,10 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add layer to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}"
+	image-verify "${IMAGE}"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=zstd "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -160,7 +160,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add layer to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}"
+	image-verify "${IMAGE}"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=none "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
@@ -190,10 +190,10 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add zstd layer to the image.
 	umoci new --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}"
+	image-verify "${IMAGE}"
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=zstd "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -214,7 +214,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add another zstd layer to the image, by making use of the auto selection.
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=auto "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -236,7 +236,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# the default.
 	umoci raw add-layer --image "${IMAGE}:${TAG}" "$UMOCI_TMPDIR/layer.tar"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]

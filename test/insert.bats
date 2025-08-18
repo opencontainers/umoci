@@ -420,7 +420,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add layer to the image.
 	umoci insert --image "${IMAGE}:${TAG}" --compress=zstd "${INSERTDIR}/etc" /etc
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -476,7 +476,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add zstd layer to the image.
 	umoci insert --image "${IMAGE}:${TAG}" --compress=zstd "${INSERTDIR}/etc" /etc
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -497,7 +497,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add another zstd layer to the image, by making use of the auto selection.
 	umoci insert --image "${IMAGE}:${TAG}" --compress=auto "${INSERTDIR}/etc" /etc
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -519,7 +519,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# the default.
 	umoci insert --image "${IMAGE}:${TAG}" "${INSERTDIR}/etc" /etc
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]

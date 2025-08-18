@@ -928,7 +928,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add layer to the image.
 	umoci repack --image "${IMAGE}:${TAG}" --compress=zstd "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -990,7 +990,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add zstd layer to the image.
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=zstd "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -1013,7 +1013,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# Add another zstd layer to the image, by making use of the auto selection.
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle --compress=auto "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
@@ -1037,7 +1037,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	# the default.
 	umoci repack --image "${IMAGE}:${TAG}" --refresh-bundle "$BUNDLE"
 	[ "$status" -eq 0 ]
-	#image-verify "${IMAGE}" # image-tools cannot handle zstd
+	image-verify "${IMAGE}"
 
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
