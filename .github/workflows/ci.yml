@@ -127,7 +127,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: download ci image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
@@ -167,7 +167,7 @@ jobs:
         with:
           submodules: true
       - name: download ci image
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           name: ci-image.tar.zst
           path: ${{ github.workspace }}/.cache/
@@ -197,7 +197,7 @@ jobs:
     steps:
       - uses: actions/checkout@v4
       - name: download all coverage
-        uses: actions/download-artifact@v4
+        uses: actions/download-artifact@v5
         with:
           path: coverage
       - name: compute coverage
