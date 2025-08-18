@@ -134,7 +134,7 @@ func (e Engine) UpdateReference(ctx context.Context, refname string, descriptor 
 	}
 
 	// TODO: Handle refname = "".
-	var newIndex []ispec.Descriptor
+	newIndex := make([]ispec.Descriptor, 0, len(index.Manifests)+1)
 	for _, descriptor := range index.Manifests {
 		if descriptor.Annotations[ispec.AnnotationRefName] != refname {
 			newIndex = append(newIndex, descriptor)
@@ -177,7 +177,7 @@ func (e Engine) DeleteReference(ctx context.Context, refname string) error {
 	}
 
 	// TODO: Handle refname = "".
-	var newIndex []ispec.Descriptor
+	newIndex := make([]ispec.Descriptor, 0, len(index.Manifests))
 	for _, descriptor := range index.Manifests {
 		if descriptor.Annotations[ispec.AnnotationRefName] != refname {
 			newIndex = append(newIndex, descriptor)
@@ -206,7 +206,7 @@ func (e Engine) ListReferences(ctx context.Context) ([]string, error) {
 		return nil, fmt.Errorf("get top-level index: %w", err)
 	}
 
-	var refs []string
+	refs := make([]string, 0, len(index.Manifests))
 	for _, descriptor := range index.Manifests {
 		ref, ok := descriptor.Annotations[ispec.AnnotationRefName]
 		if ok {

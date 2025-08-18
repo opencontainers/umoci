@@ -487,6 +487,7 @@ func Create(path string) (Err error) {
 			SchemaVersion: 2, // FIXME: This is hardcoded at the moment.
 		},
 		MediaType: ispec.MediaTypeImageIndex,
+		Manifests: []ispec.Descriptor{},
 	}
 	if err := json.NewEncoder(indexFh).Encode(defaultIndex); err != nil {
 		return fmt.Errorf("encode index.json: %w", err)

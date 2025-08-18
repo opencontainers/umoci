@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Fixed ###
+* For images with an empty `index.json`, umoci will no longer incorrectly set
+  the `manifests` entry to `null` (which was technically a violation of the
+  specification, though such images cannot be pushed or interacted with outside
+  of umoci).
+
 ### Changed ###
 * We now use `go:embed` to fill the version information of `umoci --version`,
   allowing for users to get a reasonable binary with `go install`. However, we
