@@ -34,7 +34,7 @@ jobs:
   release:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
       - run: make release
       - name: upload artifacts
@@ -46,7 +46,7 @@ jobs:
   validate:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
           go-version: '^1'
@@ -65,7 +65,7 @@ jobs:
       COVERAGE: umoci.coverage
       GOCOVERDIR: umoci.coverdir
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - uses: actions/setup-go@v5
         with:
           go-version: '^1'
@@ -92,7 +92,7 @@ jobs:
   linux-ci-image:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: get current date
         id: date
         run: |
@@ -125,7 +125,7 @@ jobs:
       COVERAGE: umoci.coverage
       GOCOVERDIR: umoci.coverdir
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: download ci image
         uses: actions/download-artifact@v5
         with:
@@ -163,7 +163,7 @@ jobs:
       COVERAGE: umoci.coverage
       GOCOVERDIR: umoci.coverdir
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
         with:
           submodules: true
       - name: download ci image
@@ -195,7 +195,7 @@ jobs:
     env:
       GOCOVERDIR: umoci.coverage
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v5
       - name: download all coverage
         uses: actions/download-artifact@v5
         with:
