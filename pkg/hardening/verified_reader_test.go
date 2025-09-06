@@ -100,7 +100,7 @@ func TestValidTrailing(t *testing.T) {
 			verifiedReader := &VerifiedReadCloser{
 				Reader:         io.NopCloser(buffer),
 				ExpectedDigest: expectedDigest,
-				ExpectedSize:   -1,
+				ExpectedSize:   int64(size),
 			}
 
 			// Read *half* of the bytes, leaving some remaining. We should get
@@ -111,7 +111,7 @@ func TestValidTrailing(t *testing.T) {
 			// On close we shouldn't get an error, even though there are
 			// trailing bytes still in the buffer.
 			err = verifiedReader.Close()
-			require.NoError(t, err, "digest (size ignored) should be correct on Close")
+			require.NoError(t, err, "digest should be correct on Close")
 		})
 	}
 }
