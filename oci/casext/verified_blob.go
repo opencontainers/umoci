@@ -20,6 +20,8 @@ package casext
 
 import (
 	"context"
+	"errors"
+	"fmt"
 	"io"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -27,12 +29,18 @@ import (
 	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
+var errInvalidDescriptorSize = errors.New("descriptor size must not be negative")
+
 // GetVerifiedBlob returns a VerifiedReadCloser for retrieving a blob from the
 // image, which the caller must Close() *and* read-to-EOF (checking the error
 // code of both). Returns ErrNotExist if the digest is not found, and
 // ErrBlobDigestMismatch on a mismatched blob digest. In addition, the reader
 // is limited to the descriptor.Size.
 func (e Engine) GetVerifiedBlob(ctx context.Context, descriptor ispec.Descriptor) (io.ReadCloser, error) {
+	// Negative sizes are not permitted by the spec, and are a DoS vector.
+	if descriptor.Size < 0 {
+		return nil, fmt.Errorf("invalid descriptor: %w", errInvalidDescriptorSize)
+	}
 	reader, err := e.GetBlob(ctx, descriptor.Digest)
 	return &hardening.VerifiedReadCloser{
 		Reader:         reader,

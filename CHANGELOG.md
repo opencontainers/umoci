@@ -19,6 +19,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   the `manifests` entry to `null` (which was technically a violation of the
   specification, though such images cannot be pushed or interacted with outside
   of umoci).
+* Based on [some recent developments in the image-spec][image-spec#1285], umoci
+  will now produce an error if it encounters descriptors with a negative size
+  (this was a potential DoS vector previously) as well as a theoretical attack
+  where an attacker would endlessly write to a blob (this would not be
+  generally exploitable for images with descriptors).
 
 ### Changed ###
 * We now use `go:embed` to fill the version information of `umoci --version`,
@@ -33,6 +38,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   (and after that, we may choose to keep the `jq`-based validators as a
   double-check that our own validators are working correctly).
 
+[image-spec#1285]: https://github.com/opencontainers/image-spec/pull/1285
 [docker-library/meta-scripts]: https://github.com/docker-library/meta-scripts
 
 ## [0.5.0] - 2025-05-21 ##
