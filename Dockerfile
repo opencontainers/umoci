@@ -31,6 +31,7 @@ RUN zypper -n in \
 		bats \
 		bc \
 		curl \
+		file \
 		git \
 		gnu_parallel \
 		"go>=1.23" \
