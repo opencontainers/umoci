@@ -244,10 +244,17 @@ func (e *dirEngine) GetBlob(_ context.Context, digest digest.Digest) (io.ReadClo
 	if err != nil {
 		return nil, fmt.Errorf("open blob: %w", err)
 	}
+	st, err := fh.Stat()
+	if err != nil {
+		return nil, fmt.Errorf("stat blob: %w", err)
+	}
 	return &hardening.VerifiedReadCloser{
 		Reader:         fh,
 		ExpectedDigest: digest,
-		ExpectedSize:   int64(-1), // We don't know the expected size.
+		// Assume the file size is the blob size. This is almost certainly true
+		// in general, and if an attacker is modifying the blobs underneath us
+		// then snapshotting the size makes sure we don't read endlessly.
+		ExpectedSize: st.Size(),
 	}, nil
 }
 
