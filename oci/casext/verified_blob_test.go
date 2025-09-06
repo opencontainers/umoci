@@ -22,9 +22,11 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"testing"
 
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -44,6 +46,30 @@ func TestGetVerifiedBlob(t *testing.T) {
 
 	descMap := fakeSetupEngine(t, engineExt)
 	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
+
+	t.Run("NonExist", func(t *testing.T) {
+		for idx, test := range descMap {
+			test := test // copy iterator
+			t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
+				ctx := context.Background()
+
+				const badDigest = digest.Digest("sha256:000111222333444555666777888999aaabbbcccdddeeefff0123456789abcdef")
+				desc := test.result
+
+				badDescriptor := ispec.Descriptor{
+					MediaType: desc.MediaType,
+					Digest:    badDigest,
+					Size:      desc.Size,
+				}
+
+				blob, err := engineExt.GetVerifiedBlob(ctx, badDescriptor)
+				assert.ErrorIs(t, err, os.ErrNotExist, "get non-existent verified blob (negative descriptor size)") //nolint:testifylint // assert.*Error* makes more sense
+				if !assert.Nil(t, blob, "get verified blob (negative descriptor size)") {
+					_ = blob.Close()
+				}
+			})
+		}
+	})
 
 	t.Run("InvalidSize", func(t *testing.T) {
 		for idx, test := range descMap {

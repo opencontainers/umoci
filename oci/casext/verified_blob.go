@@ -42,9 +42,12 @@ func (e Engine) GetVerifiedBlob(ctx context.Context, descriptor ispec.Descriptor
 		return nil, fmt.Errorf("invalid descriptor: %w", errInvalidDescriptorSize)
 	}
 	reader, err := e.GetBlob(ctx, descriptor.Digest)
+	if err != nil {
+		return nil, err
+	}
 	return &hardening.VerifiedReadCloser{
 		Reader:         reader,
 		ExpectedDigest: descriptor.Digest,
 		ExpectedSize:   descriptor.Size,
-	}, err
+	}, nil
 }
