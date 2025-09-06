@@ -22,8 +22,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/apex/log"
 	"github.com/blang/semver/v4"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
+	"golang.org/x/sys/unix"
 )
 
 // FIXME: We currently use an unreleased version of the runtime-spec and so we
@@ -240,23 +242,30 @@ func ToRootless(spec *rspec.Spec) error {
 	})
 	// Add /etc/resolv.conf as an rbind.
 	const resolvConf = "/etc/resolv.conf"
-	// If we are using user namespaces, then we must make sure that we don't
-	// drop any of the CL_UNPRIVILEGED "locked" flags of the source "mount"
-	// when we bind-mount. The reason for this is that at the point when runc
-	// sets up the root filesystem, it is already inside a user namespace, and
-	// thus cannot change any flags that are locked.
-	unprivOpts, err := getUnprivilegedMountFlags(resolvConf)
-	if err != nil {
-		return fmt.Errorf("inspecting mount flags of %s: %w", resolvConf, err)
+	if err := unix.Access(resolvConf, unix.F_OK); err != nil {
+		// If /etc/resolv.conf doesn't exist (such as inside OBS), just log a
+		// warning and continue on. In the worst case, you'll just end up with
+		// a non-networked container.
+		log.Warnf("rootless configuration: automatic bind-mount for %q cannot be added as the source doesn't exist", resolvConf)
+	} else {
+		// If we are using user namespaces, then we must make sure that we don't
+		// drop any of the CL_UNPRIVILEGED "locked" flags of the source "mount"
+		// when we bind-mount. The reason for this is that at the point when runc
+		// sets up the root filesystem, it is already inside a user namespace, and
+		// thus cannot change any flags that are locked.
+		unprivOpts, err := getUnprivilegedMountFlags(resolvConf)
+		if err != nil {
+			return fmt.Errorf("inspecting mount flags of %s: %w", resolvConf, err)
+		}
+		mounts = append(mounts, rspec.Mount{
+			// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
+			Type:        "bind",
+			Destination: resolvConf,
+			Source:      resolvConf,
+			Options:     append(unprivOpts, []string{"rbind", "ro"}...),
+		})
+		spec.Mounts = mounts
 	}
-	mounts = append(mounts, rspec.Mount{
-		// NOTE: "type: bind" is silly here, see opencontainers/runc#2035.
-		Type:        "bind",
-		Destination: resolvConf,
-		Source:      resolvConf,
-		Options:     append(unprivOpts, []string{"rbind", "ro"}...),
-	})
-	spec.Mounts = mounts
 
 	// Remove cgroup settings.
 	spec.Linux.Resources = nil
