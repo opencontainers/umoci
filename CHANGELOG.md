@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+## [0.5.1] - 2025-09-05 ##
+
+> 🖤 Yuki (2021-2025)
+
 ### Fixed ###
 * For images with an empty `index.json`, umoci will no longer incorrectly set
   the `manifests` entry to `null` (which was technically a violation of the
@@ -744,7 +748,8 @@ systems.
   + `repack`
   + `config`
 
-[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.5.0...HEAD
+[Unreleased]: https://github.com/opencontainers/umoci/compare/v0.5.1...HEAD
+[0.5.1]: https://github.com/opencontainers/umoci/compare/v0.5.0...v0.5.1
 [0.5.0]: https://github.com/opencontainers/umoci/compare/v0.4.7...v0.5.0
 [0.4.7]: https://github.com/opencontainers/umoci/compare/v0.4.6...v0.4.7
 [0.4.6]: https://github.com/opencontainers/umoci/compare/v0.4.5...v0.4.6
