@@ -33,8 +33,9 @@ import (
 // Exported errors for verification issues that occur during processing within
 // VerifiedReadCloser.
 var (
-	ErrDigestMismatch = errors.New("verified reader digest mismatch")
-	ErrSizeMismatch   = errors.New("verified reader size mismatch")
+	ErrDigestMismatch      = errors.New("verified reader digest mismatch")
+	ErrSizeMismatch        = errors.New("verified reader size mismatch")
+	ErrInvalidExpectedSize = errors.New("verified reader has invalid expected size")
 )
 
 // VerifiedReadCloser is a basic io.ReadCloser which allows for simple
@@ -87,21 +88,25 @@ func (v *VerifiedReadCloser) isNoop() bool {
 		innerV.ExpectedSize == v.ExpectedSize
 }
 
+func (v *VerifiedReadCloser) check() error {
+	if v.ExpectedSize < 0 {
+		return fmt.Errorf("%w: expected size must be non-negative", ErrInvalidExpectedSize)
+	}
+	return nil
+}
+
 func (v *VerifiedReadCloser) verify(nilErr error) error {
 	// Digest mismatch (always takes precedence)?
 	if actualDigest := v.digester.Digest(); actualDigest != v.ExpectedDigest {
 		return fmt.Errorf("expected %s not %s: %w", v.ExpectedDigest, actualDigest, ErrDigestMismatch)
 	}
-	// Do we need to check the size for mismatches?
-	if v.ExpectedSize >= 0 {
-		switch {
-		// Not enough bytes in the stream.
-		case v.currentSize < v.ExpectedSize:
-			return fmt.Errorf("expected %d bytes (only %d bytes in stream): %w", v.ExpectedSize, v.currentSize, ErrSizeMismatch)
-		// We don't read the entire blob, so the message needs to be slightly adjusted.
-		case v.currentSize > v.ExpectedSize:
-			return fmt.Errorf("expected %d bytes (extra bytes in stream): %w", v.ExpectedSize, ErrSizeMismatch)
-		}
+	switch {
+	// Not enough bytes in the stream.
+	case v.currentSize < v.ExpectedSize:
+		return fmt.Errorf("expected %d bytes (only %d bytes in stream): %w", v.ExpectedSize, v.currentSize, ErrSizeMismatch)
+	// We don't read the entire blob, so the message needs to be slightly adjusted.
+	case v.currentSize > v.ExpectedSize:
+		return fmt.Errorf("expected %d bytes (extra bytes in stream): %w", v.ExpectedSize, ErrSizeMismatch)
 	}
 	// Forward the provided error.
 	return nilErr
@@ -111,14 +116,13 @@ func (v *VerifiedReadCloser) verify(nilErr error) error {
 // EOF.  Make sure that you always check for EOF and read-to-the-end for all
 // files.
 func (v *VerifiedReadCloser) Read(p []byte) (n int, err error) {
+	if err := v.check(); err != nil {
+		return 0, err
+	}
 	// Make sure we don't read after v.ExpectedSize has been passed.
 	err = io.EOF
 	left := v.ExpectedSize - v.currentSize
 	switch {
-	// ExpectedSize has been disabled.
-	case v.ExpectedSize < 0:
-		n, err = v.Reader.Read(p)
-
 	// We still have something left to read.
 	case left > 0:
 		if int64(len(p)) > left {
@@ -180,6 +184,9 @@ func (v *VerifiedReadCloser) sourceName() string {
 // Close is a wrapper around VerifiedReadCloser.Reader, but with a digest check
 // which will return an error if the underlying Close() didn't.
 func (v *VerifiedReadCloser) Close() error {
+	if err := v.check(); err != nil {
+		return err
+	}
 	// Consume any remaining bytes to make sure that we've actually read to the
 	// end of the stream. VerifiedReadCloser.Read will not read past
 	// ExpectedSize+1, so we don't need to add a limit here.

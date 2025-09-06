@@ -60,7 +60,7 @@ func TestValid(t *testing.T) {
 	}
 }
 
-func TestValidIgnoreLength(t *testing.T) {
+func TestNegativeExpectedSize(t *testing.T) {
 	for size := 1; size <= 16384; size *= 2 {
 		t.Run(fmt.Sprintf("size:%d", size), func(t *testing.T) {
 			// Fill buffer with random data.
@@ -76,13 +76,20 @@ func TestValidIgnoreLength(t *testing.T) {
 				ExpectedSize:   -1,
 			}
 
-			// Make sure if we copy-to-EOF we get no errors.
-			_, err = io.Copy(io.Discard, verifiedReader)
-			require.NoError(t, err, "digest (size ignored) should be correct on EOF")
+			// Make sure that negative ExpectedSize always fails.
+			n, err := io.Copy(io.Discard, verifiedReader)
+			assert.ErrorIs(t, err, ErrInvalidExpectedSize, "io.Copy (with ExpectedSize < 0) should fail") //nolint:testifylint // assert.*Error* makes more sense
+			assert.Zero(t, n, "io.Copy (with ExpectedSize < 0) should read nothing")
+
+			// Bad ExpectedSize should read no data.
+			assert.Equal(t, size, buffer.Len(), "io.Copy (with ExpectedSize < 0) should not have read any data")
 
 			// And on close we shouldn't get an error either.
 			err = verifiedReader.Close()
-			require.NoError(t, err, "digest (size ignored) should be correct on Close")
+			assert.ErrorIs(t, err, ErrInvalidExpectedSize, "Close (with ExpectedSize < 0) should fail") //nolint:testifylint // assert.*Error* makes more sense
+
+			// Bad ExpectedSize should read no data.
+			assert.Equal(t, size, buffer.Len(), "close (with ExpectedSize < 0) should not have read any data")
 		})
 	}
 }
@@ -144,44 +151,6 @@ func TestInvalidDigest(t *testing.T) {
 			err = verifiedReader.Close()
 			assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on Close") //nolint:testifylint // assert.*Error* makes more sense
 		})
-	}
-}
-
-func TestInvalidDigest_Trailing_NoExpectedSize(t *testing.T) {
-	for size := 1; size <= 16384; size *= 2 {
-		for delta := 1; delta-1 <= size/2; delta *= 2 {
-			t.Run(fmt.Sprintf("size:%d_delta:%d", size, delta), func(t *testing.T) {
-				// Fill buffer with random data.
-				buffer := new(bytes.Buffer)
-				_, err := io.CopyN(buffer, rand.Reader, int64(size))
-				require.NoError(t, err, "fill buffer with random data")
-
-				// Generate a correct hash (for a shorter buffer), but don't
-				// verify the size -- this is to make sure that we actually
-				// read all the bytes.
-				shortBuffer := buffer.Bytes()[:size-delta]
-				expectedDigest := digest.SHA256.FromBytes(shortBuffer)
-				verifiedReader := &VerifiedReadCloser{
-					Reader:         io.NopCloser(buffer),
-					ExpectedDigest: expectedDigest,
-					ExpectedSize:   -1,
-				}
-
-				// Read up to the end of the short buffer. We should get no
-				// errors.
-				_, err = io.CopyN(io.Discard, verifiedReader, int64(size-delta))
-				require.NoErrorf(t, err, "should get no errors when reading %d (%d-%d) bytes", size-delta, size, delta)
-
-				// Check that the digest does actually match right now.
-				verifiedReader.init()
-				err = verifiedReader.verify(nil)
-				require.NoError(t, err, "digest check should succeed at the point we finish the subset")
-
-				// On close we should get the error.
-				err = verifiedReader.Close()
-				assert.ErrorIs(t, err, ErrDigestMismatch, "digest should be invalid on Close") //nolint:testifylint // assert.*Error* makes more sense
-			})
-		}
 	}
 }
 
