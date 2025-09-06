@@ -37,6 +37,11 @@ import (
 	"github.com/opencontainers/umoci/pkg/fseval"
 )
 
+func isForbiddenXattr(xattrName string) bool {
+	found, ok := getXattrFilter(xattrName)
+	return ok && found == forbiddenXattrFilter{}
+}
+
 func getAllXattrs(t *testing.T, path string) map[string]string {
 	names, err := system.Llistxattr(path)
 	require.NoErrorf(t, err, "fetch all xattrs for %q", path)
@@ -201,6 +206,14 @@ func testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T, tarX
 				fullPath := filepath.Join(dir, path)
 
 				xattrs := getAllXattrs(t, fullPath)
+				// Strip out any forbidden xattrs from the returned set.
+				// TODO: This is a little ugly -- ideally we would create
+				// copies of the necessary maps with special xattrs added.
+				for name := range xattrs {
+					if isForbiddenXattr(name) {
+						delete(xattrs, name)
+					}
+				}
 
 				if test.expectRemap {
 					assert.Equalf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v remapped properly", path, de.xattrs)
@@ -212,7 +225,6 @@ func testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T, tarX
 					require.NoErrorf(t, err, "isOverlayWhiteout(%q)", path)
 					assert.Falsef(t, isWo, "isOverlayWhiteout(%q): regular entries with overlayfs xattrs should not end up being unpacked with overlayfs whiteout xattrs", path)
 				} else {
-					xattrs := getAllXattrs(t, fullPath)
 					assert.Equalf(t, de.xattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
 					assert.NotEqualf(t, de.remapXattrs, xattrs, "UnpackEntry(%q): expected to see %#v not be remapped", path, de.xattrs)
 				}
@@ -347,6 +359,14 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 				// forbidden xattr after all the extractions.
 				if value, ok := de.autoXattrs[forbiddenTestXattr]; ok {
 					wantXattrs[forbiddenTestXattr] = value
+				}
+				// If we are running on an SELinux system (or even more
+				// unlikely, on top of nfsv4) we need to also allow any masked
+				// xattrs auto-applied by the system.
+				for gotXattr, value := range xattrs {
+					if isForbiddenXattr(gotXattr) {
+						wantXattrs[gotXattr] = value
+					}
 				}
 				assert.Equalf(t, wantXattrs, xattrs, "UnpackEntry(%q): expected to only see specific subset of applied xattrs", path)
 			}
