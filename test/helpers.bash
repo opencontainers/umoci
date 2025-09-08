@@ -25,7 +25,6 @@ INTEGRATION_ROOT=$(dirname "$(readlinkf_posix "$BASH_SOURCE")")
 UMOCI="${UMOCI:-${INTEGRATION_ROOT}/../umoci}"
 # For some reason $(whence ...) and $(where ...) are broken.
 RUNC="/usr/bin/runc"
-GOMTREE="/usr/bin/gomtree"
 
 # Used as a poor man's oci-image-tool validate.
 DOCKER_METASCRIPT_DIR="${INTEGRATION_ROOT}/../hack/docker-meta-scripts"
@@ -196,17 +195,18 @@ function umoci() {
 	sane_run "$UMOCI" "${args[@]}"
 }
 
-function gomtree() {
-	local args=("$@")
+function mtree-validate() {
+	umoci raw mtree-validate --umoci-keywords "$@"
+	local umoci_status="$status"
 
-	# We're rootless. Note that the "-rootless" flag is actually an out-of-tree
-	# patch applied by openSUSE here:
-	#   <https://build.opensuse.org/package/show/Virtualization:containers/go-mtree>.
-	if [[ "$IS_ROOTLESS" != 0 ]]; then
-		args+=("--rootless")
+	if [[ "$IS_ROOTLESS" == 0 ]]; then
+		# In the non-rootless case, we should cross-check that umoci's mtree is
+		# not accidentally ignoring mtree errors. Upstream gomtree doesn't
+		# support rootless mode.
+		sane_run gomtree validate -K sha256digest "$@"
+
+		[[ "$status" == "$umoci_status" ]] || fail "umoci raw mtree-validate and gomtree have different results"
 	fi
-
-	sane_run "$GOMTREE" -K sha256digest "${args[@]}"
 }
 
 function runc() {

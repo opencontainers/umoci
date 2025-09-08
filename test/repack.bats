@@ -57,9 +57,9 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree succeeds on the old bundle, which is what this was
-	# generated from.
-	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
+	# Ensure that mtree validation succeeds on the old bundle, which is what
+	# this was generated from.
+	mtree-validate -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -209,9 +209,9 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree succeeds on the old bundle, which is what this was
-	# generated from.
-	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
+	# Ensure that mtree validation succeeds on the old bundle, which is what
+	# this was generated from.
+	mtree-validate -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -273,9 +273,9 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree succeeds on the old bundle, which is what this was
-	# generated from.
-	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
+	# Ensure that mtree validation succeeds on the old bundle, which is what
+	# this was generated from.
+	mtree-validate -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -795,8 +795,8 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	# Ensure the gomtree has been refreshed in the bundle
-	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
+	# Ensure the mtree manifest has been refreshed in the bundle
+	mtree-validate -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -806,12 +806,12 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree succeeds across bundles - they should be the same rootfs
-	# and have the same mtree manifest
-	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
+	# Ensure that mtree validation succeeds across bundles - they should be the
+	# same rootfs and have the same mtree manifest
+	mtree-validate -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
-	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
+	mtree-validate -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -830,10 +830,10 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Ensure all changes are reflected
-	gomtree -p "$ROOTFS_A" -f "$BUNDLE_C"/sha256_*.mtree
+	mtree-validate -p "$ROOTFS_A" -f "$BUNDLE_C"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
-	gomtree -p "$ROOTFS_C" -f "$BUNDLE_C"/sha256_*.mtree
+	mtree-validate -p "$ROOTFS_C" -f "$BUNDLE_C"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
