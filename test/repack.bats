@@ -913,7 +913,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-gzip"* ]]
+	[[ "$output" == *"application/gzip"* ]]
 }
 
 @test "umoci repack --compress=zstd" {
@@ -944,7 +944,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 }
 
 @test "umoci repack --compress=none" {
@@ -1006,7 +1006,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 
 	# Make sure we make a new tar layer.
 	touch "$ROOTFS/new-file2"
@@ -1029,7 +1029,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 
 	# Make sure we make a new tar layer.
 	touch "$ROOTFS/new-file3"
@@ -1053,7 +1053,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 }
 
 @test "umoci repack [cas file ownership]" {

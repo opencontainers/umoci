@@ -119,7 +119,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-gzip"* ]]
+	[[ "$output" == *"application/gzip"* ]]
 }
 
 @test "umoci raw add-layer --compress=zstd" {
@@ -149,7 +149,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 }
 
 @test "umoci raw add-layer --compress=none" {
@@ -209,7 +209,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 
 	# Add another zstd layer to the image, by making use of the auto selection.
 	umoci raw add-layer --image "${IMAGE}:${TAG}" --compress=auto "$UMOCI_TMPDIR/layer.tar"
@@ -230,7 +230,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 
 	# Add yet another zstd layer to the image, to show that --compress=auto is
 	# the default.
@@ -252,7 +252,7 @@ OCI_MEDIATYPE_LAYER="application/vnd.oci.image.layer.v1.tar"
 	layer_hash="$(jq -SMr '.history[-1].layer.digest' <<<"$stat_json" | tr : /)"
 	sane_run file -i "$IMAGE/blobs/$layer_hash"
 	[ "$status" -eq 0 ]
-	[[ "$output" == *"application/x-zstd"* ]]
+	[[ "$output" == *"application/zstd"* ]]
 }
 
 @test "umoci raw add-layer [invalid arguments]" {
