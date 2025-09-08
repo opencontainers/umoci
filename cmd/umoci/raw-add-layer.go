@@ -134,9 +134,17 @@ func rawAddLayer(ctx *cli.Context) (Err error) {
 		return fmt.Errorf("get image metadata: %w", err)
 	}
 
+	sourceDateEpoch, err := parseSourceDateEpoch()
+	if err != nil {
+		return err
+	}
+
 	var history *ispec.History
 	if !ctx.Bool("no-history") {
 		created := time.Now()
+		if !sourceDateEpoch.IsZero() {
+			created = sourceDateEpoch
+		}
 		history = &ispec.History{
 			Author:     imageMeta.Author,
 			Comment:    "",

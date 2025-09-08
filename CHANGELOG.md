@@ -14,6 +14,25 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Added ###
+* umoci now has [`SOURCE_DATE_EPOCH`][source-date-epoch] support, to attempt to
+  make it easier to create reproducible images. Our behaviour is modelled after
+  `tar --clamp-mtime`, meaning that `SOURCE_DATE_EPOCH` will only be used to
+  modify the timestamps of files **newer** than `SOURCE_DATE_EPOCH`.
+
+  As `umoci repack` works based on diffs, this also means that only files that
+  were modified (and will thus be usually be included in the new layer) will
+  have their timestamps rewritten.
+
+  `--history.created` will also now default to `SOURCE_DATE_EPOCH` (if set).
+
+  With this change, umoci should be fairly compliant with reproducible builds.
+  Please let us know if you find any other problematic areas in umoci (we are
+  investigating some other possible causes of instability such as Go map
+  iteration).
+
+[source-date-epoch]: https://reproducible-builds.org/docs/source-date-epoch/
+
 ## [0.5.1] - 2025-09-05 ##
 
 > 🖤 Yuki (2021-2025)
