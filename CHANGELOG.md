@@ -32,6 +32,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Please let us know if you find any other problematic areas in umoci (we are
   investigating some other possible causes of instability such as Go map
   iteration).
+* In order to avoid the need for a [patched `gomtree` package][obs-gomtree]
+  that supports rootless mode, umoci now has a `umoci raw mtree-validate`
+  subcommand that implements the key `gomtree validate` features we need for
+  our integration tests.
+
+  Note that this subcommand is not intended for wider use outside of our tests
+  (and it is hidden from the help pages for a reason). Most users are probably
+  better off just using `gomtree`.
 
 ### Fixed ###
 * Some minor aspects of how `umoci stat` would filter special characters in
@@ -42,6 +50,7 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   theory could lead to inconsistent results).
 
 [source-date-epoch]: https://reproducible-builds.org/docs/source-date-epoch/
+[obs-gomtree]: https://build.opensuse.org/package/show/Virtualization:containers/go-mtree
 
 ## [0.5.1] - 2025-09-05 ##
 
