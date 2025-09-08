@@ -252,6 +252,16 @@ func uxLayout(cmd cli.Command) cli.Command {
 	return cmd
 }
 
+func uxRootless(cmd cli.Command) cli.Command {
+	cmd.Flags = append(cmd.Flags, []cli.Flag{
+		cli.BoolFlag{
+			Name:  "rootless",
+			Usage: "enable rootless command support",
+		},
+	}...)
+	return cmd
+}
+
 func uxRemap(cmd cli.Command) cli.Command {
 	cmd.Flags = append(cmd.Flags, []cli.Flag{
 		cli.StringSliceFlag{
@@ -262,13 +272,8 @@ func uxRemap(cmd cli.Command) cli.Command {
 			Name:  "gid-map",
 			Usage: "specifies a gid mapping to use (container:host:size)",
 		},
-		cli.BoolFlag{
-			Name:  "rootless",
-			Usage: "enable rootless command support",
-		},
 	}...)
-
-	return cmd
+	return uxRootless(cmd)
 }
 
 // fetchMeta returns the requested metadata from the current [cli.Context] as
