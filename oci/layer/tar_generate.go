@@ -155,6 +155,12 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 	// changes to our output on a compiler bump...
 	hdr.Uname = ""
 	hdr.Gname = ""
+	// archive/tar will round timestamps to their nearest second, while
+	// tar_time (for our mtree validation) will truncate timestamps. For
+	// consistency, explicitly truncate them.
+	hdr.ModTime = hdr.ModTime.Truncate(time.Second)
+	hdr.AccessTime = hdr.AccessTime.Truncate(time.Second)
+	hdr.ChangeTime = hdr.ChangeTime.Truncate(time.Second)
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {

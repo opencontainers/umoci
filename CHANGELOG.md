@@ -36,6 +36,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 ### Fixed ###
 * Some minor aspects of how `umoci stat` would filter special characters in
   history entries have been resolved.
+* `umoci repack` will now truncate the `mtime` of files added to the layer tar
+  archives. Previously, we would defer to the Go stdlib's `archive/tar` which
+  rounds to the nearest second (which is incompatible with `gomtree` and so in
+  theory could lead to inconsistent results).
 
 [source-date-epoch]: https://reproducible-builds.org/docs/source-date-epoch/
 
