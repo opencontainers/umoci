@@ -119,8 +119,8 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	# Ensure that gomtree succeeds on the new unpacked rootfs.
-	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
+	# Ensure that mtree validation succeeds on the new unpacked rootfs.
+	mtree-validate -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
