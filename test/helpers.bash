@@ -186,7 +186,7 @@ function umoci() {
 	args+=("$1")
 
 	# Set --rootless for commands that require it when we're rootless.
-	if [[ "$IS_ROOTLESS" != 0 && "$1" =~ unpack|insert ]]; then
+	if [[ "$IS_ROOTLESS" != 0 && "$1" =~ unpack|insert|mtree-validate ]]; then
 		args+=("--rootless")
 	fi
 
