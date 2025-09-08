@@ -14,13 +14,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.opensuse.org/opensuse/leap:15.6
+FROM registry.opensuse.org/opensuse/leap:16.0
 MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 
 # We have to use out-of-tree repos because several packages haven't been merged
 # into openSUSE Leap yet, or are out of date in Leap.
-RUN zypper mr -d repo-non-oss repo-update-non-oss && \
-	zypper ar -f -p 10 -g 'obs://Virtualization:containers/$releasever' obs-vc && \
+RUN zypper ar -f -p 10 -g 'obs://Virtualization:containers/$releasever' obs-vc && \
 	zypper ar -f -p 10 -g 'obs://devel:tools/$releasever'               obs-tools && \
 	zypper ar -f -p 10 -g 'obs://devel:languages:go/$releasever'        obs-go && \
 	zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever'    obs-gomtree && \
@@ -31,7 +30,9 @@ RUN zypper -n in \
 		bats \
 		bc \
 		curl \
+		diff \
 		file \
+		findutils \
 		git \
 		gnu_parallel \
 		"go>=1.23" \
