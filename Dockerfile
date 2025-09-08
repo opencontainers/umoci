@@ -22,7 +22,6 @@ MAINTAINER "Aleksa Sarai <asarai@suse.com>"
 RUN zypper ar -f -p 10 -g 'obs://Virtualization:containers/$releasever' obs-vc && \
 	zypper ar -f -p 10 -g 'obs://devel:tools/$releasever'               obs-tools && \
 	zypper ar -f -p 10 -g 'obs://devel:languages:go/$releasever'        obs-go && \
-	zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever'    obs-gomtree && \
 	zypper --gpg-auto-import-keys -n ref && \
 	zypper -n up
 RUN zypper -n in \
@@ -36,7 +35,6 @@ RUN zypper -n in \
 		git \
 		gnu_parallel \
 		"go>=1.24" \
-		go-mtree \
 		gzip \
 		jq \
 		libcap-progs \
@@ -51,6 +49,7 @@ RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
+RUN go install github.com/vbatts/go-mtree/cmd/gomtree@v0.6.0
 
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
