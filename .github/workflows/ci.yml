@@ -54,6 +54,10 @@ jobs:
         uses: golangci/golangci-lint-action@v8
         with:
           version: v2.1
+      - name: go fix
+        run: |
+          go fix ./...
+          git diff --exit-code
       - name: gopls modernise
         run: |
           go run golang.org/x/tools/gopls/internal/analysis/modernize/cmd/modernize@latest -fix -test ./...
