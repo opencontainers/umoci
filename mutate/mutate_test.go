@@ -92,7 +92,7 @@ func setup(t *testing.T) (cas.Engine, ispec.Descriptor) {
 	// Push the base layer.
 	diffidDigester := cas.BlobAlgorithm.Digester()
 	hashReader := io.TeeReader(&buffer, diffidDigester.Hash())
-	layerDigest, layerSize, err := engine.PutBlob(context.Background(), hashReader)
+	layerDigest, layerSize, err := engine.PutBlob(t.Context(), hashReader)
 	require.NoError(t, err)
 	assert.Equal(t, expectedLayerDigest, layerDigest, "unexpected layer digest")
 	assert.Equal(t, expectedLayerSize, layerSize, "unexpected layer size")
@@ -114,7 +114,7 @@ func setup(t *testing.T) (cas.Engine, ispec.Descriptor) {
 		},
 	}
 
-	configDigest, configSize, err := engineExt.PutBlobJSON(context.Background(), config)
+	configDigest, configSize, err := engineExt.PutBlobJSON(t.Context(), config)
 	require.NoError(t, err)
 	assert.Equal(t, expectedConfigDigest, configDigest, "unexpected config digest")
 	assert.Equal(t, expectedConfigSize, configSize, "unexpected config size")
@@ -139,7 +139,7 @@ func setup(t *testing.T) (cas.Engine, ispec.Descriptor) {
 		},
 	}
 
-	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(context.Background(), manifest)
+	manifestDigest, manifestSize, err := engineExt.PutBlobJSON(t.Context(), manifest)
 	require.NoError(t, err)
 	assert.Equal(t, expectedManifestDigest, manifestDigest, "unexpected manifest digest")
 	assert.Equal(t, expectedManifestSize, manifestSize, "unexpected manifest size")
@@ -159,7 +159,7 @@ func TestMutateCache(t *testing.T) {
 	require.NoError(t, err)
 
 	// Check that caching actually works.
-	err = mutator.cache(context.Background())
+	err = mutator.cache(t.Context())
 	require.NoError(t, err, "getting cache")
 
 	// Check manifest.
@@ -214,10 +214,10 @@ func TestMutateAdd(t *testing.T) {
 		EmptyLayer: false,
 		Comment:    "new layer",
 	}
-	newLayerDesc, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &newLayerHist, blobcompress.Gzip, annotations)
+	newLayerDesc, err := mutator.Add(t.Context(), ispec.MediaTypeImageLayer, buffer, &newLayerHist, blobcompress.Gzip, annotations)
 	require.NoError(t, err, "add layer")
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptor, err := mutator.Commit(t.Context())
 	require.NoError(t, err, "commit changes")
 	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new and old descriptors should be different")
 
@@ -225,7 +225,7 @@ func TestMutateAdd(t *testing.T) {
 	require.NoError(t, err)
 
 	// Cache the data to check it.
-	err = mutator.cache(context.Background())
+	err = mutator.cache(t.Context())
 	require.NoError(t, err, "get cache")
 
 	// Check digests for new config and layer are different.
@@ -240,7 +240,7 @@ func TestMutateAdd(t *testing.T) {
 
 	assert.Equal(t, newLayerDesc, mutator.manifest.Layers[1], "new layer descriptor should match the one returned by mutator")
 
-	manifestFromFunction, err := mutator.Manifest(context.Background())
+	manifestFromFunction, err := mutator.Manifest(t.Context())
 	require.NoError(t, err, "get manifest")
 	assert.Equal(t, *mutator.manifest, manifestFromFunction, "mutator.Manifest() should return cached manifest")
 
@@ -263,7 +263,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 	fakeLayerTar := bytes.NewBufferString(fakeLayerData)
 
 	newLayerDescriptor, err := mutator.Add(
-		context.Background(),
+		t.Context(),
 		mediaType,
 		fakeLayerTar,
 		&ispec.History{Comment: "fake layer"},
@@ -291,7 +291,7 @@ func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, 
 
 	// Double-check that the blob actually used the expected compression
 	// algorithm.
-	layerRdr, err := mutator.engine.GetVerifiedBlob(context.Background(), newLayerDescriptor)
+	layerRdr, err := mutator.engine.GetVerifiedBlob(t.Context(), newLayerDescriptor)
 	require.NoError(t, err)
 	defer func() {
 		require.NoError(t, layerRdr.Close())
@@ -328,7 +328,6 @@ func TestMutateAddCompression(t *testing.T) {
 		{"Gzip", blobcompress.Gzip, blobcompress.Gzip},
 		{"Zstd", blobcompress.Zstd, blobcompress.Zstd},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
 		})
@@ -353,7 +352,6 @@ func TestMutateAddCompression(t *testing.T) {
 			{"ExplicitNoop", blobcompress.Noop, blobcompress.Noop},
 			{"AutoGzip-SkipNoop", nil, blobcompress.Gzip},
 		} {
-			test := test // copy iterator
 			t.Run(fmt.Sprintf("Step%d-%s", i, test.name), func(t *testing.T) {
 				testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
 			})
@@ -372,31 +370,31 @@ func TestMutateAddExisting(t *testing.T) {
 	buffer := bytes.NewBufferString("contents")
 
 	// Add a new layer.
-	_, err = mutator.Add(context.Background(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
+	_, err = mutator.Add(t.Context(), ispec.MediaTypeImageLayer, buffer, &ispec.History{
 		Comment: "new layer",
 	}, blobcompress.Gzip, nil)
 	require.NoError(t, err, "add layer")
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptor, err := mutator.Commit(t.Context())
 	require.NoError(t, err, "commit change")
 
 	mutator, err = New(engine, newDescriptor)
 	require.NoError(t, err)
 
 	// add the layer again; first loading the cache so we can use the existing one
-	err = mutator.cache(context.Background())
+	err = mutator.cache(t.Context())
 	require.NoError(t, err, "get cache")
 
 	diffID := mutator.config.RootFS.DiffIDs[len(mutator.config.RootFS.DiffIDs)-1]
 	history := ispec.History{Comment: "hello world"}
 	layerDesc := mutator.manifest.Layers[len(mutator.manifest.Layers)-1]
-	err = mutator.AddExisting(context.Background(), layerDesc, &history, diffID)
+	err = mutator.AddExisting(t.Context(), layerDesc, &history, diffID)
 	require.NoError(t, err, "add existing layer")
 
-	_, err = mutator.Commit(context.Background())
+	_, err = mutator.Commit(t.Context())
 	require.NoError(t, err, "commit change")
 
-	manifestFromFunction, err := mutator.Manifest(context.Background())
+	manifestFromFunction, err := mutator.Manifest(t.Context())
 	require.NoError(t, err, "get manifest")
 	assert.Equal(t, *mutator.manifest, manifestFromFunction, "mutator.Manifest() should return cached manifest")
 
@@ -417,14 +415,14 @@ func TestMutateSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Change the config
-	err = mutator.Set(context.Background(), ispec.ImageConfig{
+	err = mutator.Set(t.Context(), ispec.ImageConfig{
 		User: "changed:user",
 	}, Meta{}, nil, &ispec.History{
 		Comment: "another layer",
 	})
 	require.NoError(t, err, "set config")
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptor, err := mutator.Commit(t.Context())
 	require.NoError(t, err, "commit change")
 	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new manifest descriptor digest should be different")
 
@@ -432,7 +430,7 @@ func TestMutateSet(t *testing.T) {
 	require.NoError(t, err)
 
 	// Cache the data to check it.
-	err = mutator.cache(context.Background())
+	err = mutator.cache(t.Context())
 	require.NoError(t, err, "get cache")
 
 	// Check digests are different.
@@ -461,12 +459,12 @@ func TestMutateSetNoHistory(t *testing.T) {
 	require.NoError(t, err)
 
 	// Change the config
-	err = mutator.Set(context.Background(), ispec.ImageConfig{
+	err = mutator.Set(t.Context(), ispec.ImageConfig{
 		User: "changed:user",
 	}, Meta{}, nil, nil)
 	require.NoError(t, err, "set config")
 
-	newDescriptor, err := mutator.Commit(context.Background())
+	newDescriptor, err := mutator.Commit(t.Context())
 	require.NoError(t, err, "commit change")
 	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new manifest descriptor digest should be different")
 
@@ -474,7 +472,7 @@ func TestMutateSetNoHistory(t *testing.T) {
 	require.NoError(t, err)
 
 	// Cache the data to check it.
-	err = mutator.cache(context.Background())
+	err = mutator.cache(t.Context())
 	require.NoError(t, err, "get cache")
 
 	// Check digests are different.
@@ -531,7 +529,7 @@ func TestMutatePath(t *testing.T) {
 				oldPath.Root(),
 			},
 		}
-		newRootDigest, newRootSize, err := engineExt.PutBlobJSON(context.Background(), newRoot)
+		newRootDigest, newRootSize, err := engineExt.PutBlobJSON(t.Context(), newRoot)
 		require.NoError(t, err, "failed to put new root blob json")
 		newRootDescriptor := ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageIndex,
@@ -551,10 +549,10 @@ func TestMutatePath(t *testing.T) {
 		require.NoError(t, err)
 
 		// Change the config in some minor way.
-		meta, err := mutator.Meta(context.Background())
+		meta, err := mutator.Meta(t.Context())
 		require.NoErrorf(t, err, "getting %d meta", idx)
 
-		config, err := mutator.Config(context.Background())
+		config, err := mutator.Config(t.Context())
 		require.NoErrorf(t, err, "getting %d config", idx)
 
 		// Change the label.
@@ -565,13 +563,13 @@ func TestMutatePath(t *testing.T) {
 		config.Config.Labels["org.opensuse.testidx"] = label
 
 		// Update it.
-		err = mutator.Set(context.Background(), config.Config, meta, nil, &ispec.History{
+		err = mutator.Set(t.Context(), config.Config, meta, nil, &ispec.History{
 			Comment: "change label " + label,
 		})
 		require.NoErrorf(t, err, "setting %d config", idx)
 
 		// Commit.
-		newPath, err := mutator.Commit(context.Background())
+		newPath, err := mutator.Commit(t.Context())
 		require.NoErrorf(t, err, "commit change %d", idx)
 
 		// Make sure that the paths are the same length but have different
@@ -586,13 +584,13 @@ func TestMutatePath(t *testing.T) {
 		}
 
 		// Emulate a reference resolution with walkDescriptorRoot.
-		walkPath, err := walkDescriptorRoot(context.Background(), engineExt, newPath.Root())
+		walkPath, err := walkDescriptorRoot(t.Context(), engineExt, newPath.Root())
 		if assert.NoErrorf(t, err, "walk new path %d", idx) {
 			assert.Equalf(t, newPath, walkPath, "walk of new path %d should give the same path", idx)
 		}
 
 		// Make sure the old path still exists (not necessary to be honest).
-		oldWalkPath, err := walkDescriptorRoot(context.Background(), engineExt, path.Root())
+		oldWalkPath, err := walkDescriptorRoot(t.Context(), engineExt, path.Root())
 		if assert.NoErrorf(t, err, "walk old path %d", idx) {
 			assert.Equalf(t, path, oldWalkPath, "walk of old path %d should give the same path", idx)
 		}

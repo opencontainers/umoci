@@ -152,13 +152,10 @@ func TestLutimesRelative(t *testing.T) {
 	var fiOld, fiParentOld, fiNew, fiParentNew unix.Stat_t
 
 	dir := t.TempDir()
-
-	oldwd, err := os.Getwd()
-	require.NoError(t, err)
-	_ = os.Chdir(dir)
-	defer os.Chdir(oldwd) //nolint:errcheck
+	t.Chdir(dir)
 
 	path := filepath.Join("some parent", " !! symlink here")
+	var err error
 
 	err = os.MkdirAll(filepath.Dir(path), 0o755)
 	require.NoError(t, err)

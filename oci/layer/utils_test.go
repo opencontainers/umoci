@@ -72,7 +72,6 @@ func TestMapRootless(t *testing.T) {
 		//{154, 992, &rootlesscontainers.Resource{Uid: 9982, Gid: rootlesscontainers.NoopID}, 9982, 992, false},
 		//{291, 875, &rootlesscontainers.Resource{Uid: 42158, Gid: 31337}, 42158, 31337, false},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			// Update baseHdr.
 			baseHdr.Uid = test.uid
@@ -129,7 +128,6 @@ func TestUnmapRootless(t *testing.T) {
 		{"NonRoot1", 333, 825, &rootlesscontainers.Resource{Uid: 333, Gid: 825}},
 		{"NonRoot2", 185, 9923, &rootlesscontainers.Resource{Uid: 185, Gid: 9923}},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			// Update baseHdr.
 			baseHdr.Uid = test.uid

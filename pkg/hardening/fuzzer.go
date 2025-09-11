@@ -1,5 +1,4 @@
 //go:build gofuzz
-// +build gofuzz
 
 // SPDX-License-Identifier: Apache-2.0
 /*

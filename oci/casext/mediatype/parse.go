@@ -45,7 +45,7 @@ var ErrNilReader = errors.New("")
 // order to determine the type of the struct (thus you must return the same
 // struct you would return in a non-nil reader scenario). Go doesn't have a way
 // for us to enforce this.
-type ParseFunc func(io.Reader) (interface{}, error)
+type ParseFunc func(io.Reader) (any, error)
 
 var (
 	lock sync.RWMutex
@@ -145,7 +145,7 @@ func RegisterTarget(mediaType string) {
 // But also handling the rdr == nil case which is needed for RegisterParser to
 // correctly detect what type T is. T must be a struct (this is verified by
 // RegisterParser).
-func JSONParser[T any](rdr io.Reader) (_ interface{}, err error) {
+func JSONParser[T any](rdr io.Reader) (_ any, err error) {
 	var v T
 	if rdr != nil {
 		err = json.NewDecoder(rdr).Decode(&v)
@@ -156,7 +156,7 @@ func JSONParser[T any](rdr io.Reader) (_ interface{}, err error) {
 	return v, err
 }
 
-func indexParser(rdr io.Reader) (interface{}, error) {
+func indexParser(rdr io.Reader) (any, error) {
 	// Construct a fake struct which contains fields that shouldn't exist, to
 	// detect images that have maliciously-inserted fields. CVE-2021-41190
 	var index struct {
@@ -183,7 +183,7 @@ func indexParser(rdr io.Reader) (interface{}, error) {
 	return index.Index, nil
 }
 
-func manifestParser(rdr io.Reader) (interface{}, error) {
+func manifestParser(rdr io.Reader) (any, error) {
 	// Construct a fake struct which contains fields that shouldn't exist, to
 	// detect images that have maliciously-inserted fields. CVE-2021-41190
 	var manifest struct {

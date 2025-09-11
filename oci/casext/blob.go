@@ -50,7 +50,7 @@ type Blob struct {
 	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
 	// ispec.MediaTypeImageConfig => ispec.Image
 	// unknown => io.ReadCloser
-	Data interface{}
+	Data any
 }
 
 // Close cleans up all of the resources for the opened blob.

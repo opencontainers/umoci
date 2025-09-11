@@ -1,5 +1,4 @@
 //go:build !darwin
-// +build !darwin
 
 // SPDX-License-Identifier: Apache-2.0
 /*

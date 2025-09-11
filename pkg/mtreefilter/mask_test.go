@@ -89,7 +89,6 @@ func TestMaskDeltas(t *testing.T) {
 		{"Overlapping", []string{"/", "file2"}},
 		{"Multiple", []string{"file2", filepath.Join("dir", "child2")}},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			simpleDiff := FilterDeltas(diff, MaskFilter(test.paths))
 			for _, delta := range simpleDiff {

@@ -33,7 +33,7 @@ import (
 
 // childDescriptors is a wrapper around MapDescriptors which just creates a
 // slice of all of the arguments, and doesn't modify them.
-func childDescriptors(i interface{}) []ispec.Descriptor {
+func childDescriptors(i any) []ispec.Descriptor {
 	var children []ispec.Descriptor
 	if err := MapDescriptors(i, func(descriptor ispec.Descriptor) ispec.Descriptor {
 		children = append(children, descriptor)

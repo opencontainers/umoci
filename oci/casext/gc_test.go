@@ -37,8 +37,6 @@ import (
 )
 
 func TestGCWithEmptyIndex(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -52,21 +50,19 @@ func TestGCWithEmptyIndex(t *testing.T) {
 	descMap := fakeSetupEngine(t, engineExt)
 	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
-	b, err := engine.ListBlobs(ctx)
+	b, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs before gc")
 	assert.NotEmpty(t, b, "fakeSetupEngine'd image should contain blobs")
 
-	err = engineExt.GC(ctx)
+	err = engineExt.GC(t.Context())
 	require.NoError(t, err, "gc")
 
-	b, err = engine.ListBlobs(ctx)
+	b, err = engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs after gc")
 	assert.Empty(t, b, "empty image should contain no blobs")
 }
 
 func TestGCWithNonEmptyIndex(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -80,7 +76,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	descMap := fakeSetupEngine(t, engineExt)
 	require.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
-	b, err := engine.ListBlobs(ctx)
+	b, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs")
 	assert.NotEmpty(t, b, "fakeSetupEngine'd image should contain blobs")
 	initalBlobNumber := len(b)
@@ -88,7 +84,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	// build a blob, manifest, index that will survive GC
 	content := "this is a test blob"
 	br := strings.NewReader(content)
-	digest, size, err := engine.PutBlob(ctx, br)
+	digest, size, err := engine.PutBlob(t.Context(), br)
 	require.NoError(t, err, "put blob")
 	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
@@ -113,7 +109,7 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 	data, err := json.Marshal(&m)
 	require.NoError(t, err, "marshal manifest json")
 	mr := bytes.NewReader(data)
-	digest, size, err = engine.PutBlob(ctx, mr)
+	digest, size, err = engine.PutBlob(t.Context(), mr)
 	require.NoError(t, err, "put marshal json blob")
 	assert.EqualValues(t, len(data), size, "put blob should write entire blob")
 
@@ -130,17 +126,17 @@ func TestGCWithNonEmptyIndex(t *testing.T) {
 			},
 		},
 	}
-	err = engine.PutIndex(ctx, idx)
+	err = engine.PutIndex(t.Context(), idx)
 	require.NoError(t, err, "put index")
 
-	b, err = engine.ListBlobs(ctx)
+	b, err = engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs before gc")
 	assert.Len(t, b, initalBlobNumber+2, "before gc we should have two more blobs")
 
-	err = engineExt.GC(ctx)
+	err = engineExt.GC(t.Context())
 	require.NoError(t, err, "gc")
 
-	b, err = engine.ListBlobs(ctx)
+	b, err = engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs after gc")
 	assert.Len(t, b, 2, "after gc only two pinned blobs should remain")
 }
@@ -164,8 +160,6 @@ func errFunc(ctx context.Context, digest digest.Digest) (bool, error) { //nolint
 }
 
 func TestGCWithPolicy(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -178,18 +172,18 @@ func TestGCWithPolicy(t *testing.T) {
 	// build a orphan blob that should be GC'ed
 	content := "this is a orphan blob"
 	br := strings.NewReader(content)
-	odigest, size, err := engine.PutBlob(ctx, br)
+	odigest, size, err := engine.PutBlob(t.Context(), br)
 	require.NoError(t, err, "put blob")
 	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
 	// build a blob, manifest, index that will survive GC
 	content = "this is a test blob"
 	br = strings.NewReader(content)
-	digest, size, err := engine.PutBlob(ctx, br)
+	digest, size, err := engine.PutBlob(t.Context(), br)
 	require.NoError(t, err, "put blob")
 	assert.EqualValues(t, len(content), size, "put blob should write entire blob")
 
-	digest, size, err = engineExt.PutBlobJSON(ctx,
+	digest, size, err = engineExt.PutBlobJSON(t.Context(),
 		ispec.Manifest{
 			Versioned: imeta.Versioned{
 				SchemaVersion: 2,
@@ -223,23 +217,23 @@ func TestGCWithPolicy(t *testing.T) {
 			},
 		},
 	}
-	err = engine.PutIndex(ctx, idx)
+	err = engine.PutIndex(t.Context(), idx)
 	require.NoError(t, err, "put index")
 
-	err = engineExt.GC(ctx, errFunc)
+	err = engineExt.GC(t.Context(), errFunc)
 	require.Error(t, err, "gc with err policy should fail")
 
-	err = engineExt.GC(ctx, gcSkipFunc(t, odigest))
+	err = engineExt.GC(t.Context(), gcSkipFunc(t, odigest))
 	require.NoError(t, err, "gc with skip policy")
 
-	b, err := engine.ListBlobs(ctx)
+	b, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs after gc with skip policy")
 	assert.Len(t, b, 3, "after gc with skip policy all blobs should remain")
 
-	err = engineExt.GC(ctx, gcOkFunc(t, odigest))
+	err = engineExt.GC(t.Context(), gcOkFunc(t, odigest))
 	require.NoError(t, err, "gc with ok policy")
 
-	b, err = engine.ListBlobs(ctx)
+	b, err = engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs after gc with skip policy")
 	assert.Len(t, b, 2, "after gc with ok policy only pinned blobs should remain")
 }

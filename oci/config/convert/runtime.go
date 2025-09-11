@@ -20,6 +20,7 @@ package convert
 
 import (
 	"fmt"
+	"maps"
 	"path/filepath"
 	"strings"
 
@@ -164,9 +165,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	}
 
 	// Set annotations fields
-	for key, value := range ig.ConfigLabels() {
-		spec.Annotations[key] = value
-	}
+	maps.Copy(spec.Annotations, ig.ConfigLabels())
 	spec.Annotations[osAnnotation] = ig.OS()
 	spec.Annotations[archAnnotation] = ig.Architecture()
 	spec.Annotations[authorAnnotation] = ig.Author()

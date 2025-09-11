@@ -1,5 +1,4 @@
 //go:build linux
-// +build linux
 
 // SPDX-License-Identifier: Apache-2.0
 /*
@@ -24,6 +23,7 @@ package layer
 
 import (
 	"archive/tar"
+	"maps"
 	"os"
 	"path/filepath"
 	"testing"
@@ -176,7 +176,6 @@ func testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T, tarX
 		{"OverlayfsRootfs-TrustedXattr", OverlayfsRootfs{UserXattr: false}, tarXattrNamespace == "trusted."},
 		{"OverlayfsRootfs-UserXattr", OverlayfsRootfs{UserXattr: true}, tarXattrNamespace == "user."},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -307,7 +306,6 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 		{"DirRootfs", DirRootfs{}},
 		{"OverlayfsRootfs", OverlayfsRootfs{}},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -352,9 +350,7 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 
 				wantXattrs := map[string]string{}
 				// We should see all of the hdr xattrs.
-				for xattr, value := range de.xattrs {
-					wantXattrs[xattr] = value
-				}
+				maps.Copy(wantXattrs, de.xattrs)
 				// Of the auto-applied xattrs, we only expect to see our dummy
 				// forbidden xattr after all the extractions.
 				if value, ok := de.autoXattrs[forbiddenTestXattr]; ok {

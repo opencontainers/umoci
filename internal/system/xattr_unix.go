@@ -57,7 +57,7 @@ func Llistxattr(path string) ([]string, error) {
 
 	// Split the buffer.
 	xattrs := make([]string, 0, bytes.Count(buffer, []byte{'\x00'}))
-	for _, name := range bytes.Split(buffer, []byte{'\x00'}) {
+	for name := range bytes.SplitSeq(buffer, []byte{'\x00'}) {
 		// "" is not a valid xattr (weirdly you get ERANGE -- not EINVAL -- if
 		// you try to touch it). So just skip it.
 		if len(name) == 0 {
