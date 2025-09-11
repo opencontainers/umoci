@@ -49,7 +49,7 @@ RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
-RUN go install github.com/vbatts/go-mtree/cmd/gomtree@v0.6.0
+RUN go install github.com/vbatts/go-mtree/cmd/gomtree@8307d76bc1b9
 
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
