@@ -169,9 +169,6 @@ doc/man/%.1: doc/man/%.1.md
 .PHONY: docs
 docs: $(MANPAGES)
 
-CI_DOCKER_IMAGE ?=$(shell sed -En 's/^FROM\s+(.*)/\1/p' Dockerfile)
-TEST_DOCKER_IMAGE ?=$(shell sed -En 's/^ARG\s+TEST_DOCKER_IMAGE=(.*)/\1/p' Dockerfile)
-
 ifndef GOCOVERDIR
 GOCOVERDIR := $(notdir $(shell mktemp -d -u umoci.cov.XXXXXX))
 endif
@@ -209,12 +206,18 @@ root-shell: ci-image
 rootless-shell: ci-image
 	$(DOCKER_ROOTLESS_RUN) -it $(UMOCI_IMAGE) bash
 
+CI_DOCKER_IMAGES := $(shell sed -En 's/^FROM\s+([^ ]*).*$$/\1/p' Dockerfile | sort -u)
+TEST_DOCKER_IMAGE ?=$(shell sed -En 's/^ARG\s+TEST_DOCKER_IMAGE=([^ ]*).*$$/\1/p' Dockerfile)
+
 CACHE := .cache
 CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
 
 .PHONY: ci-image
 ci-image:
-	docker pull $(CI_DOCKER_IMAGE)
+	@echo "Pulling fresh images: [$(CI_DOCKER_IMAGES)]"
+	@for img in $(CI_DOCKER_IMAGES); do \
+		docker pull $$img; \
+	done
 	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
 	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
 	                               --progress plain \
