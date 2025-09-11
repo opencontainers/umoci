@@ -48,7 +48,7 @@ func randomDescriptor(t *testing.T) ispec.Descriptor {
 	// Generate a random number of annotations, with random key/values.
 	descriptor.Annotations = map[string]string{}
 	n := rand.Intn(32)
-	for i := 0; i < n; i++ {
+	for range n {
 		descriptor.Annotations[testhelpers.RandomString(32)] = testhelpers.RandomString(32)
 	}
 
@@ -63,7 +63,7 @@ func TestMapDescriptors_Identity(t *testing.T) {
 	tests := []struct {
 		name string
 		num  int
-		obj  interface{}
+		obj  any
 	}{
 		// Make sure that "base" types work.
 		{
@@ -191,7 +191,6 @@ func TestMapDescriptors_Identity(t *testing.T) {
 	}
 
 	for _, test := range tests {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			// Make a copy for later comparison.
 			original := deepcopy.Copy(test.obj)
@@ -218,7 +217,7 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 	// List of interfaces to use MapDescriptors on.
 	ociList := []struct {
 		name string
-		obj  interface{}
+		obj  any
 	}{
 		// Make sure that "base" types work.
 		{
@@ -280,7 +279,6 @@ func TestMapDescriptors_ModifyOCI(t *testing.T) {
 	}
 
 	for _, test := range ociList {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			// Make a copy for later comparison.
 			original := deepcopy.Copy(test.obj)

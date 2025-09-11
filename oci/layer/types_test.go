@@ -143,7 +143,6 @@ func TestOverlayfsRootfs_XattrNamespace(t *testing.T) {
 		{OverlayfsRootfs{UserXattr: false}, "trusted."},
 		{OverlayfsRootfs{UserXattr: true}, "user."},
 	} {
-		test := test // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", test.onDiskFmt.UserXattr), func(t *testing.T) {
 			assert.Equalf(t, test.expectedNamespace, test.onDiskFmt.xattrNamespace(), "OverlayfsRootfs{UserXattr: %v}.xattrNamespace()", test.onDiskFmt.UserXattr)
 		})
@@ -164,7 +163,6 @@ func TestOverlayfsRootfs_Xattr(t *testing.T) {
 		{"TrustedXattr-MultiSubXattr", OverlayfsRootfs{UserXattr: false}, []string{"foo", "bar.baz", "boop"}, "trusted.overlay.foo.bar.baz.boop"},
 		{"UserXattr-MultiSubXattr", OverlayfsRootfs{UserXattr: true}, []string{"abc", "def", "ghi.jkl."}, "user.overlay.abc.def.ghi.jkl."},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			got := test.onDiskFmt.xattr(test.subxattr...)
 			assert.Equalf(t, test.expected, got, "OverlayfsRootfs{UserXattr: %v}.xattr(%#v)", test.onDiskFmt.UserXattr, test.subxattr)

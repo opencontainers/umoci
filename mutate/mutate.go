@@ -27,6 +27,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"maps"
 	"reflect"
 	"time"
 
@@ -85,11 +86,11 @@ type Mutator struct {
 type Meta struct {
 	// Created defines an ISO-8601 formatted combined date and time at which
 	// the image was created.
-	Created time.Time `json:"created,omitempty"`
+	Created time.Time `json:"created,omitzero"`
 
 	// Author defines the name and/or email address of the person or entity
 	// which created and is responsible for maintaining the image.
-	Author string `json:"author,omitempty"`
+	Author string `json:"author,omitzero"`
 
 	// Architecture is the CPU architecture which the binaries in this image
 	// are built to run on.
@@ -207,9 +208,7 @@ func (m *Mutator) Annotations(ctx context.Context) (map[string]string, error) {
 	}
 
 	annotations := map[string]string{}
-	for k, v := range m.manifest.Annotations {
-		annotations[k] = v
-	}
+	maps.Copy(annotations, m.manifest.Annotations)
 	return annotations, nil
 }
 

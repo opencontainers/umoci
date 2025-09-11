@@ -122,7 +122,7 @@ func Main(args []string) error {
 		insertCommand,
 	}
 
-	app.Metadata = map[string]interface{}{}
+	app.Metadata = map[string]any{}
 
 	// In order to make the uxXyz wrappers not too cumbersome we automatically
 	// add them to images with categories set to categoryImage or

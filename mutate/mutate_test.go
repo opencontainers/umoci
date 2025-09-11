@@ -328,7 +328,6 @@ func TestMutateAddCompression(t *testing.T) {
 		{"Gzip", blobcompress.Gzip, blobcompress.Gzip},
 		{"Zstd", blobcompress.Zstd, blobcompress.Zstd},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
 		})
@@ -353,7 +352,6 @@ func TestMutateAddCompression(t *testing.T) {
 			{"ExplicitNoop", blobcompress.Noop, blobcompress.Noop},
 			{"AutoGzip-SkipNoop", nil, blobcompress.Gzip},
 		} {
-			test := test // copy iterator
 			t.Run(fmt.Sprintf("Step%d-%s", i, test.name), func(t *testing.T) {
 				testMutateAddCompression(t, mutator, "vendor/TESTING-umoci-fake-layer", test.useAlgo, test.expectedAlgo)
 			})

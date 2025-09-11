@@ -126,6 +126,6 @@ func mapDescriptors(V reflect.Value, mapFunc DescriptorMapFunc) error {
 // Go, which means that hidden attributes may be inaccessible.
 // DescriptorMapFunc will only be executed once for every ispec.Descriptor
 // found.
-func MapDescriptors(i interface{}, mapFunc DescriptorMapFunc) error {
+func MapDescriptors(i any, mapFunc DescriptorMapFunc) error {
 	return mapDescriptors(reflect.ValueOf(i), mapFunc)
 }

@@ -251,7 +251,6 @@ func TestLayerCompressionCheck(t *testing.T) {
 		{"application/json", "application/json", false, nil},
 		{"application/gzip", "application/gzip", false, nil},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			assert.Equalf(t, test.expectedIsLayer, isLayerType(test.mediaType), "isLayerType(%q) should be %v", test.mediaType, test.expectedIsLayer)
 

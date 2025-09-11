@@ -49,7 +49,6 @@ func TestVerifyError(t *testing.T) {
 
 		testFn := func(finalErr error, errs ...error) (numErrCalled int, Err error) {
 			for _, err := range errs {
-				err := err // copy iterator
 				defer VerifyError(&Err, func() error {
 					numErrCalled++
 					return err

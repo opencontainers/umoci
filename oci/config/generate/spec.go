@@ -24,6 +24,7 @@ package generate
 
 import (
 	"fmt"
+	"maps"
 	"sort"
 	"strings"
 	"time"
@@ -129,9 +130,7 @@ func (g *Generator) RemoveConfigExposedPort(port string) {
 func (g *Generator) ConfigExposedPorts() map[string]struct{} {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	cp := map[string]struct{}{}
-	for k, v := range g.image.Config.ExposedPorts {
-		cp[k] = v
-	}
+	maps.Copy(cp, g.image.Config.ExposedPorts)
 	return cp
 }
 
@@ -221,9 +220,7 @@ func (g *Generator) RemoveConfigVolume(volume string) {
 func (g *Generator) ConfigVolumes() map[string]struct{} {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	cp := map[string]struct{}{}
-	for k, v := range g.image.Config.Volumes {
-		cp[k] = v
-	}
+	maps.Copy(cp, g.image.Config.Volumes)
 	return cp
 }
 
@@ -246,9 +243,7 @@ func (g *Generator) RemoveConfigLabel(label string) {
 func (g *Generator) ConfigLabels() map[string]string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
 	cp := map[string]string{}
-	for k, v := range g.image.Config.Labels {
-		cp[k] = v
-	}
+	maps.Copy(cp, g.image.Config.Labels)
 	return cp
 }
 

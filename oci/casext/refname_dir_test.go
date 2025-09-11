@@ -67,7 +67,7 @@ type descriptorMap struct {
 
 func randomTarData(tw *tar.Writer) error {
 	// Add some files with random contents and random names.
-	for n := 0; n < 32; n++ {
+	for n := range 32 {
 		size := rand.Intn(512 * 1024)
 
 		if err := tw.WriteHeader(&tar.Header{
@@ -99,7 +99,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 	// index indirects. The multiple layers makes sure that we don't break the
 	// multi-level resolution.
 	// XXX: In future we'll have to make tests for platform matching.
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		n := 3
 		name := fmt.Sprintf("normal_img_%d", k)
 
@@ -166,7 +166,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Add extra index layers.
 		indexDescriptor := manifestDescriptor
-		for i := 0; i < k; i++ {
+		for i := range k {
 			newIndex := ispec.Index{
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
@@ -191,7 +191,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 	// Add some blobs that have custom mediaTypes. This is loosely based on
 	// the previous section.
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		name := fmt.Sprintf("custom_img_%d", k)
 
 		// Create a fake customTargetMediaType (will be masked by a different
@@ -211,7 +211,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Add extra custom non-target layers.
 		currentDescriptor := notTargetDescriptor
-		for i := 0; i < k; i++ {
+		for i := range k {
 			newDigest, newSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
@@ -241,7 +241,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Add extra custom non-target layers.
 		currentDescriptor = targetDescriptor
-		for i := 0; i < k; i++ {
+		for i := range k {
 			newDigest, newSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
@@ -256,7 +256,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Add extra index layers.
 		indexDescriptor := currentDescriptor
-		for i := 0; i < k; i++ {
+		for i := range k {
 			newIndex := ispec.Index{
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
@@ -281,7 +281,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 	// Add some blobs that have unknown mediaTypes. This is loosely based on
 	// the previous section.
-	for k := 0; k < 5; k++ {
+	for k := range 5 {
 		name := fmt.Sprintf("unknown_img_%d", k)
 
 		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
@@ -304,7 +304,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Add extra index layers.
 		indexDescriptor := manifestDescriptor
-		for i := 0; i < k; i++ {
+		for i := range k {
 			newIndex := ispec.Index{
 				Versioned: ispecs.Versioned{
 					SchemaVersion: 2,
@@ -344,7 +344,6 @@ func TestEngineReference(t *testing.T) {
 	assert.NotEmpty(t, descMap, "fakeSetupEngine descriptor map")
 
 	for idx, test := range descMap {
-		test := test // copy iterator
 		t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
 			name := fmt.Sprintf("new_tag_%d", idx)
 
@@ -388,7 +387,6 @@ func TestEngineReferenceReadonly(t *testing.T) {
 	require.NoError(t, err, "close read-write engine")
 
 	for idx, test := range descMap {
-		test := test // copy iterator
 		t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
 			name := fmt.Sprintf("new_tag_%d", idx)
 

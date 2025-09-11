@@ -87,7 +87,6 @@ func TestUnpackEntry_OverlayfsRootfs_Whiteout(t *testing.T) {
 	testNeedsMknod(t)
 
 	for _, userxattr := range []bool{true, false} {
-		userxattr := userxattr // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -123,7 +122,6 @@ func TestUnpackEntry_OverlayfsRootfs_OpaqueWhiteout(t *testing.T) {
 	testNeedsMknod(t)
 
 	for _, userxattr := range []bool{true, false} {
-		userxattr := userxattr // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -164,7 +162,6 @@ func TestUnpackEntry_OverlayfsRootfs_Whiteout_MissingDirs(t *testing.T) {
 	testNeedsMknod(t)
 
 	for _, userxattr := range []bool{true, false} {
-		userxattr := userxattr // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -214,7 +211,6 @@ func TestUnpackEntry_OverlayfsRootfs_Whiteout_Nested(t *testing.T) {
 	testNeedsMknod(t)
 
 	for _, userxattr := range []bool{true, false} {
-		userxattr := userxattr // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
 			dir := t.TempDir()
 
@@ -271,7 +267,6 @@ func TestUnpackEntry_OverlayfsRootfs_OpaqueWhiteoutConvert(t *testing.T) {
 	testNeedsMknod(t)
 
 	for _, userxattr := range []bool{true, false} {
-		userxattr := userxattr // copy iterator
 		t.Run(fmt.Sprintf("UserXattr=%v", userxattr), func(t *testing.T) {
 			dir := t.TempDir()
 

@@ -48,7 +48,6 @@ func TestGetVerifiedBlob(t *testing.T) {
 
 	t.Run("NonExist", func(t *testing.T) {
 		for idx, test := range descMap {
-			test := test // copy iterator
 			t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
 				const badDigest = digest.Digest("sha256:000111222333444555666777888999aaabbbcccdddeeefff0123456789abcdef")
 				desc := test.result
@@ -70,7 +69,6 @@ func TestGetVerifiedBlob(t *testing.T) {
 
 	t.Run("InvalidSize", func(t *testing.T) {
 		for idx, test := range descMap {
-			test := test // copy iterator
 			t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
 				desc := test.result
 

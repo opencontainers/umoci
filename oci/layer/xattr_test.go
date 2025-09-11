@@ -101,7 +101,6 @@ func TestOverlayXattrFilter(t *testing.T) {
 		{"UserXattr-UserOverlayXattr", "user.overlay.foo", OverlayfsRootfs{UserXattr: true}, "user.overlay.overlay.foo", ""},
 		{"UserXattr-UserOverlayXattr-Escaped", "user.overlay.overlay.foo", OverlayfsRootfs{UserXattr: true}, "user.overlay.overlay.overlay.foo", "user.overlay.foo"},
 	} {
-		test := test // copy iterator
 		t.Run(test.name, func(t *testing.T) {
 			filter, ok := getXattrFilter(test.xattr)
 			if !ok {
