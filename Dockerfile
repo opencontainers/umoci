@@ -14,17 +14,46 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-FROM registry.opensuse.org/opensuse/leap:16.0
-MAINTAINER "Aleksa Sarai <asarai@suse.com>"
+## TOOLS: Basic golang tools can be installed using standard "go install".
+FROM golang:1.24 AS go-binaries
+ENV GOPATH=/go PATH=/go/bin:$PATH
+RUN go install github.com/cpuguy83/go-md2man/v2@latest
 
-# We have to use out-of-tree repos because several packages haven't been merged
-# into openSUSE Leap yet, or are out of date in Leap.
-RUN zypper ar -f -p 10 -g 'obs://Virtualization:containers/$releasever' obs-vc && \
-	zypper ar -f -p 10 -g 'obs://devel:tools/$releasever'               obs-tools && \
-	zypper ar -f -p 10 -g 'obs://devel:languages:go/$releasever'        obs-go && \
-	zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever'    obs-gomtree && \
-	zypper --gpg-auto-import-keys -n ref && \
-	zypper -n up
+## TOOLS: oci-runtime-tool needs special handling.
+FROM golang:1.24 AS oci-runtime-tool
+# FIXME: We need to get an ancient version of oci-runtime-tools because the
+#        config.json conversion we do is technically not spec-compliant due to
+#        an oversight and new versions of oci-runtime-tools verify this.
+#        See <https://github.com/opencontainers/runtime-spec/pull/1197>.
+#
+#        In addition, there is no go.mod in all released versions up to v0.9.0,
+#        which means that we will pull the latest runtime-spec automatically
+#        (Go removed auto-conversion to go.mod in Go 1.22) which causes
+#        validation errors. But we need to forcefully pick runtime-spec v1.0.2.
+#        This is fine. See <https://github.com/opencontainers/runtime-tools/pull/774>.
+ENV SRCDIR=/tmp/oci-runtime-tool
+RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git $SRCDIR
+RUN cd $SRCDIR && \
+	go mod init github.com/opencontainers/runtime-tools && \
+	go mod tidy && \
+	go get github.com/opencontainers/runtime-spec@v1.0.2 && \
+	go mod vendor
+RUN make -C $SRCDIR tool
+RUN install -Dm 0755 $SRCDIR/oci-runtime-tool /usr/bin/oci-runtime-tool
+
+## CI: Pull the test image in a separate build stage.
+FROM quay.io/skopeo/stable:v1.20 AS test-image
+ENV SOURCE_IMAGE=/image SOURCE_TAG=latest
+ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/tumbleweed:latest
+RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
+
+## CI: Final stage, putting together the image used for our actual tests.
+FROM registry.opensuse.org/opensuse/leap:16.0 AS ci-image
+LABEL org.opencontainers.image.authors="Aleksa Sarai <cyphar@cyphar.com>"
+
+RUN zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever' obs-gomtree && \
+	zypper --gpg-auto-import-keys -n ref
+RUN zypper -n up
 RUN zypper -n in \
 		attr \
 		bats \
@@ -49,34 +78,15 @@ RUN zypper -n in \
 		skopeo \
 		tar \
 		which
+
 RUN useradd -u 1000 -m -d /home/rootless -s /bin/bash rootless
+RUN git config --system --add safe.directory /go/src/github.com/opencontainers/umoci
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
-RUN go install github.com/cpuguy83/go-md2man/v2@latest
+COPY --from=go-binaries /go/bin /go/bin
+COPY --from=oci-runtime-tool /usr/bin/oci-runtime-tool /go/bin
+ENV SOURCE_IMAGE=/image SOURCE_TAG=latest
+COPY --from=test-image $SOURCE_IMAGE $SOURCE_IMAGE
 
-# FIXME: We need to get an ancient version of oci-runtime-tools because the
-#        config.json conversion we do is technically not spec-compliant due to
-#        an oversight and new versions of oci-runtime-tools verify this.
-#        See <https://github.com/opencontainers/runtime-spec/pull/1197>.
-#
-#        In addition, there is no go.mod in all released versions up to v0.9.0,
-#        which means that we will pull the latest runtime-spec automatically
-#        (Go removed auto-conversion to go.mod in Go 1.22) which causes
-#        validation errors. But we need to forcefully pick runtime-spec v1.0.2.
-#        This is fine. See <https://github.com/opencontainers/runtime-tools/pull/774>.
-RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git /tmp/oci-runtime-tools && \
-	( cd /tmp/oci-runtime-tools && \
-		go mod init github.com/opencontainers/runtime-tools && \
-		go mod tidy && \
-		go get github.com/opencontainers/runtime-spec@v1.0.2 && \
-		go mod vendor; ) && \
-	make -C /tmp/oci-runtime-tools tool install && \
-	rm -rf /tmp/oci-runtime-tools
-
-ENV SOURCE_IMAGE=/opensuse SOURCE_TAG=latest
-ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/leap:15.4
-RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
-
-RUN git config --system --add safe.directory /go/src/github.com/opencontainers/umoci
 VOLUME ["/go/src/github.com/opencontainers/umoci"]
 WORKDIR /go/src/github.com/opencontainers/umoci
