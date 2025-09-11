@@ -35,7 +35,7 @@ RUN zypper -n in \
 		findutils \
 		git \
 		gnu_parallel \
-		"go>=1.23" \
+		"go>=1.24" \
 		go-mtree \
 		gzip \
 		jq \

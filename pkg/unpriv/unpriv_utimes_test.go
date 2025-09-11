@@ -201,11 +201,7 @@ func TestLutimesRelative(t *testing.T) {
 	dir, err := os.MkdirTemp(dir, "inner") //nolint:usetesting // this tempdir is inside t.TempDir and needs special RemoveAll handling
 	require.NoError(t, err)
 	defer RemoveAll(dir) //nolint:errcheck
-
-	oldwd, err := os.Getwd()
-	require.NoError(t, err)
-	_ = os.Chdir(dir)
-	defer os.Chdir(oldwd) //nolint:errcheck
+	t.Chdir(dir)
 
 	path := filepath.Join("some parent", " !! symlink here")
 

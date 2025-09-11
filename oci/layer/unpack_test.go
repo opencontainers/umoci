@@ -20,7 +20,6 @@ package layer
 
 import (
 	"bytes"
-	"context"
 	"encoding/base64"
 	"os"
 	"path/filepath"
@@ -48,7 +47,6 @@ func mustDecodeString(s string) []byte {
 }
 
 func makeImage(t *testing.T) (string, ispec.Manifest, casext.Engine) { //nolint:unparam
-	ctx := context.Background()
 	// These layers were manually generated using GNU tar + GNU gzip.
 	// XXX: In future we should also add libarchive tar archives.
 	layers := []struct {
@@ -98,7 +96,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 		// hoops of decompressing our already-compressed blobs above to get the
 		// DiffIDs.
 		layerReader := bytes.NewBuffer(mustDecodeString(layer.base64))
-		layerDigest, layerSize, err := engineExt.PutBlob(ctx, layerReader)
+		layerDigest, layerSize, err := engineExt.PutBlob(t.Context(), layerReader)
 		require.NoError(t, err)
 
 		layerDigests = append(layerDigests, layer.digest)
@@ -117,7 +115,7 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 			DiffIDs: layerDigests,
 		},
 	}
-	configDigest, configSize, err := engineExt.PutBlobJSON(ctx, config)
+	configDigest, configSize, err := engineExt.PutBlobJSON(t.Context(), config)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,8 +143,6 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 // that "archive/tar" parser doesn't consume the whole tar stream if it detects
 // that there is no more metadata it is interested in in the tar stream).
 func TestUnpackManifestCustomLayer(t *testing.T) {
-	ctx := context.Background()
-
 	_, manifest, engineExt := makeImage(t)
 	bundle := t.TempDir()
 
@@ -173,14 +169,12 @@ func TestUnpackManifestCustomLayer(t *testing.T) {
 		},
 		AfterLayerUnpack: afterLayerCallback,
 	}
-	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	err := UnpackManifest(t.Context(), engineExt, bundle, manifest, unpackOptions)
 	require.NoError(t, err, "UnpackManifest")
 	assert.True(t, called, "UnpackManifest callback should have been called")
 }
 
 func TestUnpackStartFromDescriptor(t *testing.T) {
-	ctx := context.Background()
-
 	_, manifest, engineExt := makeImage(t)
 	bundle := t.TempDir()
 
@@ -202,7 +196,7 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 		// Skip the first layer.
 		StartFrom: manifest.Layers[1],
 	}
-	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	err := UnpackManifest(t.Context(), engineExt, bundle, manifest, unpackOptions)
 	require.NoError(t, err, "UnpackManifest")
 
 	_, err = os.Stat(filepath.Join(bundle, "rootfs/test_file"))
@@ -212,8 +206,6 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 // TODO: Temporary until <https://github.com/opencontainers/umoci/issues/574>
 // is resolved.
 func TestUnpackUnimplementedOverlayfs(t *testing.T) {
-	ctx := context.Background()
-
 	_, manifest, engineExt := makeImage(t)
 
 	// Unpacking with non-DirRootfs should fail.
@@ -234,11 +226,11 @@ func TestUnpackUnimplementedOverlayfs(t *testing.T) {
 	}
 
 	bundle := t.TempDir()
-	err := UnpackManifest(ctx, engineExt, bundle, manifest, unpackOptions)
+	err := UnpackManifest(t.Context(), engineExt, bundle, manifest, unpackOptions)
 	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackManifest with OverlayfsRootfs")
 
 	rootfs := t.TempDir()
-	err = UnpackRootfs(ctx, engineExt, rootfs, manifest, unpackOptions)
+	err = UnpackRootfs(t.Context(), engineExt, rootfs, manifest, unpackOptions)
 	require.ErrorIs(t, err, internal.ErrUnimplemented, "UnpackRootfs with OverlayfsRootfs")
 }
 

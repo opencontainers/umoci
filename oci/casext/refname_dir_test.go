@@ -21,7 +21,6 @@ package casext
 import (
 	"archive/tar"
 	"bytes"
-	"context"
 	crand "crypto/rand"
 	"fmt"
 	"io"
@@ -94,7 +93,6 @@ func randomTarData(tw *tar.Writer) error {
 // types. The returned mapping is for a given index -> descriptor you would
 // expect to get from ResolveReference.
 func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
-	ctx := context.Background()
 	mapping := []descriptorMap{}
 
 	// Add some "normal" images that contain some layers and also have some
@@ -118,7 +116,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 		// Insert all of the layers.
 		layerDescriptors := make([]ispec.Descriptor, n)
 		for idx, layer := range layerData {
-			digest, size, err := engineExt.PutBlob(ctx, &layer)
+			digest, size, err := engineExt.PutBlob(t.Context(), &layer)
 			require.NoErrorf(t, err, "%s: putting layer%d blob", name, idx)
 			layerDescriptors[idx] = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageLayer,
@@ -129,7 +127,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Create our config and insert it.
 		created := time.Now()
-		configDigest, configSize, err := engineExt.PutBlobJSON(ctx, ispec.Image{
+		configDigest, configSize, err := engineExt.PutBlobJSON(t.Context(), ispec.Image{
 			Created:      &created,
 			Author:       "Jane Author <janesmith@example.com>",
 			Architecture: runtime.GOARCH,
@@ -155,7 +153,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 		}
 		manifest.Layers = append(manifest.Layers, layerDescriptors...)
 
-		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(ctx, manifest)
+		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(t.Context(), manifest)
 		require.NoError(t, err, "put manifest blob json")
 		manifestDescriptor := ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageManifest,
@@ -176,7 +174,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
-			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
+			indexDigest, indexSize, err := engineExt.PutBlobJSON(t.Context(), newIndex)
 			require.NoErrorf(t, err, "%s: put index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
@@ -198,7 +196,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 
 		// Create a fake customTargetMediaType (will be masked by a different
 		// target media-type above).
-		notTargetDigest, notTargetSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+		notTargetDigest, notTargetSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 			Data: []byte("Hello, world!"),
 		})
 		require.NoErrorf(t, err, "%s: put custom manifest blob", name)
@@ -214,7 +212,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 		// Add extra custom non-target layers.
 		currentDescriptor := notTargetDescriptor
 		for i := 0; i < k; i++ {
-			newDigest, newSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+			newDigest, newSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
 			})
@@ -227,7 +225,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 		}
 
 		// Add the *real* customTargetMediaType.
-		targetDigest, targetSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+		targetDigest, targetSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 			Descriptor: currentDescriptor,
 			Data:       []byte("I am the real target!"),
 		})
@@ -244,7 +242,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 		// Add extra custom non-target layers.
 		currentDescriptor = targetDescriptor
 		for i := 0; i < k; i++ {
-			newDigest, newSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+			newDigest, newSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 				Descriptor: currentDescriptor,
 				Data:       []byte("intermediate non-target"),
 			})
@@ -266,7 +264,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
-			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
+			indexDigest, indexSize, err := engineExt.PutBlobJSON(t.Context(), newIndex)
 			require.NoErrorf(t, err, "%s: putting index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
@@ -286,7 +284,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 	for k := 0; k < 5; k++ {
 		name := fmt.Sprintf("unknown_img_%d", k)
 
-		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(ctx, fakeManifest{
+		manifestDigest, manifestSize, err := engineExt.PutBlobJSON(t.Context(), fakeManifest{
 			Descriptor: ispec.Descriptor{
 				MediaType: "org.opensuse.fake-data",
 				Digest:    digest.SHA256.FromString("Hello, world!"),
@@ -314,7 +312,7 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 				MediaType: ispec.MediaTypeImageIndex,
 				Manifests: []ispec.Descriptor{indexDescriptor},
 			}
-			indexDigest, indexSize, err := engineExt.PutBlobJSON(ctx, newIndex)
+			indexDigest, indexSize, err := engineExt.PutBlobJSON(t.Context(), newIndex)
 			require.NoErrorf(t, err, "%s: put index-%d blob", name, i)
 			indexDescriptor = ispec.Descriptor{
 				MediaType: ispec.MediaTypeImageIndex,
@@ -333,8 +331,6 @@ func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
 }
 
 func TestEngineReference(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -352,33 +348,31 @@ func TestEngineReference(t *testing.T) {
 		t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
 			name := fmt.Sprintf("new_tag_%d", idx)
 
-			err := engineExt.UpdateReference(ctx, name, test.index)
+			err := engineExt.UpdateReference(t.Context(), name, test.index)
 			require.NoErrorf(t, err, "update reference %s", name)
 
-			gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
+			gotDescriptorPaths, err := engineExt.ResolveReference(t.Context(), name)
 			require.NoErrorf(t, err, "resolve reference %s", name)
 			assert.Len(t, gotDescriptorPaths, 1, "unexpected number of descriptors")
 			gotDescriptor := gotDescriptorPaths[0].Descriptor()
 
 			assert.Equal(t, test.result, gotDescriptor, "resolve reference should get same descriptor as original")
 
-			err = engineExt.DeleteReference(ctx, name)
+			err = engineExt.DeleteReference(t.Context(), name)
 			require.NoErrorf(t, err, "delete reference %s", name)
 
-			gotDescriptorPaths, err = engineExt.ResolveReference(ctx, name)
+			gotDescriptorPaths, err = engineExt.ResolveReference(t.Context(), name)
 			require.NoErrorf(t, err, "resolve reference %s", name)
 			assert.Empty(t, gotDescriptorPaths, "resolve reference after deleting should find no references")
 
 			// DeleteReference is idempotent. It shouldn't cause an error.
-			err = engineExt.DeleteReference(ctx, name)
+			err = engineExt.DeleteReference(t.Context(), name)
 			require.NoErrorf(t, err, "delete non-existent reference %s", name)
 		})
 	}
 }
 
 func TestEngineReferenceReadonly(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -402,7 +396,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			require.NoError(t, err, "open read-write engine")
 			engineExt := NewEngine(engine)
 
-			err = engineExt.UpdateReference(ctx, name, test.index)
+			err = engineExt.UpdateReference(t.Context(), name, test.index)
 			require.NoErrorf(t, err, "update reference %s", name)
 
 			err = engine.Close()
@@ -416,7 +410,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			require.NoError(t, err, "open read-only engine")
 			newEngineExt := NewEngine(newEngine)
 
-			gotDescriptorPaths, err := engineExt.ResolveReference(ctx, name)
+			gotDescriptorPaths, err := engineExt.ResolveReference(t.Context(), name)
 			require.NoErrorf(t, err, "resolve reference %s", name)
 			assert.Len(t, gotDescriptorPaths, 1, "unexpected number of descriptors")
 			gotDescriptor := gotDescriptorPaths[0].Descriptor()
@@ -424,7 +418,7 @@ func TestEngineReferenceReadonly(t *testing.T) {
 			assert.Equal(t, test.result, gotDescriptor, "resolve reference should get same descriptor as original")
 
 			// Make sure that writing will FAIL.
-			err = newEngineExt.UpdateReference(ctx, name+"new", test.index)
+			err = newEngineExt.UpdateReference(t.Context(), name+"new", test.index)
 			assert.Errorf(t, err, "update reference %s for read-only image should fail", name) //nolint:testifylint // assert.*Error* makes more sense
 
 			err = newEngine.Close()

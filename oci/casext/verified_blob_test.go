@@ -19,7 +19,6 @@
 package casext
 
 import (
-	"context"
 	"fmt"
 	"io"
 	"os"
@@ -51,8 +50,6 @@ func TestGetVerifiedBlob(t *testing.T) {
 		for idx, test := range descMap {
 			test := test // copy iterator
 			t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
-				ctx := context.Background()
-
 				const badDigest = digest.Digest("sha256:000111222333444555666777888999aaabbbcccdddeeefff0123456789abcdef")
 				desc := test.result
 
@@ -62,7 +59,7 @@ func TestGetVerifiedBlob(t *testing.T) {
 					Size:      desc.Size,
 				}
 
-				blob, err := engineExt.GetVerifiedBlob(ctx, badDescriptor)
+				blob, err := engineExt.GetVerifiedBlob(t.Context(), badDescriptor)
 				assert.ErrorIs(t, err, os.ErrNotExist, "get non-existent verified blob (negative descriptor size)") //nolint:testifylint // assert.*Error* makes more sense
 				if !assert.Nil(t, blob, "get verified blob (negative descriptor size)") {
 					_ = blob.Close()
@@ -75,10 +72,9 @@ func TestGetVerifiedBlob(t *testing.T) {
 		for idx, test := range descMap {
 			test := test // copy iterator
 			t.Run(fmt.Sprintf("Descriptor%.2d", idx+1), func(t *testing.T) {
-				ctx := context.Background()
 				desc := test.result
 
-				blob, err := engineExt.GetVerifiedBlob(ctx, desc)
+				blob, err := engineExt.GetVerifiedBlob(t.Context(), desc)
 				assert.NoError(t, err, "get verified blob (regular descriptor)") //nolint:testifylint // assert.*Error* makes more sense
 				if assert.NotNil(t, blob, "get verified blob (regular descriptor)") {
 					// Avoid "trailing data" log warnings on Close.
@@ -92,7 +88,7 @@ func TestGetVerifiedBlob(t *testing.T) {
 					Size:      -1, // invalid!
 				}
 
-				blob, err = engineExt.GetVerifiedBlob(ctx, badDescriptor)
+				blob, err = engineExt.GetVerifiedBlob(t.Context(), badDescriptor)
 				assert.ErrorIs(t, err, errInvalidDescriptorSize, "get verified blob (negative descriptor size)") //nolint:testifylint // assert.*Error* makes more sense
 				if !assert.Nil(t, blob, "get verified blob (negative descriptor size)") {
 					_ = blob.Close()

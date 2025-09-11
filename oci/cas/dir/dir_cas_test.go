@@ -20,7 +20,6 @@ package dir
 
 import (
 	"bytes"
-	"context"
 	"io"
 	"os"
 	"path/filepath"
@@ -37,8 +36,6 @@ import (
 //       example structures to make sure that the CAS acts properly.
 
 func TestCreateLayout(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := Create(image)
 	require.NoError(t, err)
@@ -48,11 +45,11 @@ func TestCreateLayout(t *testing.T) {
 	defer engine.Close() //nolint:errcheck
 
 	// We should have an empty index and no blobs.
-	index, err := engine.GetIndex(ctx)
+	index, err := engine.GetIndex(t.Context())
 	require.NoError(t, err, "get index")
 	assert.Empty(t, index.Manifests, "new image should have no manifests")
 
-	blobs, err := engine.ListBlobs(ctx)
+	blobs, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs")
 	assert.Empty(t, blobs, "new image should have no blobs")
 
@@ -62,8 +59,6 @@ func TestCreateLayout(t *testing.T) {
 }
 
 func TestEngineBlob(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := Create(image)
 	require.NoError(t, err)
@@ -85,12 +80,12 @@ func TestEngineBlob(t *testing.T) {
 		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 		expectedDigest := digester.Digest()
 
-		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
+		digest, size, err := engine.PutBlob(t.Context(), bytes.NewReader(test.bytes))
 		require.NoError(t, err, "put blob")
 		assert.Equal(t, expectedDigest, digest, "put blob digest should match actual digest")
 		assert.Equal(t, expectedSize, size, "put blob size should match actual size")
 
-		blobReader, err := engine.GetBlob(ctx, digest)
+		blobReader, err := engine.GetBlob(t.Context(), digest)
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close() //nolint:errcheck
 
@@ -98,20 +93,20 @@ func TestEngineBlob(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 
-		err = engine.DeleteBlob(ctx, digest)
+		err = engine.DeleteBlob(t.Context(), digest)
 		require.NoError(t, err, "delete blob")
 
-		blobReader2, err := engine.GetBlob(ctx, digest)
+		blobReader2, err := engine.GetBlob(t.Context(), digest)
 		assert.ErrorIs(t, err, os.ErrNotExist, "get blob should fail for non-existent blob") //nolint:testifylint // assert.*Error* makes more sense
 		assert.Nil(t, blobReader2, "get blob should return nil blob reader for non-existent blob")
 
 		// DeleteBlob is idempotent. It shouldn't cause an error.
-		err = engine.DeleteBlob(ctx, digest)
+		err = engine.DeleteBlob(t.Context(), digest)
 		require.NoError(t, err, "delete non-existent blob should still succeed")
 	}
 
 	// Should be no blobs left.
-	blobs, err := engine.ListBlobs(ctx)
+	blobs, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs")
 	assert.Empty(t, blobs, "image should contain no blobs after all deletions")
 }
@@ -209,8 +204,6 @@ func TestEngineValidate(t *testing.T) {
 // Make sure that opencontainers/umoci#63 doesn't have a regression. We
 // shouldn't GC any blobs which are currently locked.
 func TestEngineGCLocking(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := Create(image)
 	require.NoError(t, err)
@@ -228,7 +221,7 @@ func TestEngineGCLocking(t *testing.T) {
 	assert.EqualValues(t, len(content), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 	expectedDigest := digester.Digest()
 
-	digest, size, err := engine.PutBlob(ctx, bytes.NewReader(content))
+	digest, size, err := engine.PutBlob(t.Context(), bytes.NewReader(content))
 	require.NoError(t, err, "put blob")
 	assert.Equal(t, expectedDigest, digest, "put blob should return same digest as content")
 	assert.Equal(t, expectedSize, size, "put blob should return same size as content")
@@ -249,7 +242,7 @@ func TestEngineGCLocking(t *testing.T) {
 	require.NoError(t, err)
 
 	// TODO: This should be done with casext.GC...
-	err = gcEngine.Clean(ctx)
+	err = gcEngine.Clean(t.Context())
 	require.NoError(t, err, "engine clean")
 
 	for _, path := range []string{
@@ -269,8 +262,6 @@ func TestEngineGCLocking(t *testing.T) {
 }
 
 func TestCreateLayoutReadonly(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := Create(image)
 	require.NoError(t, err)
@@ -284,18 +275,16 @@ func TestCreateLayoutReadonly(t *testing.T) {
 	defer engine.Close() //nolint:errcheck
 
 	// We should have an empty index and no blobs.
-	index, err := engine.GetIndex(ctx)
+	index, err := engine.GetIndex(t.Context())
 	require.NoError(t, err, "get index")
 	assert.Empty(t, index.Manifests, "new image should have no manifests")
 
-	blobs, err := engine.ListBlobs(ctx)
+	blobs, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs")
 	assert.Empty(t, blobs, "new image should have no blobs")
 }
 
 func TestEngineBlobReadonly(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := Create(image)
 	require.NoError(t, err)
@@ -316,7 +305,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		assert.EqualValues(t, len(test.bytes), expectedSize, "whole blob should be written to hasher") //nolint:testifylint // we are testing expectedSize
 		expectedDigest := digester.Digest()
 
-		digest, size, err := engine.PutBlob(ctx, bytes.NewReader(test.bytes))
+		digest, size, err := engine.PutBlob(t.Context(), bytes.NewReader(test.bytes))
 		require.NoError(t, err, "put blob")
 		assert.Equal(t, expectedDigest, digest, "put blob digest should match actual digest")
 		assert.Equal(t, expectedSize, size, "put blob size should match actual size")
@@ -329,7 +318,7 @@ func TestEngineBlobReadonly(t *testing.T) {
 		newEngine, err := Open(image)
 		require.NoError(t, err, "open read-only image")
 
-		blobReader, err := engine.GetBlob(ctx, digest)
+		blobReader, err := engine.GetBlob(t.Context(), digest)
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close() //nolint:errcheck
 
@@ -338,9 +327,9 @@ func TestEngineBlobReadonly(t *testing.T) {
 		assert.Equal(t, test.bytes, gotBytes, "get blob should give same contents")
 
 		// Make sure that writing again will FAIL.
-		_, _, err = newEngine.PutBlob(ctx, bytes.NewReader(test.bytes))
+		_, _, err = newEngine.PutBlob(t.Context(), bytes.NewReader(test.bytes))
 		require.Error(t, err, "put blob on read-only image should fail")
-		err = newEngine.DeleteBlob(ctx, digest)
+		err = newEngine.DeleteBlob(t.Context(), digest)
 		require.Error(t, err, "delete blob on read-only image should fail")
 
 		require.NoError(t, newEngine.Close(), "close read-only engine")

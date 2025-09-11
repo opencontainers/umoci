@@ -19,7 +19,6 @@
 package casext
 
 import (
-	"context"
 	"encoding/json"
 	"io"
 	"os"
@@ -34,8 +33,6 @@ import (
 )
 
 func TestEngineBlobJSON(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -57,10 +54,10 @@ func TestEngineBlobJSON(t *testing.T) {
 		{object{"a value", 100}},
 		{object{"another value", 200}},
 	} {
-		digest, _, err := engineExt.PutBlobJSON(ctx, test.object)
+		digest, _, err := engineExt.PutBlobJSON(t.Context(), test.object)
 		require.NoError(t, err, "put blob json")
 
-		blobReader, err := engine.GetBlob(ctx, digest)
+		blobReader, err := engine.GetBlob(t.Context(), digest)
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close() //nolint:errcheck
 
@@ -72,27 +69,25 @@ func TestEngineBlobJSON(t *testing.T) {
 		require.NoError(t, err, "unmarshal blob")
 		assert.Equal(t, test.object, gotObject, "parsed json blob should match original data")
 
-		err = engine.DeleteBlob(ctx, digest)
+		err = engine.DeleteBlob(t.Context(), digest)
 		require.NoError(t, err, "delete blob")
 
-		br, err := engine.GetBlob(ctx, digest)
+		br, err := engine.GetBlob(t.Context(), digest)
 		assert.ErrorIs(t, err, os.ErrNotExist, "get blob after deleting should fail") //nolint:testifylint // assert.*Error* makes more sense
 		assert.Nil(t, br, "get blob after deleting should fail")
 
 		// DeleteBlob is idempotent. It shouldn't cause an error.
-		err = engine.DeleteBlob(ctx, digest)
+		err = engine.DeleteBlob(t.Context(), digest)
 		require.NoError(t, err, "delete non-existent blob")
 	}
 
 	// Should be no blobs left.
-	blobs, err := engine.ListBlobs(ctx)
+	blobs, err := engine.ListBlobs(t.Context())
 	require.NoError(t, err, "list blobs at end of test")
 	assert.Empty(t, blobs, "no blobs should remain at end of test")
 }
 
 func TestEngineBlobJSONReadonly(t *testing.T) {
-	ctx := context.Background()
-
 	image := filepath.Join(t.TempDir(), "image")
 	err := dir.Create(image)
 	require.NoError(t, err)
@@ -113,7 +108,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		require.NoError(t, err, "open read-write engine")
 		engineExt := NewEngine(engine)
 
-		digest, _, err := engineExt.PutBlobJSON(ctx, test.object)
+		digest, _, err := engineExt.PutBlobJSON(t.Context(), test.object)
 		require.NoError(t, err, "put blob json")
 
 		err = engine.Close()
@@ -126,7 +121,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		require.NoError(t, err, "open read-only engine")
 		newEngineExt := NewEngine(newEngine)
 
-		blobReader, err := newEngine.GetBlob(ctx, digest)
+		blobReader, err := newEngine.GetBlob(t.Context(), digest)
 		require.NoError(t, err, "get blob")
 		defer blobReader.Close() //nolint:errcheck
 
@@ -139,7 +134,7 @@ func TestEngineBlobJSONReadonly(t *testing.T) {
 		assert.Equal(t, test.object, gotObject, "parsed json blob should match original data")
 
 		// Make sure that writing again will FAIL.
-		_, _, err = newEngineExt.PutBlobJSON(ctx, test.object)
+		_, _, err = newEngineExt.PutBlobJSON(t.Context(), test.object)
 		assert.Error(t, err, "put blob with read-only engine should fail") //nolint:testifylint // assert.*Error* makes more sense
 
 		err = newEngine.Close()
