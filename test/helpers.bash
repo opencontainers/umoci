@@ -196,7 +196,7 @@ function umoci() {
 }
 
 function mtree-validate() {
-	umoci raw mtree-validate -K sha256digest "$@"
+	umoci raw mtree-validate --umoci-keywords "$@"
 	local umoci_status="$status"
 
 	if [[ "$IS_ROOTLESS" == 0 ]]; then

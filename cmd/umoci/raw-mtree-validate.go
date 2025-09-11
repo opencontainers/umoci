@@ -28,6 +28,7 @@ import (
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
 
+	"github.com/opencontainers/umoci"
 	"github.com/opencontainers/umoci/pkg/fseval"
 )
 
@@ -57,6 +58,10 @@ func uxMtreeKeyword(cmd cli.Command) cli.Command {
 		cli.StringFlag{
 			Name:  "use-keywords,k", // for compatibility with gomtree
 			Usage: "use only the specified keywords for validation (delimited by comma or space)",
+		},
+		cli.BoolFlag{
+			Name:  "umoci-keywords",
+			Usage: "use the default set of keywords used by umoci",
 		},
 	}...)
 
@@ -154,8 +159,12 @@ func rawMtreeValidate(ctx *cli.Context) (Err error) {
 		manifestKeywords = manifest.UsedKeywords()
 	)
 	if compareKeywords == nil {
-		// Just use the manifest keywords if none were specified.
-		compareKeywords = manifestKeywords
+		if ctx.Bool("umoci-keywords") {
+			compareKeywords = umoci.MtreeKeywords[:]
+		} else {
+			// Just use the manifest keywords if none were specified.
+			compareKeywords = manifestKeywords
+		}
 	}
 	for _, kw := range addKeywords {
 		if !mtree.InKeywordSlice(kw, compareKeywords) {
@@ -166,18 +175,8 @@ func rawMtreeValidate(ctx *cli.Context) (Err error) {
 	if !mtree.InKeywordSlice("type", compareKeywords) {
 		compareKeywords = append([]mtree.Keyword{"type"}, compareKeywords...)
 	}
-	// If a keyword is missing from the mtree spec, we can't do the validation.
-	for _, cmpKw := range compareKeywords {
-		if !mtree.InKeywordSlice(cmpKw, manifestKeywords) &&
-			// In go-mtree, time and tar_time have special handling that allows
-			// for comparisons between them.
-			//nolint:staticcheck // QF1001: this form is easier to understand
-			!(cmpKw == "time" && mtree.InKeywordSlice("tar_time", manifestKeywords)) &&
-			//nolint:staticcheck // QF1001: this form is easier to understand
-			!(cmpKw == "tar_time" && mtree.InKeywordSlice("time", manifestKeywords)) {
-			return fmt.Errorf("cannot validate manifest: keyword %q was requested but is missing from the manifest", cmpKw)
-		}
-	}
+	// NOTE: compareKeywords might contain keywords not in the manifest, but
+	// this is usually okay.
 	log.WithFields(log.Fields{
 		"manifest_keywords": manifestKeywords,
 		"keywords":          compareKeywords,
