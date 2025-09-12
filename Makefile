@@ -207,24 +207,20 @@ rootless-shell: ci-image
 	$(DOCKER_ROOTLESS_RUN) -it $(UMOCI_IMAGE) bash
 
 TEST_DOCKER_IMAGE ?=$(shell sed -En 's/^ARG\s+TEST_DOCKER_IMAGE=([^ ]*).*$$/\1/p' Dockerfile)
+CI_CACHE_PATH ?=.ci-cache
 
-CACHE := .cache
-CACHE_IMAGE := $(CACHE)/ci-image.tar.zst
+.PHONY: ci-cache
+ci-cache: BUILDX_CACHE := \
+	--cache-from=type=local,src=$(CI_CACHE_PATH) \
+	--cache-to=type=local,mode=max,dest=$(CI_CACHE_PATH)
+ci-cache: ci-image
 
 .PHONY: ci-image
 ci-image:
-	! [ -f "$(CACHE_IMAGE)" ] || unzstd < "$(CACHE_IMAGE)" | docker load
-	DOCKER_BUILDKIT=1 docker build -t $(UMOCI_IMAGE) \
-	                               --pull \
-	                               --progress plain \
-	                               --cache-from $(UMOCI_IMAGE) \
-	                               --build-arg TEST_DOCKER_IMAGE=$(TEST_DOCKER_IMAGE) \
-	                               --build-arg BUILDKIT_INLINE_CACHE=1 .
-
-.PHONY: ci-cache
-ci-cache: ci-image
-	rm -rf $(CACHE) && mkdir -p $(CACHE)
-	docker save $(UMOCI_IMAGE) | zstd > $(CACHE_IMAGE)
+	docker buildx build $(BUILDX_CACHE) \
+		-o type=docker -t $(UMOCI_IMAGE) \
+		--pull \
+		--build-arg TEST_DOCKER_IMAGE=$(TEST_DOCKER_IMAGE) .
 
 .PHONY: ci-validate
 ci-validate: umoci umoci.static
