@@ -36,7 +36,7 @@ require (
 	github.com/rootless-containers/proto/go-proto v0.0.0-20230421021042-4cd87ebadd67
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.12
-	github.com/vbatts/go-mtree v0.6.0
+	github.com/vbatts/go-mtree v0.6.1-0.20250911112631-8307d76bc1b9
 	golang.org/x/sys v0.36.0
 	google.golang.org/protobuf v1.36.9
 )

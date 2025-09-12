@@ -26,6 +26,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	"golang.org/x/sys/unix"
@@ -131,6 +132,11 @@ func (tg *tarGenerator) AddFile(name, path string) (Err error) {
 	// changes to our output on a compiler bump...
 	hdr.Uname = ""
 	hdr.Gname = ""
+	// archive/tar will round timestamps to their nearest second, while
+	// tar_time (for our mtree validation) will truncate timestamps. For
+	// consistency, explicitly truncate them.
+	hdr.ModTime = fi.ModTime().Truncate(time.Second)
+	// TODO: AccessTime and ChangeTime (default archive/tar doesn't fill them).
 
 	name, err = normalise(name, fi.IsDir())
 	if err != nil {

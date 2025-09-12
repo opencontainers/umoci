@@ -3,7 +3,7 @@ package mtree
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"slices"
 )
 
 // XXX: Do we need a Difference interface to make it so people can do var x
@@ -252,23 +252,35 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 
 		// Make a new tar_time.
 		if diffs["tar_time"].Old == nil {
-			time, err := strconv.ParseFloat(timeStateT.Old.Value(), 64)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse old time: %s", err)
+			var (
+				timeSec, timeNsec int64
+				// used to check for trailing characters
+				trailing rune
+			)
+			val := timeStateT.Old.Value()
+			n, _ := fmt.Sscanf(val, "%d.%d%c", &timeSec, &timeNsec, &trailing)
+			if n != 2 {
+				return nil, fmt.Errorf("failed to parse old time: invalid format %q", val)
 			}
 
 			newTime := new(KeyVal)
-			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.000000000", int64(time)))
+			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.%9.9d", timeSec, 0))
 
 			diffs["tar_time"].Old = newTime
 		} else if diffs["tar_time"].New == nil {
-			time, err := strconv.ParseFloat(timeStateT.New.Value(), 64)
-			if err != nil {
-				return nil, fmt.Errorf("failed to parse new time: %s", err)
+			var (
+				timeSec, timeNsec int64
+				// used to check for trailing characters
+				trailing rune
+			)
+			val := timeStateT.New.Value()
+			n, _ := fmt.Sscanf(val, "%d.%d%c", &timeSec, &timeNsec, &trailing)
+			if n != 2 {
+				return nil, fmt.Errorf("failed to parse new time: invalid format %q", val)
 			}
 
 			newTime := new(KeyVal)
-			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.000000000", int64(time)))
+			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.%9.9d", timeSec, 0))
 
 			diffs["tar_time"].New = newTime
 		} else {
@@ -405,15 +417,16 @@ func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]Ino
 				return nil, fmt.Errorf("comparison failed %s: %s", path, err)
 			}
 
-			// Now remove "changed" entries that don't match the keys.
+			// Ignore changes to keys not in the requested set.
 			if keys != nil {
-				var filterChanged []KeyDelta
-				for _, keyDiff := range changed {
-					if InKeywordSlice(keyDiff.name.Prefix(), keys) {
-						filterChanged = append(filterChanged, keyDiff)
-					}
-				}
-				changed = filterChanged
+				changed = slices.DeleteFunc(changed, func(delta KeyDelta) bool {
+					name := delta.name.Prefix()
+					return !InKeywordSlice(name, keys) &&
+						// We remap time to tar_time in compareEntry, so we
+						// need to treat them equivalently here.
+						!(name == "time" && InKeywordSlice("tar_time", keys)) &&
+						!(name == "tar_time" && InKeywordSlice("time", keys))
+				})
 			}
 
 			// Check if there were any actual changes.

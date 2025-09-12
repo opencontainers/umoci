@@ -14,6 +14,24 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Added ###
++ In order to avoid the need for a [patched `gomtree` package][obs-gomtree]
+  that supports rootless mode, umoci now has a `umoci raw mtree-validate`
+  subcommand that implements the key `gomtree validate` features we need for
+  our integration tests.
+
+  Note that this subcommand is not intended for wider use outside of our tests
+  (and it is hidden from the help pages for a reason). Most users are probably
+  better off just using `gomtree`.
+
+### Fixed ###
+* `umoci repack` will now truncate the `mtime` of files added to the layer tar
+  archives. Previously, we would defer to the Go stdlib's `archive/tar` which
+  rounds to the nearest second (which is incompatible with `gomtree` and so in
+  theory could lead to inconsistent results).
+
+[obs-gomtree]: https://build.opensuse.org/package/show/Virtualization:containers/go-mtree
+
 ## [0.5.1] - 2025-09-05 ##
 
 > 🖤 Yuki (2021-2025)
