@@ -18,7 +18,13 @@
 FROM golang:1.25 AS go-binaries
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
-RUN go install github.com/vbatts/go-mtree/cmd/gomtree@v0.6.0
+# TODO: Get <https://github.com/vbatts/go-mtree/pull/211>,
+#       <https://github.com/vbatts/go-mtree/pull/212>, and
+#       <https://github.com/vbatts/go-mtree/pull/214> merged and switch.
+#RUN go install github.com/vbatts/go-mtree@latest
+RUN git clone -b umoci https://github.com/cyphar/go-mtree.git /tmp/gomtree
+RUN cd /tmp/gomtree && \
+	go install ./cmd/gomtree
 
 ## TOOLS: oci-runtime-tool needs special handling.
 FROM golang:1.25 AS oci-runtime-tool
