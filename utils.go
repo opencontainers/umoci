@@ -24,9 +24,12 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"os"
 	"path/filepath"
+	"slices"
 	"strconv"
+	"strings"
 	"text/tabwriter"
 
 	"github.com/apex/log"
@@ -149,12 +152,14 @@ func ReadBundleMeta(bundle string) (_ Meta, Err error) {
 
 // ManifestStat has information about a given OCI manifest.
 // TODO: Implement support for manifest lists, this should also be able to
-//
-//	contain stat information for a list of manifests.
+// contain stat information for a list of manifests.
 type ManifestStat struct {
 	// TODO: Flesh this out. Currently it's only really being used to get an
 	//       equivalent of docker-history(1). We really need to add more
 	//       information about it.
+
+	// Config stores information about the configuration of a manifest.
+	Config configStat `json:"config"`
 
 	// History stores the history information for the manifest.
 	History historyStatList `json:"history"`
@@ -169,6 +174,119 @@ func quote(s string, quoteEmpty bool) string {
 	return s
 }
 
+func pprint(w io.Writer, prefix, key string, values ...string) (err error) {
+	if len(values) > 0 {
+		for idx, value := range values {
+			if strings.Contains(value, ",") {
+				// Make sure "," leads to quoting.
+				values[idx] = strconv.Quote(value)
+			} else {
+				values[idx] = quote(values[idx], true)
+			}
+		}
+		_, err = fmt.Fprintf(w, "%s%s: %s\n", prefix, key, strings.Join(values, ", "))
+	} else {
+		_, err = fmt.Fprintf(w, "%s%s:\n", prefix, key)
+	}
+	return err
+}
+
+func pprintSlice(w io.Writer, prefix, name string, data []string) error {
+	if err := pprint(w, prefix, name); err != nil {
+		return err
+	}
+	prefix += "\t"
+	for _, line := range data {
+		if _, err := fmt.Fprintf(w, "%s%s\n", prefix, quote(line, true)); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
+	if err := pprint(w, prefix, name); err != nil {
+		return err
+	}
+	prefix += "\t"
+	for _, key := range slices.Sorted(maps.Keys(data)) {
+		if err := pprint(w, prefix, key, data[key]); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func pprintSet(w io.Writer, prefix, name string, data map[string]struct{}) error {
+	keys := slices.Sorted(maps.Keys(data))
+	return pprint(w, prefix, name, keys...)
+}
+
+func pprintPlatform(w io.Writer, prefix string, platform ispec.Platform) error {
+	if err := pprint(w, prefix, "Platform"); err != nil {
+		return err
+	}
+	prefix += "\t"
+
+	if err := pprint(w, prefix, "OS", platform.OS); err != nil {
+		return err
+	}
+	if platform.OSVersion != "" {
+		if err := pprint(w, prefix, "OS Version", platform.OSVersion); err != nil {
+			return err
+		}
+	}
+	if len(platform.OSFeatures) > 0 {
+		if err := pprint(w, prefix, "OS Features", platform.OSFeatures...); err != nil {
+			return err
+		}
+	}
+	arch := platform.Architecture
+	if platform.Variant != "" {
+		arch = fmt.Sprintf("%s (%s)", platform.Architecture, platform.Variant)
+	}
+	if err := pprint(w, prefix, "Architecture", arch); err != nil {
+		return err
+	}
+	return nil
+}
+
+// pprintDescriptor pretty-prints an ispec.Descriptor.
+func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) error {
+	if err := pprint(w, prefix, "Descriptor"); err != nil {
+		return err
+	}
+	prefix += "\t"
+	if err := pprint(w, prefix, "Media Type", descriptor.MediaType); err != nil {
+		return err
+	}
+	if err := pprint(w, prefix, "Digest", descriptor.Digest.String()); err != nil {
+		return err
+	}
+	size := units.HumanSize(float64(descriptor.Size))
+	if err := pprint(w, prefix, "Size", size); err != nil {
+		return err
+	}
+	if descriptor.Platform != nil {
+		if err := pprintPlatform(w, "", *descriptor.Platform); err != nil {
+			return err
+		}
+	}
+	if len(descriptor.URLs) > 0 {
+		if err := pprintSlice(w, prefix, "URLs", descriptor.URLs); err != nil {
+			return err
+		}
+	}
+	if len(descriptor.Annotations) > 0 {
+		if err := pprintMap(w, prefix, "Annotations", descriptor.Annotations); err != nil {
+			return err
+		}
+	}
+	// TODO(image-spec v1.1): descriptor.Data
+	// TODO(image-spec v1.1): descriptor.ArtifactType
+	return nil
+}
+
 // Format formats a ManifestStat using the default formatting, and writes the
 // result to the given writer.
 //
@@ -176,11 +294,111 @@ func quote(s string, quoteEmpty bool) string {
 // define their own custom templates for different blocks (meaning that this
 // should use text/template rather than using tabwriters manually.
 func (ms ManifestStat) Format(w io.Writer) error {
+	if _, err := fmt.Fprintln(w, "== CONFIG =="); err != nil {
+		return err
+	}
+	if err := ms.Config.pprint(w); err != nil {
+		return err
+	}
+
 	// Output history information.
-	if _, err := fmt.Fprintln(w, "== HISTORY =="); err != nil {
+	if _, err := fmt.Fprintln(w, "\n== HISTORY =="); err != nil {
 		return err
 	}
 	if err := ms.History.pprint(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+// configStat contains information about the image configuration of this
+// manifest.
+type configStat struct {
+	// Descriptor is the descriptor for the configuration JSON.
+	Descriptor ispec.Descriptor `json:"descriptor"`
+
+	// Image is the contents of the configuration.
+	Image ispec.Image `json:"-"`
+
+	// RawData is the raw data stream of the blob, which is output when we
+	// provide JSON output (to make sure no information is lost in --json
+	// mode).
+	RawData json.RawMessage `json:"blob"`
+}
+
+func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) error {
+	if err := pprint(w, prefix, "Image Config"); err != nil {
+		return err
+	}
+	prefix += "\t"
+	if err := pprint(w, prefix, "User", config.User); err != nil {
+		return err
+	}
+
+	if len(config.Entrypoint) > 0 {
+		if err := pprintSlice(w, prefix, "Entrypoint", config.Entrypoint); err != nil {
+			return err
+		}
+	}
+	if err := pprintSlice(w, prefix, "Command", config.Cmd); err != nil {
+		return err
+	}
+	if config.WorkingDir != "" {
+		if err := pprint(w, prefix, "Working Directory", config.WorkingDir); err != nil {
+			return err
+		}
+	}
+	if len(config.Env) > 0 {
+		if err := pprintSlice(w, prefix, "Environment", config.Env); err != nil {
+			return err
+		}
+	}
+	if config.StopSignal != "" {
+		if err := pprint(w, prefix, "Stop Signal", config.StopSignal); err != nil {
+			return err
+		}
+	}
+	if len(config.ExposedPorts) > 0 {
+		if err := pprintSet(w, prefix, "Exposed Ports", config.ExposedPorts); err != nil {
+			return err
+		}
+	}
+	if len(config.Volumes) > 0 {
+		if err := pprintSet(w, prefix, "Volumes", config.Volumes); err != nil {
+			return err
+		}
+	}
+	if len(config.Labels) > 0 {
+		if err := pprintMap(w, prefix, "Labels", config.Labels); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (c configStat) pprint(w io.Writer) error {
+	image := c.Image
+	if image.Created != nil {
+		date := image.Created.Format(igen.ISO8601)
+		if err := pprint(w, "", "Created", date); err != nil {
+			return err
+		}
+	}
+	if err := pprint(w, "", "Author", image.Author); err != nil {
+		return err
+	}
+	// TODO(image-spec v1.1): Use embedded Platform.
+	platform := ispec.Platform{
+		OS:           image.OS,
+		Architecture: image.Architecture,
+	}
+	if err := pprintPlatform(w, "", platform); err != nil {
+		return err
+	}
+	if err := pprintImageConfig(w, "", image.Config); err != nil {
+		return err
+	}
+	if err := pprintDescriptor(w, "", c.Descriptor); err != nil {
 		return err
 	}
 	return nil
@@ -262,6 +480,11 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	if !ok {
 		// Should _never_ be reached.
 		return stat, fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
+	}
+	stat.Config = configStat{
+		Descriptor: manifest.Config,
+		Image:      config,
+		RawData:    configBlob.RawData,
 	}
 
 	// TODO: This should probably be moved into separate functions.

@@ -27,6 +27,12 @@ function teardown() {
 	teardown_image
 }
 
+function digest_to_path() {
+	layout="$1"
+	digest="$2"
+	echo "$1/blobs/$(tr : / <<<"$2")"
+}
+
 @test "umoci stat --json" {
 	# Make sure that stat looks about right.
 	umoci stat --image "${IMAGE}:${TAG}" --json
@@ -34,6 +40,22 @@ function teardown() {
 
 	statFile="$(setup_tmpdir)/stat"
 	echo "$output" > "$statFile"
+
+	# .config.descriptor should describe a config blob
+	sane_run jq -SMr '.config.descriptor.mediaType' "$statFile"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "application/vnd.oci.image.config.v1+json" ]]
+
+	# .config.blob should match .config.descriptor data
+	sane_run jq -SMr '.config.descriptor.digest' "$statFile"
+	[ "$status" -eq 0 ]
+	config_digest="$output"
+	sane_run jq -SMr '.config.blob' "$statFile"
+	[ "$status" -eq 0 ]
+	config_data="$output"
+	sane_run jq -SMr '.' "$(digest_to_path "$IMAGE" "$config_digest")"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$config_data" ]]
 
 	# .history should have at least one entry.
 	sane_run jq -SMr '.history | length' "$statFile"
@@ -50,9 +72,18 @@ function teardown() {
 
 # We can't really test the output for non-JSON output, but we can smoke test it.
 @test "umoci stat [smoke]" {
+	# Set some values to make sure they show up in stat properly.
+	umoci config --config.user "foobar" --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
 	# Make sure that stat looks about right.
 	umoci stat --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
+
+	# We should have some config information.
+	echo "$output" | grep "== CONFIG =="
+	echo "$output" | grep "Media Type: application/vnd.oci.image.config.v1+json"
+	echo "$output" | grep "User: foobar"
 
 	# We should have some history information.
 	echo "$output" | grep "== HISTORY =="
@@ -63,6 +94,49 @@ function teardown() {
 	echo "$output" | grep 'COMMENT'
 
 	image-verify "${IMAGE}"
+}
+
+BLANK_IMAGE_STAT="$(cat <<EOF
+== CONFIG ==
+Created: 2025-09-05T13:05:10.12345+10:00
+Author: ""
+Image Config:
+	User: ""
+	Command:
+Descriptor:
+	Media Type: application/vnd.oci.image.config.v1+json
+	Digest: sha256:e5101a46118c740a7709af8eaeec19cbc50a567f4fe7741f8420af39a3779a77
+	Size: 135B
+
+== HISTORY ==
+LAYER CREATED CREATED BY SIZE COMMENT
+EOF
+)"
+
+@test "umoci stat [blank image output snapshot]" {
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+	STATFILE_DIR="$(setup_tmpdir)"
+
+	expected="${STATFILE_DIR}/expected"
+	cat >"$expected" <<<"$BLANK_IMAGE_STAT"
+
+	umoci init --layout "${IMAGE}"
+	[ "$status" -eq 0 ]
+
+	umoci new --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	umoci config --no-history --created="2025-09-05T13:05:10.12345+10:00" --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	got="${STATFILE_DIR}/got"
+	cat >"$got" <<<"$output"
+
+	sane_run diff -u "$expected" "$got"
+	[ "$status" -eq 0 ]
 }
 
 @test "umoci stat [invalid arguments]" {
