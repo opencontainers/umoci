@@ -55,6 +55,7 @@ function teardown() {
 	[ "$status" -eq 0 ]
 
 	# We should have some history information.
+	echo "$output" | grep "== HISTORY =="
 	echo "$output" | grep 'LAYER'
 	echo "$output" | grep 'CREATED'
 	echo "$output" | grep 'CREATED BY'

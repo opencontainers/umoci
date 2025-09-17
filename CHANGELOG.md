@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Fixed ###
+* Some minor aspects of how `umoci stat` would filter special characters in
+  history entries have been resolved.
+
 ## [0.5.1] - 2025-09-05 ##
 
 > 🖤 Yuki (2021-2025)

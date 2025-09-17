@@ -26,7 +26,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
-	"strings"
+	"strconv"
 	"text/tabwriter"
 
 	"github.com/apex/log"
@@ -157,41 +157,33 @@ type ManifestStat struct {
 	//       information about it.
 
 	// History stores the history information for the manifest.
-	History []historyStat `json:"history"`
+	History historyStatList `json:"history"`
+}
+
+func quote(s string, quoteEmpty bool) string {
+	quoted := strconv.Quote(s)
+	// Only return quoted string if it actually required escaping or is empty.
+	if quoted != `"`+s+`"` || (quoteEmpty && s == "") {
+		return quoted
+	}
+	return s
 }
 
 // Format formats a ManifestStat using the default formatting, and writes the
 // result to the given writer.
-// TODO: This should really be implemented in a way that allows for users to
 //
-//	define their own custom templates for different blocks (meaning that
-//	this should use text/template rather than using tabwriters manually.
+// TODO: This should really be implemented in a way that allows for users to
+// define their own custom templates for different blocks (meaning that this
+// should use text/template rather than using tabwriters manually.
 func (ms ManifestStat) Format(w io.Writer) error {
 	// Output history information.
-	tw := tabwriter.NewWriter(w, 4, 2, 1, ' ', 0)
-	if _, err := fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n"); err != nil {
+	if _, err := fmt.Fprintln(w, "== HISTORY =="); err != nil {
 		return err
 	}
-	for _, histEntry := range ms.History {
-		var (
-			created   = strings.ReplaceAll(histEntry.Created.Format(igen.ISO8601), "\t", " ")
-			createdBy = strings.ReplaceAll(histEntry.CreatedBy, "\t", " ")
-			comment   = strings.ReplaceAll(histEntry.Comment, "\t", " ")
-			layerID   = "<none>"
-			size      = "<none>"
-		)
-
-		if !histEntry.EmptyLayer {
-			layerID = histEntry.Layer.Digest.String()
-			size = units.HumanSize(float64(histEntry.Layer.Size))
-		}
-
-		// TODO: We need to truncate some of the fields.
-		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", layerID, created, createdBy, size, comment); err != nil {
-			return err
-		}
+	if err := ms.History.pprint(w); err != nil {
+		return err
 	}
-	return tw.Flush()
+	return nil
 }
 
 // historyStat contains information about a single entry in the history of a
@@ -210,6 +202,35 @@ type historyStat struct {
 
 	// History is embedded in the stat information.
 	ispec.History
+}
+
+type historyStatList []historyStat
+
+func (hsl historyStatList) pprint(w io.Writer) error {
+	tw := tabwriter.NewWriter(w, 4, 2, 1, ' ', 0)
+	if _, err := fmt.Fprintf(tw, "LAYER\tCREATED\tCREATED BY\tSIZE\tCOMMENT\n"); err != nil {
+		return err
+	}
+	for _, histEntry := range hsl {
+		var (
+			created   = quote(histEntry.Created.Format(igen.ISO8601), false)
+			createdBy = quote(histEntry.CreatedBy, false)
+			comment   = quote(histEntry.Comment, false)
+			layerID   = "<none>"
+			size      = "<none>"
+		)
+
+		if !histEntry.EmptyLayer {
+			layerID = histEntry.Layer.Digest.String()
+			size = units.HumanSize(float64(histEntry.Layer.Size))
+		}
+
+		// TODO: We need to truncate some of the fields.
+		if _, err := fmt.Fprintf(tw, "%s\t%s\t%s\t%s\t%s\n", layerID, created, createdBy, size, comment); err != nil {
+			return err
+		}
+	}
+	return tw.Flush()
 }
 
 // Stat computes the ManifestStat for a given manifest blob. The provided
