@@ -154,9 +154,7 @@ func ReadBundleMeta(bundle string) (_ Meta, Err error) {
 // TODO: Implement support for manifest lists, this should also be able to
 // contain stat information for a list of manifests.
 type ManifestStat struct {
-	// TODO: Flesh this out. Currently it's only really being used to get an
-	//       equivalent of docker-history(1). We really need to add more
-	//       information about it.
+	Manifest manifestStat `json:"manifest"`
 
 	// Config stores information about the configuration of a manifest.
 	Config configStat `json:"config"`
@@ -294,7 +292,14 @@ func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) e
 // define their own custom templates for different blocks (meaning that this
 // should use text/template rather than using tabwriters manually.
 func (ms ManifestStat) Format(w io.Writer) error {
-	if _, err := fmt.Fprintln(w, "== CONFIG =="); err != nil {
+	if _, err := fmt.Fprintln(w, "== MANIFEST =="); err != nil {
+		return err
+	}
+	if err := ms.Manifest.pprint(w); err != nil {
+		return err
+	}
+
+	if _, err := fmt.Fprintln(w, "\n== CONFIG =="); err != nil {
 		return err
 	}
 	if err := ms.Config.pprint(w); err != nil {
@@ -306,6 +311,57 @@ func (ms ManifestStat) Format(w io.Writer) error {
 		return err
 	}
 	if err := ms.History.pprint(w); err != nil {
+		return err
+	}
+	return nil
+}
+
+// manifestStat contains information about the image manifest.
+type manifestStat struct {
+	// Descriptor is the descriptor for the configuration JSON.
+	Descriptor ispec.Descriptor `json:"descriptor"`
+
+	// Manifest is the contents of the image manifest.
+	Manifest ispec.Manifest `json:"-"`
+
+	// RawData is the raw data stream of the blob, which is output when we
+	// provide JSON output (to make sure no information is lost in --json
+	// mode).
+	RawData json.RawMessage `json:"blob"`
+}
+
+func (m manifestStat) pprint(w io.Writer) error {
+	manifest := m.Manifest
+	if err := pprint(w, "", "Schema Version", strconv.Itoa(manifest.SchemaVersion)); err != nil {
+		return err
+	}
+	if err := pprint(w, "", "Media Type", manifest.MediaType); err != nil {
+		return err
+	}
+	// TODO(image-spec v1.1): manifest.ArtifactType
+	// TODO(image-spec v1.1): manifest.Subject
+	if err := pprint(w, "", "Config"); err != nil {
+		return err
+	}
+	if err := pprintDescriptor(w, "\t", manifest.Config); err != nil {
+		return err
+	}
+	if len(manifest.Layers) > 0 {
+		if err := pprint(w, "", "Layers"); err != nil {
+			return err
+		}
+		for _, layer := range manifest.Layers {
+			if err := pprintDescriptor(w, "\t", layer); err != nil {
+				return err
+			}
+		}
+	}
+	if len(manifest.Annotations) > 0 {
+		if err := pprintMap(w, "", "Annotations", manifest.Annotations); err != nil {
+			return err
+		}
+	}
+	if err := pprintDescriptor(w, "", m.Descriptor); err != nil {
 		return err
 	}
 	return nil
@@ -469,6 +525,11 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 	if !ok {
 		// Should _never_ be reached.
 		return stat, fmt.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+	}
+	stat.Manifest = manifestStat{
+		Descriptor: manifestDescriptor,
+		Manifest:   manifest,
+		RawData:    manifestBlob.RawData,
 	}
 
 	// Now get the config.

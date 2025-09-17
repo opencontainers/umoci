@@ -41,6 +41,22 @@ function digest_to_path() {
 	statFile="$(setup_tmpdir)/stat"
 	echo "$output" > "$statFile"
 
+	# .manifest.descriptor should describe a config blob
+	sane_run jq -SMr '.manifest.descriptor.mediaType' "$statFile"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "application/vnd.oci.image.manifest.v1+json" ]]
+
+	# .manifest.blob should match .manifest.descriptor data
+	sane_run jq -SMr '.manifest.descriptor.digest' "$statFile"
+	[ "$status" -eq 0 ]
+	manifest_digest="$output"
+	sane_run jq -SMr '.manifest.blob' "$statFile"
+	[ "$status" -eq 0 ]
+	manifest_data="$output"
+	sane_run jq -SMr '.' "$(digest_to_path "$IMAGE" "$manifest_digest")"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "$manifest_data" ]]
+
 	# .config.descriptor should describe a config blob
 	sane_run jq -SMr '.config.descriptor.mediaType' "$statFile"
 	[ "$status" -eq 0 ]
@@ -73,12 +89,20 @@ function digest_to_path() {
 # We can't really test the output for non-JSON output, but we can smoke test it.
 @test "umoci stat [smoke]" {
 	# Set some values to make sure they show up in stat properly.
-	umoci config --config.user "foobar" --image "${IMAGE}:${TAG}"
+	umoci config --image "${IMAGE}:${TAG}" \
+		--config.user "foobar" \
+		--manifest.annotation "org.opencontainers.umoci.test=foo"
 	[ "$status" -eq 0 ]
 
 	# Make sure that stat looks about right.
 	umoci stat --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]
+
+	# We should have some manifest information.
+	echo "$output" | grep "== MANIFEST =="
+	echo "$output" | grep "Media Type: application/vnd.oci.image.manifest.v1+json"
+	echo "$output" | grep "org.opencontainers.umoci.test: foo"
+	echo "$output" | grep "org.opencontainers.image.ref.name: ${TAG}"
 
 	# We should have some config information.
 	echo "$output" | grep "== CONFIG =="
@@ -97,6 +121,21 @@ function digest_to_path() {
 }
 
 BLANK_IMAGE_STAT="$(cat <<EOF
+== MANIFEST ==
+Schema Version: 2
+Media Type: application/vnd.oci.image.manifest.v1+json
+Config:
+	Descriptor:
+		Media Type: application/vnd.oci.image.config.v1+json
+		Digest: sha256:e5101a46118c740a7709af8eaeec19cbc50a567f4fe7741f8420af39a3779a77
+		Size: 135B
+Descriptor:
+	Media Type: application/vnd.oci.image.manifest.v1+json
+	Digest: sha256:98a4b5d5fe4ea076a0a9059075dad54741e055fd0fa016903a8e2b858dcbad80
+	Size: 249B
+	Annotations:
+		org.opencontainers.image.ref.name: latest
+
 == CONFIG ==
 Created: 2025-09-05T13:05:10.12345+10:00
 Author: ""
