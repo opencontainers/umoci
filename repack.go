@@ -24,6 +24,7 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"time"
 
 	"github.com/apex/log"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
@@ -48,6 +49,7 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 	refreshBundle bool,
 	mutator *mutate.Mutator,
 	layerCompressor mutate.Compressor, //nolint:staticcheck // SA1019: this interface is defined by us and we keep it for compatibility
+	sourceDateEpoch *time.Time,
 ) (Err error) {
 	mtreeName := strings.Replace(meta.From.Descriptor().Digest.String(), ":", "_", 1)
 	mtreePath := filepath.Join(bundlePath, mtreeName+".mtree")
@@ -118,6 +120,7 @@ func Repack(engineExt casext.Engine, tagName, bundlePath string,
 			OnDiskFormat: layer.DirRootfs{
 				MapOptions: meta.MapOptions,
 			},
+			SourceDateEpoch: sourceDateEpoch,
 		})
 		if err != nil {
 			return fmt.Errorf("generate diff layer: %w", err)

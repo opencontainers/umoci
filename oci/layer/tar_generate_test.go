@@ -301,3 +301,130 @@ func TestTarGenerateAddWhiteout(t *testing.T) {
 	}
 	assert.Len(t, paths, idx, "all paths should have a whiteout entry generated")
 }
+
+func TestTarGenerateSourceDateEpochClamping(t *testing.T) {
+	reader, writer := io.Pipe()
+
+	dir := t.TempDir()
+
+	file := "testfile"
+	data := []byte("test file content")
+	path := filepath.Join(dir, file)
+
+	require.NoError(t, os.WriteFile(path, data, 0o644))
+
+	futureTime := time.Unix(2000000000, 0)
+	require.NoError(t, os.Chtimes(path, futureTime, futureTime))
+
+	sourceDateEpoch := time.Unix(1234567890, 0).UTC()
+	opt := &RepackOptions{
+		SourceDateEpoch: &sourceDateEpoch,
+	}
+
+	tg := newTarGenerator(writer, opt)
+	tr := tar.NewReader(reader)
+
+	go func() {
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
+	}()
+
+	hdr, err := tr.Next()
+	require.NoError(t, err, "read tar entry")
+
+	assert.Equal(t, sourceDateEpoch, hdr.ModTime.UTC(), "ModTime should be clamped to SOURCE_DATE_EPOCH")
+
+	gotBytes, err := io.ReadAll(tr)
+	require.NoError(t, err, "read file data from tar reader")
+	assert.Equal(t, data, gotBytes, "file content should be preserved")
+
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
+}
+
+func TestTarGenerateSourceDateEpochPreservesOldTimestamps(t *testing.T) {
+	reader, writer := io.Pipe()
+
+	dir := t.TempDir()
+
+	file := "oldfile"
+	data := []byte("old file content")
+	path := filepath.Join(dir, file)
+
+	require.NoError(t, os.WriteFile(path, data, 0o644))
+
+	oldTime := time.Unix(1000000000, 0)
+	require.NoError(t, os.Chtimes(path, oldTime, oldTime))
+
+	sourceDateEpoch := time.Unix(1234567890, 0).UTC()
+	opt := &RepackOptions{
+		SourceDateEpoch: &sourceDateEpoch,
+	}
+
+	tg := newTarGenerator(writer, opt)
+	tr := tar.NewReader(reader)
+
+	go func() {
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
+	}()
+
+	hdr, err := tr.Next()
+	require.NoError(t, err, "read tar entry")
+
+	assert.Equal(t, oldTime.UTC(), hdr.ModTime.UTC(), "ModTime should be preserved when older than SOURCE_DATE_EPOCH")
+
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
+}
+
+func TestTarGenerateWithoutSourceDateEpoch(t *testing.T) {
+	reader, writer := io.Pipe()
+
+	dir := t.TempDir()
+
+	file := "normalfile"
+	data := []byte("normal file content")
+	path := filepath.Join(dir, file)
+
+	require.NoError(t, os.WriteFile(path, data, 0o644))
+
+	fileTime := time.Unix(1500000000, 0)
+	require.NoError(t, os.Chtimes(path, fileTime, fileTime))
+
+	opt := &RepackOptions{}
+
+	tg := newTarGenerator(writer, opt)
+	tr := tar.NewReader(reader)
+
+	go func() {
+		err := tg.AddFile(file, path)
+		assert.NoErrorf(t, err, "AddFile %s", path)
+
+		err = tg.tw.Close()
+		assert.NoError(t, err, "close tar writer")
+
+		err = writer.Close()
+		assert.NoError(t, err, "close pipe writer")
+	}()
+
+	hdr, err := tr.Next()
+	require.NoError(t, err, "read tar entry")
+
+	assert.Equal(t, fileTime.UTC(), hdr.ModTime.UTC(), "ModTime should be preserved when SOURCE_DATE_EPOCH is not set")
+
+	_, err = tr.Next()
+	assert.ErrorIs(t, err, io.EOF, "should reach end of tar archive")
+}

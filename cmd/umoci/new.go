@@ -60,6 +60,11 @@ func newImage(ctx *cli.Context) (Err error) {
 	imagePath := mustFetchMeta[string](ctx, "--image-path")
 	tagName := mustFetchMeta[string](ctx, "--image-tag")
 
+	sourceDateEpoch, err := parseSourceDateEpoch()
+	if err != nil {
+		return err
+	}
+
 	// Get a reference to the CAS.
 	engine, err := dir.Open(imagePath)
 	if err != nil {
@@ -68,5 +73,5 @@ func newImage(ctx *cli.Context) (Err error) {
 	engineExt := casext.NewEngine(engine)
 	defer funchelpers.VerifyClose(&Err, engine)
 
-	return umoci.NewImage(engineExt, tagName)
+	return umoci.NewImage(engineExt, tagName, sourceDateEpoch)
 }

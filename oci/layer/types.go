@@ -20,6 +20,7 @@ package layer
 
 import (
 	"strings"
+	"time"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	rspec "github.com/opencontainers/runtime-spec/specs-go"
@@ -176,6 +177,11 @@ type RepackOptions struct {
 	// from uses. [OverlayfsRootfs] will cause overlayfs format whiteouts to be
 	// converted to OCI whiteouts in the layer.
 	OnDiskFormat OnDiskFormat
+
+	// SourceDateEpoch, if set, specifies the timestamp to use for clamping
+	// layer content timestamps. If not set, layer content timestamps are
+	// preserved as-is.
+	SourceDateEpoch *time.Time
 }
 
 // fill replaces nil values in RepackOptions with the correct default values.

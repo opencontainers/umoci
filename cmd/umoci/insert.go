@@ -165,10 +165,16 @@ func insert(ctx *cli.Context) (Err error) {
 		return err
 	}
 
+	sourceDateEpoch, err := parseSourceDateEpoch()
+	if err != nil {
+		return err
+	}
+
 	packOptions := layer.RepackOptions{
 		OnDiskFormat: layer.DirRootfs{
 			MapOptions: meta.MapOptions,
 		},
+		SourceDateEpoch: sourceDateEpoch,
 	}
 	reader := layer.GenerateInsertLayer(sourcePath, targetPath, ctx.IsSet("opaque"), &packOptions)
 	defer funchelpers.VerifyClose(&Err, reader)
@@ -176,6 +182,9 @@ func insert(ctx *cli.Context) (Err error) {
 	var history *ispec.History
 	if !ctx.Bool("no-history") {
 		created := time.Now()
+		if sourceDateEpoch != nil {
+			created = *sourceDateEpoch
+		}
 		history = &ispec.History{
 			Comment:    "",
 			Created:    &created,
@@ -189,6 +198,7 @@ func insert(ctx *cli.Context) (Err error) {
 		if ctx.IsSet("history.comment") {
 			history.Comment = ctx.String("history.comment")
 		}
+		// If set, takes precedence over SOURCE_DATE_EPOCH.
 		if ctx.IsSet("history.created") {
 			created, err := time.Parse(igen.ISO8601, ctx.String("history.created"))
 			if err != nil {
