@@ -19,6 +19,7 @@
 package casext
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -36,6 +37,10 @@ type Blob struct {
 	// Descriptor is the {mediatype,digest,length} 3-tuple. Note that this
 	// isn't updated if the Data is modified.
 	Descriptor ispec.Descriptor
+
+	// RawData is the un-parsed blob data taken from the OCI image's blob
+	// store. If the data is unparseable, this value will be nil.
+	RawData []byte
 
 	// Data is the "parsed" blob taken from the OCI image's blob store, and is
 	// typed according to the media type. The default mappings from MIME =>
@@ -62,28 +67,39 @@ func (b *Blob) Close() error {
 }
 
 // FromDescriptor parses the blob referenced by the given descriptor.
-func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (_ *Blob, Err error) {
+func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor) (blob *Blob, Err error) {
 	reader, err := e.GetVerifiedBlob(ctx, descriptor)
 	if err != nil {
 		return nil, fmt.Errorf("get blob: %w", err)
 	}
 
-	blob := Blob{
+	blob = &Blob{
 		Descriptor: descriptor,
 		Data:       reader,
 	}
 
 	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
+		rawDataBuf := new(bytes.Buffer)
+		dataReader := io.TeeReader(reader, rawDataBuf)
+
 		defer func() {
-			if _, err := system.Copy(io.Discard, reader); Err == nil && err != nil {
+			if _, err := system.Copy(io.Discard, dataReader); Err == nil && err != nil {
 				Err = fmt.Errorf("discard trailing %q blob: %w", descriptor.MediaType, err)
 			}
 			if err := reader.Close(); Err == nil && err != nil {
 				Err = fmt.Errorf("close %q blob: %w", descriptor.MediaType, err)
 			}
+			if blob != nil {
+				// Include all trailing data.
+				blob.RawData = rawDataBuf.Bytes()
+				if len(blob.RawData) <= 0 && Err == nil {
+					// Sanity check.
+					Err = fmt.Errorf("parsing %q blob succeeded but raw data has no length", descriptor.MediaType)
+				}
+			}
 		}()
 
-		data, err := fn(reader)
+		data, err := fn(dataReader)
 		if err != nil {
 			return nil, fmt.Errorf("parse %s: %w", descriptor.MediaType, err)
 		}
@@ -92,5 +108,5 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 	if blob.Data == nil {
 		return nil, errors.New("[internal error] b.Data was nil after parsing")
 	}
-	return &blob, nil
+	return blob, nil
 }

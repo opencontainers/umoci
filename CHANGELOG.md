@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Added ###
+* `umoci stat` now includes information about the manifest and configuration of
+  the image, both in the regular and JSON-formatted outputs.
+
+### Fixed ###
+* Some minor aspects of how `umoci stat` would filter special characters in
+  history entries have been resolved.
+
 ## [0.5.1] - 2025-09-05 ##
 
 > 🖤 Yuki (2021-2025)

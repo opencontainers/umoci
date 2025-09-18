@@ -744,16 +744,16 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	# Make sure that the history was modified.
+	# Make sure we *did not* add a new history entry.
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
-	hashA="$(sha256sum <<<"$output")"
+	hashA="$(jq '.history' <<<"$output" | sha256sum)"
 
 	umoci stat --image "${IMAGE}:${TAG}-new" --json
 	[ "$status" -eq 0 ]
-	hashB="$(sha256sum <<<"$output")"
+	hashB="$(jq '.history' <<<"$output" | sha256sum)"
 
-	# umoci-stat output should be identical.
+	# umoci-stat history output should be identical.
 	[[ "$hashA" == "$hashB" ]]
 
 	image-verify "${IMAGE}"

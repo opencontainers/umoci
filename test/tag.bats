@@ -98,13 +98,14 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	# Compare the stats.
+	# Compare the stats -- aside from the refname annotation, they should be
+	# identical.
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
-	oldOutput="$output"
+	oldOutput="$(jq -rM 'del(.manifest.descriptor.annotations["org.opencontainers.image.ref.name"])' <<<"$output")"
 	umoci stat --image "${IMAGE}:${NEW_TAG}" --json
 	[ "$status" -eq 0 ]
-	newOutput="$output"
+	newOutput="$(jq -rM 'del(.manifest.descriptor.annotations["org.opencontainers.image.ref.name"])' <<<"$output")"
 
 	[[ "$oldOutput" == "$newOutput" ]]
 
@@ -190,13 +191,14 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
-	# Compare the stats.
+	# Compare the stats -- aside from the refname annotation, they should be
+	# identical.
 	umoci stat --image "${IMAGE}:${TAG}" --json
 	[ "$status" -eq 0 ]
-	oldOutput="$output"
+	oldOutput="$(jq -rM 'del(.manifest.descriptor.annotations["org.opencontainers.image.ref.name"])' <<<"$output")"
 	umoci stat --image "${IMAGE}:${NEW_TAG}" --json
 	[ "$status" -eq 0 ]
-	newOutput="$output"
+	newOutput="$(jq -rM 'del(.manifest.descriptor.annotations["org.opencontainers.image.ref.name"])' <<<"$output")"
 
 	[[ "$oldOutput" == "$newOutput" ]]
 
