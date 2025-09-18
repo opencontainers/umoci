@@ -35,7 +35,9 @@ RUN zypper -n in \
 		findutils \
 		git \
 		gnu_parallel \
-		"go>=1.24" \
+		# Go 1.25's packaging is broken at the moment.
+		# See <https://bugzilla.suse.com/show_bug.cgi?id=1249985>.
+		go1.24 \
 		go-mtree \
 		gzip \
 		jq \
