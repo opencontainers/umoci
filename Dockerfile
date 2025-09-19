@@ -15,12 +15,12 @@
 # limitations under the License.
 
 ## TOOLS: Basic golang tools can be installed using standard "go install".
-FROM golang:1.24 AS go-binaries
+FROM golang:1.25 AS go-binaries
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
 
 ## TOOLS: oci-runtime-tool needs special handling.
-FROM golang:1.24 AS oci-runtime-tool
+FROM golang:1.25 AS oci-runtime-tool
 # FIXME: We need to get an ancient version of oci-runtime-tools because the
 #        config.json conversion we do is technically not spec-compliant due to
 #        an oversight and new versions of oci-runtime-tools verify this.
