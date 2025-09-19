@@ -37,5 +37,6 @@ should be sufficient for most use-cases.`,
 		rawAddLayerCommand,
 		rawConfigCommand,
 		rawUnpackCommand,
+		rawMtreeValidateCommand,
 	},
 }
