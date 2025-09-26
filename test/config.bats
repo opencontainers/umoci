@@ -669,7 +669,7 @@ function teardown() {
 # This needs to be fixed after we implement raw-cat or something like that.
 @test "umoci config --[author+created]" {
 	# Modify everything.
-	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --author="Aleksa Sarai <asarai@suse.com>" --created="2016-03-25T12:34:02.655002+11:00"
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --author="Aleksa Sarai <cyphar@cyphar.com>" --created="2016-03-25T12:34:02.655002+11:00"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -695,7 +695,7 @@ function teardown() {
 	# The final layer should be an empty_layer now.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "true" ]]
 	# The author should've changed.
-	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <asarai@suse.com>" ]]
+	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
 
 	image-verify "${IMAGE}"
 }
@@ -708,7 +708,7 @@ function teardown() {
 		--history.comment="/* Not a real comment. */" \
 		--history.created_by="-- <bats> integration test --" \
 		--history.created="2016-12-09T04:45:40+11:00" \
-		--author="Aleksa Sarai <asarai@suse.com>"
+		--author="Aleksa Sarai <cyphar@cyphar.com>"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
@@ -740,7 +740,7 @@ function teardown() {
 @test "umoci config --no-history" {
 	# Modify something and don't add a history entry.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --no-history \
-		--author="Aleksa Sarai <asarai@suse.com>"
+		--author="Aleksa Sarai <cyphar@cyphar.com>"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 

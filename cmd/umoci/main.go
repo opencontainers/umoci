@@ -50,7 +50,7 @@ func Main(args []string) error {
 	app.Authors = []cli.Author{
 		{
 			Name:  "Aleksa Sarai",
-			Email: "asarai@suse.com",
+			Email: "cyphar@cyphar.com",
 		},
 	}
 	app.Version = umoci.FullVersion()

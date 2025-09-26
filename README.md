@@ -193,10 +193,10 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.5.0
+   0.5.1
 
 AUTHOR:
-   Aleksa Sarai <asarai@suse.com>
+   Aleksa Sarai <cyphar@cyphar.com>
 
 COMMANDS:
    raw      advanced internal image tooling

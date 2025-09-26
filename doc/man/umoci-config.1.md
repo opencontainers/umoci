@@ -112,7 +112,7 @@ overwrites the original tag with the new image.
 ```
 % umoci config --image image:tag --clear=config.env --config.env="VARIABLE=true" \
 	--config.user="user:group" --config.entrypoint=cat --config.cmd=/proc/self/stat \
-	--config.label="com.cyphar.umoci=true" --author="Aleksa Sarai <asarai@suse.de>" \
+	--config.label="com.cyphar.umoci=true" --author="Aleksa Sarai <cyphar@cyphar.com>" \
 	--os="gnu/hurd" --architecture="lisp" --created="$(date --iso-8601=seconds)"
 ```
 

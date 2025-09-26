@@ -93,7 +93,7 @@ can force the change to create a new tag (leaving the original unchanged) with
 `--tag`.
 
 ```text
-% umoci config --author="Aleksa Sarai <asarai@suse.de>" --image opensuse
+% umoci config --author="Aleksa Sarai <cyphar@cyphar.com>" --image opensuse
 ```
 
 Note that both `umoci config` and `umoci repack` include entries in the history
