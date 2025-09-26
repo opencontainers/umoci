@@ -147,6 +147,15 @@ func (e Entry) AllKeys() []KeyVal {
 	return e.Keywords
 }
 
+func (e Entry) allKeysMap() map[Keyword]KeyVal {
+	all := e.AllKeys()
+	keyMap := make(map[Keyword]KeyVal, len(all))
+	for _, kv := range all {
+		keyMap[kv.Keyword()] = kv
+	}
+	return keyMap
+}
+
 // IsDir checks the type= value for this entry on whether it is a directory
 func (e Entry) IsDir() bool {
 	for _, kv := range e.AllKeys() {
