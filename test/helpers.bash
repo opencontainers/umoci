@@ -203,7 +203,7 @@ function mtree-validate() {
 		# In the non-rootless case, we should cross-check that umoci's mtree is
 		# not accidentally ignoring mtree errors. Upstream gomtree doesn't
 		# support rootless mode.
-		sane_run gomtree validate -K sha256digest "$@"
+		sane_run gomtree validate --strict -K sha256digest "$@"
 
 		[[ "$status" == "$umoci_status" ]] || fail "umoci raw mtree-validate and gomtree have different results"
 	fi
