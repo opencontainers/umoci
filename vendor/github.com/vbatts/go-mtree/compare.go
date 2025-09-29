@@ -3,7 +3,10 @@ package mtree
 import (
 	"encoding/json"
 	"fmt"
-	"strconv"
+	"iter"
+	"slices"
+
+	"github.com/sirupsen/logrus"
 )
 
 // XXX: Do we need a Difference interface to make it so people can do var x
@@ -75,6 +78,17 @@ func (i InodeDelta) Path() string {
 // Diff returns nil.
 func (i InodeDelta) Diff() []KeyDelta {
 	return i.keys
+}
+
+// DiffPtr returns a pointer to the internal slice that would be returned by
+// [InodeDelta.Diff]. This is intended to be used by tools which need to filter
+// aspects of [InodeDelta] entries. If the [DifferenceType] of the inode is not
+// [Modified], then DiffPtr returns nil.
+func (i *InodeDelta) DiffPtr() *[]KeyDelta {
+	if i.diff == Modified {
+		return &i.keys
+	}
+	return nil
 }
 
 // Old returns the value of the inode Entry in the "old" DirectoryHierarchy (as
@@ -184,131 +198,126 @@ func (k KeyDelta) MarshalJSON() ([]byte, error) {
 	})
 }
 
+// mapContains is just shorthand for
+//
+//	_, ok := m[k]
+func mapContains[M ~map[K]V, K comparable, V any](m M, k K) bool {
+	_, ok := m[k]
+	return ok
+}
+
+// iterMapsKeys returns an iterator over all of the keys in all of the provided
+// maps, with duplicate keys only being yielded once.
+func iterMapsKeys[M ~map[K]V, K comparable, V any](maps ...M) iter.Seq[K] {
+	seen := map[K]struct{}{}
+	return func(yield func(K) bool) {
+		for _, m := range maps {
+			for k := range m {
+				if _, ok := seen[k]; ok {
+					continue
+				}
+				if !yield(k) {
+					return
+				}
+				seen[k] = struct{}{}
+			}
+		}
+	}
+}
+
+func convertToTarTime(timeVal string) (KeyVal, error) {
+	var (
+		timeSec, timeNsec int64
+		// used to check for trailing characters
+		trailing rune
+	)
+	n, _ := fmt.Sscanf(timeVal, "%d.%d%c", &timeSec, &timeNsec, &trailing)
+	if n != 2 {
+		return "", fmt.Errorf(`failed to parse "time" key: invalid format %q`, timeVal)
+	}
+	return KeyVal(fmt.Sprintf("tar_time=%d.%9.9d", timeSec, 0)), nil
+}
+
 // Like Compare, but for single inode entries only. Used to compute the
 // cached version of inode.keys.
 func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
-	// Represents the new and old states for an entry's keys.
-	type stateT struct {
-		Old *KeyVal
-		New *KeyVal
-	}
-
-	diffs := map[Keyword]*stateT{}
-	oldKeys := oldEntry.AllKeys()
-	newKeys := newEntry.AllKeys()
-
-	// Fill the map with the old keys first.
-	for _, kv := range oldKeys {
-		key := kv.Keyword()
-		// only add this diff if the new keys has this keyword
-		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(newKeys, key)) == 0 {
-			continue
-		}
-
-		// Cannot take &kv because it's the iterator.
-		copy := new(KeyVal)
-		*copy = kv
-
-		_, ok := diffs[key]
-		if !ok {
-			diffs[key] = new(stateT)
-		}
-		diffs[key].Old = copy
-	}
-
-	// Then fill the new keys.
-	for _, kv := range newKeys {
-		key := kv.Keyword()
-		// only add this diff if the old keys has this keyword
-		if key != "tar_time" && key != "time" && key.Prefix() != "xattr" && len(HasKeyword(oldKeys, key)) == 0 {
-			continue
-		}
-
-		// Cannot take &kv because it's the iterator.
-		copy := new(KeyVal)
-		*copy = kv
-
-		_, ok := diffs[key]
-		if !ok {
-			diffs[key] = new(stateT)
-		}
-		diffs[key].New = copy
-	}
-
-	// We need a full list of the keys so we can deal with different keyvalue
-	// orderings.
-	var kws []Keyword
-	for kw := range diffs {
-		kws = append(kws, kw)
-	}
+	var (
+		oldKeys = oldEntry.allKeysMap()
+		newKeys = newEntry.allKeysMap()
+	)
 
 	// If both tar_time and time were specified in the set of keys, we have to
-	// mess with the diffs. This is an unfortunate side-effect of tar archives.
+	// convert the "time" entries to "tar_time" to allow for tar archive
+	// manifests to be compared with proper filesystem manifests.
 	// TODO(cyphar): This really should be abstracted inside keywords.go
-	if InKeywordSlice("tar_time", kws) && InKeywordSlice("time", kws) {
-		// Delete "time".
-		timeStateT := diffs["time"]
-		delete(diffs, "time")
+	if (mapContains(oldKeys, "tar_time") || mapContains(newKeys, "tar_time")) &&
+		(mapContains(oldKeys, "time") || mapContains(newKeys, "time")) {
 
-		// Make a new tar_time.
-		if diffs["tar_time"].Old == nil {
-			time, err := strconv.ParseFloat(timeStateT.Old.Value(), 64)
+		path, _ := oldEntry.Path()
+		logrus.WithFields(logrus.Fields{
+			"old:tar_time": oldKeys["tar_time"],
+			"new:tar_time": newKeys["tar_time"],
+			"old:time":     oldKeys["time"],
+			"new:time":     newKeys["time"],
+		}).Debugf(`%q: "tar_time" and "time" both present`, path)
+
+		// Clear the "time" keys.
+		oldTime, oldHadTime := oldKeys["time"]
+		delete(oldKeys, "time")
+		newTime, newHadTime := newKeys["time"]
+		delete(newKeys, "time")
+
+		// NOTE: It is possible (though inadvisable) for a manifest to have
+		// both "tar_time" and "time" set. In those cases, we favour the
+		// existing "tar_time" and just ignore the "time" value.
+
+		switch {
+		case oldHadTime && !mapContains(oldKeys, "tar_time"):
+			tarTime, err := convertToTarTime(oldTime.Value())
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse old time: %s", err)
+				return nil, fmt.Errorf("old entry: %w", err)
 			}
-
-			newTime := new(KeyVal)
-			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.000000000", int64(time)))
-
-			diffs["tar_time"].Old = newTime
-		} else if diffs["tar_time"].New == nil {
-			time, err := strconv.ParseFloat(timeStateT.New.Value(), 64)
+			oldKeys["tar_time"] = tarTime
+		case newHadTime && !mapContains(newKeys, "tar_time"):
+			tarTime, err := convertToTarTime(newTime.Value())
 			if err != nil {
-				return nil, fmt.Errorf("failed to parse new time: %s", err)
+				return nil, fmt.Errorf("new entry: %w", err)
 			}
-
-			newTime := new(KeyVal)
-			*newTime = KeyVal(fmt.Sprintf("tar_time=%d.000000000", int64(time)))
-
-			diffs["tar_time"].New = newTime
-		} else {
-			return nil, fmt.Errorf("time and tar_time set in the same manifest")
+			newKeys["tar_time"] = tarTime
 		}
 	}
 
 	// Are there any differences?
 	var results []KeyDelta
-	for name, diff := range diffs {
-		// Invalid
-		if diff.Old == nil && diff.New == nil {
-			return nil, fmt.Errorf("invalid state: both old and new are nil: key=%s", name)
-		}
+	for k := range iterMapsKeys(newKeys, oldKeys) {
+		old, oldHas := oldKeys[k]
+		gnu, gnuHas := newKeys[k] // avoid shadowing "new" builtin
 
 		switch {
 		// Missing
-		case diff.New == nil:
+		case !gnuHas:
 			results = append(results, KeyDelta{
 				diff: Missing,
-				name: name,
-				old:  diff.Old.Value(),
+				name: k,
+				old:  old.Value(),
 			})
 
 		// Extra
-		case diff.Old == nil:
+		case !oldHas:
 			results = append(results, KeyDelta{
 				diff: Extra,
-				name: name,
-				new:  diff.New.Value(),
+				name: k,
+				new:  gnu.Value(),
 			})
 
 		// Modified
 		default:
-			if !diff.Old.Equal(*diff.New) {
+			if !old.Equal(gnu) {
 				results = append(results, KeyDelta{
 					diff: Modified,
-					name: name,
-					old:  diff.Old.Value(),
-					new:  diff.New.Value(),
+					name: k,
+					old:  old.Value(),
+					new:  gnu.Value(),
 				})
 			}
 		}
@@ -319,101 +328,75 @@ func compareEntry(oldEntry, newEntry Entry) ([]KeyDelta, error) {
 
 // compare is the actual workhorse for Compare() and CompareSame()
 func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]InodeDelta, error) {
-	// Represents the new and old states for an entry.
-	type stateT struct {
-		Old *Entry
-		New *Entry
-	}
+	toEntryMap := func(dh *DirectoryHierarchy) (map[string]Entry, error) {
+		if dh == nil {
+			// treat nil DirectoryHierarchy as empty
+			return make(map[string]Entry), nil
+		}
 
-	// To deal with different orderings of the entries, use a path-keyed
-	// map to make sure we don't start comparing unrelated entries.
-	diffs := map[string]*stateT{}
-
-	// First, iterate over the old hierarchy. If nil, pretend it's empty.
-	if oldDh != nil {
-		for _, e := range oldDh.Entries {
+		// pre-allocate the map to avoid resizing
+		entries := make(map[string]Entry, len(dh.Entries))
+		for _, e := range dh.Entries {
 			if e.Type == RelativeType || e.Type == FullType {
 				path, err := e.Path()
 				if err != nil {
 					return nil, err
 				}
-
-				// Cannot take &kv because it's the iterator.
-				cEntry := new(Entry)
-				*cEntry = e
-
-				_, ok := diffs[path]
-				if !ok {
-					diffs[path] = &stateT{}
-				}
-				diffs[path].Old = cEntry
+				entries[path] = e
 			}
 		}
+		return entries, nil
 	}
 
-	// Then, iterate over the new hierarchy. If nil, pretend it's empty.
-	if newDh != nil {
-		for _, e := range newDh.Entries {
-			if e.Type == RelativeType || e.Type == FullType {
-				path, err := e.Path()
-				if err != nil {
-					return nil, err
-				}
-
-				// Cannot take &kv because it's the iterator.
-				cEntry := new(Entry)
-				*cEntry = e
-
-				_, ok := diffs[path]
-				if !ok {
-					diffs[path] = &stateT{}
-				}
-				diffs[path].New = cEntry
-			}
-		}
+	oldEntries, err := toEntryMap(oldDh)
+	if err != nil {
+		return nil, err
+	}
+	newEntries, err := toEntryMap(newDh)
+	if err != nil {
+		return nil, err
 	}
 
 	// Now we compute the diff.
 	var results []InodeDelta
-	for path, diff := range diffs {
-		// Invalid
-		if diff.Old == nil && diff.New == nil {
-			return nil, fmt.Errorf("invalid state: both old and new are nil: path=%s", path)
-		}
+	for path := range iterMapsKeys(oldEntries, newEntries) {
+		old, oldHas := oldEntries[path]
+		gnu, gnuHas := newEntries[path] // avoid shadowing "new" builtin
 
 		switch {
 		// Missing
-		case diff.New == nil:
+		case !gnuHas:
 			results = append(results, InodeDelta{
 				diff: Missing,
 				path: path,
-				old:  *diff.Old,
+				old:  old,
 			})
 
 		// Extra
-		case diff.Old == nil:
+		case !oldHas:
 			results = append(results, InodeDelta{
 				diff: Extra,
 				path: path,
-				new:  *diff.New,
+				new:  gnu,
 			})
 
 		// Modified
 		default:
-			changed, err := compareEntry(*diff.Old, *diff.New)
+			changed, err := compareEntry(old, gnu)
 			if err != nil {
 				return nil, fmt.Errorf("comparison failed %s: %s", path, err)
 			}
 
-			// Now remove "changed" entries that don't match the keys.
+			// Ignore changes to keys not in the requested set.
 			if keys != nil {
-				var filterChanged []KeyDelta
-				for _, keyDiff := range changed {
-					if InKeywordSlice(keyDiff.name.Prefix(), keys) {
-						filterChanged = append(filterChanged, keyDiff)
-					}
-				}
-				changed = filterChanged
+				changed = slices.DeleteFunc(changed, func(delta KeyDelta) bool {
+					name := delta.name.Prefix()
+					return !InKeywordSlice(name, keys) &&
+						// We remap time to tar_time in compareEntry, so we
+						// need to treat them equivalently here.
+						!(name == "time" && InKeywordSlice("tar_time", keys)) &&
+						!(name == "tar_time" && InKeywordSlice("time", keys))
+				})
 			}
 
 			// Check if there were any actual changes.
@@ -421,8 +404,8 @@ func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]Ino
 				results = append(results, InodeDelta{
 					diff: Modified,
 					path: path,
-					old:  *diff.Old,
-					new:  *diff.New,
+					old:  old,
+					new:  gnu,
 					keys: changed,
 				})
 			} else if same {
@@ -431,8 +414,8 @@ func compare(oldDh, newDh *DirectoryHierarchy, keys []Keyword, same bool) ([]Ino
 				results = append(results, InodeDelta{
 					diff: Same,
 					path: path,
-					old:  *diff.Old,
-					new:  *diff.New,
+					old:  old,
+					new:  gnu,
 					keys: changed,
 				})
 			}

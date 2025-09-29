@@ -18,6 +18,13 @@
 FROM golang:1.25 AS go-binaries
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
+# TODO: Get <https://github.com/vbatts/go-mtree/pull/211>,
+#       <https://github.com/vbatts/go-mtree/pull/212>, and
+#       <https://github.com/vbatts/go-mtree/pull/214> merged and switch.
+#RUN go install github.com/vbatts/go-mtree@latest
+RUN git clone -b umoci https://github.com/cyphar/go-mtree.git /tmp/gomtree
+RUN cd /tmp/gomtree && \
+	go install ./cmd/gomtree
 
 ## TOOLS: oci-runtime-tool needs special handling.
 FROM golang:1.25 AS oci-runtime-tool
@@ -51,8 +58,6 @@ RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
 FROM registry.opensuse.org/opensuse/leap:16.0 AS ci-image
 LABEL org.opencontainers.image.authors="Aleksa Sarai <cyphar@cyphar.com>"
 
-RUN zypper ar -f -p 10 -g 'obs://home:cyphar:containers/$releasever' obs-gomtree && \
-	zypper --gpg-auto-import-keys -n ref
 RUN zypper -n up
 RUN zypper -n in \
 		attr \
@@ -67,7 +72,6 @@ RUN zypper -n in \
 		# Go 1.25's packaging is broken at the moment.
 		# See <https://bugzilla.suse.com/show_bug.cgi?id=1249985>.
 		go1.24 \
-		go-mtree \
 		gzip \
 		jq \
 		libcap-progs \

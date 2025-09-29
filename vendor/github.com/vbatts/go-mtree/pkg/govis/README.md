@@ -11,7 +11,7 @@ Because 80s BSD code is not very nice to read.
 
 ```
 govis: unicode aware vis(3) encoding implementation
-Copyright (C) 2017 SUSE LLC.
+Copyright (C) 2017-2025 SUSE LLC.
 
 Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.

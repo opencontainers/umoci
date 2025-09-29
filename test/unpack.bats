@@ -45,8 +45,8 @@ function teardown() {
 	[ -e "$ROOTFS/etc/passwd" ]
 	[ -e "$ROOTFS/etc/group" ]
 
-	# Ensure that gomtree succeeds on the unpacked bundle.
-	gomtree -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
+	# Ensure that mtree validation succeeds on the unpacked bundle.
+	mtree-validate -p "$ROOTFS" -f "$BUNDLE"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 
@@ -144,11 +144,11 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	bundle-verify "$BUNDLE"
 
-	# Ensure that gomtree cross-succeeds.
-	gomtree -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
+	# Ensure that mtree validation cross-succeeds.
+	mtree-validate -p "$ROOTFS_A" -f "$BUNDLE_B"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
-	gomtree -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
+	mtree-validate -p "$ROOTFS_B" -f "$BUNDLE_A"/sha256_*.mtree
 	[ "$status" -eq 0 ]
 	[ -z "$output" ]
 

@@ -1,6 +1,7 @@
+// SPDX-License-Identifier: Apache-2.0
 /*
  * govis: unicode aware vis(3) encoding implementation
- * Copyright (C) 2017 SUSE LLC.
+ * Copyright (C) 2017-2025 SUSE LLC.
  *
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -19,27 +20,29 @@ package govis
 
 import (
 	"fmt"
+	"strings"
 	"unicode"
 )
 
-func isunsafe(ch rune) bool {
+var maxAscii byte = unicode.MaxASCII // 0x7f
+
+func isunsafe(ch byte) bool {
 	return ch == '\b' || ch == '\007' || ch == '\r'
 }
 
-func isglob(ch rune) bool {
+func isglob(ch byte) bool {
 	return ch == '*' || ch == '?' || ch == '[' || ch == '#'
 }
 
 // ishttp is defined by RFC 1808.
-func ishttp(ch rune) bool {
+func ishttp(ch byte) bool {
 	// RFC1808 does not really consider characters outside of ASCII, so just to
 	// be safe always treat characters outside the ASCII character set as "not
 	// HTTP".
-	if ch > unicode.MaxASCII {
+	if ch > maxAscii {
 		return false
 	}
-
-	return unicode.IsDigit(ch) || unicode.IsLetter(ch) ||
+	return unicode.IsDigit(rune(ch)) || unicode.IsLetter(rune(ch)) ||
 		// Safe characters.
 		ch == '$' || ch == '-' || ch == '_' || ch == '.' || ch == '+' ||
 		// Extra characters.
@@ -47,8 +50,13 @@ func ishttp(ch rune) bool {
 		ch == ')' || ch == ','
 }
 
-func isgraph(ch rune) bool {
-	return unicode.IsGraphic(ch) && !unicode.IsSpace(ch) && ch <= unicode.MaxASCII
+func isgraph(ch byte) bool {
+	return ch <= maxAscii &&
+		unicode.IsGraphic(rune(ch)) && !unicode.IsSpace(rune(ch))
+}
+
+func isctrl(ch byte) bool {
+	return unicode.IsControl(rune(ch))
 }
 
 // vis converts a single *byte* into its encoding. While Go supports the
@@ -58,71 +66,76 @@ func isgraph(ch rune) bool {
 // the plus side this is actually a benefit on the encoding side (it will
 // always work with the simple unvis(3) implementation). It also means that we
 // don't have to worry about different multi-byte encodings.
-func vis(b byte, flag VisFlag) (string, error) {
-	// Treat the single-byte character as a rune.
-	ch := rune(b)
-
+func vis(output *strings.Builder, ch byte, flag VisFlag) {
 	// XXX: This is quite a horrible thing to support.
-	if flag&VisHTTPStyle == VisHTTPStyle {
-		if !ishttp(ch) {
-			return "%" + fmt.Sprintf("%.2X", ch), nil
-		}
+	if flag&VisHTTPStyle == VisHTTPStyle && !ishttp(ch) {
+		_, _ = fmt.Fprintf(output, "%%%.2X", ch)
+		return
 	}
 
 	// Figure out if the character doesn't need to be encoded. Effectively, we
 	// encode most "normal" (graphical) characters as themselves unless we have
-	// been specifically asked not to. Note though that we *ALWAYS* encode
-	// everything outside ASCII.
-	// TODO: Switch this to much more logical code.
-
-	if ch > unicode.MaxASCII {
-		/* ... */
-	} else if flag&VisGlob == VisGlob && isglob(ch) {
-		/* ... */
-	} else if isgraph(ch) ||
-		(flag&VisSpace != VisSpace && ch == ' ') ||
-		(flag&VisTab != VisTab && ch == '\t') ||
-		(flag&VisNewline != VisNewline && ch == '\n') ||
-		(flag&VisSafe != 0 && isunsafe(ch)) {
-
-		encoded := string(ch)
-		if ch == '\\' && flag&VisNoSlash == 0 {
-			encoded += "\\"
-		}
-		return encoded, nil
+	// been specifically asked not to.
+	switch {
+	case ch > maxAscii:
+		// We must *always* encode stuff characters not in ASCII.
+	case flag&VisGlob == VisGlob && isglob(ch):
+		// Glob characters are graphical but can be forced to be encoded.
+	case flag&VisNoSlash == 0 && ch == '\\',
+		flag&VisDoubleQuote == VisDoubleQuote && ch == '"':
+		// Prefix \ if applicable.
+		_ = output.WriteByte('\\')
+		fallthrough
+	case isgraph(ch),
+		flag&VisSpace != VisSpace && ch == ' ',
+		flag&VisTab != VisTab && ch == '\t',
+		flag&VisNewline != VisNewline && ch == '\n',
+		flag&VisSafe != 0 && isunsafe(ch):
+		_ = output.WriteByte(ch)
+		return
 	}
 
 	// Try to use C-style escapes first.
 	if flag&VisCStyle == VisCStyle {
 		switch ch {
 		case ' ':
-			return "\\s", nil
+			_, _ = output.WriteString("\\s")
+			return
 		case '\n':
-			return "\\n", nil
+			_, _ = output.WriteString("\\n")
+			return
 		case '\r':
-			return "\\r", nil
+			_, _ = output.WriteString("\\r")
+			return
 		case '\b':
-			return "\\b", nil
+			_, _ = output.WriteString("\\b")
+			return
 		case '\a':
-			return "\\a", nil
+			_, _ = output.WriteString("\\a")
+			return
 		case '\v':
-			return "\\v", nil
+			_, _ = output.WriteString("\\v")
+			return
 		case '\t':
-			return "\\t", nil
+			_, _ = output.WriteString("\\t")
+			return
 		case '\f':
-			return "\\f", nil
+			_, _ = output.WriteString("\\f")
+			return
 		case '\x00':
 			// Output octal just to be safe.
-			return "\\000", nil
+			_, _ = output.WriteString("\\000")
+			return
 		}
 	}
 
 	// For graphical characters we generate octal output (and also if it's
 	// being forced by the caller's flags). Also spaces should always be
-	// encoded as octal.
+	// encoded as octal (note that ' '|0x80 == '\xa0' is a non-breaking space).
 	if flag&VisOctal == VisOctal || isgraph(ch) || ch&0x7f == ' ' {
 		// Always output three-character octal just to be safe.
-		return fmt.Sprintf("\\%.3o", ch), nil
+		_, _ = fmt.Fprintf(output, "\\%.3o", ch)
+		return
 	}
 
 	// Now we have to output meta or ctrl escapes. As far as I can tell, this
@@ -130,48 +143,40 @@ func vis(b byte, flag VisFlag) (string, error) {
 	// copied from the original vis(3) implementation. Hopefully nobody
 	// actually relies on this (octal and hex are better).
 
-	encoded := ""
 	if flag&VisNoSlash == 0 {
-		encoded += "\\"
+		_ = output.WriteByte('\\')
 	}
 
 	// Meta characters have 0x80 set, but are otherwise identical to control
 	// characters.
-	if b&0x80 != 0 {
-		b &= 0x7f
-		encoded += "M"
+	if ch&0x80 != 0 {
+		ch &= 0x7f
+		_ = output.WriteByte('M')
 	}
-
-	if unicode.IsControl(rune(b)) {
-		encoded += "^"
-		if b == 0x7f {
-			encoded += "?"
+	if isctrl(ch) {
+		_ = output.WriteByte('^')
+		if ch == 0x7f {
+			_ = output.WriteByte('?')
 		} else {
-			encoded += fmt.Sprintf("%c", b+'@')
+			_ = output.WriteByte(ch + '@')
 		}
 	} else {
-		encoded += fmt.Sprintf("-%c", b)
+		_ = output.WriteByte('-')
+		_ = output.WriteByte(ch)
 	}
-
-	return encoded, nil
 }
 
 // Vis encodes the provided string to a BSD-compatible encoding using BSD's
 // vis() flags. However, it will correctly handle multi-byte encoding (which is
 // not done properly by BSD's vis implementation).
-func Vis(src string, flag VisFlag) (string, error) {
-	if flag&visMask != flag {
-		return "", fmt.Errorf("vis: flag %q contains unknown or unsupported flags", flag)
+func Vis(src string, flags VisFlag) (string, error) {
+	if unknown := flags &^ visMask; unknown != 0 {
+		return "", unknownVisFlagsError{flags: flags}
 	}
-
-	output := ""
+	var output strings.Builder
+	output.Grow(len(src)) // vis() will always take up at least len(src) bytes
 	for _, ch := range []byte(src) {
-		encodedCh, err := vis(ch, flag)
-		if err != nil {
-			return "", err
-		}
-		output += encodedCh
+		vis(&output, ch, flags)
 	}
-
-	return output, nil
+	return output.String(), nil
 }
