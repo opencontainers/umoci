@@ -157,9 +157,9 @@ sub   ed25519 2022-09-30 [A] [expires: 2030-03-25]
 
 umoci is also available from several distributions' repositories:
 
-* [openSUSE](https://software.opensuse.org/package/umoci)
-* [Gentoo](https://packages.gentoo.org/packages/app-emulation/umoci)
-* [Arch Linux (AUR)](https://aur.archlinux.org/packages/umoci/)
+<a href="https://repology.org/project/umoci/versions">
+  <img src="https://repology.org/badge/vertical-allrepos/umoci.svg?columns=4&exclude_unsupported=1" alt="Packaging Status">
+</a>
 
 To build umoci from the [source code][source], a simple `make` should work on
 most machines, as should `make install`. If you prefer to use `go install`, you
@@ -238,10 +238,6 @@ Note that while umoci is currently usable as a Go library (and we do have
 several users of the Go APIs), the API is explicitly considered **unstable**
 until umoci `1.0` is released. However, the umoci CLI API is considered to be
 stable despite umoci not being a `1.0` project.
-
-<a href="https://repology.org/project/umoci/versions">
-  <img src="https://repology.org/badge/vertical-allrepos/umoci.svg?columns=4&exclude_unsupported=1" alt="Packaging Status">
-</a>
 
 [releases]: https://github.com/opencontainers/umoci/releases
 [semver]: http://semver.org/
