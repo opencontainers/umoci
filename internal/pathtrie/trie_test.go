@@ -20,6 +20,7 @@ package pathtrie
 
 import (
 	"fmt"
+	"path/filepath"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -592,5 +593,115 @@ func TestWalk(t *testing.T) {
 			return nil
 		})
 		require.ErrorIs(t, err, testErr, "walk trie")
+	})
+}
+
+func generateDenseTrie(depth, width int) (string, *PathTrie[string]) {
+	trie := NewTrie[string]()
+	prefix := string(filepath.Separator)
+	for i := range depth + 1 {
+		for j := range width {
+			file := filepath.Join(prefix, fmt.Sprintf("file%.2x", j))
+			trie.Set(file, "bad file")
+		}
+		prefix = filepath.Join(prefix, fmt.Sprintf("dir%.2x", i))
+		trie.Set(prefix, "bad dir")
+	}
+	return prefix, trie
+}
+
+type generateTrieFunc func() (string, *PathTrie[string])
+
+func benchTrie(b *testing.B, benchFn func(b *testing.B, generateTrieFn generateTrieFunc)) {
+	for _, test := range []struct {
+		depth, width int
+	}{
+		{5, 5},
+		{32, 32},
+		{64, 2},
+		{2, 64},
+	} {
+		generateTrieFn := func() (string, *PathTrie[string]) {
+			return generateDenseTrie(test.depth, test.width)
+		}
+
+		b.Run(fmt.Sprintf("Dense-%dx%d", test.depth, test.width), func(b *testing.B) {
+			benchFn(b, generateTrieFn)
+		})
+	}
+}
+
+func BenchmarkSet(b *testing.B) {
+	benchTrie(b, func(b *testing.B, generateTrieFn generateTrieFunc) {
+		prefix, trie := generateTrieFn()
+		path := filepath.Join(prefix, "foobar")
+		val := "good path"
+		for b.Loop() {
+			trie.Set(path, val)
+		}
+	})
+}
+
+func BenchmarkGet(b *testing.B) {
+	benchTrie(b, func(b *testing.B, generateTrieFn generateTrieFunc) {
+		prefix, trie := generateTrieFn()
+		path := filepath.Join(prefix, "file00")
+		for b.Loop() {
+			trie.Get(path)
+		}
+	})
+}
+
+func BenchmarkDelete(b *testing.B) {
+	benchTrie(b, func(b *testing.B, generateTrieFn generateTrieFunc) {
+		b.Run("DeleteRoot", func(b *testing.B) {
+			_, trie := generateTrieFn()
+			for b.Loop() {
+				trie.Delete("dir00")
+			}
+		})
+		b.Run("DeleteDeep", func(b *testing.B) {
+			prefix, trie := generateTrieFn()
+			for b.Loop() {
+				trie.Delete(prefix)
+			}
+		})
+	})
+}
+
+func BenchmarkDeleteAll(b *testing.B) {
+	benchTrie(b, func(b *testing.B, generateTrieFn generateTrieFunc) {
+		b.Run("DeleteRoot", func(b *testing.B) {
+			_, trie := generateTrieFn()
+			for b.Loop() {
+				trie.DeleteAll("dir00")
+			}
+		})
+		b.Run("DeleteDeep", func(b *testing.B) {
+			prefix, trie := generateTrieFn()
+			for b.Loop() {
+				trie.DeleteAll(prefix)
+			}
+		})
+	})
+}
+
+func BenchmarkWalkFrom(b *testing.B) {
+	benchTrie(b, func(b *testing.B, generateTrieFn generateTrieFunc) {
+		dummyWalkFn := func(_, _ string) error {
+			return nil
+		}
+		b.Run("WalkRoot", func(b *testing.B) {
+			_, trie := generateTrieFn()
+			for b.Loop() {
+				trie.WalkFrom("/", dummyWalkFn) //nolint:errcheck // benchmark code
+			}
+		})
+		b.Run("WalkDeep", func(b *testing.B) {
+			prefix, trie := generateTrieFn()
+			for b.Loop() {
+				trie.WalkFrom(prefix, dummyWalkFn) //nolint:errcheck // benchmark code
+			}
+		})
 	})
 }
