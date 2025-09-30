@@ -209,7 +209,7 @@ func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
 	}
 	prefix += "\t"
 	for _, key := range slices.Sorted(maps.Keys(data)) {
-		if err := pprint(w, prefix, key, data[key]); err != nil {
+		if err := pprint(w, prefix, quote(key, true), data[key]); err != nil {
 			return err
 		}
 	}
