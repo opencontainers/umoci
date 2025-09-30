@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"unicode"
 
 	"github.com/apex/log"
 	"github.com/docker/go-units"
@@ -163,10 +164,13 @@ type ManifestStat struct {
 	History historyStatList `json:"history"`
 }
 
-func quote(s string, quoteEmpty bool) string {
+// quote is a wrapper around [strconv.Quote] that only returns a quoted string
+// if it is actually necessary. The precise flag indicates whether the field
+// being quoted needs to provide extra accuracy to the user (in particular,
+// regarding whitespace and empty strings).
+func quote(s string, precise bool) string {
 	quoted := strconv.Quote(s)
-	// Only return quoted string if it actually required escaping or is empty.
-	if quoted != `"`+s+`"` || (quoteEmpty && s == "") {
+	if quoted != `"`+s+`"` || precise && (s == "" || strings.ContainsFunc(s, unicode.IsSpace)) {
 		return quoted
 	}
 	return s
@@ -174,15 +178,16 @@ func quote(s string, quoteEmpty bool) string {
 
 func pprint(w io.Writer, prefix, key string, values ...string) (err error) {
 	if len(values) > 0 {
+		quoted := make([]string, len(values))
 		for idx, value := range values {
 			if strings.Contains(value, ",") {
 				// Make sure "," leads to quoting.
-				values[idx] = strconv.Quote(value)
+				quoted[idx] = strconv.Quote(value)
 			} else {
-				values[idx] = quote(values[idx], true)
+				quoted[idx] = quote(values[idx], true)
 			}
 		}
-		_, err = fmt.Fprintf(w, "%s%s: %s\n", prefix, key, strings.Join(values, ", "))
+		_, err = fmt.Fprintf(w, "%s%s: %s\n", prefix, key, strings.Join(quoted, ", "))
 	} else {
 		_, err = fmt.Fprintf(w, "%s%s:\n", prefix, key)
 	}
@@ -190,6 +195,9 @@ func pprint(w io.Writer, prefix, key string, values ...string) (err error) {
 }
 
 func pprintSlice(w io.Writer, prefix, name string, data []string) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	if err := pprint(w, prefix, name); err != nil {
 		return err
 	}
@@ -203,12 +211,15 @@ func pprintSlice(w io.Writer, prefix, name string, data []string) error {
 }
 
 func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	if err := pprint(w, prefix, name); err != nil {
 		return err
 	}
 	prefix += "\t"
 	for _, key := range slices.Sorted(maps.Keys(data)) {
-		if err := pprint(w, prefix, key, data[key]); err != nil {
+		if err := pprint(w, prefix, quote(key, true), data[key]); err != nil {
 			return err
 		}
 	}
@@ -216,6 +227,9 @@ func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
 }
 
 func pprintSet(w io.Writer, prefix, name string, data map[string]struct{}) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	keys := slices.Sorted(maps.Keys(data))
 	return pprint(w, prefix, name, keys...)
 }
@@ -239,11 +253,12 @@ func pprintPlatform(w io.Writer, prefix string, platform ispec.Platform) error {
 			return err
 		}
 	}
-	arch := platform.Architecture
+	arch := quote(platform.Architecture, true)
 	if platform.Variant != "" {
-		arch = fmt.Sprintf("%s (%s)", platform.Architecture, platform.Variant)
+		arch += fmt.Sprintf(" (%s)", quote(platform.Variant, false))
 	}
-	if err := pprint(w, prefix, "Architecture", arch); err != nil {
+	// Do not use pprint, as we do not want our own suffix to get quote()d.
+	if _, err := fmt.Fprintf(w, "%sArchitecture: %s\n", prefix, arch); err != nil {
 		return err
 	}
 	return nil

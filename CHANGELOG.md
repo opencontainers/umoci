@@ -41,6 +41,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   (and it is hidden from the help pages for a reason). Most users are probably
   better off just using `gomtree`.
 
+### Changed ###
+* The output format of `umoci stat` has had some minor changes made to how
+  special characters are escaped and when quoting is carried out.
+
 ### Fixed ###
 * Some minor aspects of how `umoci stat` would filter special characters in
   history entries have been resolved.

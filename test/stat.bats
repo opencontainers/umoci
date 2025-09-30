@@ -144,7 +144,7 @@ Platform:
 	Architecture: $(go env GOARCH)
 Image Config:
 	User: ""
-	Command:
+	Command: (empty)
 Descriptor:
 	Media Type: application/vnd.oci.image.config.v1+json
 	Digest: sha256:e5101a46118c740a7709af8eaeec19cbc50a567f4fe7741f8420af39a3779a77
@@ -205,7 +205,7 @@ Layers:
 			ci.umo.uncompressed_blob_size: 2048
 Annotations:
 	ci.umo.abc: "foobar\tbaz"
-	ci.umo.xyz: hello world
+	ci.umo.xyz: "hello world"
 Descriptor:
 	Media Type: application/vnd.oci.image.manifest.v1+json
 	Digest: sha256:58fa9705ecfc0ec7d1e8631a729c6cbab46206233d58e46fc55346ca9d25ed43
@@ -215,7 +215,7 @@ Descriptor:
 
 == CONFIG ==
 Created: 2025-09-05T13:05:10.12345+10:00
-Author: Aleksa Sarai <cyphar@cyphar.com>
+Author: "Aleksa Sarai <cyphar@cyphar.com>"
 Platform:
 	OS: gnu+linux
 	Architecture: riscv64
