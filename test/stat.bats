@@ -144,7 +144,7 @@ Platform:
 	Architecture: $(go env GOARCH)
 Image Config:
 	User: ""
-	Command:
+	Command: (empty)
 Descriptor:
 	Media Type: application/vnd.oci.image.config.v1+json
 	Digest: sha256:e5101a46118c740a7709af8eaeec19cbc50a567f4fe7741f8420af39a3779a77

@@ -191,6 +191,9 @@ func pprint(w io.Writer, prefix, key string, values ...string) (err error) {
 }
 
 func pprintSlice(w io.Writer, prefix, name string, data []string) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	if err := pprint(w, prefix, name); err != nil {
 		return err
 	}
@@ -204,6 +207,9 @@ func pprintSlice(w io.Writer, prefix, name string, data []string) error {
 }
 
 func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	if err := pprint(w, prefix, name); err != nil {
 		return err
 	}
@@ -217,6 +223,9 @@ func pprintMap(w io.Writer, prefix, name string, data map[string]string) error {
 }
 
 func pprintSet(w io.Writer, prefix, name string, data map[string]struct{}) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
 	keys := slices.Sorted(maps.Keys(data))
 	return pprint(w, prefix, name, keys...)
 }

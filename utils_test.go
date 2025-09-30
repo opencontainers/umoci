@@ -68,8 +68,8 @@ func TestPprintSlice(t *testing.T) {
 		data        []string
 		expected    string
 	}{
-		{"Nil", "\t", "Nil Values", nil, "\tNil Values:\n"},
-		{"Empty", "\t\t", "Empty Values", []string{}, "\t\tEmpty Values:\n"},
+		{"Nil", "\t", "Nil Values", nil, "\tNil Values: (empty)\n"},
+		{"Empty", "\t\t", "Empty Values", []string{}, "\t\tEmpty Values: (empty)\n"},
 		{"Basic", "\t\t\t", "Basic Values", []string{"a", "b", "cdef"}, "\t\t\t" + `Basic Values:
 				a
 				b
@@ -97,8 +97,8 @@ func TestPprintMap(t *testing.T) {
 		data        map[string]string
 		expected    string
 	}{
-		{"Nil", "\t", "Nil Map", nil, "\tNil Map:\n"},
-		{"Empty", "\t\t", "Empty Map", map[string]string{}, "\t\tEmpty Map:\n"},
+		{"Nil", "\t", "Nil Map", nil, "\tNil Map: (empty)\n"},
+		{"Empty", "\t\t", "Empty Map", map[string]string{}, "\t\tEmpty Map: (empty)\n"},
 		{"Basic", "\t\t\t", "Basic Map", map[string]string{"a": "b", "c.e.f": "foobar123", "01": "2345"}, "\t\t\t" + `Basic Map:
 				01: 2345
 				a: b
@@ -137,8 +137,8 @@ func TestPprintSet(t *testing.T) {
 		data        set[string]
 		expected    string
 	}{
-		{"Nil", "\t", "Nil Set", nil, "\tNil Set:\n"},
-		{"Empty", "\t\t", "Empty Set", set[string]{}, "\t\tEmpty Set:\n"},
+		{"Nil", "\t", "Nil Set", nil, "\tNil Set: (empty)\n"},
+		{"Empty", "\t\t", "Empty Set", set[string]{}, "\t\tEmpty Set: (empty)\n"},
 		{"Basic", "\t\t\t", "Basic Set", mkset("a", "b", "c.e.f", "foobar123", "01", "2345"), "\t\t\tBasic Set: 01, 2345, a, b, c.e.f, foobar123\n"},
 		{"Quoted", "\t\t\t", "Quoted Set", mkset("a\tb", "cdef", "foo", "bar\n", "c\tef", "foo\u00a0bar123"), "\t\t\t" + `Quoted Set: "a\tb", "bar\n", "c\tef", cdef, foo, "foo\u00a0bar123"` + "\n"},
 	} {
