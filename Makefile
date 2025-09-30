@@ -184,6 +184,8 @@ test-unit: ci-image
 local-test-unit:
 	GO=$(GO) hack/test-unit.sh
 
+TESTS ?=
+
 .PHONY: test-integration
 test-integration: ci-image
 	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
