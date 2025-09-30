@@ -246,7 +246,7 @@ func TestPprintDescriptor(t *testing.T) {
 			Digest: ""
 			Size: 0B
 `},
-		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.0.2/descriptor.md#examples>.
+		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/descriptor.md#examples>.
 		{"SpecExample-1", "\t\t", ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageManifest,
 			Digest:    "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
@@ -269,6 +269,17 @@ func TestPprintDescriptor(t *testing.T) {
 			Size: 7.682kB
 			URLs:
 				https://example.com/example-manifest
+`},
+		// TODO: Support pretty-printing v1.1.1 fields.
+		{"SpecExample-3", "\t\t", ispec.Descriptor{
+			MediaType:    "",
+			ArtifactType: "application/vnd.example.sbom.v1",
+			Digest:       "sha256:87923725d74f4bfb94c9e86d64170f7521aad8221a5de834851470ca142da630",
+			Size:         123,
+		}, "\t\t" + `Descriptor:
+			Media Type: ""
+			Digest: sha256:87923725d74f4bfb94c9e86d64170f7521aad8221a5de834851470ca142da630
+			Size: 123B
 `},
 		{"Basic", "\t\t", ispec.Descriptor{
 			MediaType: "image/png",
@@ -517,12 +528,14 @@ func TestPprintImage(t *testing.T) {
 			User: ""
 			Command: (empty)
 `},
-		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.0.2/config.md#example>.
+		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/config.md#example>.
 		{"SpecExample", "\t\t", ispec.Image{
-			Created:      mktime(1446330176, 15925234),
-			Author:       "Alyssa P. Hacker <alyspdev@example.com>",
-			OS:           "linux",
-			Architecture: "amd64",
+			Created: mktime(1446330176, 15925234),
+			Author:  "Alyssa P. Hacker <alyspdev@example.com>",
+			Platform: ispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
 			Config: ispec.ImageConfig{
 				User:       "alice",
 				Entrypoint: []string{"/bin/my-app-binary"},
@@ -589,10 +602,12 @@ func TestPprintImage(t *testing.T) {
 				com.example.project.git.url: https://example.com/project.git
 `},
 		{"Basic", "\t\t", ispec.Image{
-			Created:      mktime(1757077500, 0),
-			Author:       "Aleksa Sarai <cyphar@cyphar.com>",
-			OS:           "linux",
-			Architecture: "amd64",
+			Created: mktime(1757077500, 0),
+			Author:  "Aleksa Sarai <cyphar@cyphar.com>",
+			Platform: ispec.Platform{
+				OS:           "linux",
+				Architecture: "amd64",
+			},
 			Config: ispec.ImageConfig{
 				User:         "root",
 				Entrypoint:   []string{"/bin/bash", "-c"},
@@ -655,7 +670,8 @@ func TestPprintManifest(t *testing.T) {
 				Digest: ""
 				Size: 0B
 `},
-		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.0.2/manifest.md#example-image-manifest>.
+		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md#example-image-manifest>.
+		// TODO: Support pretty-printing v1.1.1 fields.
 		{"SpecExample", "\t\t\t", ispec.Manifest{
 			Versioned: imeta.Versioned{SchemaVersion: 2},
 			MediaType: ispec.MediaTypeImageManifest,
@@ -680,6 +696,11 @@ func TestPprintManifest(t *testing.T) {
 					Digest:    "sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736",
 					Size:      73109,
 				},
+			},
+			Subject: &ispec.Descriptor{
+				MediaType: ispec.MediaTypeImageManifest,
+				Digest:    "sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270",
+				Size:      7682,
 			},
 			Annotations: map[string]string{
 				"com.example.key1": "value1",
@@ -708,6 +729,88 @@ func TestPprintManifest(t *testing.T) {
 			Annotations:
 				com.example.key1: value1
 				com.example.key2: value2
+`},
+		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md#guidelines-for-artifact-usage>.
+		// TODO: Support pretty-printing v1.1.1 fields.
+		{"ArtifactExample-1", "\t\t\t", ispec.Manifest{
+			Versioned:    imeta.Versioned{SchemaVersion: 2},
+			MediaType:    ispec.MediaTypeImageManifest,
+			ArtifactType: "application/vnd.example+type",
+			Config:       ispec.DescriptorEmptyJSON,
+			Layers:       []ispec.Descriptor{ispec.DescriptorEmptyJSON},
+			Annotations: map[string]string{
+				"oci.opencontainers.image.created": "2023-01-02T03:04:05Z",
+				"com.example.data":                 "payload",
+			},
+		}, "\t\t\t" + `Schema Version: 2
+			Media Type: application/vnd.oci.image.manifest.v1+json
+			Config:
+				Descriptor:
+					Media Type: application/vnd.oci.empty.v1+json
+					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+					Size: 2B
+			Layers:
+				Descriptor:
+					Media Type: application/vnd.oci.empty.v1+json
+					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+					Size: 2B
+			Annotations:
+				com.example.data: payload
+				oci.opencontainers.image.created: 2023-01-02T03:04:05Z
+`},
+		{"ArtifactExample-2", "\t\t\t", ispec.Manifest{
+			Versioned:    imeta.Versioned{SchemaVersion: 2},
+			MediaType:    ispec.MediaTypeImageManifest,
+			ArtifactType: "application/vnd.example+type",
+			Config:       ispec.DescriptorEmptyJSON,
+			Layers: []ispec.Descriptor{
+				{
+					MediaType: "application/vnd.example+type",
+					Digest:    "sha256:e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317",
+					Size:      1234,
+				},
+			},
+		}, "\t\t\t" + `Schema Version: 2
+			Media Type: application/vnd.oci.image.manifest.v1+json
+			Config:
+				Descriptor:
+					Media Type: application/vnd.oci.empty.v1+json
+					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+					Size: 2B
+			Layers:
+				Descriptor:
+					Media Type: application/vnd.example+type
+					Digest: sha256:e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317
+					Size: 1.234kB
+`},
+		{"ArtifactExample-3", "\t\t\t", ispec.Manifest{
+			Versioned:    imeta.Versioned{SchemaVersion: 2},
+			MediaType:    ispec.MediaTypeImageManifest,
+			ArtifactType: "application/vnd.example+type",
+			Config: ispec.Descriptor{
+				MediaType: "application/vnd.example.config.v1+json",
+				Digest:    "sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03",
+				Size:      123,
+			},
+			Layers: []ispec.Descriptor{
+				{
+					MediaType: "application/vnd.example+type",
+					Digest:    "sha256:e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317",
+					Size:      1234,
+				},
+			},
+		}, "\t\t\t" + `Schema Version: 2
+			Media Type: application/vnd.oci.image.manifest.v1+json
+			Config:
+				Descriptor:
+					Media Type: application/vnd.example.config.v1+json
+					Digest: sha256:5891b5b522d5df086d0ff0b110fbd9d21bb4fc7163af34d08286a2e846f6be03
+					Size: 123B
+			Layers:
+				Descriptor:
+					Media Type: application/vnd.example+type
+					Digest: sha256:e258d248fda94c63753607f7c4494ee0fcbe92f1a76bfdac795c9d84101eb317
+					Size: 1.234kB
 `},
 		{"Basic", "\t\t", ispec.Manifest{
 			Versioned: imeta.Versioned{SchemaVersion: 2},

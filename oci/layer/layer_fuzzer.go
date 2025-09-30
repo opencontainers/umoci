@@ -238,7 +238,9 @@ func makeFuzzImage(base641, base642 string) (string, ispec.Manifest, casext.Engi
 
 	// Create the config.
 	config := ispec.Image{
-		OS: "linux",
+		Platform: ispec.Platform{
+			OS: "linux",
+		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
 			DiffIDs: layerDigests,
