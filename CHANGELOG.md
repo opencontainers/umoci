@@ -26,7 +26,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   were modified (and will thus be usually be included in the new layer) will
   have their timestamps rewritten.
 
-  `--history.created` will also now default to `SOURCE_DATE_EPOCH` (if set).
+  `--history.created` and `umoci config --created` will also now default to
+  `SOURCE_DATE_EPOCH` (if set).
 
   With this change, umoci should be fairly compliant with reproducible builds.
   Please let us know if you find any other problematic areas in umoci (we are
