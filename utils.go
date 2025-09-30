@@ -31,6 +31,7 @@ import (
 	"strconv"
 	"strings"
 	"text/tabwriter"
+	"unicode"
 
 	"github.com/apex/log"
 	"github.com/docker/go-units"
@@ -163,10 +164,13 @@ type ManifestStat struct {
 	History historyStatList `json:"history"`
 }
 
-func quote(s string, quoteEmpty bool) string {
+// quote is a wrapper around [strconv.Quote] that only returns a quoted string
+// if it is actually necessary. The precise flag indicates whether the field
+// being quoted needs to provide extra accuracy to the user (in particular,
+// regarding whitespace and empty strings).
+func quote(s string, precise bool) string {
 	quoted := strconv.Quote(s)
-	// Only return quoted string if it actually required escaping or is empty.
-	if quoted != `"`+s+`"` || (quoteEmpty && s == "") {
+	if quoted != `"`+s+`"` || precise && (s == "" || strings.ContainsFunc(s, unicode.IsSpace)) {
 		return quoted
 	}
 	return s
@@ -249,11 +253,12 @@ func pprintPlatform(w io.Writer, prefix string, platform ispec.Platform) error {
 			return err
 		}
 	}
-	arch := platform.Architecture
+	arch := quote(platform.Architecture, true)
 	if platform.Variant != "" {
-		arch = fmt.Sprintf("%s (%s)", platform.Architecture, platform.Variant)
+		arch += fmt.Sprintf(" (%s)", quote(platform.Variant, false))
 	}
-	if err := pprint(w, prefix, "Architecture", arch); err != nil {
+	// Do not use pprint, as we do not want our own suffix to get quote()d.
+	if _, err := fmt.Fprintf(w, "%sArchitecture: %s\n", prefix, arch); err != nil {
 		return err
 	}
 	return nil

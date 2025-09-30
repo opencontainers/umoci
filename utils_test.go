@@ -39,7 +39,9 @@ func TestPprint(t *testing.T) {
 		{"CommaValue", "Has a comma", []string{"a, b, c, d, e"}, `Has a comma: "a, b, c, d, e"` + "\n"},
 		{"CommaValues", "Has commas", []string{"a,b", "c,d,e"}, `Has commas: "a,b", "c,d,e"` + "\n"},
 		{"QuotedValue", "Funky value", []string{"foo bar\tba\\z"}, `Funky value: "foo bar\tba\\z"` + "\n"},
-		{"QuotedValues", "Funky Values", []string{"a b", "c\nd", "e\t\bf", "foobar-baz"}, `Funky Values: a b, "c\nd", "e\t\bf", foobar-baz` + "\n"},
+		{"QuotedValues", "Funky Values", []string{"a b", "c\nd", "e\t\bf", "foobar-baz"}, `Funky Values: "a b", "c\nd", "e\t\bf", foobar-baz` + "\n"},
+		{"WhitespaceValue", "whitespace value", []string{"a b"}, `whitespace value: "a b"` + "\n"},
+		{"WhitespaceValues", "multiple whitespace values", []string{"a b", "foo\u00a0bar", "abc\u202fdef"}, `multiple whitespace values: "a b", "foo\u00a0bar", "abc\u202fdef"` + "\n"},
 	} {
 		for _, prefix := range []struct {
 			name, prefix string
@@ -75,6 +77,10 @@ func TestPprintSlice(t *testing.T) {
 				b
 				cdef
 `},
+		{"Whitespace", "\t\t\t", "Whitespace Values", []string{" a b c   ", "foo  bar\n"}, "\t\t\t" + `Whitespace Values:
+				" a b c   "
+				"foo  bar\n"
+`},
 		{"Quoted", "\t\t\t", "Quoted Values", []string{"ab", "c\tdef", "foo-bar\n"}, "\t\t\t" + `Quoted Values:
 				ab
 				"c\tdef"
@@ -103,6 +109,11 @@ func TestPprintMap(t *testing.T) {
 				01: 2345
 				a: b
 				c.e.f: foobar123
+`},
+		{"Whitespace", "\t\t\t", "Whitespace Values", map[string]string{" a b c  ": "cdef", "foo": "foo  bar\n", "a b": "c d"}, "\t\t\t" + `Whitespace Values:
+				" a b c  ": cdef
+				"a b": "c d"
+				foo: "foo  bar\n"
 `},
 		{"Quoted", "\t\t\t", "Quoted Map", map[string]string{"a\tb": "cdef", "ab": "c\tdef", "foo": "bar\n", "c\tef": "foo\u00a0bar123"}, "\t\t\t" + `Quoted Map:
 				"a\tb": cdef
@@ -140,6 +151,7 @@ func TestPprintSet(t *testing.T) {
 		{"Nil", "\t", "Nil Set", nil, "\tNil Set: (empty)\n"},
 		{"Empty", "\t\t", "Empty Set", set[string]{}, "\t\tEmpty Set: (empty)\n"},
 		{"Basic", "\t\t\t", "Basic Set", mkset("a", "b", "c.e.f", "foobar123", "01", "2345"), "\t\t\tBasic Set: 01, 2345, a, b, c.e.f, foobar123\n"},
+		{"Whitespace", "\t\t\t", "Whitespace Set", mkset(" a b c  ", "foo bar\n", "c\tef", "foo\u00a0bar123"), "\t\t\t" + `Whitespace Set: " a b c  ", "c\tef", "foo bar\n", "foo\u00a0bar123"` + "\n"},
 		{"Quoted", "\t\t\t", "Quoted Set", mkset("a\tb", "cdef", "foo", "bar\n", "c\tef", "foo\u00a0bar123"), "\t\t\t" + `Quoted Set: "a\tb", "bar\n", "c\tef", cdef, foo, "foo\u00a0bar123"` + "\n"},
 	} {
 		t.Run(test.name, func(t *testing.T) {
