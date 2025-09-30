@@ -174,15 +174,16 @@ func quote(s string, quoteEmpty bool) string {
 
 func pprint(w io.Writer, prefix, key string, values ...string) (err error) {
 	if len(values) > 0 {
+		quoted := make([]string, len(values))
 		for idx, value := range values {
 			if strings.Contains(value, ",") {
 				// Make sure "," leads to quoting.
-				values[idx] = strconv.Quote(value)
+				quoted[idx] = strconv.Quote(value)
 			} else {
-				values[idx] = quote(values[idx], true)
+				quoted[idx] = quote(values[idx], true)
 			}
 		}
-		_, err = fmt.Fprintf(w, "%s%s: %s\n", prefix, key, strings.Join(values, ", "))
+		_, err = fmt.Fprintf(w, "%s%s: %s\n", prefix, key, strings.Join(quoted, ", "))
 	} else {
 		_, err = fmt.Fprintf(w, "%s%s:\n", prefix, key)
 	}
