@@ -27,6 +27,7 @@ import (
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
@@ -41,6 +42,18 @@ func (e Engine) GetVerifiedBlob(ctx context.Context, descriptor ispec.Descriptor
 	// Negative sizes are not permitted by the spec, and are a DoS vector.
 	if descriptor.Size < 0 {
 		return nil, fmt.Errorf("invalid descriptor: %w", errInvalidDescriptorSize)
+	}
+	// The empty blob descriptor only has one valid value so we should validate
+	// it before allowing it to be opened.
+	if descriptor.MediaType == ispec.MediaTypeEmptyJSON {
+		if descriptor.Digest != ispec.DescriptorEmptyJSON.Digest ||
+			descriptor.Size != ispec.DescriptorEmptyJSON.Size {
+			return nil, fmt.Errorf("invalid descriptor: %w", internal.ErrInvalidEmptyJSON)
+		}
+		if descriptor.Data != nil &&
+			!bytes.Equal(descriptor.Data, ispec.DescriptorEmptyJSON.Data) {
+			return nil, fmt.Errorf("invalid descriptor: %w", internal.ErrInvalidEmptyJSON)
+		}
 	}
 	// Embedded data.
 	if descriptor.Data != nil {

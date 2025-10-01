@@ -19,6 +19,7 @@
 package mediatype
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -29,6 +30,8 @@ import (
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/opencontainers/umoci/internal/assert"
+
+	"github.com/opencontainers/umoci/internal"
 )
 
 // ErrNilReader is returned by the parsers in this package when they are called
@@ -202,11 +205,35 @@ func manifestParser(rdr io.Reader) (any, error) {
 	return manifest.Manifest, nil
 }
 
+// emptyJSONParser only parses "application/vnd.oci.empty.v1+json" and
+// validates that it is actually "{}".
+func emptyJSONParser(rdr io.Reader) (any, error) {
+	if rdr == nil {
+		// must not return a nil interface{}
+		return struct{}{}, ErrNilReader
+	}
+
+	// The only valid value for this blob.
+	const emptyJSON = `{}`
+
+	// Try to read at least one more byte than emptyJSON so if there is some
+	// trailing data we will error out without needing to read any more.
+	data, err := io.ReadAll(io.LimitReader(rdr, int64(len(emptyJSON))+1))
+	if err != nil {
+		return nil, err
+	}
+	if !bytes.Equal(data, []byte(emptyJSON)) {
+		return nil, internal.ErrInvalidEmptyJSON
+	}
+	return struct{}{}, nil
+}
+
 // Register the core image-spec types.
 func init() {
 	RegisterParser(ispec.MediaTypeDescriptor, JSONParser[ispec.Descriptor])
 	RegisterParser(ispec.MediaTypeImageIndex, indexParser)
 	RegisterParser(ispec.MediaTypeImageConfig, JSONParser[ispec.Image])
+	RegisterParser(ispec.MediaTypeEmptyJSON, emptyJSONParser)
 
 	RegisterTarget(ispec.MediaTypeImageManifest)
 	RegisterParser(ispec.MediaTypeImageManifest, manifestParser)

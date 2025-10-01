@@ -25,3 +25,8 @@ import (
 // ErrUnimplemented is returned as a source error for umoci features that are
 // not yet implemented.
 var ErrUnimplemented = errors.New("unimplemented umoci feature")
+
+// ErrInvalidEmptyJSON is returned from the mediatype parser if a descriptor
+// with the "application/vnd.oci.empty.v1+json" media-type has any value other
+// than "{}".
+var ErrInvalidEmptyJSON = errors.New("empty json blob is invalid")

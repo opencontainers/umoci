@@ -26,6 +26,7 @@ import (
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
+	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
@@ -49,6 +50,16 @@ func TestDescriptorEmbeddedData(t *testing.T) {
 			name:         "EmptyJSON",
 			descriptor:   ispec.DescriptorEmptyJSON,
 			expectedData: struct{}{},
+		},
+		{
+			name: "EmptyJSON-BadData",
+			descriptor: ispec.Descriptor{
+				MediaType: ispec.MediaTypeEmptyJSON,
+				Digest:    "sha256:74234e98afe7498fb5daf1f36ac2d78acc339464f950703b8c019892f982b90b",
+				Size:      4,
+				Data:      []byte("null"),
+			},
+			expectedErr: internal.ErrInvalidEmptyJSON,
 		},
 		{
 			name: "BadDigest",

@@ -55,6 +55,7 @@ type Blob struct {
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
 	// ispec.MediaTypeImageConfig => ispec.Image
+	// ispec.MediaTypeEmptyJSON => struct{}
 	// unknown => io.ReadCloser
 	Data any
 }
