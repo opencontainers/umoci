@@ -333,7 +333,7 @@ func (ms ManifestStat) Format(w io.Writer) error {
 
 // manifestStat contains information about the image manifest.
 type manifestStat struct {
-	// Descriptor is the descriptor for the configuration JSON.
+	// Descriptor is the descriptor for the manifest JSON.
 	Descriptor ispec.Descriptor `json:"descriptor"`
 
 	// Manifest is the contents of the image manifest.
@@ -345,36 +345,42 @@ type manifestStat struct {
 	RawData json.RawMessage `json:"blob"`
 }
 
-func (m manifestStat) pprint(w io.Writer) error {
-	manifest := m.Manifest
-	if err := pprint(w, "", "Schema Version", strconv.Itoa(manifest.SchemaVersion)); err != nil {
+func pprintManifest(w io.Writer, prefix string, manifest ispec.Manifest) error {
+	if err := pprint(w, prefix, "Schema Version", strconv.Itoa(manifest.SchemaVersion)); err != nil {
 		return err
 	}
-	if err := pprint(w, "", "Media Type", manifest.MediaType); err != nil {
+	if err := pprint(w, prefix, "Media Type", manifest.MediaType); err != nil {
 		return err
 	}
 	// TODO(image-spec v1.1): manifest.ArtifactType
 	// TODO(image-spec v1.1): manifest.Subject
-	if err := pprint(w, "", "Config"); err != nil {
+	if err := pprint(w, prefix, "Config"); err != nil {
 		return err
 	}
-	if err := pprintDescriptor(w, "\t", manifest.Config); err != nil {
+	if err := pprintDescriptor(w, prefix+"\t", manifest.Config); err != nil {
 		return err
 	}
 	if len(manifest.Layers) > 0 {
-		if err := pprint(w, "", "Layers"); err != nil {
+		if err := pprint(w, prefix, "Layers"); err != nil {
 			return err
 		}
 		for _, layer := range manifest.Layers {
-			if err := pprintDescriptor(w, "\t", layer); err != nil {
+			if err := pprintDescriptor(w, prefix+"\t", layer); err != nil {
 				return err
 			}
 		}
 	}
 	if len(manifest.Annotations) > 0 {
-		if err := pprintMap(w, "", "Annotations", manifest.Annotations); err != nil {
+		if err := pprintMap(w, prefix, "Annotations", manifest.Annotations); err != nil {
 			return err
 		}
+	}
+	return nil
+}
+
+func (m manifestStat) pprint(w io.Writer) error {
+	if err := pprintManifest(w, "", m.Manifest); err != nil {
+		return err
 	}
 	if err := pprintDescriptor(w, "", m.Descriptor); err != nil {
 		return err
@@ -447,15 +453,14 @@ func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) err
 	return nil
 }
 
-func (c configStat) pprint(w io.Writer) error {
-	image := c.Image
+func pprintImage(w io.Writer, prefix string, image ispec.Image) error {
 	if image.Created != nil {
 		date := image.Created.Format(igen.ISO8601)
-		if err := pprint(w, "", "Created", date); err != nil {
+		if err := pprint(w, prefix, "Created", date); err != nil {
 			return err
 		}
 	}
-	if err := pprint(w, "", "Author", image.Author); err != nil {
+	if err := pprint(w, prefix, "Author", image.Author); err != nil {
 		return err
 	}
 	// TODO(image-spec v1.1): Use embedded Platform.
@@ -463,10 +468,17 @@ func (c configStat) pprint(w io.Writer) error {
 		OS:           image.OS,
 		Architecture: image.Architecture,
 	}
-	if err := pprintPlatform(w, "", platform); err != nil {
+	if err := pprintPlatform(w, prefix, platform); err != nil {
 		return err
 	}
-	if err := pprintImageConfig(w, "", image.Config); err != nil {
+	if err := pprintImageConfig(w, prefix, image.Config); err != nil {
+		return err
+	}
+	return nil
+}
+
+func (c configStat) pprint(w io.Writer) error {
+	if err := pprintImage(w, "", c.Image); err != nil {
 		return err
 	}
 	if err := pprintDescriptor(w, "", c.Descriptor); err != nil {
