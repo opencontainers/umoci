@@ -19,6 +19,7 @@
 package casext
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -41,6 +42,20 @@ func (e Engine) GetVerifiedBlob(ctx context.Context, descriptor ispec.Descriptor
 	if descriptor.Size < 0 {
 		return nil, fmt.Errorf("invalid descriptor: %w", errInvalidDescriptorSize)
 	}
+	// Embedded data.
+	if descriptor.Data != nil {
+		// If the digest is small enough to fit in the descriptor, we can
+		// validate it immediately without deferring to VerifiedReadCloser.
+		gotDigest := descriptor.Digest.Algorithm().FromBytes(descriptor.Data)
+		if gotDigest != descriptor.Digest {
+			return nil, fmt.Errorf("invalid embedded descriptor data: expected %s not %s: %w", descriptor.Digest, gotDigest, hardening.ErrDigestMismatch)
+		}
+		if int64(len(descriptor.Data)) != descriptor.Size {
+			return nil, fmt.Errorf("invalid embedded descriptor data: expected %d bytes not %d bytes: %w", descriptor.Size, len(descriptor.Data), hardening.ErrSizeMismatch)
+		}
+		return io.NopCloser(bytes.NewBuffer(descriptor.Data)), nil
+	}
+
 	reader, err := e.GetBlob(ctx, descriptor.Digest)
 	if err != nil {
 		return nil, err

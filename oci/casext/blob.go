@@ -77,9 +77,11 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 	blob = &Blob{
 		Descriptor: descriptor,
 		Data:       reader,
+		RawData:    descriptor.Data, // copy if present
 	}
 
 	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
+		// TODO: Should we short-cut this for descriptors with embedded data?
 		rawDataBuf := new(bytes.Buffer)
 		dataReader := io.TeeReader(reader, rawDataBuf)
 

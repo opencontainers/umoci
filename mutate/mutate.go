@@ -421,6 +421,8 @@ func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err erro
 				// Replace the digest+size with the new blob.
 				d.Digest = newDesc.Digest
 				d.Size = newDesc.Size
+				// Copy the embedded data for the new descriptor (if any).
+				d.Data = newDesc.Data
 				// Do not touch any other bits in case the same blob is being
 				// referenced with different annotations or platform
 				// configurations.
@@ -441,6 +443,9 @@ func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err erro
 		// Update the key parts of the descriptor.
 		newPath.Walk[idx-1].Digest = blobDigest
 		newPath.Walk[idx-1].Size = blobSize
+		// Clear the embedded data (if present).
+		// TODO: Auto-embed data if it is reasonably small.
+		newPath.Walk[idx-1].Data = nil
 	}
 
 	return newPath, nil
