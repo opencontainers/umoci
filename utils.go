@@ -234,6 +234,95 @@ func pprintSet(w io.Writer, prefix, name string, data map[string]struct{}) error
 	return pprint(w, prefix, name, keys...)
 }
 
+func xxd(w io.Writer, prefix string, r io.Reader) error {
+	const bytesPerLine = 16 // like xxd
+
+	var (
+		lineData      = make([]byte, bytesPerLine)
+		printableLine = make([]byte, 0, bytesPerLine)
+		offset        int
+	)
+	for {
+		n, err := r.Read(lineData)
+		if err == io.EOF || n == 0 {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		data := lineData[:n]
+		printableLine = printableLine[:0] // truncate
+
+		// <prefix><offset>:
+		if _, err := fmt.Fprintf(w, "%s%.4x: ", prefix, offset); err != nil {
+			return err
+		}
+		// <hex1><hex2> <hex3><hex4> ...
+		for idx := range bytesPerLine {
+			if idx != 0 && idx%2 == 0 {
+				if _, err := io.WriteString(w, " "); err != nil {
+					return err
+				}
+			}
+			if idx >= len(data) {
+				// Pad out the hex output for short lines.
+				if _, err := io.WriteString(w, "  "); err != nil {
+					return err
+				}
+			} else {
+				b := data[idx]
+				if _, err := fmt.Fprintf(w, "%.2x", b); err != nil {
+					return err
+				}
+				ch := b
+				if !unicode.IsGraphic(rune(b)) {
+					ch = '.'
+				}
+				printableLine = append(printableLine, ch)
+			}
+		}
+		// <textual output>
+		if _, err := io.WriteString(w, "  "); err != nil {
+			return err
+		}
+		if _, err := w.Write(printableLine); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\n"); err != nil {
+			return err
+		}
+		offset += len(data)
+	}
+	return nil
+}
+
+func pprintBytes(w io.Writer, prefix, name string, data []byte) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
+	// Do not use pprint, as we do not want our own suffix to get quote()d.
+	if _, err := fmt.Fprintf(w, "%s%s: (%d bytes)\n", prefix, name, len(data)); err != nil {
+		return err
+	}
+	prefix += "\t"
+
+	// We want to limit how much data we dump to the screen.
+	const maxDisplaySize = 256
+	buf := &io.LimitedReader{
+		R: bytes.NewBuffer(data),
+		N: maxDisplaySize,
+	}
+	if err := xxd(w, prefix, buf); err != nil {
+		return err
+	}
+	if remaining := len(data) - maxDisplaySize; remaining > 0 {
+		if _, err := fmt.Fprintf(w, "%s....  (extra %d bytes omitted)\n", prefix, remaining); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func pprintPlatform(w io.Writer, prefix string, platform ispec.Platform) error {
 	if err := pprint(w, prefix, "Platform"); err != nil {
 		return err
@@ -273,6 +362,11 @@ func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) e
 	if err := pprint(w, prefix, "Media Type", descriptor.MediaType); err != nil {
 		return err
 	}
+	if descriptor.ArtifactType != "" {
+		if err := pprint(w, prefix, "Artifact Type", descriptor.ArtifactType); err != nil {
+			return err
+		}
+	}
 	if err := pprint(w, prefix, "Digest", descriptor.Digest.String()); err != nil {
 		return err
 	}
@@ -295,8 +389,11 @@ func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) e
 			return err
 		}
 	}
-	// TODO(image-spec v1.1): descriptor.Data
-	// TODO(image-spec v1.1): descriptor.ArtifactType
+	if len(descriptor.Data) > 0 {
+		if err := pprintBytes(w, prefix, "Data", descriptor.Data); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -352,8 +449,11 @@ func pprintManifest(w io.Writer, prefix string, manifest ispec.Manifest) error {
 	if err := pprint(w, prefix, "Media Type", manifest.MediaType); err != nil {
 		return err
 	}
-	// TODO(image-spec v1.1): manifest.ArtifactType
-	// TODO(image-spec v1.1): manifest.Subject
+	if manifest.ArtifactType != "" {
+		if err := pprint(w, prefix, "Artifact Type", manifest.ArtifactType); err != nil {
+			return err
+		}
+	}
 	if err := pprint(w, prefix, "Config"); err != nil {
 		return err
 	}
@@ -368,6 +468,14 @@ func pprintManifest(w io.Writer, prefix string, manifest ispec.Manifest) error {
 			if err := pprintDescriptor(w, prefix+"\t", layer); err != nil {
 				return err
 			}
+		}
+	}
+	if manifest.Subject != nil {
+		if err := pprint(w, prefix, "Subject"); err != nil {
+			return err
+		}
+		if err := pprintDescriptor(w, prefix+"\t", *manifest.Subject); err != nil {
+			return err
 		}
 	}
 	if len(manifest.Annotations) > 0 {
@@ -411,13 +519,16 @@ func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) err
 	if err := pprint(w, prefix, "User", config.User); err != nil {
 		return err
 	}
-
+	var cmdEscapedSuffix string
+	if config.ArgsEscaped { //nolint:staticcheck // we need to support this deprecated field
+		cmdEscapedSuffix = " (escaped)"
+	}
 	if len(config.Entrypoint) > 0 {
-		if err := pprintSlice(w, prefix, "Entrypoint", config.Entrypoint); err != nil {
+		if err := pprintSlice(w, prefix, "Entrypoint"+cmdEscapedSuffix, config.Entrypoint); err != nil {
 			return err
 		}
 	}
-	if err := pprintSlice(w, prefix, "Command", config.Cmd); err != nil {
+	if err := pprintSlice(w, prefix, "Command"+cmdEscapedSuffix, config.Cmd); err != nil {
 		return err
 	}
 	if config.WorkingDir != "" {
@@ -463,12 +574,7 @@ func pprintImage(w io.Writer, prefix string, image ispec.Image) error {
 	if err := pprint(w, prefix, "Author", image.Author); err != nil {
 		return err
 	}
-	// TODO(image-spec v1.1): Use embedded Platform.
-	platform := ispec.Platform{
-		OS:           image.OS,
-		Architecture: image.Architecture,
-	}
-	if err := pprintPlatform(w, prefix, platform); err != nil {
+	if err := pprintPlatform(w, prefix, image.Platform); err != nil {
 		return err
 	}
 	if err := pprintImageConfig(w, prefix, image.Config); err != nil {

@@ -246,6 +246,13 @@ func TestPprintDescriptor(t *testing.T) {
 			Digest: ""
 			Size: 0B
 `},
+		{"EmptyJSON", "\t\t", ispec.DescriptorEmptyJSON, "\t\t" + `Descriptor:
+			Media Type: application/vnd.oci.empty.v1+json
+			Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+			Size: 2B
+			Data: (2 bytes)
+				0000: 7b7d                                     {}
+`},
 		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/descriptor.md#examples>.
 		{"SpecExample-1", "\t\t", ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageManifest,
@@ -270,7 +277,6 @@ func TestPprintDescriptor(t *testing.T) {
 			URLs:
 				https://example.com/example-manifest
 `},
-		// TODO: Support pretty-printing v1.1.1 fields.
 		{"SpecExample-3", "\t\t", ispec.Descriptor{
 			MediaType:    "",
 			ArtifactType: "application/vnd.example.sbom.v1",
@@ -278,6 +284,7 @@ func TestPprintDescriptor(t *testing.T) {
 			Size:         123,
 		}, "\t\t" + `Descriptor:
 			Media Type: ""
+			Artifact Type: application/vnd.example.sbom.v1
 			Digest: sha256:87923725d74f4bfb94c9e86d64170f7521aad8221a5de834851470ca142da630
 			Size: 123B
 `},
@@ -289,6 +296,17 @@ func TestPprintDescriptor(t *testing.T) {
 			Media Type: image/png
 			Digest: sha256:7d30ef97fe167eb78d5c52503096522ebba7ba95789ba735fd68da9d4838f84d
 			Size: 61.23kB
+`},
+		{"ArtifactType", "\t\t", ispec.Descriptor{
+			MediaType:    ispec.MediaTypeEmptyJSON,
+			ArtifactType: "image/png",
+			Digest:       "sha256:7a30ef97fe167eb78d5c52503096522ebba7ba95789ba735fd68da9d4838f84d",
+			Size:         82235,
+		}, "\t\t" + `Descriptor:
+			Media Type: application/vnd.oci.empty.v1+json
+			Artifact Type: image/png
+			Digest: sha256:7a30ef97fe167eb78d5c52503096522ebba7ba95789ba735fd68da9d4838f84d
+			Size: 82.23kB
 `},
 		{"Annotations", "\t\t", ispec.Descriptor{
 			MediaType: ispec.MediaTypeImageManifest,
@@ -323,6 +341,74 @@ func TestPprintDescriptor(t *testing.T) {
 			URLs:
 				https://www.example.com/example.txt
 				https://www.cyphar.com/
+`},
+		{"Data-Short", "\t\t", ispec.Descriptor{
+			MediaType: "application/text",
+			Digest:    "sha256:aec070645fe53ee3b3763059376134f058cc337247c978add178b6ccdfb0019f",
+			Size:      7,
+			Data:      []byte("foobar\n"),
+		}, "\t\t" + `Descriptor:
+			Media Type: application/text
+			Digest: sha256:aec070645fe53ee3b3763059376134f058cc337247c978add178b6ccdfb0019f
+			Size: 7B
+			Data: (7 bytes)
+				0000: 666f 6f62 6172 0a                        foobar.
+`},
+		{"Data-ShortMultiline", "\t\t", ispec.Descriptor{
+			MediaType: "application/text",
+			Digest:    "sha256:b47cc0f104b62d4c7c30bcd68fd8e67613e287dc4ad8c310ef10cbadea9c4380",
+			Size:      45,
+			Data:      []byte("The quick brown fox jumps over the lazy dog.\n"),
+		}, "\t\t" + `Descriptor:
+			Media Type: application/text
+			Digest: sha256:b47cc0f104b62d4c7c30bcd68fd8e67613e287dc4ad8c310ef10cbadea9c4380
+			Size: 45B
+			Data: (45 bytes)
+				0000: 5468 6520 7175 6963 6b20 6272 6f77 6e20  The quick brown ` + `
+				0010: 666f 7820 6a75 6d70 7320 6f76 6572 2074  fox jumps over t
+				0020: 6865 206c 617a 7920 646f 672e 0a         he lazy dog..
+`},
+		{"Data-Long", "\t\t", ispec.Descriptor{
+			MediaType: "legal/x-license; Apache-2.0",
+			Digest:    "sha256:af38b8d8986cfc6f3132e289f5e6abf0facdf72f1f67c0f87fa8db3e2e8a9c55",
+			Size:      524,
+			Data: []byte(`
+                                 Apache License
+                           Version 2.0, January 2004
+                        http://www.apache.org/licenses/
+
+   TERMS AND CONDITIONS FOR USE, REPRODUCTION, AND DISTRIBUTION
+
+   1. Definitions.
+
+      "License" shall mean the terms and conditions for use, reproduction,
+      and distribution as defined by Sections 1 through 9 of this document.
+
+      "Licensor" shall mean the copyright owner or entity authorized by
+      the copyright owner that is granting the License.
+`),
+		}, "\t\t" + `Descriptor:
+			Media Type: "legal/x-license; Apache-2.0"
+			Digest: sha256:af38b8d8986cfc6f3132e289f5e6abf0facdf72f1f67c0f87fa8db3e2e8a9c55
+			Size: 524B
+			Data: (524 bytes)
+				0000: 0a20 2020 2020 2020 2020 2020 2020 2020  .               ` + `
+				0010: 2020 2020 2020 2020 2020 2020 2020 2020                  ` + `
+				0020: 2020 4170 6163 6865 204c 6963 656e 7365    Apache License` + `
+				0030: 0a20 2020 2020 2020 2020 2020 2020 2020  .               ` + `
+				0040: 2020 2020 2020 2020 2020 2020 5665 7273              Vers` + `
+				0050: 696f 6e20 322e 302c 204a 616e 7561 7279  ion 2.0, January` + `
+				0060: 2032 3030 340a 2020 2020 2020 2020 2020   2004.          ` + `
+				0070: 2020 2020 2020 2020 2020 2020 2020 6874                ht` + `
+				0080: 7470 3a2f 2f77 7777 2e61 7061 6368 652e  tp://www.apache.` + `
+				0090: 6f72 672f 6c69 6365 6e73 6573 2f0a 0a20  org/licenses/.. ` + `
+				00a0: 2020 5445 524d 5320 414e 4420 434f 4e44    TERMS AND COND` + `
+				00b0: 4954 494f 4e53 2046 4f52 2055 5345 2c20  ITIONS FOR USE, ` + `
+				00c0: 5245 5052 4f44 5543 5449 4f4e 2c20 414e  REPRODUCTION, AN` + `
+				00d0: 4420 4449 5354 5249 4255 5449 4f4e 0a0a  D DISTRIBUTION..` + `
+				00e0: 2020 2031 2e20 4465 6669 6e69 7469 6f6e     1. Definition` + `
+				00f0: 732e 0a0a 2020 2020 2020 224c 6963 656e  s...      "Licen` + `
+				....  (extra 268 bytes omitted)
 `},
 		{"Whitespace", "\t\t", ispec.Descriptor{
 			MediaType: "application/x-dummy; foo",
@@ -429,6 +515,18 @@ func TestPprintImageConfig(t *testing.T) {
 				/bin/bash
 				-c
 			Command:
+				"while true; sleep 1s; done;"
+`},
+		{"Command+Entrypoint-Escaped", "\t\t", ispec.ImageConfig{
+			User:        "0",
+			ArgsEscaped: true,
+			Entrypoint:  []string{"/bin/bash -c "},
+			Cmd:         []string{"while true; sleep 1s; done;"},
+		}, "\t\t" + `Image Config:
+			User: 0
+			Entrypoint (escaped):
+				"/bin/bash -c "
+			Command (escaped):
 				"while true; sleep 1s; done;"
 `},
 		{"Environment", "\t\t", ispec.ImageConfig{
@@ -671,7 +769,6 @@ func TestPprintManifest(t *testing.T) {
 				Size: 0B
 `},
 		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md#example-image-manifest>.
-		// TODO: Support pretty-printing v1.1.1 fields.
 		{"SpecExample", "\t\t\t", ispec.Manifest{
 			Versioned: imeta.Versioned{SchemaVersion: 2},
 			MediaType: ispec.MediaTypeImageManifest,
@@ -726,12 +823,16 @@ func TestPprintManifest(t *testing.T) {
 					Media Type: application/vnd.oci.image.layer.v1.tar+gzip
 					Digest: sha256:ec4b8955958665577945c89419d1af06b5f7636b4ac3da7f12184802ad867736
 					Size: 73.11kB
+			Subject:
+				Descriptor:
+					Media Type: application/vnd.oci.image.manifest.v1+json
+					Digest: sha256:5b0bcabd1ed22e9fb1310cf6c2dec7cdef19f0ad69efa1f392e94a4333501270
+					Size: 7.682kB
 			Annotations:
 				com.example.key1: value1
 				com.example.key2: value2
 `},
 		// Adapted from <https://github.com/opencontainers/image-spec/blob/v1.1.1/manifest.md#guidelines-for-artifact-usage>.
-		// TODO: Support pretty-printing v1.1.1 fields.
 		{"ArtifactExample-1", "\t\t\t", ispec.Manifest{
 			Versioned:    imeta.Versioned{SchemaVersion: 2},
 			MediaType:    ispec.MediaTypeImageManifest,
@@ -744,16 +845,21 @@ func TestPprintManifest(t *testing.T) {
 			},
 		}, "\t\t\t" + `Schema Version: 2
 			Media Type: application/vnd.oci.image.manifest.v1+json
+			Artifact Type: application/vnd.example+type
 			Config:
 				Descriptor:
 					Media Type: application/vnd.oci.empty.v1+json
 					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
 					Size: 2B
+					Data: (2 bytes)
+						0000: 7b7d                                     {}
 			Layers:
 				Descriptor:
 					Media Type: application/vnd.oci.empty.v1+json
 					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
 					Size: 2B
+					Data: (2 bytes)
+						0000: 7b7d                                     {}
 			Annotations:
 				com.example.data: payload
 				oci.opencontainers.image.created: 2023-01-02T03:04:05Z
@@ -772,11 +878,14 @@ func TestPprintManifest(t *testing.T) {
 			},
 		}, "\t\t\t" + `Schema Version: 2
 			Media Type: application/vnd.oci.image.manifest.v1+json
+			Artifact Type: application/vnd.example+type
 			Config:
 				Descriptor:
 					Media Type: application/vnd.oci.empty.v1+json
 					Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
 					Size: 2B
+					Data: (2 bytes)
+						0000: 7b7d                                     {}
 			Layers:
 				Descriptor:
 					Media Type: application/vnd.example+type
@@ -801,6 +910,7 @@ func TestPprintManifest(t *testing.T) {
 			},
 		}, "\t\t\t" + `Schema Version: 2
 			Media Type: application/vnd.oci.image.manifest.v1+json
+			Artifact Type: application/vnd.example+type
 			Config:
 				Descriptor:
 					Media Type: application/vnd.example.config.v1+json
