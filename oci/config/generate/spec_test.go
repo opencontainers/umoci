@@ -21,6 +21,7 @@ package generate
 import (
 	"io"
 	"os"
+	"slices"
 	"testing"
 	"time"
 
@@ -149,49 +150,45 @@ func TestConfigCmd(t *testing.T) {
 
 func TestConfigExposedPorts(t *testing.T) {
 	g := New()
-	exposedports := map[string]struct{}{
-		"a": {},
-		"b": {},
-		"c": {},
-	}
+	exposedPorts := []string{"100/udp", "200/tcp", "300/foo"}
 
 	g.ClearConfigExposedPorts()
-	for exposedport := range exposedports {
-		g.AddConfigExposedPort(exposedport)
+	for _, port := range exposedPorts {
+		g.AddConfigExposedPort(port)
 	}
 	got := g.ConfigExposedPorts()
 
-	assert.Equal(t, exposedports, got, "ConfigExposedPorts get/set should match")
+	slices.Sort(exposedPorts)
+	assert.Equal(t, exposedPorts, got, "ConfigExposedPorts get/set should match")
 
-	delete(exposedports, "a")
-	g.RemoveConfigExposedPort("a")
-	delete(got, "b") // make sure it's a copy
+	exposedPorts = []string{"100/udp", "300/foo"}
+	g.RemoveConfigExposedPort("200/tcp")
+	got[0] = "dummy" // make sure it's a copy
 	got = g.ConfigExposedPorts()
 
-	assert.Equal(t, exposedports, got, "ConfigExposedPorts get/set should match")
+	slices.Sort(exposedPorts)
+	assert.Equal(t, exposedPorts, got, "ConfigExposedPorts get/set should match")
 }
 
 func TestConfigVolumes(t *testing.T) {
 	g := New()
-	volumes := map[string]struct{}{
-		"a": {},
-		"b": {},
-		"c": {},
-	}
+	volumes := []string{"a", "b", "c"}
 
 	g.ClearConfigVolumes()
-	for volume := range volumes {
+	for _, volume := range volumes {
 		g.AddConfigVolume(volume)
 	}
 	got := g.ConfigVolumes()
 
+	slices.Sort(volumes)
 	assert.Equal(t, volumes, got, "ConfigVolumes get/set should match")
 
-	delete(volumes, "a")
+	volumes = []string{"b", "c"}
 	g.RemoveConfigVolume("a")
-	delete(got, "b") // make sure it's a copy
+	got[0] = "dummy" // make sure it's a copy
 	got = g.ConfigVolumes()
 
+	slices.Sort(volumes)
 	assert.Equal(t, volumes, got, "ConfigVolumes get/set should match")
 }
 

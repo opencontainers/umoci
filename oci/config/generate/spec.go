@@ -25,7 +25,7 @@ package generate
 import (
 	"fmt"
 	"maps"
-	"sort"
+	"slices"
 	"strings"
 	"time"
 
@@ -127,21 +127,8 @@ func (g *Generator) RemoveConfigExposedPort(port string) {
 }
 
 // ConfigExposedPorts returns the set of ports to expose from a container running this image.
-func (g *Generator) ConfigExposedPorts() map[string]struct{} {
-	// We have to make a copy to preserve the privacy of g.image.Config.
-	cp := map[string]struct{}{}
-	maps.Copy(cp, g.image.Config.ExposedPorts)
-	return cp
-}
-
-// ConfigExposedPortsArray returns a sorted array of ports to expose from a container running this image.
-func (g *Generator) ConfigExposedPortsArray() []string {
-	ports := make([]string, 0, len(g.image.Config.ExposedPorts))
-	for port := range g.image.Config.ExposedPorts {
-		ports = append(ports, port)
-	}
-	sort.Strings(ports)
-	return ports
+func (g *Generator) ConfigExposedPorts() []string {
+	return slices.Sorted(maps.Keys(g.image.Config.ExposedPorts))
 }
 
 // ClearConfigEnv clears the list of environment variables to be used in a container.
@@ -166,7 +153,7 @@ func (g *Generator) AddConfigEnv(name, value string) {
 // ConfigEnv returns the list of environment variables to be used in a container.
 func (g *Generator) ConfigEnv() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	return append([]string{}, g.image.Config.Env...)
+	return slices.Clone(g.image.Config.Env)
 }
 
 // ClearConfigEntrypoint clears the list of arguments to use as the command to execute when the container starts.
@@ -176,13 +163,13 @@ func (g *Generator) ClearConfigEntrypoint() {
 
 // SetConfigEntrypoint sets the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) SetConfigEntrypoint(entrypoint []string) {
-	g.image.Config.Entrypoint = append([]string{}, entrypoint...)
+	g.image.Config.Entrypoint = slices.Clone(entrypoint)
 }
 
 // ConfigEntrypoint returns the list of arguments to use as the command to execute when the container starts.
 func (g *Generator) ConfigEntrypoint() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	return append([]string{}, g.image.Config.Entrypoint...)
+	return slices.Clone(g.image.Config.Entrypoint)
 }
 
 // ClearConfigCmd clears the list of default arguments to the entrypoint of the container.
@@ -192,13 +179,13 @@ func (g *Generator) ClearConfigCmd() {
 
 // SetConfigCmd sets the list of default arguments to the entrypoint of the container.
 func (g *Generator) SetConfigCmd(cmd []string) {
-	g.image.Config.Cmd = append([]string{}, cmd...)
+	g.image.Config.Cmd = slices.Clone(cmd)
 }
 
 // ConfigCmd returns the list of default arguments to the entrypoint of the container.
 func (g *Generator) ConfigCmd() []string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	return append([]string{}, g.image.Config.Cmd...)
+	return slices.Clone(g.image.Config.Cmd)
 }
 
 // ClearConfigVolumes clears the set of directories which should be created as data volumes in a container running this image.
@@ -217,11 +204,8 @@ func (g *Generator) RemoveConfigVolume(volume string) {
 }
 
 // ConfigVolumes returns the set of directories which should be created as data volumes in a container running this image.
-func (g *Generator) ConfigVolumes() map[string]struct{} {
-	// We have to make a copy to preserve the privacy of g.image.Config.
-	cp := map[string]struct{}{}
-	maps.Copy(cp, g.image.Config.Volumes)
-	return cp
+func (g *Generator) ConfigVolumes() []string {
+	return slices.Sorted(maps.Keys(g.image.Config.Volumes))
 }
 
 // ClearConfigLabels clears the set of arbitrary metadata for the container.
@@ -242,9 +226,7 @@ func (g *Generator) RemoveConfigLabel(label string) {
 // ConfigLabels returns the set of arbitrary metadata for the container.
 func (g *Generator) ConfigLabels() map[string]string {
 	// We have to make a copy to preserve the privacy of g.image.Config.
-	cp := map[string]string{}
-	maps.Copy(cp, g.image.Config.Labels)
-	return cp
+	return maps.Clone(g.image.Config.Labels)
 }
 
 // SetConfigWorkingDir sets the current working directory of the entrypoint process in the container.

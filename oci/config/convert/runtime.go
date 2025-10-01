@@ -205,10 +205,10 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	}
 
 	// Set optional fields
-	ports := ig.ConfigExposedPortsArray()
+	ports := ig.ConfigExposedPorts()
 	spec.Annotations[exposedPortsAnnotation] = strings.Join(ports, ",")
 
-	for vol := range ig.ConfigVolumes() {
+	for _, vol := range ig.ConfigVolumes() {
 		// XXX: This is _fine_ but might cause some issues in the future.
 		spec.Mounts = append(spec.Mounts, rspec.Mount{
 			Destination: vol,

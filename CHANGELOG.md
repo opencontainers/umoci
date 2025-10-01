@@ -14,6 +14,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Breaking ###
+* The existing `ConfigExposedPorts` and `ConfigVolumes` methods of
+  `github.com/opencontainers/umoci/oci/config/generate.Generator` now return a
+  sorted `[]string` instead of a map.
+
 ### Added ###
 * `umoci stat` now includes information about the manifest and configuration of
   the image, both in the regular and JSON-formatted outputs.
