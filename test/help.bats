@@ -22,11 +22,17 @@ load helpers
 
 	umoci --version
 	[ "$status" -eq 0 ]
-	[[ "$output" =~ "umoci version $VERSION"+ ]]
+	[[ "$output" == "umoci version $VERSION"* ]]
+	[[ "$output" == *"image spec: 1."* ]]
+	[[ "$output" == *"runtime spec: 1."* ]]
+	[[ "$output" == *"go: go1."* ]]
 
 	umoci -v
 	[ "$status" -eq 0 ]
-	[[ "$output" =~ "umoci version $VERSION"+ ]]
+	[[ "$output" == "umoci version $VERSION"* ]]
+	[[ "$output" == *"image spec: 1."* ]]
+	[[ "$output" == *"runtime spec: 1."* ]]
+	[[ "$output" == *"go: go1."* ]]
 }
 
 @test "umoci --help" {

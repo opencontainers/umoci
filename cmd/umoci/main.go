@@ -23,10 +23,13 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"runtime"
 	"runtime/pprof"
 
 	"github.com/apex/log"
 	logcli "github.com/apex/log/handlers/cli"
+	imeta "github.com/opencontainers/image-spec/specs-go"
+	rspec "github.com/opencontainers/runtime-spec/specs-go"
 	"github.com/urfave/cli"
 
 	"github.com/opencontainers/umoci"
@@ -39,6 +42,15 @@ const (
 	categoryLayout = "layout"
 	categoryImage  = "image"
 )
+
+func printVersion(c *cli.Context) {
+	w := c.App.Writer
+
+	fmt.Fprintln(w, "umoci version", c.App.Version) //nolint:errcheck // errors not relevant
+	fmt.Fprintln(w, "image spec:", imeta.Version)   //nolint:errcheck // errors not relevant
+	fmt.Fprintln(w, "runtime spec:", rspec.Version) //nolint:errcheck // errors not relevant
+	fmt.Fprintln(w, "go:", runtime.Version())       //nolint:errcheck // errors not relevant
+}
 
 // Main is the underlying main() implementation. You can call this directly as
 // though it were the command-line arguments of the umoci binary (this is
@@ -53,7 +65,9 @@ func Main(args []string) error {
 			Email: "cyphar@cyphar.com",
 		},
 	}
+
 	app.Version = umoci.FullVersion()
+	cli.VersionPrinter = printVersion
 
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{

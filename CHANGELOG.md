@@ -41,6 +41,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   Note that this subcommand is not intended for wider use outside of our tests
   (and it is hidden from the help pages for a reason). Most users are probably
   better off just using `gomtree`.
+* `umoci --version` now provides more information about the specification
+  versions supported by the `umoci` binary as well as the Go version used.
 
 ### Changed ###
 * The output format of `umoci stat` has had some minor changes made to how
