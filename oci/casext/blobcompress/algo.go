@@ -25,6 +25,8 @@ import (
 	"fmt"
 	"io"
 	"sync"
+
+	"github.com/opencontainers/umoci/internal/assert"
 )
 
 // Default is the default algorithm used within umoci if unspecified by a user.
@@ -71,9 +73,8 @@ func RegisterAlgorithm(algo Algorithm) error {
 // MustRegisterAlgorithm is like [RegisterAlgorithm] but it panics if
 // [RegisterAlgorithm] returns an error. Intended for use in init functions.
 func MustRegisterAlgorithm(algo Algorithm) {
-	if err := RegisterAlgorithm(algo); err != nil {
-		panic(err)
-	}
+	err := RegisterAlgorithm(algo)
+	assert.NoError(err)
 }
 
 // GetAlgorithm looks for a registered [Algorithm] with the given

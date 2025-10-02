@@ -26,6 +26,7 @@ import (
 	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/opencontainers/umoci/internal/assert"
 	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/oci/cas"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
@@ -72,9 +73,7 @@ type DescriptorPath struct {
 // the walk started. This is just shorthand for DescriptorPath.Walk[0]. Root
 // will *panic* if DescriptorPath is invalid.
 func (d DescriptorPath) Root() ispec.Descriptor {
-	if len(d.Walk) < 1 {
-		panic("empty DescriptorPath")
-	}
+	assert.Assert(len(d.Walk) > 0, "empty DescriptorPath")
 	return d.Walk[0]
 }
 
@@ -83,9 +82,7 @@ func (d DescriptorPath) Root() ispec.Descriptor {
 // accessing the last entry of DescriptorPath.Walk. Descriptor will *panic* if
 // DescriptorPath is invalid.
 func (d DescriptorPath) Descriptor() ispec.Descriptor {
-	if len(d.Walk) < 1 {
-		panic("empty DescriptorPath")
-	}
+	assert.Assert(len(d.Walk) > 0, "empty DescriptorPath")
 	return d.Walk[len(d.Walk)-1]
 }
 

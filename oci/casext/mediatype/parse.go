@@ -27,6 +27,8 @@ import (
 	"sync"
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
+
+	"github.com/opencontainers/umoci/internal/assert"
 )
 
 // ErrNilReader is returned by the parsers in this package when they are called
@@ -94,10 +96,7 @@ func RegisterParser(mediaType string, parser ParseFunc) {
 	// Ensure the returned type is actually a struct. Ideally we would detect
 	// this with generics but this seems to not be possible with Go generics
 	// (circa Go 1.20).
-	if t.Kind() != reflect.Struct {
-		// This should never happen, and is a programmer bug.
-		panic("parser given to RegisterParser doesn't return a struct{}")
-	}
+	assert.Assert(t.Kind() == reflect.Struct, "parser given to RegisterParser doesn't return a struct{}") // programmer bug
 
 	// Register the parser and package.
 	lock.Lock()
@@ -106,10 +105,7 @@ func RegisterParser(mediaType string, parser ParseFunc) {
 	packages[t.PkgPath()] = struct{}{}
 	lock.Unlock()
 
-	if old {
-		// This should never happen, and is a programmer bug.
-		panic("RegisterParser() called with already-registered media-type: " + mediaType)
-	}
+	assert.Assertf(!old, "RegisterParser() called with already-registered media-type: %s", mediaType) // programmer bug
 }
 
 // IsTarget returns whether the given media-type should be treated as a "target

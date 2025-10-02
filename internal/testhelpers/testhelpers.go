@@ -20,6 +20,8 @@
 // code in this package is enabled when building a non-test umoci binary.
 package testhelpers
 
+import "github.com/opencontainers/umoci/internal/assert"
+
 // binaryType is set during umoci.cover building.
 var binaryType = releaseBinary
 
@@ -37,7 +39,7 @@ const (
 
 // Sanity check.
 func init() {
-	if binaryType != releaseBinary && binaryType != testBinary {
-		panic("BinaryType is not release or test.")
-	}
+	assert.Assert(
+		binaryType == releaseBinary || binaryType == testBinary,
+		"BinaryType is not release or test.")
 }

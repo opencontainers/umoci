@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/internal"
+	internalassert "github.com/opencontainers/umoci/internal/assert"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
@@ -40,9 +41,7 @@ import (
 
 func mustDecodeString(s string) []byte {
 	b, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
+	internalassert.NoError(err)
 	return b
 }
 

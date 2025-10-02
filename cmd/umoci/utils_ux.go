@@ -25,6 +25,7 @@ import (
 
 	"github.com/urfave/cli"
 
+	"github.com/opencontainers/umoci/internal/assert"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 )
@@ -285,10 +286,9 @@ func fetchMeta[T any](ctx *cli.Context, metaName string) (T, bool) {
 		return *new(T), false
 	}
 	realVal, ok := val.(T)
-	if !ok {
-		// this is a programmer error
-		panic(fmt.Sprintf("umoci cli internal error: fetching cli metadata %s with wrong type %T", metaName, *new(T)))
-	}
+	assert.Assertf(ok,
+		"umoci cli internal error: fetching cli metadata %s with wrong type %T",
+		metaName, *new(T)) // programmer error
 	return realVal, true
 }
 
@@ -296,8 +296,7 @@ func fetchMeta[T any](ctx *cli.Context, metaName string) (T, bool) {
 // metadata is not present in the current [cli.Context].
 func mustFetchMeta[T any](ctx *cli.Context, metaName string) T {
 	val, ok := fetchMeta[T](ctx, metaName)
-	if !ok {
-		panic("umoci cli internal error: required cli metadata " + metaName + " missing")
-	}
+	assert.Assertf(ok,
+		"umoci cli internal error: required cli metadata %s missing", metaName) // programmer error
 	return val
 }
