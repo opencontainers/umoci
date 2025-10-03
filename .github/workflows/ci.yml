@@ -143,6 +143,9 @@ jobs:
           - debian:latest
           - ubuntu:latest
           - fedora:latest
+        test:
+          - root
+          - rootless
     env:
       TEST_DOCKER_IMAGE: ${{ matrix.image }}
       COVERAGE: umoci.coverage
@@ -165,7 +168,7 @@ jobs:
             ${{ github.workflow }}-image-
       - name: load ci image
         run: make ci-cache
-      - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-integration
+      - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-${{ matrix.test }}-integration
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
@@ -202,3 +205,15 @@ jobs:
         with:
           name: coverage
           path: ${{ env.GOCOVERDIR }}
+
+  complete:
+    runs-on: ubuntu-latest
+    needs:
+      - release
+      - validate
+      - macos
+      - unit
+      - integration
+      - coverage
+    steps:
+      - run: echo "all done"

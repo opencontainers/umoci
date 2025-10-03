@@ -187,9 +187,16 @@ local-test-unit:
 TESTS ?=
 
 .PHONY: test-integration
-test-integration: ci-image
+test-integration: test-root-integration test-rootless-integration
+
+.PHONY: test-root-integration
+test-root-integration: ci-image umoci.cover
 	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
 	$(DOCKER_ROOTPRIV_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
+
+.PHONY: test-rootless-integration
+test-rootless-integration: ci-image umoci.cover
+	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
 	$(DOCKER_ROOTLESS_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
@@ -214,7 +221,7 @@ CI_CACHE_PATH ?=.ci-cache
 .PHONY: ci-cache
 ci-cache: BUILDX_CACHE := \
 	--cache-from=type=local,src=$(CI_CACHE_PATH) \
-	--cache-to=type=local,mode=max,dest=$(CI_CACHE_PATH)
+	--cache-to=type=local,dest=$(CI_CACHE_PATH)
 ci-cache: ci-image
 
 .PHONY: ci-image

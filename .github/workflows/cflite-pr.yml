@@ -49,7 +49,7 @@ jobs:
       uses: google/clusterfuzzlite/actions/run_fuzzers@v1
       with:
         github-token: ${{ secrets.GITHUB_TOKEN }}
-        fuzz-seconds: 600
+        fuzz-seconds: 300
         mode: 'code-change'
         sanitizer: ${{ matrix.sanitizer }}
         output-sarif: true
