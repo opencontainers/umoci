@@ -202,3 +202,15 @@ jobs:
         with:
           name: coverage
           path: ${{ env.GOCOVERDIR }}
+
+  complete:
+    runs-on: ubuntu-latest
+    needs:
+      - release
+      - validate
+      - macos
+      - unit
+      - integration
+      - coverage
+    steps:
+      - run: echo "all done"
