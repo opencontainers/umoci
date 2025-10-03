@@ -187,9 +187,16 @@ local-test-unit:
 TESTS ?=
 
 .PHONY: test-integration
-test-integration: ci-image
+test-integration: test-root-integration test-rootless-integration
+
+.PHONY: test-root-integration
+test-root-integration: ci-image umoci.cover
 	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
 	$(DOCKER_ROOTPRIV_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
+
+.PHONY: test-rootless-integration
+test-rootless-integration: ci-image umoci.cover
+	mkdir -p $(GOCOVERDIR) && chmod a+rwx $(GOCOVERDIR)
 	$(DOCKER_ROOTLESS_RUN) -e GOCOVERDIR -e TESTS $(UMOCI_IMAGE) make local-test-integration
 
 .PHONY: local-test-integration
