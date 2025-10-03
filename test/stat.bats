@@ -120,7 +120,8 @@ function digest_to_path() {
 	image-verify "${IMAGE}"
 }
 
-BLANK_IMAGE_STAT="$(cat <<EOF
+@test "umoci stat [output snapshot: blank image]" {
+	EXPECTED_OUTPUT="$(cat <<EOF
 == MANIFEST ==
 Schema Version: 2
 Media Type: application/vnd.oci.image.manifest.v1+json
@@ -155,12 +156,11 @@ LAYER CREATED CREATED BY SIZE COMMENT
 EOF
 )"
 
-@test "umoci stat [blank image output snapshot]" {
 	IMAGE="$(setup_tmpdir)/image" TAG="latest"
 	STATFILE_DIR="$(setup_tmpdir)"
 
 	expected="${STATFILE_DIR}/expected"
-	cat >"$expected" <<<"$BLANK_IMAGE_STAT"
+	cat >"$expected" <<<"$EXPECTED_OUTPUT"
 
 	umoci init --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -181,7 +181,8 @@ EOF
 	[ "$status" -eq 0 ]
 }
 
-IMAGE_STAT="$(cat <<EOF
+@test "umoci stat [output snapshot: minimal image]" {
+	EXPECTED_OUTPUT="$(cat <<EOF
 == MANIFEST ==
 Schema Version: 2
 Media Type: application/vnd.oci.image.manifest.v1+json
@@ -248,12 +249,11 @@ sha256:92226702a21491c696a910e56da759a2d6fe979211a7ad91c60ca715b89bc059 1997-03-
 EOF
 )"
 
-@test "umoci stat [output snapshot]" {
 	IMAGE="$(setup_tmpdir)/image" TAG="latest"
 	STATFILE_DIR="$(setup_tmpdir)"
 
 	expected="${STATFILE_DIR}/expected"
-	cat >"$expected" <<<"$IMAGE_STAT"
+	cat >"$expected" <<<"$EXPECTED_OUTPUT"
 
 	umoci init --layout "${IMAGE}"
 	[ "$status" -eq 0 ]
@@ -315,6 +315,309 @@ EOF
 		--history.author="Hello World <another dummy email@foo.com>" \
 		--history.comment="dummy configuration"
 	[ "$status" -eq 0 ]
+
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	got="${STATFILE_DIR}/got"
+	cat >"$got" <<<"$output"
+
+	sane_run diff -u "$expected" "$got"
+	[ "$status" -eq 0 ]
+}
+
+@test "umoci stat [output snapshot: pseudo-artifact w/o config or layers]" {
+	# Make an empty image.
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+	umoci init --layout "$IMAGE"
+	[ "$status" -eq 0 ]
+
+	# Construct a dummy OCI artifact with a parseable but non-standard config
+	# configured.
+	manifestJSON="$(jq -cSM . <<<'{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"artifactType": "application/vnd.umoci.testing.fake-artifact+foobar",
+		"config": {
+			"mediaType": "application/vnd.oci.empty.v1+json",
+			"digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"size": 2,
+			"data": "e30="
+		},
+		"layers": [
+			{
+				"mediaType": "application/vnd.oci.empty.v1+json",
+				"digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+				"size": 2,
+				"data": "e30="
+			}
+		],
+		"annotations": {
+			"ci.umo.test-artifact.build-id": "1234567890",
+			"ci.umo.test-artifact.data": "foobar"
+		}
+	}')"
+
+	echo "manifest json:"
+	jq . <<<"$manifestJSON"
+
+	manifestDescriptor="$(insert-blob "application/vnd.oci.image.manifest.v1+json" <<<"$manifestJSON")"
+	echo "manifest descriptor:"
+	jq . <<<"$manifestDescriptor"
+
+	# Update index.json to reference the new image.
+	indexReference="$(jq -cSM '.annotations["org.opencontainers.image.ref.name"] = "'"$TAG"'"' <<<"$manifestDescriptor")"
+	jq -cSM '.manifests += ['"$indexReference"']' <"$IMAGE/index.json" | sponge "$IMAGE/index.json"
+
+	# Show all of the files.
+	( cd "$IMAGE"; find .; )
+
+	EXPECTED_OUTPUT="$(cat <<EOF
+== MANIFEST ==
+Schema Version: 2
+Media Type: application/vnd.oci.image.manifest.v1+json
+Artifact Type: application/vnd.umoci.testing.fake-artifact+foobar
+Config:
+	Descriptor:
+		Media Type: application/vnd.oci.empty.v1+json
+		Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+		Size: 2B
+		Data: (2 bytes)
+			0000: 7b7d                                     {}
+Layers:
+	Descriptor:
+		Media Type: application/vnd.oci.empty.v1+json
+		Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+		Size: 2B
+		Data: (2 bytes)
+			0000: 7b7d                                     {}
+Annotations:
+	ci.umo.test-artifact.build-id: 1234567890
+	ci.umo.test-artifact.data: foobar
+Descriptor:
+	Media Type: application/vnd.oci.image.manifest.v1+json
+	Digest: $(jq -rM .digest <<<"$manifestDescriptor")
+	Size: $(jq -rM .size <<<"$manifestDescriptor")B
+	Annotations:
+		org.opencontainers.image.ref.name: $TAG
+
+== CONFIG ==
+Descriptor:
+	Media Type: application/vnd.oci.empty.v1+json
+	Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+	Size: 2B
+	Data: (2 bytes)
+		0000: 7b7d                                     {}
+EOF
+)"
+
+	STATFILE_DIR="$(setup_tmpdir)"
+	expected="${STATFILE_DIR}/expected"
+	cat >"$expected" <<<"$EXPECTED_OUTPUT"
+
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	got="${STATFILE_DIR}/got"
+	cat >"$got" <<<"$output"
+
+	sane_run diff -u "$expected" "$got"
+	[ "$status" -eq 0 ]
+}
+
+@test "umoci stat [output snapshot: pseudo-artifact w/o config]" {
+	# Make an empty image.
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+	umoci init --layout "$IMAGE"
+	[ "$status" -eq 0 ]
+
+	# Add some dummy data for the layers.
+	layer1="$(head -c 128 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 1: $layer1"
+	layer2="$(head -c 256 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 2: $layer2"
+	layer3="$(head -c 512 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 3: $layer3"
+
+	# Construct a dummy OCI artifact with a parseable but non-standard config
+	# configured.
+	manifestJSON="$(jq -cSM . <<<'{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"artifactType": "application/vnd.umoci.testing.fake-artifact+foobar",
+		"config": {
+			"mediaType": "application/vnd.oci.empty.v1+json",
+			"digest": "sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a",
+			"size": 2,
+			"data": "e30="
+		},
+		"layers": [
+			'"$layer1"',
+			'"$layer2"',
+			'"$layer3"'
+		],
+		"annotations": {
+			"ci.umo.test-artifact.build-id": "1234567890"
+		}
+	}')"
+
+	echo "manifest json:"
+	jq . <<<"$manifestJSON"
+
+	manifestDescriptor="$(insert-blob "application/vnd.oci.image.manifest.v1+json" <<<"$manifestJSON")"
+	echo "manifest descriptor:"
+	jq . <<<"$manifestDescriptor"
+
+	# Update index.json to reference the new image.
+	indexReference="$(jq -cSM '.annotations["org.opencontainers.image.ref.name"] = "'"$TAG"'"' <<<"$manifestDescriptor")"
+	jq -cSM '.manifests += ['"$indexReference"']' <"$IMAGE/index.json" | sponge "$IMAGE/index.json"
+
+	# Show all of the files.
+	( cd "$IMAGE"; find .; )
+
+	EXPECTED_OUTPUT="$(cat <<EOF
+== MANIFEST ==
+Schema Version: 2
+Media Type: application/vnd.oci.image.manifest.v1+json
+Artifact Type: application/vnd.umoci.testing.fake-artifact+foobar
+Config:
+	Descriptor:
+		Media Type: application/vnd.oci.empty.v1+json
+		Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+		Size: 2B
+		Data: (2 bytes)
+			0000: 7b7d                                     {}
+Layers:
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer1")
+		Size: 128B
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer2")
+		Size: 256B
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer3")
+		Size: 512B
+Annotations:
+	ci.umo.test-artifact.build-id: 1234567890
+Descriptor:
+	Media Type: application/vnd.oci.image.manifest.v1+json
+	Digest: $(jq -rM .digest <<<"$manifestDescriptor")
+	Size: $(jq -rM .size <<<"$manifestDescriptor")B
+	Annotations:
+		org.opencontainers.image.ref.name: $TAG
+
+== CONFIG ==
+Descriptor:
+	Media Type: application/vnd.oci.empty.v1+json
+	Digest: sha256:44136fa355b3678a1146ad16f7e8649e94fb4fc21fe77e8310c060f61caaff8a
+	Size: 2B
+	Data: (2 bytes)
+		0000: 7b7d                                     {}
+EOF
+)"
+
+	STATFILE_DIR="$(setup_tmpdir)"
+	expected="${STATFILE_DIR}/expected"
+	cat >"$expected" <<<"$EXPECTED_OUTPUT"
+
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+
+	got="${STATFILE_DIR}/got"
+	cat >"$got" <<<"$output"
+
+	sane_run diff -u "$expected" "$got"
+	[ "$status" -eq 0 ]
+}
+
+@test "umoci stat [output snapshot: pseudo-artifact w/config]" {
+	# Make an empty image.
+	IMAGE="$(setup_tmpdir)/image" TAG="latest"
+	umoci init --layout "$IMAGE"
+	[ "$status" -eq 0 ]
+
+	config="$(echo '{"dummy": "data"}' | insert-blob "application/vnd.umoci.testing.fake-config+json")"
+	echo "config: $config"
+
+	# Add some dummy data for the layers.
+	layer1="$(head -c 128 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 1: $layer1"
+	layer2="$(head -c 256 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 2: $layer2"
+	layer3="$(head -c 512 /dev/urandom | insert-blob "application/vnd.umoci.testing.fake-layer+data")"
+	echo "layer 3: $layer3"
+
+	# Construct a dummy OCI artifact with a parseable but non-standard config
+	# configured.
+	manifestJSON="$(jq -cSM . <<<'{
+		"schemaVersion": 2,
+		"mediaType": "application/vnd.oci.image.manifest.v1+json",
+		"artifactType": "application/vnd.umoci.testing.fake-artifact+foobar",
+		"config": '"$config"',
+		"layers": [
+			'"$layer1"',
+			'"$layer2"',
+			'"$layer3"'
+		],
+		"annotations": {
+			"ci.umo.test-artifact.build-id": "1234567890"
+		}
+	}')"
+
+	echo "manifest json:"
+	jq . <<<"$manifestJSON"
+
+	manifestDescriptor="$(insert-blob "application/vnd.oci.image.manifest.v1+json" <<<"$manifestJSON")"
+	echo "manifest descriptor:"
+	jq . <<<"$manifestDescriptor"
+
+	# Update index.json to reference the new image.
+	indexReference="$(jq -cSM '.annotations["org.opencontainers.image.ref.name"] = "'"$TAG"'"' <<<"$manifestDescriptor")"
+	jq -cSM '.manifests += ['"$indexReference"']' <"$IMAGE/index.json" | sponge "$IMAGE/index.json"
+
+	# Show all of the files.
+	( cd "$IMAGE"; find .; )
+
+	EXPECTED_OUTPUT="$(cat <<EOF
+== MANIFEST ==
+Schema Version: 2
+Media Type: application/vnd.oci.image.manifest.v1+json
+Artifact Type: application/vnd.umoci.testing.fake-artifact+foobar
+Config:
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-config+json
+		Digest: $(jq -rM .digest <<<"$config")
+		Size: $(jq -rM .size <<<"$config")B
+Layers:
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer1")
+		Size: 128B
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer2")
+		Size: 256B
+	Descriptor:
+		Media Type: application/vnd.umoci.testing.fake-layer+data
+		Digest: $(jq -rM .digest <<<"$layer3")
+		Size: 512B
+Annotations:
+	ci.umo.test-artifact.build-id: 1234567890
+Descriptor:
+	Media Type: application/vnd.oci.image.manifest.v1+json
+	Digest: $(jq -rM .digest <<<"$manifestDescriptor")
+	Size: $(jq -rM .size <<<"$manifestDescriptor")B
+	Annotations:
+		org.opencontainers.image.ref.name: $TAG
+EOF
+)"
+
+	STATFILE_DIR="$(setup_tmpdir)"
+	expected="${STATFILE_DIR}/expected"
+	cat >"$expected" <<<"$EXPECTED_OUTPUT"
 
 	umoci stat --image "${IMAGE}:${TAG}"
 	[ "$status" -eq 0 ]

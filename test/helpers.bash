@@ -322,3 +322,43 @@ function rm_rf() {
 		[ "$status" -eq 0 ]
 	done
 }
+
+# blob-path <hash> returns the subpath inside an OCI layout for the hash.
+function blob-path() {
+	local blobhash="$1"
+	sed -E 's|^([^:]*):(.*)$|blobs/\1/\2|' <<<"$blobhash"
+}
+
+# insert-blob <media-type>
+#
+# Inserts the data read from stdin into the layout and returns a descriptor for
+# this blob. Use blob-path on the digest of the descriptor to get a path to the
+# blob.
+function insert-blob() {
+	local mediatype="$1"
+
+	# Get the input into a file.
+	local blob_file
+	blob_file="$(mktemp "$IMAGE/.umoci-test-blob.XXXXXXXX")"
+	cat - >"$blob_file"
+
+	# Get the size.
+	local blob_size
+	blob_size="$(wc -c "$blob_file" | awk '{ print $1 }')"
+
+	local hash_type="sha256" # TODO: Make configurable.
+	local hashcmd="${hash_type}sum"
+
+	# Compute the hash.
+	local blob_hash
+	blob_hash="${hash_type}:$("$hashcmd" "$blob_file" | awk '{ print $1 }')"
+
+	# Move the blob to the right path and return the hash.
+	local blob_path
+	blob_path="$IMAGE/$(blob-path "$blob_hash")"
+	mkdir -p "$(dirname "$blob_path")"
+	mv -n "$blob_file" "$blob_path"
+
+	# Construct a digest.
+	echo '{"mediaType":"'"$mediatype"'","digest":"'"$blob_hash"'","size":'"$blob_size"'}'
+}

@@ -83,7 +83,7 @@ const RootfsName = "rootfs"
 func isLayerType(mediaType string) bool {
 	layerMediaType, _ := mediatype.SplitMediaTypeSuffix(mediaType)
 	switch layerMediaType {
-	case ispec.MediaTypeImageLayerNonDistributable:
+	case ispec.MediaTypeImageLayerNonDistributable: //nolint:staticcheck // we need to support this deprecated media-type
 		log.Infof("image contains layers using the deprecated 'non-distributable' media type %q", layerMediaType)
 		fallthrough
 	case ispec.MediaTypeImageLayer:

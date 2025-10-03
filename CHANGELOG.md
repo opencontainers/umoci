@@ -14,6 +14,12 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+This update to umoci includes support for v1.1.1 of the OCI image
+specification. For the most part, this mostly involves supporting reading new
+features added to the specification (such as embedded-data descriptors and
+subject references used by OCI artifact images), but at the moment umoci does
+not yet support creating images utilising these features.
+
 ### Breaking ###
 * The existing `ConfigExposedPorts` and `ConfigVolumes` methods of
   `github.com/opencontainers/umoci/oci/config/generate.Generator` now return a

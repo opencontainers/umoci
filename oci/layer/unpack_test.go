@@ -33,6 +33,7 @@ import (
 	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/internal"
+	internalassert "github.com/opencontainers/umoci/internal/assert"
 	"github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
@@ -40,9 +41,7 @@ import (
 
 func mustDecodeString(s string) []byte {
 	b, err := base64.StdEncoding.DecodeString(s)
-	if err != nil {
-		panic(err)
-	}
+	internalassert.NoError(err)
 	return b
 }
 
@@ -109,7 +108,9 @@ yRAbACGEEEIIIYQQQgghhBBCCKEr+wTE0sQyACgAAA==`,
 
 	// Create the config.
 	config := ispec.Image{
-		OS: "linux",
+		Platform: ispec.Platform{
+			OS: "linux",
+		},
 		RootFS: ispec.RootFS{
 			Type:    "layers",
 			DiffIDs: layerDigests,
@@ -242,12 +243,12 @@ func TestLayerCompressionCheck(t *testing.T) {
 	}{
 		{"layer.v1.tar", ispec.MediaTypeImageLayer, true, blobcompress.Noop},
 		{"layer.v1.tar+gzip", ispec.MediaTypeImageLayerGzip, true, blobcompress.Gzip},
-		{"layer.v1.tar+zstd", ispec.MediaTypeImageLayer + "+zstd", true, blobcompress.Zstd},
+		{"layer.v1.tar+zstd", ispec.MediaTypeImageLayerZstd, true, blobcompress.Zstd},
 		{"layer.v1.tar+invalid", ispec.MediaTypeImageLayer + "+invalid", true, nil},
-		{"layer.nondistributable.v1.tar", ispec.MediaTypeImageLayerNonDistributable, true, blobcompress.Noop},
-		{"layer.nondistributable.v1.tar+gzip", ispec.MediaTypeImageLayerNonDistributableGzip, true, blobcompress.Gzip},
-		{"layer.nondistributable.v1.tar+zstd", ispec.MediaTypeImageLayerNonDistributable + "+zstd", true, blobcompress.Zstd},
-		{"layer.nondistributable.v1.tar+invalid", ispec.MediaTypeImageLayerNonDistributable + "+invalid", true, nil},
+		{"layer.nondistributable.v1.tar", ispec.MediaTypeImageLayerNonDistributable, true, blobcompress.Noop},          //nolint:staticcheck // we need to support this deprecated media-type
+		{"layer.nondistributable.v1.tar+gzip", ispec.MediaTypeImageLayerNonDistributableGzip, true, blobcompress.Gzip}, //nolint:staticcheck // we need to support this deprecated media-type
+		{"layer.nondistributable.v1.tar+zstd", ispec.MediaTypeImageLayerNonDistributableZstd, true, blobcompress.Zstd}, //nolint:staticcheck // we need to support this deprecated media-type
+		{"layer.nondistributable.v1.tar+invalid", ispec.MediaTypeImageLayerNonDistributable + "+invalid", true, nil},   //nolint:staticcheck // we need to support this deprecated media-type
 		{"application/json", "application/json", false, nil},
 		{"application/gzip", "application/gzip", false, nil},
 	} {

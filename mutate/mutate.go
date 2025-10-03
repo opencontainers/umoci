@@ -28,8 +28,11 @@ import (
 	"fmt"
 	"io"
 	"maps"
-	"reflect"
 	"time"
+
+	"github.com/apex/log"
+	"github.com/opencontainers/go-digest"
+	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
 	"github.com/opencontainers/umoci/internal/funchelpers"
 	"github.com/opencontainers/umoci/internal/iohelpers"
@@ -37,10 +40,6 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 	"github.com/opencontainers/umoci/oci/casext/blobcompress"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
-
-	"github.com/apex/log"
-	"github.com/opencontainers/go-digest"
-	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 )
 
 // UmociUncompressedBlobSizeAnnotation is an umoci-specific annotation to
@@ -411,9 +410,22 @@ func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err erro
 		oldDesc := m.source.Walk[idx]
 		newDesc := newPath.Walk[idx]
 		if err := casext.MapDescriptors(parentBlob.Data, func(d ispec.Descriptor) ispec.Descriptor {
-			// XXX: Maybe we should just be comparing the Digest?
-			if reflect.DeepEqual(d, oldDesc) {
-				d = newDesc
+			if d.Digest == oldDesc.Digest {
+				// In principle you should never be in a situation where two
+				// descriptors reference the same data with different
+				// media-types. This lead to CVE-2021-41190.
+				if d.MediaType != oldDesc.MediaType {
+					log.Warnf("mutate: found inconsistent media-type usage during DescriptorPath rewriting (found descriptor for blob %s with both %s and %s media-types)",
+						oldDesc.Digest, oldDesc.MediaType, d.MediaType)
+				}
+				// Replace the digest+size with the new blob.
+				d.Digest = newDesc.Digest
+				d.Size = newDesc.Size
+				// Copy the embedded data for the new descriptor (if any).
+				d.Data = newDesc.Data
+				// Do not touch any other bits in case the same blob is being
+				// referenced with different annotations or platform
+				// configurations.
 			}
 			return d
 		}); err != nil {
@@ -431,6 +443,9 @@ func (m *Mutator) Commit(ctx context.Context) (_ casext.DescriptorPath, Err erro
 		// Update the key parts of the descriptor.
 		newPath.Walk[idx-1].Digest = blobDigest
 		newPath.Walk[idx-1].Size = blobSize
+		// Clear the embedded data (if present).
+		// TODO: Auto-embed data if it is reasonably small.
+		newPath.Walk[idx-1].Data = nil
 	}
 
 	return newPath, nil

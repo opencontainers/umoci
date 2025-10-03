@@ -46,18 +46,18 @@ const (
 	// value is *not* the same as imagespec.Version, and the meaning of this
 	// field is still under discussion in the spec. For now we'll just hardcode
 	// the value and hope for the best.
-	ImageLayoutVersion = "1.0.0"
+	ImageLayoutVersion = ispec.ImageLayoutVersion // "1.0.0"
 
 	// blobDirectory is the directory inside an OCI image that contains blobs.
-	blobDirectory = "blobs"
+	blobDirectory = ispec.ImageBlobsDir // "blobs"
 
 	// indexFile is the file inside an OCI image that contains the top-level
 	// index.
-	indexFile = "index.json"
+	indexFile = ispec.ImageIndexFile // "index.json"
 
 	// layoutFile is the file in side an OCI image the indicates what version
 	// of the OCI spec the image is.
-	layoutFile = "oci-layout"
+	layoutFile = ispec.ImageLayoutFile // "oci-layout"
 )
 
 // blobPath returns the path to a blob given its digest, relative to the root

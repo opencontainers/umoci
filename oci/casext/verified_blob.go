@@ -19,6 +19,7 @@
 package casext
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -26,6 +27,7 @@ import (
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/opencontainers/umoci/internal"
 	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
@@ -41,6 +43,32 @@ func (e Engine) GetVerifiedBlob(ctx context.Context, descriptor ispec.Descriptor
 	if descriptor.Size < 0 {
 		return nil, fmt.Errorf("invalid descriptor: %w", errInvalidDescriptorSize)
 	}
+	// The empty blob descriptor only has one valid value so we should validate
+	// it before allowing it to be opened.
+	if descriptor.MediaType == ispec.MediaTypeEmptyJSON {
+		if descriptor.Digest != ispec.DescriptorEmptyJSON.Digest ||
+			descriptor.Size != ispec.DescriptorEmptyJSON.Size {
+			return nil, fmt.Errorf("invalid descriptor: %w", internal.ErrInvalidEmptyJSON)
+		}
+		if descriptor.Data != nil &&
+			!bytes.Equal(descriptor.Data, ispec.DescriptorEmptyJSON.Data) {
+			return nil, fmt.Errorf("invalid descriptor: %w", internal.ErrInvalidEmptyJSON)
+		}
+	}
+	// Embedded data.
+	if descriptor.Data != nil {
+		// If the digest is small enough to fit in the descriptor, we can
+		// validate it immediately without deferring to VerifiedReadCloser.
+		gotDigest := descriptor.Digest.Algorithm().FromBytes(descriptor.Data)
+		if gotDigest != descriptor.Digest {
+			return nil, fmt.Errorf("invalid embedded descriptor data: expected %s not %s: %w", descriptor.Digest, gotDigest, hardening.ErrDigestMismatch)
+		}
+		if int64(len(descriptor.Data)) != descriptor.Size {
+			return nil, fmt.Errorf("invalid embedded descriptor data: expected %d bytes not %d bytes: %w", descriptor.Size, len(descriptor.Data), hardening.ErrSizeMismatch)
+		}
+		return io.NopCloser(bytes.NewBuffer(descriptor.Data)), nil
+	}
+
 	reader, err := e.GetBlob(ctx, descriptor.Digest)
 	if err != nil {
 		return nil, err

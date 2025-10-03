@@ -37,6 +37,20 @@ function teardown() {
 
 		blobHash="$(basename "$blob")" # sha256
 
+		# If the blob is only ever referenced by descriptors with embedded
+		# data, the blob will never be read and thus the modification won't be
+		# detected, so skip those blobs.
+		umoci stat --json --image "${IMAGE}:${TAG}"
+		[ "$status" -eq 0 ]
+		references="$(jq '[.. | select(.digest? == "sha256:'"$blobHash"'")]' <<<"$output")"
+		non_embedded="$(jq '.[] | select(.data? == null)' <<<"$references")"
+		if [ -z "$references" ]; then
+			echo "NOTE: $blob appears to have no references?" >&2
+		elif [ -n "$references" ] && [ -z "$non_embedded" ]; then
+			echo "NOTE: skipping $blob because it is only ever referenced with embedded-data descriptors" >&2
+			continue
+		fi
+
 		# Corrupt our blob such that the digest is changed within the expected
 		# lengths (this takes priority over length issues) while also not
 		# causing other verification to fail.
@@ -78,6 +92,20 @@ function teardown() {
 		cp -rT "$IMAGE" "$NEW_IMAGE"
 
 		blobHash="$(basename "$blob")" # sha256
+
+		# If the blob is only ever referenced by descriptors with embedded
+		# data, the blob will never be read and thus the modification won't be
+		# detected, so skip those blobs.
+		umoci stat --json --image "${IMAGE}:${TAG}"
+		[ "$status" -eq 0 ]
+		references="$(jq '[.. | select(.digest? == "sha256:'"$blobHash"'")]' <<<"$output")"
+		non_embedded="$(jq '.[] | select(.data? == null)' <<<"$references")"
+		if [ -z "$references" ]; then
+			echo "NOTE: $blob appears to have no references?" >&2
+		elif [ -n "$references" ] && [ -z "$non_embedded" ]; then
+			echo "NOTE: skipping $blob because it is only ever referenced with embedded-data descriptors" >&2
+			continue
+		fi
 
 		# Corrupt our blob such that the length is changed, and the length
 		# issue will be triggered (this means the prefix-digest or whole-file

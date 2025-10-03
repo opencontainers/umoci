@@ -509,90 +509,128 @@ func walkDescriptorRoot(ctx context.Context, engine casext.Engine, root ispec.De
 }
 
 func TestMutatePath(t *testing.T) {
-	engine, manifestDescriptor := setup(t)
-	engineExt := casext.NewEngine(engine)
-	defer engine.Close() //nolint:errcheck
+	for _, test := range []struct {
+		name      string
+		embedData bool
+	}{
+		{"Basic", false},
+		{"EmbeddedData", true},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			engine, manifestDescriptor := setup(t)
+			engineExt := casext.NewEngine(engine)
+			defer engine.Close() //nolint:errcheck
 
-	// Create some additional structure.
-	expectedPaths := []casext.DescriptorPath{
-		{Walk: []ispec.Descriptor{manifestDescriptor}},
-	}
-
-	// Build on top of the previous blob.
-	for idx := 1; idx < 32; idx++ {
-		oldPath := expectedPaths[idx-1]
-
-		// Create an Index that points to the old root.
-		newRoot := ispec.Index{
-			MediaType: ispec.MediaTypeImageIndex,
-			Manifests: []ispec.Descriptor{
-				oldPath.Root(),
-			},
-		}
-		newRootDigest, newRootSize, err := engineExt.PutBlobJSON(t.Context(), newRoot)
-		require.NoError(t, err, "failed to put new root blob json")
-		newRootDescriptor := ispec.Descriptor{
-			MediaType: ispec.MediaTypeImageIndex,
-			Digest:    newRootDigest,
-			Size:      newRootSize,
-		}
-
-		// Create a new path.
-		var newPath casext.DescriptorPath
-		newPath.Walk = append([]ispec.Descriptor{newRootDescriptor}, oldPath.Walk...)
-		expectedPaths = append(expectedPaths, newPath)
-	}
-
-	// Mutate each one.
-	for idx, path := range expectedPaths {
-		mutator, err := New(engine, path)
-		require.NoError(t, err)
-
-		// Change the config in some minor way.
-		meta, err := mutator.Meta(t.Context())
-		require.NoErrorf(t, err, "getting %d meta", idx)
-
-		config, err := mutator.Config(t.Context())
-		require.NoErrorf(t, err, "getting %d config", idx)
-
-		// Change the label.
-		label := fmt.Sprintf("TestMutateSet+%d", idx)
-		if config.Config.Labels == nil {
-			config.Config.Labels = map[string]string{}
-		}
-		config.Config.Labels["org.opensuse.testidx"] = label
-
-		// Update it.
-		err = mutator.Set(t.Context(), config.Config, meta, nil, &ispec.History{
-			Comment: "change label " + label,
-		})
-		require.NoErrorf(t, err, "setting %d config", idx)
-
-		// Commit.
-		newPath, err := mutator.Commit(t.Context())
-		require.NoErrorf(t, err, "commit change %d", idx)
-
-		// Make sure that the paths are the same length but have different
-		// digests.
-		if assert.Len(t, newPath.Walk, len(path.Walk), "new path should be the same length as the old one") {
-			assert.NotEqual(t, newPath, path, "new path should be different to the old one")
-			for i := 0; i < len(path.Walk); i++ {
-				assert.Equalf(t, path.Walk[i].MediaType, newPath.Walk[i].MediaType, "media type for entry %d in walk should be the same", i)
-				assert.Equalf(t, path.Walk[i].Annotations, newPath.Walk[i].Annotations, "annotations for entry %d in walk should be the same", i)
-				assert.NotEqualf(t, path.Walk[i].Digest, newPath.Walk[i].Digest, "digest for entry %d in walk should be different", i)
+			// Create some additional structure.
+			expectedPaths := []casext.DescriptorPath{
+				{Walk: []ispec.Descriptor{manifestDescriptor}},
 			}
-		}
 
-		// Emulate a reference resolution with walkDescriptorRoot.
-		walkPath, err := walkDescriptorRoot(t.Context(), engineExt, newPath.Root())
-		if assert.NoErrorf(t, err, "walk new path %d", idx) {
-			assert.Equalf(t, newPath, walkPath, "walk of new path %d should give the same path", idx)
-		}
+			// Build on top of the previous blob.
+			for idx := 1; idx < 32; idx++ {
+				oldPath := expectedPaths[idx-1]
 
-		// Make sure the old path still exists (not necessary to be honest).
-		oldWalkPath, err := walkDescriptorRoot(t.Context(), engineExt, path.Root())
-		if assert.NoErrorf(t, err, "walk old path %d", idx) {
-			assert.Equalf(t, path, oldWalkPath, "walk of old path %d should give the same path", idx)
-		}
+				// Create an Index that points to the old root.
+				newRoot := ispec.Index{
+					MediaType: ispec.MediaTypeImageIndex,
+					Manifests: []ispec.Descriptor{
+						oldPath.Root(),
+					},
+				}
+				newRootDigest, newRootSize, err := engineExt.PutBlobJSON(t.Context(), newRoot)
+				require.NoError(t, err, "failed to put new root blob json")
+				newRootDescriptor := ispec.Descriptor{
+					MediaType: ispec.MediaTypeImageIndex,
+					Digest:    newRootDigest,
+					Size:      newRootSize,
+				}
+
+				if test.embedData {
+					// Get a copy of the raw data to add to the descriptor.
+					dataRdr, err := engineExt.GetBlob(t.Context(), newRootDigest)
+					require.NoError(t, err, "get new root blob data")
+					data, err := io.ReadAll(dataRdr)
+					require.NoError(t, err, "read new root blob data")
+					newRootDescriptor.Data = data
+					require.NoError(t, dataRdr.Close(), "close new root blob reader")
+				}
+
+				// Create a new path.
+				var newPath casext.DescriptorPath
+				newPath.Walk = append([]ispec.Descriptor{newRootDescriptor}, oldPath.Walk...)
+				expectedPaths = append(expectedPaths, newPath)
+			}
+
+			// Mutate each one.
+			for idx, path := range expectedPaths {
+				mutator, err := New(engine, path)
+				require.NoError(t, err)
+
+				// Change the config in some minor way.
+				meta, err := mutator.Meta(t.Context())
+				require.NoErrorf(t, err, "getting %d meta", idx)
+
+				config, err := mutator.Config(t.Context())
+				require.NoErrorf(t, err, "getting %d config", idx)
+
+				// Change the label.
+				label := fmt.Sprintf("TestMutateSet+%d", idx)
+				if config.Config.Labels == nil {
+					config.Config.Labels = map[string]string{}
+				}
+				config.Config.Labels["org.opensuse.testidx"] = label
+
+				// Update it.
+				err = mutator.Set(t.Context(), config.Config, meta, nil, &ispec.History{
+					Comment: "change label " + label,
+				})
+				require.NoErrorf(t, err, "setting %d config", idx)
+
+				// Commit.
+				newPath, err := mutator.Commit(t.Context())
+				require.NoErrorf(t, err, "commit change %d", idx)
+
+				// Make sure that the paths are the same length but have different
+				// digests.
+				if assert.Len(t, newPath.Walk, len(path.Walk), "new path should be the same length as the old one") {
+					assert.NotEqual(t, newPath, path, "new path should be different to the old one")
+					for i := 0; i < len(path.Walk); i++ {
+						assert.Equalf(t, path.Walk[i].MediaType, newPath.Walk[i].MediaType, "media type for entry %d in walk should be the same", i)
+						assert.Equalf(t, path.Walk[i].Annotations, newPath.Walk[i].Annotations, "annotations for entry %d in walk should be the same", i)
+						assert.NotEqualf(t, path.Walk[i].Digest, newPath.Walk[i].Digest, "digest for entry %d in walk should be different", i)
+
+						// Make sure that the descriptor is usable.
+						blob, err := engineExt.FromDescriptor(t.Context(), newPath.Walk[i])
+						require.NoErrorf(t, err, "get blob for entry %d in walk", i)
+						require.NoErrorf(t, blob.Close(), "close blob reader for entry %d in walk", i)
+
+						// The embedded data must have changed if the old path
+						// had embedded data, as the digest is different.
+						if path.Walk[i].Data != nil {
+							assert.NotEqualf(t, path.Walk[i].Data, newPath.Walk[i].Data, "embedded data for entry %d in walk should be different (different digest)", i)
+						}
+						// Make sure that embedded data has been cleared.
+						// TODO: This is only a stop-gap until we implement
+						// replacing the embedded data with a new copy.
+						if !assert.Nil(t, newPath.Walk[i].Data, "embedded data for entry %d in walk should be gone", i) {
+							dataDigest := newPath.Walk[i].Digest.Algorithm().FromBytes(newPath.Walk[i].Data)
+							assert.Equalf(t, newPath.Walk[i].Digest, dataDigest, "unexpected embedded data for entry %d should still match the digest", i)
+						}
+					}
+				}
+
+				// Emulate a reference resolution with walkDescriptorRoot.
+				walkPath, err := walkDescriptorRoot(t.Context(), engineExt, newPath.Root())
+				if assert.NoErrorf(t, err, "walk new path %d", idx) {
+					assert.Equalf(t, newPath, walkPath, "walk of new path %d should give the same path", idx)
+				}
+
+				// Make sure the old path still exists (not necessary to be honest).
+				oldWalkPath, err := walkDescriptorRoot(t.Context(), engineExt, path.Root())
+				if assert.NoErrorf(t, err, "walk old path %d", idx) {
+					assert.Equalf(t, path, oldWalkPath, "walk of old path %d should give the same path", idx)
+				}
+			}
+		})
 	}
 }

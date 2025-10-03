@@ -35,6 +35,7 @@ import (
 
 	"github.com/apex/log"
 	"github.com/docker/go-units"
+	"github.com/opencontainers/go-digest"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/urfave/cli"
 	"github.com/vbatts/go-mtree"
@@ -158,10 +159,10 @@ type ManifestStat struct {
 	Manifest manifestStat `json:"manifest"`
 
 	// Config stores information about the configuration of a manifest.
-	Config configStat `json:"config"`
+	Config *configStat `json:"config,omitzero"`
 
 	// History stores the history information for the manifest.
-	History historyStatList `json:"history"`
+	History historyStatList `json:"history,omitzero"`
 }
 
 // quote is a wrapper around [strconv.Quote] that only returns a quoted string
@@ -234,6 +235,95 @@ func pprintSet(w io.Writer, prefix, name string, data map[string]struct{}) error
 	return pprint(w, prefix, name, keys...)
 }
 
+func xxd(w io.Writer, prefix string, r io.Reader) error {
+	const bytesPerLine = 16 // like xxd
+
+	var (
+		lineData      = make([]byte, bytesPerLine)
+		printableLine = make([]byte, 0, bytesPerLine)
+		offset        int
+	)
+	for {
+		n, err := r.Read(lineData)
+		if err == io.EOF || n == 0 {
+			break
+		}
+		if err != nil {
+			return err
+		}
+		data := lineData[:n]
+		printableLine = printableLine[:0] // truncate
+
+		// <prefix><offset>:
+		if _, err := fmt.Fprintf(w, "%s%.4x: ", prefix, offset); err != nil {
+			return err
+		}
+		// <hex1><hex2> <hex3><hex4> ...
+		for idx := range bytesPerLine {
+			if idx != 0 && idx%2 == 0 {
+				if _, err := io.WriteString(w, " "); err != nil {
+					return err
+				}
+			}
+			if idx >= len(data) {
+				// Pad out the hex output for short lines.
+				if _, err := io.WriteString(w, "  "); err != nil {
+					return err
+				}
+			} else {
+				b := data[idx]
+				if _, err := fmt.Fprintf(w, "%.2x", b); err != nil {
+					return err
+				}
+				ch := b
+				if !unicode.IsGraphic(rune(b)) {
+					ch = '.'
+				}
+				printableLine = append(printableLine, ch)
+			}
+		}
+		// <textual output>
+		if _, err := io.WriteString(w, "  "); err != nil {
+			return err
+		}
+		if _, err := w.Write(printableLine); err != nil {
+			return err
+		}
+		if _, err := io.WriteString(w, "\n"); err != nil {
+			return err
+		}
+		offset += len(data)
+	}
+	return nil
+}
+
+func pprintBytes(w io.Writer, prefix, name string, data []byte) error {
+	if len(data) == 0 {
+		return pprint(w, prefix, name, "(empty)")
+	}
+	// Do not use pprint, as we do not want our own suffix to get quote()d.
+	if _, err := fmt.Fprintf(w, "%s%s: (%d bytes)\n", prefix, name, len(data)); err != nil {
+		return err
+	}
+	prefix += "\t"
+
+	// We want to limit how much data we dump to the screen.
+	const maxDisplaySize = 256
+	buf := &io.LimitedReader{
+		R: bytes.NewBuffer(data),
+		N: maxDisplaySize,
+	}
+	if err := xxd(w, prefix, buf); err != nil {
+		return err
+	}
+	if remaining := len(data) - maxDisplaySize; remaining > 0 {
+		if _, err := fmt.Fprintf(w, "%s....  (extra %d bytes omitted)\n", prefix, remaining); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
 func pprintPlatform(w io.Writer, prefix string, platform ispec.Platform) error {
 	if err := pprint(w, prefix, "Platform"); err != nil {
 		return err
@@ -273,6 +363,11 @@ func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) e
 	if err := pprint(w, prefix, "Media Type", descriptor.MediaType); err != nil {
 		return err
 	}
+	if descriptor.ArtifactType != "" {
+		if err := pprint(w, prefix, "Artifact Type", descriptor.ArtifactType); err != nil {
+			return err
+		}
+	}
 	if err := pprint(w, prefix, "Digest", descriptor.Digest.String()); err != nil {
 		return err
 	}
@@ -295,8 +390,11 @@ func pprintDescriptor(w io.Writer, prefix string, descriptor ispec.Descriptor) e
 			return err
 		}
 	}
-	// TODO(image-spec v1.1): descriptor.Data
-	// TODO(image-spec v1.1): descriptor.ArtifactType
+	if len(descriptor.Data) > 0 {
+		if err := pprintBytes(w, prefix, "Data", descriptor.Data); err != nil {
+			return err
+		}
+	}
 	return nil
 }
 
@@ -313,27 +411,28 @@ func (ms ManifestStat) Format(w io.Writer) error {
 	if err := ms.Manifest.pprint(w); err != nil {
 		return err
 	}
-
-	if _, err := fmt.Fprintln(w, "\n== CONFIG =="); err != nil {
-		return err
+	if ms.Config != nil {
+		if _, err := fmt.Fprintln(w, "\n== CONFIG =="); err != nil {
+			return err
+		}
+		if err := ms.Config.pprint(w); err != nil {
+			return err
+		}
 	}
-	if err := ms.Config.pprint(w); err != nil {
-		return err
-	}
-
-	// Output history information.
-	if _, err := fmt.Fprintln(w, "\n== HISTORY =="); err != nil {
-		return err
-	}
-	if err := ms.History.pprint(w); err != nil {
-		return err
+	if ms.History != nil {
+		if _, err := fmt.Fprintln(w, "\n== HISTORY =="); err != nil {
+			return err
+		}
+		if err := ms.History.pprint(w); err != nil {
+			return err
+		}
 	}
 	return nil
 }
 
 // manifestStat contains information about the image manifest.
 type manifestStat struct {
-	// Descriptor is the descriptor for the configuration JSON.
+	// Descriptor is the descriptor for the manifest JSON.
 	Descriptor ispec.Descriptor `json:"descriptor"`
 
 	// Manifest is the contents of the image manifest.
@@ -342,39 +441,56 @@ type manifestStat struct {
 	// RawData is the raw data stream of the blob, which is output when we
 	// provide JSON output (to make sure no information is lost in --json
 	// mode).
-	RawData json.RawMessage `json:"blob"`
+	RawData json.RawMessage `json:"blob,omitzero"`
 }
 
-func (m manifestStat) pprint(w io.Writer) error {
-	manifest := m.Manifest
-	if err := pprint(w, "", "Schema Version", strconv.Itoa(manifest.SchemaVersion)); err != nil {
+func pprintManifest(w io.Writer, prefix string, manifest ispec.Manifest) error {
+	if err := pprint(w, prefix, "Schema Version", strconv.Itoa(manifest.SchemaVersion)); err != nil {
 		return err
 	}
-	if err := pprint(w, "", "Media Type", manifest.MediaType); err != nil {
+	if err := pprint(w, prefix, "Media Type", manifest.MediaType); err != nil {
 		return err
 	}
-	// TODO(image-spec v1.1): manifest.ArtifactType
-	// TODO(image-spec v1.1): manifest.Subject
-	if err := pprint(w, "", "Config"); err != nil {
+	if manifest.ArtifactType != "" {
+		if err := pprint(w, prefix, "Artifact Type", manifest.ArtifactType); err != nil {
+			return err
+		}
+	}
+	if err := pprint(w, prefix, "Config"); err != nil {
 		return err
 	}
-	if err := pprintDescriptor(w, "\t", manifest.Config); err != nil {
+	if err := pprintDescriptor(w, prefix+"\t", manifest.Config); err != nil {
 		return err
 	}
 	if len(manifest.Layers) > 0 {
-		if err := pprint(w, "", "Layers"); err != nil {
+		if err := pprint(w, prefix, "Layers"); err != nil {
 			return err
 		}
 		for _, layer := range manifest.Layers {
-			if err := pprintDescriptor(w, "\t", layer); err != nil {
+			if err := pprintDescriptor(w, prefix+"\t", layer); err != nil {
 				return err
 			}
 		}
 	}
-	if len(manifest.Annotations) > 0 {
-		if err := pprintMap(w, "", "Annotations", manifest.Annotations); err != nil {
+	if manifest.Subject != nil {
+		if err := pprint(w, prefix, "Subject"); err != nil {
 			return err
 		}
+		if err := pprintDescriptor(w, prefix+"\t", *manifest.Subject); err != nil {
+			return err
+		}
+	}
+	if len(manifest.Annotations) > 0 {
+		if err := pprintMap(w, prefix, "Annotations", manifest.Annotations); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func (m manifestStat) pprint(w io.Writer) error {
+	if err := pprintManifest(w, "", m.Manifest); err != nil {
+		return err
 	}
 	if err := pprintDescriptor(w, "", m.Descriptor); err != nil {
 		return err
@@ -389,12 +505,12 @@ type configStat struct {
 	Descriptor ispec.Descriptor `json:"descriptor"`
 
 	// Image is the contents of the configuration.
-	Image ispec.Image `json:"-"`
+	Image *ispec.Image `json:"-"`
 
 	// RawData is the raw data stream of the blob, which is output when we
 	// provide JSON output (to make sure no information is lost in --json
 	// mode).
-	RawData json.RawMessage `json:"blob"`
+	RawData json.RawMessage `json:"blob,omitzero"`
 }
 
 func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) error {
@@ -405,13 +521,16 @@ func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) err
 	if err := pprint(w, prefix, "User", config.User); err != nil {
 		return err
 	}
-
+	var cmdEscapedSuffix string
+	if config.ArgsEscaped { //nolint:staticcheck // we need to support this deprecated field
+		cmdEscapedSuffix = " (escaped)"
+	}
 	if len(config.Entrypoint) > 0 {
-		if err := pprintSlice(w, prefix, "Entrypoint", config.Entrypoint); err != nil {
+		if err := pprintSlice(w, prefix, "Entrypoint"+cmdEscapedSuffix, config.Entrypoint); err != nil {
 			return err
 		}
 	}
-	if err := pprintSlice(w, prefix, "Command", config.Cmd); err != nil {
+	if err := pprintSlice(w, prefix, "Command"+cmdEscapedSuffix, config.Cmd); err != nil {
 		return err
 	}
 	if config.WorkingDir != "" {
@@ -447,27 +566,30 @@ func pprintImageConfig(w io.Writer, prefix string, config ispec.ImageConfig) err
 	return nil
 }
 
-func (c configStat) pprint(w io.Writer) error {
-	image := c.Image
+func pprintImage(w io.Writer, prefix string, image ispec.Image) error {
 	if image.Created != nil {
 		date := image.Created.Format(igen.ISO8601)
-		if err := pprint(w, "", "Created", date); err != nil {
+		if err := pprint(w, prefix, "Created", date); err != nil {
 			return err
 		}
 	}
-	if err := pprint(w, "", "Author", image.Author); err != nil {
+	if err := pprint(w, prefix, "Author", image.Author); err != nil {
 		return err
 	}
-	// TODO(image-spec v1.1): Use embedded Platform.
-	platform := ispec.Platform{
-		OS:           image.OS,
-		Architecture: image.Architecture,
-	}
-	if err := pprintPlatform(w, "", platform); err != nil {
+	if err := pprintPlatform(w, prefix, image.Platform); err != nil {
 		return err
 	}
-	if err := pprintImageConfig(w, "", image.Config); err != nil {
+	if err := pprintImageConfig(w, prefix, image.Config); err != nil {
 		return err
+	}
+	return nil
+}
+
+func (c configStat) pprint(w io.Writer) error {
+	if c.Image != nil {
+		if err := pprintImage(w, "", *c.Image); err != nil {
+			return err
+		}
 	}
 	if err := pprintDescriptor(w, "", c.Descriptor); err != nil {
 		return err
@@ -487,7 +609,7 @@ type historyStat struct {
 	// DiffID is an additional piece of information to Layer. It stores the
 	// DiffID of the given layer corresponding to the history entry. If DiffID
 	// is "", then this entry is an empty_layer.
-	DiffID string `json:"diff_id"`
+	DiffID digest.Digest `json:"diff_id"`
 
 	// History is embedded in the stat information.
 	ispec.History
@@ -547,47 +669,50 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 		RawData:    manifestBlob.RawData,
 	}
 
-	// Now get the config.
+	// Get the config.
 	configBlob, err := engine.FromDescriptor(ctx, manifest.Config)
 	if err != nil {
 		return stat, fmt.Errorf("stat: %w", err)
 	}
-	config, ok := configBlob.Data.(ispec.Image)
-	if !ok {
-		// Should _never_ be reached.
-		return stat, fmt.Errorf("[internal error] unknown config blob type: %s", configBlob.Descriptor.MediaType)
-	}
-	stat.Config = configStat{
-		Descriptor: manifest.Config,
-		Image:      config,
-		RawData:    configBlob.RawData,
-	}
-
-	// TODO: This should probably be moved into separate functions.
-
-	// Generate the history of the image. Because the config.History entries
-	// are in the same order as the manifest.Layer entries this is fairly
-	// simple. However, we only increment the layer index if a layer was
-	// actually generated by a history entry.
-	layerIdx := 0
-	for _, histEntry := range config.History {
-		info := historyStat{
-			History: histEntry,
-			DiffID:  "",
-			Layer:   nil,
+	if config, ok := configBlob.Data.(ispec.Image); ok {
+		// If the config is a valid config blob, fill the stat information.
+		stat.Config = &configStat{
+			Descriptor: manifest.Config,
+			Image:      &config,
+			RawData:    configBlob.RawData,
 		}
 
-		// Only fill the other information and increment layerIdx if it's a
-		// non-empty layer.
-		if !histEntry.EmptyLayer {
-			info.DiffID = config.RootFS.DiffIDs[layerIdx].String()
-			info.Layer = &manifest.Layers[layerIdx]
-			layerIdx++
+		// Generate the history of the image. config.History entries are in the
+		// same order as manifest.Layer, but "empty layer" entries may be
+		// interspersed so we need to skip over those when associating layers
+		// to history entries.
+		stat.History = make([]historyStat, 0, len(config.History))
+		layerIdx := 0
+		for _, histEntry := range config.History {
+			info := historyStat{
+				History: histEntry,
+				DiffID:  "",
+				Layer:   nil,
+			}
+			// Only fill the other information and increment layerIdx if it's a
+			// non-empty layer.
+			if !histEntry.EmptyLayer {
+				info.DiffID = config.RootFS.DiffIDs[layerIdx]
+				info.Layer = &manifest.Layers[layerIdx]
+				layerIdx++
+			}
+			stat.History = append(stat.History, info)
 		}
-
-		stat.History = append(stat.History, info)
+	} else if data := configBlob.RawData; data != nil {
+		// If the config could be parsed successfully (giving us RawData), then
+		// fill the raw data section for the JSON output and provide a
+		// descriptor for the pprint output, but don't pretty-print an image
+		// config object.
+		stat.Config = &configStat{
+			Descriptor: manifest.Config,
+			RawData:    data,
+		}
 	}
-
 	return stat, nil
 }
 

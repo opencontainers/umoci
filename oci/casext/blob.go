@@ -27,6 +27,7 @@ import (
 
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
+	"github.com/opencontainers/umoci/internal/assert"
 	"github.com/opencontainers/umoci/internal/system"
 	"github.com/opencontainers/umoci/oci/casext/mediatype"
 )
@@ -54,6 +55,7 @@ type Blob struct {
 	// ispec.MediaTypeImageLayerNonDistributable => io.ReadCloser
 	// ispec.MediaTypeImageLayerNonDistributableGzip => io.ReadCloser
 	// ispec.MediaTypeImageConfig => ispec.Image
+	// ispec.MediaTypeEmptyJSON => struct{}
 	// unknown => io.ReadCloser
 	Data any
 }
@@ -76,9 +78,11 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 	blob = &Blob{
 		Descriptor: descriptor,
 		Data:       reader,
+		RawData:    descriptor.Data, // copy if present
 	}
 
 	if fn := mediatype.GetParser(descriptor.MediaType); fn != nil {
+		// TODO: Should we short-cut this for descriptors with embedded data?
 		rawDataBuf := new(bytes.Buffer)
 		dataReader := io.TeeReader(reader, rawDataBuf)
 
@@ -92,10 +96,10 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 			if blob != nil {
 				// Include all trailing data.
 				blob.RawData = rawDataBuf.Bytes()
-				if len(blob.RawData) <= 0 && Err == nil {
-					// Sanity check.
-					Err = fmt.Errorf("parsing %q blob succeeded but raw data has no length", descriptor.MediaType)
-				}
+				// Sanity check.
+				assert.Assertf(int64(len(blob.RawData)) == descriptor.Size,
+					"parsing %q blob succeeded but raw data has unexpected length (expected %d bytes but got %d bytes)",
+					descriptor.MediaType, descriptor.Size, len(blob.RawData))
 			}
 		}()
 

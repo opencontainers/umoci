@@ -18,7 +18,11 @@
 
 package funchelpers
 
-import "io"
+import (
+	"io"
+
+	"github.com/opencontainers/umoci/internal/assert"
+)
 
 // VerifyError is a helper designed to make verifying deferred functions that
 // return errors more ergonomic (most notably Close). This helper is intended
@@ -48,13 +52,10 @@ import "io"
 //		return nil
 //	}
 func VerifyError(Err *error, closeFn func() error) {
-	if err := closeFn(); err != nil {
-		if Err == nil {
-			panic(err)
-		}
-		if *Err == nil {
-			*Err = err
-		}
+	assert.Assert(Err != nil,
+		"VerifyError must be called with non-nil Err slot") // programmer error
+	if err := closeFn(); err != nil && *Err == nil {
+		*Err = err
 	}
 }
 
