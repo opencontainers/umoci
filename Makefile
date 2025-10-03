@@ -221,7 +221,7 @@ CI_CACHE_PATH ?=.ci-cache
 .PHONY: ci-cache
 ci-cache: BUILDX_CACHE := \
 	--cache-from=type=local,src=$(CI_CACHE_PATH) \
-	--cache-to=type=local,mode=max,dest=$(CI_CACHE_PATH)
+	--cache-to=type=local,dest=$(CI_CACHE_PATH)
 ci-cache: ci-image
 
 .PHONY: ci-image
