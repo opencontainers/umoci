@@ -37,8 +37,8 @@ import (
 // in an image configuration that do not have a native representation in the
 // runtime-spec).
 const (
-	osAnnotation           = "org.opencontainers.image.os"
-	archAnnotation         = "org.opencontainers.image.architecture"
+	platformOsAnnotation   = "org.opencontainers.image.os"
+	platformArchAnnotation = "org.opencontainers.image.architecture"
 	authorAnnotation       = "org.opencontainers.image.author"
 	createdAnnotation      = "org.opencontainers.image.created"
 	stopSignalAnnotation   = "org.opencontainers.image.stopSignal"
@@ -114,7 +114,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		return fmt.Errorf("creating image generator: %w", err)
 	}
 
-	if ig.OS() != "linux" {
+	if ig.PlatformOS() != "linux" {
 		return fmt.Errorf("unsupported OS: %s", image.OS)
 	}
 
@@ -166,8 +166,8 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 
 	// Set annotations fields
 	maps.Copy(spec.Annotations, ig.ConfigLabels())
-	spec.Annotations[osAnnotation] = ig.OS()
-	spec.Annotations[archAnnotation] = ig.Architecture()
+	spec.Annotations[platformOsAnnotation] = ig.PlatformOS()
+	spec.Annotations[platformArchAnnotation] = ig.PlatformArchitecture()
 	spec.Annotations[authorAnnotation] = ig.Author()
 	spec.Annotations[createdAnnotation] = ig.Created().Format(igen.ISO8601)
 	spec.Annotations[stopSignalAnnotation] = image.Config.StopSignal

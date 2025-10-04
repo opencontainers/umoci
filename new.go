@@ -48,8 +48,9 @@ func NewImage(engineExt casext.Engine, tagName string, sourceDateEpoch *time.Tim
 
 	// Set all of the defaults we need.
 	g.SetCreated(createTime)
-	g.SetOS(runtime.GOOS)
-	g.SetArchitecture(runtime.GOARCH)
+	g.SetPlatformOS(runtime.GOOS)
+	g.SetPlatformArchitecture(runtime.GOARCH)
+	// TODO: Set the arm variant, if applicable.
 	g.ClearHistory()
 
 	// Make sure we have no diffids.

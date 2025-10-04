@@ -26,9 +26,13 @@ explicitly use any of the newer features, this is mostly a quality-of-life
 update to move away from our ancient pinned version of the runtime-spec.
 
 ### Breaking ###
-* The existing `ConfigExposedPorts` and `ConfigVolumes` methods of
-  `github.com/opencontainers/umoci/oci/config/generate.Generator` now return a
-  sorted `[]string` instead of a map.
+* `github.com/opencontainers/umoci/oci/config/generate.Generator` has had the
+  following breaking API changes made to it:
+  - The existing `ConfigExposedPorts` and `ConfigVolumes` methods now return a
+    sorted `[]string` instead of a `map`.
+  - The `(Set)OS` and `(Set)Architecture` methods have been renamed to have a
+    `Platform` prefix (to match image-spec v1.1's organisational changes). They
+    now read as `(Set)PlatformOS` and `(Set)PlatformArchitecture` respectively.
 
 ### Added ###
 * `umoci stat` now includes information about the manifest and configuration of
