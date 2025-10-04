@@ -27,6 +27,8 @@ function teardown() {
 	teardown_image
 }
 
+# TODO: Add "umoci stat" calls to double-check the config is set properly...
+
 @test "umoci config" {
 	# Unpack the image.
 	new_bundle_rootfs && BUNDLE_A="$BUNDLE"
@@ -637,7 +639,8 @@ function teardown() {
 
 @test "umoci config --[os+architecture]" {
 	# Modify none of the configuration.
-	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes.
 	umoci config --image "${IMAGE}:${TAG}" --os "linux" --architecture "mips64"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
@@ -649,18 +652,19 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Check that OS was set properly.
-	# XXX: This has been removed, we need to add annotations for this.
-	#	  See: https://github.com/opencontainers/image-spec/pull/711
-	#sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "linux" ]]
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
 
 	# Check that arch was set properly.
-	# XXX: This has been removed, we need to add annotations for this.
-	#	  See: https://github.com/opencontainers/image-spec/pull/711
-	#sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "mips64" ]]
+	sane_run jq -SMr '.annotations["org.opencontainers.image.architecture"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "mips64" ]]
+
+	# Check that variant is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.variant"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
 
 	image-verify "${IMAGE}"
 }
