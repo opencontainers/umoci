@@ -526,6 +526,9 @@ func TestMutatePath(t *testing.T) {
 				{Walk: []ispec.Descriptor{manifestDescriptor}},
 			}
 
+			// Make sure we actually embedded something if EmbeddedData=true.
+			var numEmbedded int
+
 			// Build on top of the previous blob.
 			for idx := 1; idx < 32; idx++ {
 				oldPath := expectedPaths[idx-1]
@@ -545,7 +548,10 @@ func TestMutatePath(t *testing.T) {
 					Size:      newRootSize,
 				}
 
-				if test.embedData {
+				if test.embedData && newRootSize <= 10240 {
+					t.Logf("embedding descriptor %s (%d bytes)", newRootDigest, newRootSize)
+					numEmbedded++
+
 					// Get a copy of the raw data to add to the descriptor.
 					dataRdr, err := engineExt.GetBlob(t.Context(), newRootDigest)
 					require.NoError(t, err, "get new root blob data")
@@ -559,6 +565,10 @@ func TestMutatePath(t *testing.T) {
 				var newPath casext.DescriptorPath
 				newPath.Walk = append([]ispec.Descriptor{newRootDescriptor}, oldPath.Walk...)
 				expectedPaths = append(expectedPaths, newPath)
+			}
+
+			if test.embedData {
+				assert.NotZero(t, numEmbedded, "EmbeddedData should embed at least one descriptor")
 			}
 
 			// Mutate each one.
