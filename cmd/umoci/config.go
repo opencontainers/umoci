@@ -93,6 +93,8 @@ image.`,
 		cli.StringFlag{Name: "author"},
 		cli.StringFlag{Name: "platform.os,os"},
 		cli.StringFlag{Name: "platform.arch,architecture"},
+		cli.StringFlag{Name: "platform.variant"},
+		// TODO: platform.os.{version,features}
 		cli.StringSliceFlag{Name: "manifest.annotation"},
 		cli.StringSliceFlag{Name: "clear"},
 	},
@@ -109,6 +111,7 @@ func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
 		Platform: ispec.Platform{
 			OS:           meta.OS,
 			Architecture: meta.Architecture,
+			Variant:      meta.Variant,
 		},
 	}
 }
@@ -123,6 +126,7 @@ func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 		Author:       image.Author,
 		OS:           image.OS,
 		Architecture: image.Architecture,
+		Variant:      image.Variant,
 	}
 }
 
@@ -239,6 +243,9 @@ func config(ctx *cli.Context) (Err error) {
 	}
 	if ctx.IsSet("platform.arch") {
 		g.SetPlatformArchitecture(ctx.String("platform.arch"))
+	}
+	if ctx.IsSet("platform.variant") {
+		g.SetPlatformVariant(ctx.String("platform.variant"))
 	}
 	if ctx.IsSet("config.user") {
 		g.SetConfigUser(ctx.String("config.user"))

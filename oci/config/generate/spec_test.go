@@ -88,6 +88,16 @@ func TestPlatformArchitecture(t *testing.T) {
 	assert.Equal(t, expected, got, "PlatformArchitecture get/set should match")
 }
 
+func TestPlatformVariant(t *testing.T) {
+	g := New()
+	expected := "some_value"
+
+	g.SetPlatformVariant(expected)
+	got := g.PlatformVariant()
+
+	assert.Equal(t, expected, got, "PlatformVariant get/set should match")
+}
+
 func TestAuthor(t *testing.T) {
 	g := New()
 	expected := "some_value"

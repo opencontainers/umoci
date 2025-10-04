@@ -37,12 +37,13 @@ import (
 // in an image configuration that do not have a native representation in the
 // runtime-spec).
 const (
-	platformOsAnnotation   = "org.opencontainers.image.os"
-	platformArchAnnotation = "org.opencontainers.image.architecture"
-	authorAnnotation       = "org.opencontainers.image.author"
-	createdAnnotation      = "org.opencontainers.image.created"
-	stopSignalAnnotation   = "org.opencontainers.image.stopSignal"
-	exposedPortsAnnotation = "org.opencontainers.image.exposedPorts"
+	platformOsAnnotation      = "org.opencontainers.image.os"
+	platformArchAnnotation    = "org.opencontainers.image.architecture"
+	platformVariantAnnotation = "org.opencontainers.image.variant"
+	authorAnnotation          = "org.opencontainers.image.author"
+	createdAnnotation         = "org.opencontainers.image.created"
+	stopSignalAnnotation      = "org.opencontainers.image.stopSignal"
+	exposedPortsAnnotation    = "org.opencontainers.image.exposedPorts"
 )
 
 // ToRuntimeSpec converts the given OCI image configuration to a runtime
@@ -176,6 +177,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	}
 	setAnnotation(platformOsAnnotation, ig.PlatformOS())
 	setAnnotation(platformArchAnnotation, ig.PlatformArchitecture())
+	setAnnotation(platformVariantAnnotation, ig.PlatformVariant())
 	setAnnotation(authorAnnotation, ig.Author())
 	setAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
 	setAnnotation(stopSignalAnnotation, image.Config.StopSignal)

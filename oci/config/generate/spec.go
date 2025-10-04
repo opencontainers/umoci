@@ -338,3 +338,13 @@ func (g *Generator) SetPlatformArchitecture(arch string) {
 func (g *Generator) PlatformArchitecture() string {
 	return g.image.Architecture
 }
+
+// SetPlatformVariant is the CPU architecture variant which the binaries in this image are built to run on.
+func (g *Generator) SetPlatformVariant(variant string) {
+	g.image.Variant = variant
+}
+
+// PlatformVariant returns the CPU architecture variant which the binaries in this image are built to run on.
+func (g *Generator) PlatformVariant() string {
+	return g.image.Variant
+}

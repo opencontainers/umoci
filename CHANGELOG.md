@@ -63,6 +63,9 @@ update to move away from our ancient pinned version of the runtime-spec.
   better off just using `gomtree`.
 * `umoci --version` now provides more information about the specification
   versions supported by the `umoci` binary as well as the Go version used.
+* `umoci config` now supports specifying the architecture variant of the image
+  with `--platform.variant`. In addition, `--os` and `--architecture` can now
+  be set using `--platform.os` and `--platform.arch` respectively.
 
 ### Changed ###
 * The output format of `umoci stat` has had some minor changes made to how

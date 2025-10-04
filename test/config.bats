@@ -767,6 +767,55 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --platform.os" {
+	# Modify none of the configuration.
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes. We also need to clear --architecture
+	#      because it is normally set for most images.
+	umoci config --image "${IMAGE}:${TAG}" --platform.os "linux" --platform.arch ""
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Platform:"* ]]
+	[[ "$output" == *'OS: linux'* ]]
+	grep -v "Architecture:" <<<"$output"
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -Mr '.config.blob.os' <<<"$statJSON"
+	[[ "$output" == 'linux' ]]
+	sane_run jq -M '.config.blob.architecture' <<<"$statJSON"
+	[[ "$output" == '""' ]]
+	sane_run jq -M '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'null' ]]
+
+	# Unpack the image again.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Check that OS was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
+
+	# Check that arch is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.architecture"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
+
+	# Check that variant is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.variant"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --[os+architecture]" {
 	# Modify none of the configuration.
 	# XXX: We can't test anything other than --os=linux because our generator
@@ -788,6 +837,8 @@ function teardown() {
 	[[ "$output" == 'linux' ]]
 	sane_run jq -Mr '.config.blob.architecture' <<<"$statJSON"
 	[[ "$output" == 'mips64' ]]
+	sane_run jq -M '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'null' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -809,6 +860,55 @@ function teardown() {
 	sane_run jq -SM '.annotations["org.opencontainers.image.variant"] == null' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "true" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci config --platform.[os+architecture+variant]" {
+	# Modify none of the configuration.
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes.
+	umoci config --image "${IMAGE}:${TAG}" \
+		--platform.os "linux" --platform.arch "arm64" --platform.variant "v9"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Platform:"* ]]
+	[[ "$output" == *'OS: linux'* ]]
+	[[ "$output" == *'Architecture: arm64 (v9)'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -Mr '.config.blob.os' <<<"$statJSON"
+	[[ "$output" == 'linux' ]]
+	sane_run jq -Mr '.config.blob.architecture' <<<"$statJSON"
+	[[ "$output" == 'arm64' ]]
+	sane_run jq -Mr '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'v9' ]]
+
+	# Unpack the image again.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Check that OS was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
+
+	# Check that arch was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.architecture"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "arm64" ]]
+
+	# Check that variant was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.variant"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "v9" ]]
 
 	image-verify "${IMAGE}"
 }

@@ -95,9 +95,15 @@ type Meta struct {
 	// are built to run on.
 	Architecture string `json:"architecture"`
 
+	// Variant is the variant of the CPU architecture which the binaries in
+	// this image are built to run on.
+	Variant string `json:"variant"`
+
 	// OS is the name of the operating system which the image is built to run
 	// on.
 	OS string `json:"os"`
+
+	// TODO: Should we embed ispec.Platform?
 }
 
 // cache ensures that the cached versions of the related configurations have
@@ -232,6 +238,7 @@ func (m *Mutator) Set(ctx context.Context, config ispec.ImageConfig, meta Meta, 
 	m.config.Created = timePtr(meta.Created)
 	m.config.Author = meta.Author
 	m.config.Architecture = meta.Architecture
+	m.config.Variant = meta.Variant
 	m.config.OS = meta.OS
 
 	// Append history.
