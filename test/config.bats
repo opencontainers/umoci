@@ -669,8 +669,6 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-# XXX: This doesn't do any actual testing of the results of any of these flags.
-# This needs to be fixed after we implement raw-cat or something like that.
 @test "umoci config --[author+created]" {
 	# Modify everything.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --author="Aleksa Sarai <cyphar@cyphar.com>" --created="2016-03-25T12:34:02.655002+11:00"
@@ -700,6 +698,16 @@ function teardown() {
 	[[ "$(echo "$output" | jq -SMr '.history[-1].empty_layer')" == "true" ]]
 	# The author should've changed.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
+
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
 
 	image-verify "${IMAGE}"
 }
@@ -738,6 +746,16 @@ function teardown() {
 	# The created should be set.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "2016-12-09T04:45:40+11:00" ]]
 
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
+
 	image-verify "${IMAGE}"
 }
 
@@ -759,6 +777,16 @@ function teardown() {
 
 	# umoci-stat history output should be identical.
 	[[ "$hashA" == "$hashB" ]]
+
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
 
 	image-verify "${IMAGE}"
 }
