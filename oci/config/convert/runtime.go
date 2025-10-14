@@ -107,7 +107,9 @@ func allocateNilStruct(spec *rspec.Spec) {
 }
 
 // MutateRuntimeSpec mutates a given runtime configuration with the image
-// configuration provided.
+// configuration provided in accordance with the image specification's
+// conversion mechanism (for more information, see
+// <https://github.com/opencontainers/image-spec/blob/main/conversion.md>).
 func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error {
 	ig, err := igen.NewFromImage(image)
 	if err != nil {
@@ -164,13 +166,22 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		spec.Process.Args = args
 	}
 
-	// Set annotations fields
+	// Set the "annotation fields".
+	setAnnotation := func(name, value string) {
+		if value != "" {
+			spec.Annotations[name] = value
+		} else {
+			delete(spec.Annotations, name)
+		}
+	}
+	setAnnotation(platformOsAnnotation, ig.PlatformOS())
+	setAnnotation(platformArchAnnotation, ig.PlatformArchitecture())
+	setAnnotation(authorAnnotation, ig.Author())
+	setAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
+	setAnnotation(stopSignalAnnotation, image.Config.StopSignal)
+	setAnnotation(exposedPortsAnnotation, strings.Join(ig.ConfigExposedPorts(), ","))
+	// Config.Labels need to be applied after the auto-applied labels.
 	maps.Copy(spec.Annotations, ig.ConfigLabels())
-	spec.Annotations[platformOsAnnotation] = ig.PlatformOS()
-	spec.Annotations[platformArchAnnotation] = ig.PlatformArchitecture()
-	spec.Annotations[authorAnnotation] = ig.Author()
-	spec.Annotations[createdAnnotation] = ig.Created().Format(igen.ISO8601)
-	spec.Annotations[stopSignalAnnotation] = image.Config.StopSignal
 
 	// Set parsed fields
 	// Get the *actual* uid and gid of the user. If the image doesn't contain
@@ -203,10 +214,6 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	if execUser.Home != "" {
 		appendEnv(&spec.Process.Env, "HOME", execUser.Home)
 	}
-
-	// Set optional fields
-	ports := ig.ConfigExposedPorts()
-	spec.Annotations[exposedPortsAnnotation] = strings.Join(ports, ",")
 
 	for _, vol := range ig.ConfigVolumes() {
 		// XXX: This is _fine_ but might cause some issues in the future.

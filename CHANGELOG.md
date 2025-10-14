@@ -75,6 +75,10 @@ update to move away from our ancient pinned version of the runtime-spec.
   archives. Previously, we would defer to the Go stdlib's `archive/tar` which
   rounds to the nearest second (which is incompatible with `gomtree` and so in
   theory could lead to inconsistent results).
+* Previously, when generating the runtime-spec `config.json`, `umoci unpack`
+  would incorrectly prioritise the automatically generated annotations over
+  explicitly configured labels. This precdence was the opposite of what the
+  image-spec requires, and has now been resolved.
 
 [source-date-epoch]: https://reproducible-builds.org/docs/source-date-epoch/
 [obs-gomtree]: https://build.opensuse.org/package/show/Virtualization:containers/go-mtree

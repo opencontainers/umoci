@@ -858,6 +858,8 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Make sure that the author gets filled when we extract as well.
+	# NOTE: If this check breaks, it's because the image has a config.Labels
+	#       entry that overrides the value.
 	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
 	[ "$status" -eq 0 ]
 	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
