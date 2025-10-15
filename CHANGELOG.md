@@ -66,6 +66,8 @@ update to move away from our ancient pinned version of the runtime-spec.
 * `umoci config` now supports specifying the architecture variant of the image
   with `--platform.variant`. In addition, `--os` and `--architecture` can now
   be set using `--platform.os` and `--platform.arch` respectively.
+* `umoci new` will not automatically fill the architecture variant on ARM
+  systems to match the host CPU.
 
 ### Changed ###
 * The output format of `umoci stat` has had some minor changes made to how

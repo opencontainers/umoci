@@ -23,6 +23,7 @@ require (
 	github.com/AdaLogics/go-fuzz-headers v0.0.0-20230106234847-43070de90fa1
 	github.com/apex/log v1.9.0
 	github.com/blang/semver/v4 v4.0.0
+	github.com/containerd/platforms v0.2.1
 	github.com/cyphar/filepath-securejoin v0.5.0
 	github.com/docker/go-units v0.5.0
 	github.com/klauspost/compress v1.11.3
@@ -42,6 +43,7 @@ require (
 )
 
 require (
+	github.com/containerd/log v0.1.0 // indirect
 	github.com/cpuguy83/go-md2man/v2 v2.0.7 // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/fatih/color v1.18.0 // indirect
