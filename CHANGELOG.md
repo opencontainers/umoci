@@ -20,6 +20,11 @@ features added to the specification (such as embedded-data descriptors and
 subject references used by OCI artifact images), but at the moment umoci does
 not yet support creating images utilising these features.
 
+In addition, umoci also now supports generating `config.json` blobs that are
+compliant with v1.2.1 of the OCI runtime specification. Note that we do not
+explicitly use any of the newer features, this is mostly a quality-of-life
+update to move away from our ancient pinned version of the runtime-spec.
+
 ### Breaking ###
 * The existing `ConfigExposedPorts` and `ConfigVolumes` methods of
   `github.com/opencontainers/umoci/oci/config/generate.Generator` now return a

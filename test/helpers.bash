@@ -169,7 +169,16 @@ function bundle-verify() {
 		args+=( --path="$arg" )
 	done
 
-	oci-runtime-tool validate "${args[@]}"
+	# FIXME: oci-runtime-tool has some incorrect validation logic (it disallows
+	#        certain org.opencontianers.* annotations) and there has not yet
+	#        been a release with go.mod. As such, using it causes issues and
+	#        has blocked us from being able to update runtime-spec versions for
+	#        years.
+	#
+	#        Ultimately, we do some smoke tests with runc (which does its own
+	#        specconv-based validation) and so our config.json does get some
+	#        validation in our tests.
+	#oci-runtime-tool validate "${args[@]}"
 	return $?
 }
 
