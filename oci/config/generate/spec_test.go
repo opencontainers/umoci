@@ -68,24 +68,34 @@ func TestConfigWorkingDir(t *testing.T) {
 	assert.Equal(t, expected, got, "ConfigWorkingDir get/set should match")
 }
 
-func TestArchitecture(t *testing.T) {
+func TestPlatformOS(t *testing.T) {
 	g := New()
 	expected := "some_value"
 
-	g.SetArchitecture(expected)
-	got := g.Architecture()
+	g.SetPlatformOS(expected)
+	got := g.PlatformOS()
 
-	assert.Equal(t, expected, got, "Architecture get/set should match")
+	assert.Equal(t, expected, got, "PlatformOS get/set should match")
 }
 
-func TestOS(t *testing.T) {
+func TestPlatformArchitecture(t *testing.T) {
 	g := New()
 	expected := "some_value"
 
-	g.SetOS(expected)
-	got := g.OS()
+	g.SetPlatformArchitecture(expected)
+	got := g.PlatformArchitecture()
 
-	assert.Equal(t, expected, got, "OS get/set should match")
+	assert.Equal(t, expected, got, "PlatformArchitecture get/set should match")
+}
+
+func TestPlatformVariant(t *testing.T) {
+	g := New()
+	expected := "some_value"
+
+	g.SetPlatformVariant(expected)
+	got := g.PlatformVariant()
+
+	assert.Equal(t, expected, got, "PlatformVariant get/set should match")
 }
 
 func TestAuthor(t *testing.T) {

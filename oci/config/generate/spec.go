@@ -319,22 +319,32 @@ func (g *Generator) Author() string {
 	return g.image.Author
 }
 
-// SetArchitecture is the CPU architecture which the binaries in this image are built to run on.
-func (g *Generator) SetArchitecture(arch string) {
-	g.image.Architecture = arch
-}
-
-// Architecture returns the CPU architecture which the binaries in this image are built to run on.
-func (g *Generator) Architecture() string {
-	return g.image.Architecture
-}
-
-// SetOS sets the name of the operating system which the image is built to run on.
-func (g *Generator) SetOS(os string) {
+// SetPlatformOS sets the name of the operating system which the image is built to run on.
+func (g *Generator) SetPlatformOS(os string) {
 	g.image.OS = os
 }
 
-// OS returns the name of the operating system which the image is built to run on.
-func (g *Generator) OS() string {
+// PlatformOS returns the name of the operating system which the image is built to run on.
+func (g *Generator) PlatformOS() string {
 	return g.image.OS
+}
+
+// SetPlatformArchitecture is the CPU architecture which the binaries in this image are built to run on.
+func (g *Generator) SetPlatformArchitecture(arch string) {
+	g.image.Architecture = arch
+}
+
+// PlatformArchitecture returns the CPU architecture which the binaries in this image are built to run on.
+func (g *Generator) PlatformArchitecture() string {
+	return g.image.Architecture
+}
+
+// SetPlatformVariant is the CPU architecture variant which the binaries in this image are built to run on.
+func (g *Generator) SetPlatformVariant(variant string) {
+	g.image.Variant = variant
+}
+
+// PlatformVariant returns the CPU architecture variant which the binaries in this image are built to run on.
+func (g *Generator) PlatformVariant() string {
+	return g.image.Variant
 }

@@ -91,8 +91,10 @@ image.`,
 		cli.StringFlag{Name: "config.stopsignal"},
 		cli.StringFlag{Name: "created"}, // FIXME: Implement TimeFlag.
 		cli.StringFlag{Name: "author"},
-		cli.StringFlag{Name: "architecture"},
-		cli.StringFlag{Name: "os"},
+		cli.StringFlag{Name: "platform.os,os"},
+		cli.StringFlag{Name: "platform.arch,architecture"},
+		cli.StringFlag{Name: "platform.variant"},
+		// TODO: platform.os.{version,features}
 		cli.StringSliceFlag{Name: "manifest.annotation"},
 		cli.StringSliceFlag{Name: "clear"},
 	},
@@ -107,8 +109,9 @@ func toImage(config ispec.ImageConfig, meta mutate.Meta) ispec.Image {
 		Created: &created,
 		Author:  meta.Author,
 		Platform: ispec.Platform{
-			Architecture: meta.Architecture,
 			OS:           meta.OS,
+			Architecture: meta.Architecture,
+			Variant:      meta.Variant,
 		},
 	}
 }
@@ -121,8 +124,9 @@ func fromImage(image ispec.Image) (ispec.ImageConfig, mutate.Meta) {
 	return image.Config, mutate.Meta{
 		Created:      created,
 		Author:       image.Author,
-		Architecture: image.Architecture,
 		OS:           image.OS,
+		Architecture: image.Architecture,
+		Variant:      image.Variant,
 	}
 }
 
@@ -234,11 +238,14 @@ func config(ctx *cli.Context) (Err error) {
 	if ctx.IsSet("author") {
 		g.SetAuthor(ctx.String("author"))
 	}
-	if ctx.IsSet("architecture") {
-		g.SetArchitecture(ctx.String("architecture"))
+	if ctx.IsSet("platform.os") {
+		g.SetPlatformOS(ctx.String("platform.os"))
 	}
-	if ctx.IsSet("os") {
-		g.SetOS(ctx.String("os"))
+	if ctx.IsSet("platform.arch") {
+		g.SetPlatformArchitecture(ctx.String("platform.arch"))
+	}
+	if ctx.IsSet("platform.variant") {
+		g.SetPlatformVariant(ctx.String("platform.variant"))
 	}
 	if ctx.IsSet("config.user") {
 		g.SetConfigUser(ctx.String("config.user"))

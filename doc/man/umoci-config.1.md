@@ -24,8 +24,8 @@ umoci config - Modifies the configuration of an OCI image
 [**--config.workingdir**=*value*]
 [**--created**=*value*]
 [**--author**=*value*]
-[**--architecture**=*value*]
-[**--os**=*value*]
+[**--platform.os**=*value*]
+[**--platform.arch**=*value*]
 [**--manifest.annotation**=*value*]
 
 # DESCRIPTION
@@ -100,8 +100,8 @@ or image manifest. For more information see [the OCI image specification][1].
 * **--config.workingdir**=*value*
 * **--created**=*value*
 * **--author**=*value*
-* **--architecture**=*value*
-* **--os**=*value*
+* **--platform.os**=*value* (can also be set with **--os**)
+* **--platform.arch**=*value* (can also be set with **--architecture**)
 * **--manifest.annotation**=*value*
 
 # EXAMPLE
@@ -113,7 +113,7 @@ overwrites the original tag with the new image.
 % umoci config --image image:tag --clear=config.env --config.env="VARIABLE=true" \
 	--config.user="user:group" --config.entrypoint=cat --config.cmd=/proc/self/stat \
 	--config.label="com.cyphar.umoci=true" --author="Aleksa Sarai <cyphar@cyphar.com>" \
-	--os="gnu/hurd" --architecture="lisp" --created="$(date --iso-8601=seconds)"
+	--platform.os="linux" --platform.arch="amd64" --created="$(date --iso-8601=seconds)"
 ```
 
 # SEE ALSO

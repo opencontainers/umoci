@@ -26,9 +26,13 @@ explicitly use any of the newer features, this is mostly a quality-of-life
 update to move away from our ancient pinned version of the runtime-spec.
 
 ### Breaking ###
-* The existing `ConfigExposedPorts` and `ConfigVolumes` methods of
-  `github.com/opencontainers/umoci/oci/config/generate.Generator` now return a
-  sorted `[]string` instead of a map.
+* `github.com/opencontainers/umoci/oci/config/generate.Generator` has had the
+  following breaking API changes made to it:
+  - The existing `ConfigExposedPorts` and `ConfigVolumes` methods now return a
+    sorted `[]string` instead of a `map`.
+  - The `(Set)OS` and `(Set)Architecture` methods have been renamed to have a
+    `Platform` prefix (to match image-spec v1.1's organisational changes). They
+    now read as `(Set)PlatformOS` and `(Set)PlatformArchitecture` respectively.
 
 ### Added ###
 * `umoci stat` now includes information about the manifest and configuration of
@@ -59,6 +63,11 @@ update to move away from our ancient pinned version of the runtime-spec.
   better off just using `gomtree`.
 * `umoci --version` now provides more information about the specification
   versions supported by the `umoci` binary as well as the Go version used.
+* `umoci config` now supports specifying the architecture variant of the image
+  with `--platform.variant`. In addition, `--os` and `--architecture` can now
+  be set using `--platform.os` and `--platform.arch` respectively.
+* `umoci new` will not automatically fill the architecture variant on ARM
+  systems to match the host CPU.
 
 ### Changed ###
 * The output format of `umoci stat` has had some minor changes made to how
@@ -71,6 +80,10 @@ update to move away from our ancient pinned version of the runtime-spec.
   archives. Previously, we would defer to the Go stdlib's `archive/tar` which
   rounds to the nearest second (which is incompatible with `gomtree` and so in
   theory could lead to inconsistent results).
+* Previously, when generating the runtime-spec `config.json`, `umoci unpack`
+  would incorrectly prioritise the automatically generated annotations over
+  explicitly configured labels. This precdence was the opposite of what the
+  image-spec requires, and has now been resolved.
 
 [source-date-epoch]: https://reproducible-builds.org/docs/source-date-epoch/
 [obs-gomtree]: https://build.opensuse.org/package/show/Virtualization:containers/go-mtree

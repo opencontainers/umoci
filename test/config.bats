@@ -27,6 +27,8 @@ function teardown() {
 	teardown_image
 }
 
+# TODO: Add "umoci stat" calls to double-check the config is set properly...
+
 @test "umoci config" {
 	# Unpack the image.
 	new_bundle_rootfs && BUNDLE_A="$BUNDLE"
@@ -220,6 +222,15 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"User: testuser:emptygroup"* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.User' <<<"$output"
+	[[ "$output" == "testuser:emptygroup" ]]
+
 	# Unpack the image.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
@@ -274,6 +285,15 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --config.user="testuser:emptygroup"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"User: testuser:emptygroup"* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.User' <<<"$output"
+	[[ "$output" == "testuser:emptygroup" ]]
 
 	# Unpack the image.
 	new_bundle_rootfs
@@ -341,6 +361,15 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"User: testuser:emptygroup"* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.User' <<<"$output"
+	[[ "$output" == "testuser:emptygroup" ]]
+
 	# Unpack the image.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
@@ -354,6 +383,15 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --config.user="1337:8888"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"User: 1337:8888"* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.User' <<<"$output"
+	[[ "$output" == "1337:8888" ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -380,6 +418,15 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Working Directory: /a/fake/directory"* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.WorkingDir' <<<"$output"
+	[[ "$output" == "/a/fake/directory" ]]
+
 	# Unpack the image again.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
@@ -399,6 +446,15 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --clear=config.env
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	grep -v 'Environment:' <<<"$output"
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -SMr '.config.blob.config.Env | length' <<<"$output"
+	[[ "$output" == "0" ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -432,10 +488,31 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Environment:"* ]]
+	[[ "$output" == *"VARIABLE1=unused"* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cM '.config.blob.config.Env | map(select(startswith("VARIABLE")))' <<<"$output"
+	[[ "$output" == '["VARIABLE1=unused"]' ]]
+
 	# Modify the env again.
-	umoci config --image "${IMAGE}:${TAG}-new" --config.env "VARIABLE1=test" --config.env "VARIABLE2=what"
+	umoci config --image "${IMAGE}:${TAG}-new" --config.env "VARIABLE2=what" --config.env "VARIABLE1=test"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Environment:"* ]]
+	[[ "$output" == *"VARIABLE1=test"* ]]
+	[[ "$output" == *"VARIABLE2=what"* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cM '.config.blob.config.Env | map(select(startswith("VARIABLE")))' <<<"$output"
+	[[ "$output" == '["VARIABLE1=test","VARIABLE2=what"]' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -473,6 +550,15 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-noentry"
+	[ "$status" -eq 0 ]
+	grep -v 'Entrypoint:' <<<"$output"
+	umoci stat --image "${IMAGE}:${TAG}-noentry" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config | [.Entrypoint, .Cmd] | map(length)' <<<"$output"
+	[[ "$output" == "[0,3]" ]]
+
 	# Unpack the image.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}-noentry" "$BUNDLE"
@@ -488,6 +574,17 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --tag="${TAG}-nocmd" --clear=config.cmd
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-nocmd"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Entrypoint:"* ]]
+	[[ "$output" == *'sh'* ]]
+	[[ "$output" == *'"/here is some values/"'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-nocmd" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config | [.Entrypoint, .Cmd] | map(length)' <<<"$output"
+	[[ "$output" == "[2,0]" ]]
 
 	# Unpack the image.
 	new_bundle_rootfs
@@ -508,6 +605,17 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --config.cmd "cat" --config.cmd "/this is a file with spaces" --config.cmd "-v"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'cat'* ]]
+	[[ "$output" == *'"/this is a file with spaces"'* ]]
+	[[ "$output" == *'-v'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config.Cmd' <<<"$output"
+	[[ "$output" == '["cat","/this is a file with spaces","-v"]' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -556,6 +664,21 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Entrypoint:"* ]]
+	[[ "$output" == *'sh'* ]]
+	[[ "$output" == *'-c'* ]]
+	[[ "$output" == *'"ls -la"'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -cSMr '.config.blob.config.Entrypoint' <<<"$statJSON"
+	[[ "$output" == '["sh"]' ]]
+	sane_run jq -cSMr '.config.blob.config.Cmd' <<<"$statJSON"
+	[[ "$output" == '["-c","ls -la"]' ]]
+
 	# Unpack the image again.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
@@ -576,6 +699,15 @@ function teardown() {
 	umoci config --image "${IMAGE}:${TAG}" --config.volume /volume --config.volume "/some nutty/path name/ here"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Volumes: "/some nutty/path name/ here", /volume'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config.Volumes' <<<"$output"
+	[[ "$output" == '{"/some nutty/path name/ here":{},"/volume":{}}' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -635,12 +767,30 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
-@test "umoci config --[os+architecture]" {
+@test "umoci config --platform.os" {
 	# Modify none of the configuration.
-	# XXX: We can't test anything other than --os=linux because our generator bails for non-Linux OSes.
-	umoci config --image "${IMAGE}:${TAG}" --os "linux" --architecture "mips64"
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes. We also need to clear --architecture
+	#      because it is normally set for most images.
+	umoci config --image "${IMAGE}:${TAG}" --platform.os "linux" --platform.arch ""
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Platform:"* ]]
+	[[ "$output" == *'OS: linux'* ]]
+	grep -v "Architecture:" <<<"$output"
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -Mr '.config.blob.os' <<<"$statJSON"
+	[[ "$output" == 'linux' ]]
+	sane_run jq -M '.config.blob.architecture' <<<"$statJSON"
+	[[ "$output" == '""' ]]
+	sane_run jq -M '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'null' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -649,29 +799,134 @@ function teardown() {
 	bundle-verify "$BUNDLE"
 
 	# Check that OS was set properly.
-	# XXX: This has been removed, we need to add annotations for this.
-	#	  See: https://github.com/opencontainers/image-spec/pull/711
-	#sane_run jq -SMr '.platform.os' "$BUNDLE/config.json"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "linux" ]]
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
 
-	# Check that arch was set properly.
-	# XXX: This has been removed, we need to add annotations for this.
-	#	  See: https://github.com/opencontainers/image-spec/pull/711
-	#sane_run jq -SMr '.platform.arch' "$BUNDLE/config.json"
-	#[ "$status" -eq 0 ]
-	#[[ "$output" == "mips64" ]]
+	# Check that arch is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.architecture"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
+
+	# Check that variant is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.variant"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
 
 	image-verify "${IMAGE}"
 }
 
-# XXX: This doesn't do any actual testing of the results of any of these flags.
-# This needs to be fixed after we implement raw-cat or something like that.
+@test "umoci config --[os+architecture]" {
+	# Modify none of the configuration.
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes.
+	umoci config --image "${IMAGE}:${TAG}" --os "linux" --architecture "mips64"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Platform:"* ]]
+	[[ "$output" == *'OS: linux'* ]]
+	[[ "$output" == *'Architecture: mips64'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -Mr '.config.blob.os' <<<"$statJSON"
+	[[ "$output" == 'linux' ]]
+	sane_run jq -Mr '.config.blob.architecture' <<<"$statJSON"
+	[[ "$output" == 'mips64' ]]
+	sane_run jq -M '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'null' ]]
+
+	# Unpack the image again.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Check that OS was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
+
+	# Check that arch was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.architecture"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "mips64" ]]
+
+	# Check that variant is *not* set.
+	sane_run jq -SM '.annotations["org.opencontainers.image.variant"] == null' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "true" ]]
+
+	image-verify "${IMAGE}"
+}
+
+@test "umoci config --platform.[os+architecture+variant]" {
+	# Modify none of the configuration.
+	# XXX: We can't test anything other than --os=linux because our generator
+	#      bails for non-Linux OSes.
+	umoci config --image "${IMAGE}:${TAG}" \
+		--platform.os "linux" --platform.arch "arm64" --platform.variant "v9"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Platform:"* ]]
+	[[ "$output" == *'OS: linux'* ]]
+	[[ "$output" == *'Architecture: arm64 (v9)'* ]]
+	umoci stat --image "${IMAGE}:${TAG}" --json
+	[ "$status" -eq 0 ]
+	statJSON="$output"
+	sane_run jq -Mr '.config.blob.os' <<<"$statJSON"
+	[[ "$output" == 'linux' ]]
+	sane_run jq -Mr '.config.blob.architecture' <<<"$statJSON"
+	[[ "$output" == 'arm64' ]]
+	sane_run jq -Mr '.config.blob.variant' <<<"$statJSON"
+	[[ "$output" == 'v9' ]]
+
+	# Unpack the image again.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Check that OS was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.os"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "linux" ]]
+
+	# Check that arch was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.architecture"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "arm64" ]]
+
+	# Check that variant was set properly.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.variant"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "v9" ]]
+
+	image-verify "${IMAGE}"
+}
+
 @test "umoci config --[author+created]" {
 	# Modify everything.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" --author="Aleksa Sarai <cyphar@cyphar.com>" --created="2016-03-25T12:34:02.655002+11:00"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the same data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *"Created: 2016-03-25T12:34:02.655002+11:00"* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -Mr '.config.blob.created' <<<"$output"
+	[[ "$output" == '2016-03-25T12:34:02.655002+11:00' ]]
 
 	# Make sure that --created doesn't work with a random string.
 	umoci config --image "${IMAGE}:${TAG}" --created="not a date"
@@ -697,6 +952,18 @@ function teardown() {
 	# The author should've changed.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].author')" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
 
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	# NOTE: If this check breaks, it's because the image has a config.Labels
+	#       entry that overrides the value.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
+
 	image-verify "${IMAGE}"
 }
 
@@ -711,6 +978,15 @@ function teardown() {
 		--author="Aleksa Sarai <cyphar@cyphar.com>"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the correct author.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Author: "Aleksa Sarai <cyphar@cyphar.com>"'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -Mr '.config.blob.author' <<<"$output"
+	[[ "$output" == 'Aleksa Sarai <cyphar@cyphar.com>' ]]
 
 	# Make sure that the history was modified.
 	umoci stat --image "${IMAGE}:${TAG}" --json
@@ -734,6 +1010,16 @@ function teardown() {
 	# The created should be set.
 	[[ "$(echo "$output" | jq -SMr '.history[-1].created')" == "2016-12-09T04:45:40+11:00" ]]
 
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
+
 	image-verify "${IMAGE}"
 }
 
@@ -743,6 +1029,15 @@ function teardown() {
 		--author="Aleksa Sarai <cyphar@cyphar.com>"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the correct author.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Author: "Aleksa Sarai <cyphar@cyphar.com>"'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -Mr '.config.blob.author' <<<"$output"
+	[[ "$output" == 'Aleksa Sarai <cyphar@cyphar.com>' ]]
 
 	# Make sure we *did not* add a new history entry.
 	umoci stat --image "${IMAGE}:${TAG}" --json
@@ -756,6 +1051,16 @@ function teardown() {
 	# umoci-stat history output should be identical.
 	[[ "$hashA" == "$hashB" ]]
 
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	# Make sure that the author gets filled when we extract as well.
+	sane_run jq -SMr '.annotations["org.opencontainers.image.author"]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	[[ "$output" == "Aleksa Sarai <cyphar@cyphar.com>" ]]
+
 	image-verify "${IMAGE}"
 }
 
@@ -766,6 +1071,17 @@ function teardown() {
 		--config.label="com.cyphar.test=1" --config.label="com.cyphar.empty="
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the correct data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Labels:'* ]]
+	[[ "$output" == *'com.cyphar.empty: ""'* ]]
+	[[ "$output" == *'com.cyphar.test: 1'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config.Labels' <<<"$output"
+	[[ "$output" == '{"com.cyphar.empty":"","com.cyphar.test":"1"}' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs
@@ -793,6 +1109,15 @@ function teardown() {
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
 
+	# Verify "umoci stat" shows the correct data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Exposed Ports: 1234/tcp, 2000, 8080/tcp'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config.ExposedPorts' <<<"$output"
+	[[ "$output" == '{"1234/tcp":{},"2000":{},"8080/tcp":{}}' ]]
+
 	# Unpack the image again.
 	new_bundle_rootfs
 	umoci unpack --image "${IMAGE}:${TAG}-new" "$BUNDLE"
@@ -814,6 +1139,15 @@ function teardown() {
 		--config.stopsignal="SIGUSR1"
 	[ "$status" -eq 0 ]
 	image-verify "${IMAGE}"
+
+	# Verify "umoci stat" shows the correct data.
+	umoci stat --image "${IMAGE}:${TAG}-new"
+	[ "$status" -eq 0 ]
+	[[ "$output" == *'Stop Signal: SIGUSR1'* ]]
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -cSMr '.config.blob.config.StopSignal' <<<"$output"
+	[[ "$output" == 'SIGUSR1' ]]
 
 	# Unpack the image again.
 	new_bundle_rootfs

@@ -21,10 +21,10 @@ package umoci
 import (
 	"context"
 	"fmt"
-	"runtime"
 	"time"
 
 	"github.com/apex/log"
+	"github.com/containerd/platforms"
 	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 
@@ -46,11 +46,13 @@ func NewImage(engineExt casext.Engine, tagName string, sourceDateEpoch *time.Tim
 		createTime = *sourceDateEpoch
 	}
 
-	// Set all of the defaults we need.
 	g.SetCreated(createTime)
-	g.SetOS(runtime.GOOS)
-	g.SetArchitecture(runtime.GOARCH)
 	g.ClearHistory()
+
+	hostPlatform := platforms.DefaultSpec()
+	g.SetPlatformOS(hostPlatform.OS)
+	g.SetPlatformArchitecture(hostPlatform.Architecture)
+	g.SetPlatformVariant(hostPlatform.Variant)
 
 	// Make sure we have no diffids.
 	g.SetRootfsType("layers")
