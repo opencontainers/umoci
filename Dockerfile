@@ -26,28 +26,6 @@ RUN git clone -b umoci https://github.com/cyphar/go-mtree.git /tmp/gomtree
 RUN cd /tmp/gomtree && \
 	go install ./cmd/gomtree
 
-## TOOLS: oci-runtime-tool needs special handling.
-FROM golang:1.25 AS oci-runtime-tool
-# FIXME: We need to get an ancient version of oci-runtime-tools because the
-#        config.json conversion we do is technically not spec-compliant due to
-#        an oversight and new versions of oci-runtime-tools verify this.
-#        See <https://github.com/opencontainers/runtime-spec/pull/1197>.
-#
-#        In addition, there is no go.mod in all released versions up to v0.9.0,
-#        which means that we will pull the latest runtime-spec automatically
-#        (Go removed auto-conversion to go.mod in Go 1.22) which causes
-#        validation errors. But we need to forcefully pick runtime-spec v1.0.2.
-#        This is fine. See <https://github.com/opencontainers/runtime-tools/pull/774>.
-ENV SRCDIR=/tmp/oci-runtime-tool
-RUN git clone -b v0.5.0 https://github.com/opencontainers/runtime-tools.git $SRCDIR
-RUN cd $SRCDIR && \
-	go mod init github.com/opencontainers/runtime-tools && \
-	go mod tidy && \
-	go get github.com/opencontainers/runtime-spec@v1.0.2 && \
-	go mod vendor
-RUN make -C $SRCDIR tool
-RUN install -Dm 0755 $SRCDIR/oci-runtime-tool /usr/bin/oci-runtime-tool
-
 ## CI: Pull the test image in a separate build stage.
 FROM quay.io/skopeo/stable:v1.20 AS test-image
 ENV SOURCE_IMAGE=/image SOURCE_TAG=latest
@@ -88,7 +66,6 @@ RUN git config --system --add safe.directory /go/src/github.com/opencontainers/u
 
 ENV GOPATH=/go PATH=/go/bin:$PATH
 COPY --from=go-binaries /go/bin /go/bin
-COPY --from=oci-runtime-tool /usr/bin/oci-runtime-tool /go/bin
 ENV SOURCE_IMAGE=/image SOURCE_TAG=latest
 COPY --from=test-image $SOURCE_IMAGE $SOURCE_IMAGE
 
