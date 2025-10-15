@@ -193,7 +193,7 @@ USAGE:
    umoci [global options] command [command options] [arguments...]
 
 VERSION:
-   0.5.1
+   0.6.0
 
 AUTHOR:
    Aleksa Sarai <cyphar@cyphar.com>
