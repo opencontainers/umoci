@@ -1,6 +1,6 @@
 % umoci-stat(1) # umoci stat - Display status information about an image tag
 % Aleksa Sarai
-% SEPTEMBER 2018
+% OCTOBER 2025
 # NAME
 umoci stat - Display status information about an image tag
 
@@ -33,6 +33,18 @@ The format of the **--json** blob is as follows. Many of these fields come from
 the [OCI image specification][1].
 
     {
+      # This is the manifest blob of the image.
+      "manifest": {
+        "descriptor": <descriptor of manifest blob>,
+        "blob": <raw manifest blob>
+      },
+
+      # This is the configuration blob of the image.
+      "config": {
+        "descriptor": <descriptor of config blob>,
+        "blob": <raw config blob>
+      },
+
       # This is the set of history entries for the image.
       "history": [
         {
@@ -56,11 +68,67 @@ The following gets information about an image downloaded from a **docker**(1)
 registry using **skopeo**(1).
 
 ```
-% skopeo copy docker://opensuse/amd64:42.2 oci:image:latest
+% skopeo copy docker://registry.opensuse.org/opensuse/tumbleweed:latest oci:image:latest
 % umoci stat --image image
-LAYER                                                                   CREATED                        CREATED BY                                                                                        SIZE     COMMENT
-<none>                                                                  2016-12-05T22:52:33.085510751Z /bin/sh -c #(nop)  MAINTAINER SUSE Containers Team <containers@suse.com>                          <none>
-sha256:e800e72a0a88984bd1b47f4eca1c188d3d333dc8e799bfa0a02ea5c2697216d5 2016-12-05T22:52:46.570617134Z /bin/sh -c #(nop) ADD file:6e0044405547c4c209fac622b3c6ddc75e7370682197f7920ec66e4e5e00b180 in /  49.25 MB
+== MANIFEST ==
+Schema Version: 2
+Media Type: application/vnd.oci.image.manifest.v1+json
+Config:
+        Descriptor:
+                Media Type: application/vnd.oci.image.config.v1+json
+                Digest: sha256:d06b5a49f4d4b8f5f39c1a6d798c7b2b1611747d5a1ee3bcfb5dc48d1b52f1e1
+                Size: 2.175kB
+Layers:
+        Descriptor:
+                Media Type: application/vnd.oci.image.layer.v1.tar+gzip
+                Digest: sha256:34198bffb2664ac16017024a9f8e3e29e73efd98137894d033d41e308728ae56
+                Size: 38.82MB
+Descriptor:
+        Media Type: application/vnd.oci.image.manifest.v1+json
+        Digest: sha256:cc559b926ba5cccd0d95058279dd0120588576c64ba6667f2221bc554b9f0621
+        Size: 407B
+        Annotations:
+                org.opencontainers.image.ref.name: latest
+
+== CONFIG ==
+Created: 2025-10-14T07:39:53Z
+Author: "Fabian Vogt <fvogt@suse.com>"
+Platform:
+        OS: linux
+        Architecture: amd64
+Image Config:
+        User: ""
+        Command:
+                /bin/bash
+        Labels:
+                org.openbuildservice.disturl: obs://build.opensuse.org/openSUSE:Factory/images/06574e385a3d2455c90f69f65ffa3e80-opensuse-tumbleweed-image:docker
+                org.opencontainers.image.created: 2025-10-14T07:39:47.127067859Z
+                org.opencontainers.image.description: "Image containing a minimal environment for containers based on openSUSE Tumbleweed."
+                org.opencontainers.image.source: https://build.opensuse.org/package/show/openSUSE:Factory/opensuse-tumbleweed-image?rev=06574e385a3d2455c90f69f65ffa3e80
+                org.opencontainers.image.title: "openSUSE Tumbleweed Base Container"
+                org.opencontainers.image.url: https://www.opensuse.org
+                org.opencontainers.image.vendor: "openSUSE Project"
+                org.opencontainers.image.version: 20251013.34.298
+                org.opensuse.base.created: 2025-10-14T07:39:47.127067859Z
+                org.opensuse.base.description: "Image containing a minimal environment for containers based on openSUSE Tumbleweed."
+                org.opensuse.base.disturl: obs://build.opensuse.org/openSUSE:Factory/images/06574e385a3d2455c90f69f65ffa3e80-opensuse-tumbleweed-image:docker
+                org.opensuse.base.lifecycle-url: https://en.opensuse.org/Lifetime
+                org.opensuse.base.reference: registry.opensuse.org/opensuse/tumbleweed:20251013.34.298
+                org.opensuse.base.source: https://build.opensuse.org/package/show/openSUSE:Factory/opensuse-tumbleweed-image?rev=06574e385a3d2455c90f69f65ffa3e80
+                org.opensuse.base.title: "openSUSE Tumbleweed Base Container"
+                org.opensuse.base.url: https://www.opensuse.org
+                org.opensuse.base.vendor: "openSUSE Project"
+                org.opensuse.base.version: 20251013.34.298
+                org.opensuse.lifecycle-url: https://en.opensuse.org/Lifetime
+                org.opensuse.reference: registry.opensuse.org/opensuse/tumbleweed:20251013.34.298
+Descriptor:
+        Media Type: application/vnd.oci.image.config.v1+json
+        Digest: sha256:d06b5a49f4d4b8f5f39c1a6d798c7b2b1611747d5a1ee3bcfb5dc48d1b52f1e1
+        Size: 2.175kB
+
+== HISTORY ==
+LAYER                                                                   CREATED              CREATED BY   SIZE    COMMENT
+sha256:34198bffb2664ac16017024a9f8e3e29e73efd98137894d033d41e308728ae56 2025-10-14T07:39:53Z KIWI 10.2.32 38.82MB openSUSE Tumbleweed 20251013 Base Container
 ```
 
 # SEE ALSO
