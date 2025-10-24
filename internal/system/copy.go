@@ -53,14 +53,14 @@ func Copy(dst io.Writer, src io.Reader) (int64, error) {
 
 // CopyN has identical semantics to io.CopyN except it will automatically
 // resume the copy after it receives an EINTR error.
-func CopyN(dst io.Writer, src io.Reader, n int64) (written int64, err error) {
+func CopyN(dst io.Writer, src io.Reader, n int64) (int64, error) {
 	// This is based on the stdlib io.CopyN implementation.
-	written, err = Copy(dst, io.LimitReader(src, n))
+	written, err := Copy(dst, io.LimitReader(src, n))
 	if written == n {
 		err = nil // somewhat confusing io.CopyN semantics
 	}
 	if written < n && err == nil {
 		err = io.EOF // if the source ends prematurely, io.EOF
 	}
-	return
+	return written, err
 }

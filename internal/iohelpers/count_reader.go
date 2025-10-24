@@ -34,10 +34,10 @@ func CountReader(rdr io.Reader) *CountingReader {
 	return &CountingReader{R: rdr, N: 0}
 }
 
-func (c *CountingReader) Read(p []byte) (n int, err error) {
-	n, err = c.R.Read(p)
+func (c *CountingReader) Read(p []byte) (int, error) {
+	n, err := c.R.Read(p)
 	c.N += int64(n)
-	return
+	return n, err
 }
 
 // BytesRead returns the number of bytes read so far from the reader. This is
