@@ -89,6 +89,11 @@ function fail() {
 	false
 }
 
+function umoci-is-test-binary() {
+	"$UMOCI" --version | \
+		grep "== THIS UMOCI BINARY IS COMPILED IN TEST MODE ==" >/dev/null
+}
+
 # Allows a test to specify what things it requires. If the environment can't
 # support it, the test is skipped with a message.
 function requires() {
@@ -97,6 +102,11 @@ function requires() {
 			root)
 				if [ "$IS_ROOTLESS" -ne 0 ]; then
 					skip "test requires ${var}"
+				fi
+				;;
+			test-binary)
+				if ! umoci-is-test-binary; then
+					skip "test requires ${var} (make umoci.cover)"
 				fi
 				;;
 			*)

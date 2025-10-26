@@ -33,6 +33,7 @@ import (
 	"github.com/urfave/cli"
 
 	"github.com/opencontainers/umoci"
+	"github.com/opencontainers/umoci/internal/testhelpers"
 )
 
 const (
@@ -47,6 +48,13 @@ func printVersion(c *cli.Context) {
 	w := c.App.Writer
 
 	fmt.Fprintln(w, "umoci version", c.App.Version) //nolint:errcheck // errors not relevant
+	if testhelpers.IsTestBinary() {
+		// This string is matched against in some tests (namely the xattr
+		// masking tests) to detect whether the umoci binary can be used for
+		// those tests. Make sure to update umoci-is-test-binary if you change
+		// this string!
+		fmt.Fprintln(w, "== THIS UMOCI BINARY IS COMPILED IN TEST MODE ==") //nolint:errcheck // errors not relevant
+	}
 	fmt.Fprintln(w, "image spec:", imeta.Version)   //nolint:errcheck // errors not relevant
 	fmt.Fprintln(w, "runtime spec:", rspec.Version) //nolint:errcheck // errors not relevant
 	fmt.Fprintln(w, "go:", runtime.Version())       //nolint:errcheck // errors not relevant

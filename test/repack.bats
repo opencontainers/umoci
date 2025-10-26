@@ -563,9 +563,13 @@ function teardown() {
 	# Empty-valued xattrs are disallowed by PAX.
 	sane_run xattr -p user.empty_cont "$ROOTFS/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
-	# Forbidden xattrs are ignored.
+	# Forbidden xattrs are ignored (for test binaries).
 	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$ROOTFS/opt"
-	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
+	if umoci-is-test-binary; then
+		[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
+	else
+		[[ "$output" == "should not exist" ]]
+	fi
 
 	# Now make some changes.
 	xattr -d user.some.value "$ROOTFS/root"
@@ -606,9 +610,13 @@ function teardown() {
 	# Empty-valued xattrs are disallowed by PAX.
 	sane_run xattr -p user.empty_cont "$ROOTFS/lib"
 	[[ "$output" == *"No such xattr: user.empty_cont"* ]]
-	# Forbidden xattrs are ignored.
+	# Forbidden xattrs are ignored (for test binaries).
 	sane_run xattr -p "user.UMOCI:forbidden_xattr" "$ROOTFS/opt"
-	[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
+	if umoci-is-test-binary; then
+		[[ "$output" == *"No such xattr: user.UMOCI:forbidden_xattr"* ]]
+	else
+		[[ "$output" == "should not exist" ]]
+	fi
 
 	image-verify "${IMAGE}"
 }
