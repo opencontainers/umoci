@@ -38,7 +38,7 @@ jobs:
       - uses: actions/setup-go@v6
       - run: make release
       - name: upload artifacts
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: release-${{ github.run_id }}
           path: release/*
@@ -92,7 +92,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: unit,macos
       - name: upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -128,7 +128,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: unit,linux
       - name: upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -178,7 +178,7 @@ jobs:
           files: ${{ env.COVERAGE }}
           flags: integration,linux
       - name: upload coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -201,7 +201,7 @@ jobs:
         run: |
           ./hack/ci-coverage.sh --merge="$GOCOVERDIR" --func coverage/*/
       - name: upload final coverage
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: coverage
           path: ${{ env.GOCOVERDIR }}
