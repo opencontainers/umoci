@@ -60,4 +60,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
 
+// NOTE: This breaks "go install" and so we really need to remove this
+// directive as soon as possible. This is needed because we are a waiting for
+// upstream to merge the following PRs:
+// * https://github.com/vbatts/go-mtree/pull/211
+// * https://github.com/vbatts/go-mtree/pull/212
+// * https://github.com/vbatts/go-mtree/pull/214
 replace github.com/vbatts/go-mtree => github.com/cyphar/go-mtree v0.0.0-20250928235313-918fa724e2fe
