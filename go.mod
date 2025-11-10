@@ -38,7 +38,7 @@ require (
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.12
 	github.com/vbatts/go-mtree v0.6.1-0.20250911112631-8307d76bc1b9
-	golang.org/x/sys v0.37.0
+	golang.org/x/sys v0.38.0
 	google.golang.org/protobuf v1.36.10
 )
 
