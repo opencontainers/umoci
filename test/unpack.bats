@@ -415,3 +415,54 @@ function teardown() {
 	[ -f "$ROOTFS/plain2" ]
 	[ -f "$ROOTFS/zstd3" ]
 }
+
+@test "umoci unpack [config.json HOME]" {
+	# Unpack the image.
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	user="dummy-$RANDOM"
+	uid="100$RANDOM"
+	home="/foo/bar/baz"
+
+	# Add entries to /etc/{passwd,group}.
+	echo "$user:x:$uid:$uid::$home:/bin/bash" >>"$ROOTFS/etc/passwd"
+	echo "$user:!:$uid:" >>"$ROOTFS/etc/group"
+
+	umoci repack --image "${IMAGE}:${TAG}" "$BUNDLE"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	# Add a user configuration, and make sure that HOME is not set.
+	umoci config  --image "${IMAGE}:${TAG}" \
+		--config.user "$user:$user" \
+		--clear config.env
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -Mr '.process.env[]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	grep -Fx "HOME=$home" <<<"$output"
+
+	# Now set HOME to some other value -- that should take precedence.
+	other_home="/other/home"
+	umoci config --image "${IMAGE}:${TAG}" --config.env "HOME=$other_home"
+	[ "$status" -eq 0 ]
+	image-verify "${IMAGE}"
+
+	new_bundle_rootfs
+	umoci unpack --image "${IMAGE}:${TAG}" "${BUNDLE}"
+	[ "$status" -eq 0 ]
+	bundle-verify "$BUNDLE"
+
+	sane_run jq -Mr '.process.env[]' "$BUNDLE/config.json"
+	[ "$status" -eq 0 ]
+	grep -Fx "HOME=$other_home" <<<"$output"
+}

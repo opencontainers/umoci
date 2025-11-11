@@ -76,11 +76,13 @@ func parseEnv(env string) (string, string, error) {
 
 // appendEnv takes a (name, value) pair and inserts it into the given
 // environment list (overwriting an existing environment if already set).
-func appendEnv(env *[]string, name, value string) {
+func appendEnv(env *[]string, name, value string, clobber bool) {
 	val := name + "=" + value
 	for idx, oldVal := range *env {
 		if strings.HasPrefix(oldVal, name+"=") {
-			(*env)[idx] = val
+			if clobber {
+				(*env)[idx] = val
+			}
 			return
 		}
 	}
@@ -157,7 +159,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		if err != nil {
 			return fmt.Errorf("parsing image.Config.Env: %w", err)
 		}
-		appendEnv(&spec.Process.Env, name, value)
+		appendEnv(&spec.Process.Env, name, value, true)
 	}
 
 	args := []string{}
@@ -214,7 +216,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	}
 
 	if execUser.Home != "" {
-		appendEnv(&spec.Process.Env, "HOME", execUser.Home)
+		appendEnv(&spec.Process.Env, "HOME", execUser.Home, false)
 	}
 
 	for _, vol := range ig.ConfigVolumes() {
