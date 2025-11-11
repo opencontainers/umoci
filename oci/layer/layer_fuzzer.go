@@ -41,7 +41,7 @@ import (
 	"github.com/opencontainers/umoci/oci/casext"
 )
 
-func createRandomFile(dirpath string, filename []byte, filecontents []byte) error {
+func createRandomFile(dirpath string, filename, filecontents []byte) error {
 	fileP := filepath.Join(dirpath, string(filename))
 	if err := os.WriteFile(fileP, filecontents, 0o644); err != nil {
 		return err

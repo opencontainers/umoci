@@ -120,7 +120,7 @@ func (fs unprivFsEval) Lsetxattr(path, name string, value []byte, flags int) err
 }
 
 // Lgetxattr is equivalent to unpriv.Lgetxattr.
-func (fs unprivFsEval) Lgetxattr(path string, name string) ([]byte, error) {
+func (fs unprivFsEval) Lgetxattr(path, name string) ([]byte, error) {
 	return unpriv.Lgetxattr(path, name)
 }
 

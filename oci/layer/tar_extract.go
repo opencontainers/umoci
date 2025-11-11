@@ -274,7 +274,7 @@ func (te *TarExtractor) applyMetadata(path string, hdr *tar.Header) error {
 // we should extract through the link or clobber the link with a directory (in
 // the case where we see a directory to extract and a symlink already exists
 // there).
-func (te *TarExtractor) isDirlink(root string, path string) (bool, error) {
+func (te *TarExtractor) isDirlink(root, path string) (bool, error) {
 	// Make sure it exists and is a symlink.
 	if _, err := te.fsEval.Readlink(path); err != nil {
 		return false, fmt.Errorf("read dirlink: %w", err)

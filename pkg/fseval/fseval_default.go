@@ -132,7 +132,7 @@ func (fs osFsEval) Lsetxattr(path, name string, value []byte, flags int) error {
 }
 
 // Lgetxattr is equivalent to system.Lgetxattr.
-func (fs osFsEval) Lgetxattr(path string, name string) ([]byte, error) {
+func (fs osFsEval) Lgetxattr(path, name string) ([]byte, error) {
 	return system.Lgetxattr(path, name)
 }
 

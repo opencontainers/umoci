@@ -70,7 +70,7 @@ func Llistxattr(path string) ([]string, error) {
 
 // Lgetxattr is a wrapper around unix.Lgetattr, to abstract the resizing of the
 // returned []string.
-func Lgetxattr(path string, name string) ([]byte, error) {
+func Lgetxattr(path, name string) ([]byte, error) {
 	var buffer []byte //nolint:prealloc // we do pre-allocate later
 	for {
 		// Find the size.

@@ -77,7 +77,7 @@ type FsEval interface {
 	Lsetxattr(path, name string, value []byte, flags int) error
 
 	// Lgetxattr is equivalent to system.Lgetxattr
-	Lgetxattr(path string, name string) ([]byte, error)
+	Lgetxattr(path, name string) ([]byte, error)
 
 	// Lclearxattrs is equivalent to system.Lclearxattrs
 	Lclearxattrs(path string, skipFn func(xattr string) bool) error
