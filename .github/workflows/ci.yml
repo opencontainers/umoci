@@ -86,11 +86,10 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
-          flags: unit,macos
       - name: upload coverage
         uses: actions/upload-artifact@v5
         with:
@@ -122,11 +121,10 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
-          flags: unit,linux
       - name: upload coverage
         uses: actions/upload-artifact@v5
         with:
@@ -172,11 +170,10 @@ jobs:
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
         uses: codecov/codecov-action@v5
-        env:
-          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
         with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
-          flags: integration,linux
       - name: upload coverage
         uses: actions/upload-artifact@v5
         with:
