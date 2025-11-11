@@ -14,6 +14,14 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Fixed ###
+* Previously umoci would always overwrite the `HOME` environment variable with
+  the home directory configured in the container image's `/etc/passwd` (if the
+  the configured user existed). This was different to other OCI runtimes and
+  was a violation of the policy that user-configured data should always take
+  priority. Umoci will now only add the auto-generated `HOME` environment
+  variable if no such variable was configured in `Config.Env`. (#652)
+
 ## [0.6.0] - 2025-10-15 ##
 
 > Please mind the gap between the train and the platform.
