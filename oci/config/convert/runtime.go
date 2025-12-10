@@ -119,10 +119,6 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		return fmt.Errorf("creating image generator: %w", err)
 	}
 
-	if ig.PlatformOS() != "linux" {
-		return fmt.Errorf("unsupported OS: %s", image.OS)
-	}
-
 	allocateNilStruct(spec)
 
 	// Default config to our rspec version if none was specified.
