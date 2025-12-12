@@ -27,7 +27,7 @@ RUN cd /tmp/gomtree && \
 	go install ./cmd/gomtree
 
 ## CI: Pull the test image in a separate build stage.
-FROM quay.io/skopeo/stable:v1.20 AS test-image
+FROM quay.io/skopeo/stable:v1.21 AS test-image
 ENV SOURCE_IMAGE=/image SOURCE_TAG=latest
 ARG TEST_DOCKER_IMAGE=registry.opensuse.org/opensuse/tumbleweed:latest
 RUN skopeo copy docker://$TEST_DOCKER_IMAGE oci:$SOURCE_IMAGE:$SOURCE_TAG
