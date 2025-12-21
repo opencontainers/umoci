@@ -40,8 +40,6 @@ const (
 // should only be used for OCI media-types, where this behaviour is
 // well-defined.
 func SplitMediaTypeSuffix(mediaType string) (baseType, suffix string) {
-	if suffixStart := strings.Index(mediaType, "+"); suffixStart >= 0 {
-		return mediaType[:suffixStart], mediaType[suffixStart+1:]
-	}
-	return mediaType, ""
+	baseType, suffix, _ = strings.Cut(mediaType, "+")
+	return baseType, suffix
 }

@@ -182,14 +182,10 @@ func uxImage(cmd cli.Command) cli.Command {
 		if ctx.IsSet("image") {
 			image := ctx.String("image")
 
-			var dir, tag string
-			sep := strings.Index(image, ":")
-			if sep == -1 {
+			dir, tag, ok := strings.Cut(image, ":")
+			if !ok {
 				dir = image
 				tag = "latest"
-			} else {
-				dir = image[:sep]
-				tag = image[sep+1:]
 			}
 
 			// Verify directory value.

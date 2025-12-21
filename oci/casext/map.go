@@ -31,7 +31,7 @@ import (
 // Used by walkState.mark() to determine which struct members are descriptors to
 // recurse into them. We aren't interested in struct members which are not
 // either a slice of ispec.Descriptor or ispec.Descriptor themselves.
-var descriptorType = reflect.TypeOf(ispec.Descriptor{})
+var descriptorType = reflect.TypeFor[ispec.Descriptor]()
 
 // DescriptorMapFunc is a function that is used to provide a mapping between
 // different descriptor values with MapDescriptors. It will not be called
