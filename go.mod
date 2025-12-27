@@ -55,7 +55,7 @@ require (
 	github.com/pmezard/go-difflib v1.0.0 // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
 	github.com/sirupsen/logrus v1.9.3 // indirect
-	golang.org/x/crypto v0.41.0 // indirect
+	golang.org/x/crypto v0.45.0 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
@@ -66,4 +66,4 @@ require (
 // * https://github.com/vbatts/go-mtree/pull/211
 // * https://github.com/vbatts/go-mtree/pull/212
 // * https://github.com/vbatts/go-mtree/pull/214
-replace github.com/vbatts/go-mtree => github.com/cyphar/go-mtree v0.0.0-20250928235313-918fa724e2fe
+replace github.com/vbatts/go-mtree => github.com/cyphar/go-mtree v0.0.0-20251220234804-11af791376db
