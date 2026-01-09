@@ -38,7 +38,7 @@ require (
 	github.com/rootless-containers/proto/go-proto v0.0.0-20230421021042-4cd87ebadd67
 	github.com/stretchr/testify v1.11.1
 	github.com/urfave/cli v1.22.12
-	github.com/vbatts/go-mtree v0.6.1-0.20250911112631-8307d76bc1b9
+	github.com/vbatts/go-mtree v0.7.0
 	golang.org/x/sys v0.39.0
 	google.golang.org/protobuf v1.36.11
 )
@@ -60,11 +60,3 @@ require (
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 )
-
-// NOTE: This breaks "go install" and so we really need to remove this
-// directive as soon as possible. This is needed because we are a waiting for
-// upstream to merge the following PRs:
-// * https://github.com/vbatts/go-mtree/pull/211
-// * https://github.com/vbatts/go-mtree/pull/212
-// * https://github.com/vbatts/go-mtree/pull/214
-replace github.com/vbatts/go-mtree => github.com/cyphar/go-mtree v0.0.0-20251220234804-11af791376db

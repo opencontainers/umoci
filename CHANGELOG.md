@@ -22,6 +22,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   priority. Umoci will now only add the auto-generated `HOME` environment
   variable if no such variable was configured in `Config.Env`. (#652)
 
+### Changed ###
+* `github.com/vbatts/go-mtree` has merged our patches to improve the strictness
+  of manifest verification, meaning that the `replace` directive can be
+  removed. This re-enables `go install`-based installation. (#646)
+
 ## [0.6.0] - 2025-10-15 ##
 
 > Please mind the gap between the train and the platform.
