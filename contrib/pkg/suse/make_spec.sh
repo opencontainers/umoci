@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # umoci: Umoci Modifies Open Containers' Images
 # Copyright (C) 2016-2025 SUSE LLC
+# Copyright (C) 2026 Aleksa Sarai <cyphar@cyphar.com>
 #
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -39,7 +40,8 @@ cat <<EOF > ${NAME}.spec
 #
 # spec file for package $NAME
 #
-# Copyright (C) $YEAR SUSE LLC
+# Copyright (C) 2016-2025 SUSE LLC
+# Copyright (C) $YEAR Aleksa Sarai <cyphar@cyphar.com>
 #
 # All modifications and additions to the file contributed by third parties
 # remain the property of their copyright owners, unless otherwise agreed
