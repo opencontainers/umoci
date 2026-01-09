@@ -93,7 +93,7 @@ github.com/stretchr/testify/require
 # github.com/urfave/cli v1.22.12
 ## explicit; go 1.11
 github.com/urfave/cli
-# github.com/vbatts/go-mtree v0.6.1-0.20250911112631-8307d76bc1b9 => github.com/cyphar/go-mtree v0.0.0-20251220234804-11af791376db
+# github.com/vbatts/go-mtree v0.7.0
 ## explicit; go 1.24.0
 github.com/vbatts/go-mtree
 github.com/vbatts/go-mtree/pkg/govis
@@ -139,4 +139,3 @@ google.golang.org/protobuf/runtime/protoimpl
 # gopkg.in/yaml.v3 v3.0.1
 ## explicit
 gopkg.in/yaml.v3
-# github.com/vbatts/go-mtree => github.com/cyphar/go-mtree v0.0.0-20251220234804-11af791376db
