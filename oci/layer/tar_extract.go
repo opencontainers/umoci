@@ -552,6 +552,8 @@ func (te *TarExtractor) mkdirAll(root, subpath string, mode os.FileMode) error {
 	return nil
 }
 
+var errInvalidWhiteout = errors.New("invalid whiteout")
+
 // UnpackEntry extracts the given tar.Header to the provided root, ensuring
 // that the layer state is consistent with the layer state that produced the
 // tar archive being iterated over. This does handle whiteouts, so a tar.Header
@@ -681,7 +683,11 @@ func (te *TarExtractor) UnpackEntry(root string, hdr *tar.Header, r io.Reader) (
 	// Typeflag, expecting that the path is the only thing that matters in a
 	// whiteout entry.
 	if woFile, isWhiteout := strings.CutPrefix(file, whPrefix); isWhiteout {
+		if woFile == "" {
+			return fmt.Errorf("%w with empty name: %s", errInvalidWhiteout, path)
+		}
 		if file == whOpaque {
+			// special value to indicate opaque whiteout
 			woFile = ""
 		}
 		switch onDiskFmt := te.onDiskFmt.(type) {

@@ -21,6 +21,9 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
   was a violation of the policy that user-configured data should always take
   priority. Umoci will now only add the auto-generated `HOME` environment
   variable if no such variable was configured in `Config.Env`. (#652)
+* When encountering an invalid whiteout (specifically, one with the name
+  `.wh.`), `umoci unpack` will now return an error. Previously such whiteouts
+  were incorrectly treated as though they were opaque whiteouts.
 
 ### Changed ###
 * `github.com/vbatts/go-mtree` has merged our patches to improve the strictness
