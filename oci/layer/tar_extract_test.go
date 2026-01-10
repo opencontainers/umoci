@@ -212,18 +212,21 @@ func TestUnpackEntryParentDir(t *testing.T) {
 // as well as ensuring that the metadata of the parent is maintained.
 func TestUnpackEntryWhiteout(t *testing.T) {
 	for _, test := range []struct {
-		name string
-		path string
-		dir  bool // TODO: Switch to Typeflag
+		name        string
+		path        string
+		dir         bool // TODO: Switch to Typeflag
+		expectedErr error
 	}{
-		{"FileInRoot", "rootpath", false},
-		{"HiddenFileInRoot", ".hiddenroot", false},
-		{"FileInSubdir", "some/path/file", false},
-		{"HiddenFileInSubdir", "another/path/.hiddenfile", false},
-		{"DirInRoot", "rootpath", true},
-		{"HiddenDirInRoot", ".hiddenroot", true},
-		{"DirInSubdir", "some/path/dir", true},
-		{"HiddenDirInSubdir", "another/path/.hiddendir", true},
+		{"EmptyWhiteoutName-Root", "", false, errInvalidWhiteout},
+		{"EmptyWhiteoutName", "some/path/", false, errInvalidWhiteout},
+		{"FileInRoot", "rootpath", false, nil},
+		{"HiddenFileInRoot", ".hiddenroot", false, nil},
+		{"FileInSubdir", "some/path/file", false, nil},
+		{"HiddenFileInSubdir", "another/path/.hiddenfile", false, nil},
+		{"DirInRoot", "rootpath", true, nil},
+		{"HiddenDirInRoot", ".hiddenroot", true, nil},
+		{"DirInSubdir", "some/path/dir", true, nil},
+		{"HiddenDirInSubdir", "another/path/.hiddendir", true, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			testMtime := testhelpers.Unix(123, 456)
@@ -255,7 +258,7 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 
 				err = os.WriteFile(filepath.Join(dir, test.path, ".subdir", "file3"), []byte("some value"), 0o644)
 				require.NoError(t, err)
-			} else {
+			} else if rawFile != "" {
 				err := os.WriteFile(filepath.Join(dir, test.path), []byte("some value"), 0o644)
 				require.NoError(t, err)
 			}
@@ -272,11 +275,14 @@ func TestUnpackEntryWhiteout(t *testing.T) {
 
 			te := NewTarExtractor(nil)
 			err = te.UnpackEntry(dir, hdr, nil)
-			require.NoErrorf(t, err, "UnpackEntry %s whiteout", hdr.Name)
-
-			// Make sure that the path is gone.
-			_, err = os.Lstat(filepath.Join(dir, test.path))
-			assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path") //nolint:testifylint // assert.*Error* makes more sense
+			if test.expectedErr != nil {
+				assert.ErrorIsf(t, err, test.expectedErr, "UnpackEntry %q whiteout should fail with expected err", hdr.Name) //nolint:testifylint // assert.*Error* makes more sense
+			} else {
+				require.NoErrorf(t, err, "UnpackEntry %q whiteout", hdr.Name)
+				// Make sure that the path is gone.
+				_, err = os.Lstat(filepath.Join(dir, test.path))
+				assert.ErrorIs(t, err, os.ErrNotExist, "whiteout should have removed path") //nolint:testifylint // assert.*Error* makes more sense
+			}
 
 			// Make sure the parent directory wasn't modified.
 			fi, err := os.Lstat(filepath.Join(dir, rawDir))
