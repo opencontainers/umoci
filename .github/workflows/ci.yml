@@ -39,7 +39,7 @@ jobs:
       - uses: actions/setup-go@v6
       - run: make release
       - name: upload artifacts
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: release-${{ github.run_id }}
           path: release/*
@@ -92,7 +92,7 @@ jobs:
           slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
       - name: upload coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -127,7 +127,7 @@ jobs:
           slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
       - name: upload coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -176,7 +176,7 @@ jobs:
           slug: opencontainers/umoci
           files: ${{ env.COVERAGE }}
       - name: upload coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage-${{ runner.os }}-${{ github.job }}-${{ strategy.job-index }}
           path: ${{ env.GOCOVERDIR }}
@@ -199,7 +199,7 @@ jobs:
         run: |
           ./hack/ci-coverage.sh --merge="$GOCOVERDIR" --func coverage/*/
       - name: upload final coverage
-        uses: actions/upload-artifact@v6
+        uses: actions/upload-artifact@v7
         with:
           name: coverage
           path: ${{ env.GOCOVERDIR }}
