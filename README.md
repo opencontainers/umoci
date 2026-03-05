@@ -138,12 +138,6 @@ the release assets. All of the assets are also signed with [one of our release
 keys][umoci-keyring], whose fingerprints are:
 
 ```text
-pub   rsa4096 2016-06-21 [SC] [expires: 2031-06-18]
-      5F36C6C61B5460124A75F5A69E18AA267DDB8DB4
-uid           [ultimate] Aleksa Sarai <asarai@suse.com>
-uid           [ultimate] Aleksa Sarai <asarai@suse.de>
-sub   rsa4096 2016-06-21 [E] [expires: 2031-06-18]
-
 pub   ed25519 2019-06-21 [C]
       C9C370B246B09F6DBCFC744C34401015D1D2D386
 uid           [ultimate] Aleksa Sarai <cyphar@cyphar.com>
