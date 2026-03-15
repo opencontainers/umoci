@@ -16,7 +16,7 @@
 # limitations under the License.
 
 ## TOOLS: Basic golang tools can be installed using standard "go install".
-FROM golang:1.25 AS go-binaries
+FROM golang:1.26 AS go-binaries
 ENV GOPATH=/go PATH=/go/bin:$PATH
 RUN go install github.com/cpuguy83/go-md2man/v2@latest
 # TODO: Get <https://github.com/vbatts/go-mtree/pull/211>,
