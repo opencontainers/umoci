@@ -86,7 +86,7 @@ jobs:
       - run: make local-test-unit
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: opencontainers/umoci
@@ -121,7 +121,7 @@ jobs:
       - run: make test-unit
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: opencontainers/umoci
@@ -170,7 +170,7 @@ jobs:
       - run: make TEST_DOCKER_IMAGE=$TEST_DOCKER_IMAGE test-${{ matrix.test }}-integration
       - run: go tool covdata textfmt -i "$GOCOVERDIR" -o "$COVERAGE"
       - name: codecov
-        uses: codecov/codecov-action@v5
+        uses: codecov/codecov-action@v6
         with:
           token: ${{ secrets.CODECOV_TOKEN }}
           slug: opencontainers/umoci
