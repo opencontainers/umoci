@@ -52,6 +52,11 @@ is the destination to unpack the image to.`,
 			Name:  "keep-dirlinks",
 			Usage: "don't clobber underlying symlinks to directories",
 		},
+		cli.StringFlag{
+			Name:  "start-from-digest",
+			Usage: "start unpacking from the given layer digest",
+			Value: "",
+		},
 	},
 
 	Action: rawUnpack,
@@ -132,6 +137,19 @@ func rawUnpack(ctx *cli.Context) (Err error) {
 	if !ok {
 		// Should _never_ be reached.
 		return fmt.Errorf("[internal error] unknown manifest blob type: %s", manifestBlob.Descriptor.MediaType)
+	}
+
+	startFromDigest := ctx.String("start-from-digest")
+	if startFromDigest != "" {
+		for _, layer := range manifest.Layers {
+			if layer.Digest.String() == startFromDigest {
+				unpackOptions.StartFrom = layer
+				break
+			}
+		}
+		if unpackOptions.StartFrom.MediaType == "" {
+			return fmt.Errorf("start-from-digest: %s not found in manifest", startFromDigest)
+		}
 	}
 
 	log.Warnf("unpacking rootfs ...")
