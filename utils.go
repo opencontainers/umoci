@@ -696,8 +696,13 @@ func Stat(ctx context.Context, engine casext.Engine, manifestDescriptor ispec.De
 				Layer:   nil,
 			}
 			// Only fill the other information and increment layerIdx if it's a
-			// non-empty layer.
+			// non-empty layer. Both slices come from the untrusted image, so a
+			// mismatch between the history and the diff_ids/layers must not be
+			// allowed to index out of range and panic.
 			if !histEntry.EmptyLayer {
+				if layerIdx >= len(config.RootFS.DiffIDs) || layerIdx >= len(manifest.Layers) {
+					return stat, fmt.Errorf("stat: config: number of non-empty history entries exceeds number of diff_ids (%d) or manifest layers (%d)", len(config.RootFS.DiffIDs), len(manifest.Layers))
+				}
 				info.DiffID = config.RootFS.DiffIDs[layerIdx]
 				info.Layer = &manifest.Layers[layerIdx]
 				layerIdx++

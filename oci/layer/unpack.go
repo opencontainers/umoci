@@ -249,6 +249,13 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 		return fmt.Errorf("unpack rootfs: config: unsupported rootfs.type: %s", config.RootFS.Type)
 	}
 
+	// Both of these slices come from the untrusted image, so we cannot assume
+	// they line up. Bail out with a clear error rather than letting the loop
+	// below index config.RootFS.DiffIDs out of range and panic.
+	if len(manifest.Layers) != len(config.RootFS.DiffIDs) {
+		return fmt.Errorf("unpack rootfs: config: number of diff_ids (%d) does not match number of manifest layers (%d)", len(config.RootFS.DiffIDs), len(manifest.Layers))
+	}
+
 	// Layer extraction.
 	found := false
 	for idx, layerDescriptor := range manifest.Layers {

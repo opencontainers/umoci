@@ -205,6 +205,53 @@ func TestUnpackStartFromDescriptor(t *testing.T) {
 	assert.ErrorIs(t, err, os.ErrNotExist, "test file should not be present")
 }
 
+// A crafted image whose manifest lists more layers than the config has
+// diff_ids (both come from the untrusted image) used to walk off the end of
+// config.RootFS.DiffIDs and panic. Make sure we return an error instead.
+func TestUnpackManifestLayerDiffIDMismatch(t *testing.T) {
+	_, manifest, engineExt := makeImage(t)
+	require.Greater(t, len(manifest.Layers), 1, "test image needs at least two layers")
+
+	// Grab the original config so we can build a corrupted variant with fewer
+	// diff_ids than the manifest has layers.
+	configBlob, err := engineExt.FromDescriptor(t.Context(), manifest.Config)
+	require.NoError(t, err)
+	defer configBlob.Close() //nolint:errcheck // read-only blob
+	config, ok := configBlob.Data.(ispec.Image)
+	require.True(t, ok, "config blob should decode to an image")
+
+	// Drop the last diff_id so the counts no longer line up.
+	config.RootFS.DiffIDs = config.RootFS.DiffIDs[:len(config.RootFS.DiffIDs)-1]
+
+	configDigest, configSize, err := engineExt.PutBlobJSON(t.Context(), config)
+	require.NoError(t, err)
+	manifest.Config = ispec.Descriptor{
+		MediaType: ispec.MediaTypeImageConfig,
+		Digest:    configDigest,
+		Size:      configSize,
+	}
+
+	unpackOptions := &UnpackOptions{
+		OnDiskFormat: DirRootfs{
+			MapOptions: MapOptions{
+				UIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Geteuid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Geteuid()), ContainerID: 1000, Size: 1},
+				},
+				GIDMappings: []rspec.LinuxIDMapping{
+					{HostID: uint32(os.Getegid()), ContainerID: 0, Size: 1},
+					{HostID: uint32(os.Getegid()), ContainerID: 100, Size: 1},
+				},
+				Rootless: os.Geteuid() != 0,
+			},
+		},
+	}
+	bundle := t.TempDir()
+	err = UnpackManifest(t.Context(), engineExt, bundle, manifest, unpackOptions)
+	require.Error(t, err, "UnpackManifest with mismatched diff_ids should fail cleanly")
+	assert.Contains(t, err.Error(), "does not match number of manifest layers")
+}
+
 // TODO: Temporary until <https://github.com/opencontainers/umoci/issues/574>
 // is resolved.
 func TestUnpackUnimplementedOverlayfs(t *testing.T) {
