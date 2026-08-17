@@ -45,6 +45,7 @@ const (
 	createdAnnotation         = "org.opencontainers.image.created"
 	stopSignalAnnotation      = "org.opencontainers.image.stopSignal"
 	exposedPortsAnnotation    = "org.opencontainers.image.exposedPorts"
+	volumesAnnotation         = "org.opencontainers.image.volumes"
 )
 
 // ToRuntimeSpec converts the given OCI image configuration to a runtime
@@ -185,6 +186,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 	setAnnotation(createdAnnotation, ig.Created().Format(igen.ISO8601))
 	setAnnotation(stopSignalAnnotation, image.Config.StopSignal)
 	setAnnotation(exposedPortsAnnotation, strings.Join(ig.ConfigExposedPorts(), ","))
+	setAnnotation(volumesAnnotation, strings.Join(ig.ConfigVolumes(), ","))
 	// Config.Labels need to be applied after the auto-applied labels.
 	maps.Copy(spec.Annotations, ig.ConfigLabels())
 
