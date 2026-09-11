@@ -97,10 +97,16 @@ func (e Engine) FromDescriptor(ctx context.Context, descriptor ispec.Descriptor)
 			if blob != nil {
 				// Include all trailing data.
 				blob.RawData = rawDataBuf.Bytes()
-				// Sanity check.
-				assert.Assertf(int64(len(blob.RawData)) == descriptor.Size,
-					"parsing %q blob succeeded but raw data has unexpected length (expected %d bytes but got %d bytes)",
-					descriptor.MediaType, descriptor.Size, len(blob.RawData))
+				// Sanity check. descriptor.Size comes from index.json or a
+				// manifest, so a blob that is shorter than its descriptor claims
+				// is bad image data rather than a programmer error. The reader has
+				// already reported that as ErrSizeMismatch, so only assert when
+				// nothing else has gone wrong and let the error be returned.
+				if Err == nil {
+					assert.Assertf(int64(len(blob.RawData)) == descriptor.Size,
+						"parsing %q blob succeeded but raw data has unexpected length (expected %d bytes but got %d bytes)",
+						descriptor.MediaType, descriptor.Size, len(blob.RawData))
+				}
 			}
 		}()
 

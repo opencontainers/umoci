@@ -21,13 +21,16 @@ package casext
 
 import (
 	"io"
+	"path/filepath"
 	"testing"
 
+	imeta "github.com/opencontainers/image-spec/specs-go"
 	ispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 
 	"github.com/opencontainers/umoci/internal"
+	cas "github.com/opencontainers/umoci/oci/cas/dir"
 	"github.com/opencontainers/umoci/pkg/hardening"
 )
 
@@ -119,4 +122,44 @@ func TestDescriptorEmbeddedData(t *testing.T) {
 			})
 		})
 	}
+}
+
+// descriptor.Size comes out of index.json or a manifest, so a descriptor that
+// declares more bytes than the blob actually holds is bad image data rather
+// than a programmer error. The verified reader reports it as a size mismatch;
+// FromDescriptor must return that error rather than panicking on its way out.
+func TestFromDescriptorOversizedDescriptor(t *testing.T) {
+	image := filepath.Join(t.TempDir(), "image")
+	require.NoError(t, cas.Create(image), "create image")
+
+	engine, err := cas.Open(image)
+	require.NoError(t, err, "open engine")
+	defer engine.Close() //nolint:errcheck
+	engineExt := NewEngine(engine)
+
+	manifest := ispec.Manifest{
+		Versioned: imeta.Versioned{SchemaVersion: 2},
+		MediaType: ispec.MediaTypeImageManifest,
+		Config:    ispec.Descriptor{MediaType: ispec.MediaTypeImageConfig},
+	}
+
+	digest, size, err := engineExt.PutBlobJSON(t.Context(), manifest)
+	require.NoError(t, err, "put manifest blob")
+
+	good := ispec.Descriptor{
+		MediaType: ispec.MediaTypeImageManifest,
+		Digest:    digest,
+		Size:      size,
+	}
+
+	// Positive control: the honest descriptor must still parse.
+	blob, err := engineExt.FromDescriptor(t.Context(), good)
+	require.NoError(t, err, "honest descriptor should parse")
+	require.NotNil(t, blob)
+
+	oversized := good
+	oversized.Size = size + 1000
+
+	_, err = engineExt.FromDescriptor(t.Context(), oversized)
+	assert.Error(t, err, "a descriptor that overstates its size should error, not panic") //nolint:testifylint
 }
