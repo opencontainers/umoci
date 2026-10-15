@@ -266,6 +266,17 @@ func (m *Mutator) appendToConfig(history *ispec.History, layerDiffID digest.Dige
 	}
 }
 
+func (m *Mutator) prependToConfig(history *ispec.History, layerDiffID digest.Digest) {
+	m.config.RootFS.DiffIDs = append([]digest.Digest{layerDiffID}, m.config.RootFS.DiffIDs...)
+
+	if history != nil {
+		history.EmptyLayer = false
+		m.config.History = append([]ispec.History{*history}, m.config.History...)
+	} else {
+		log.Warnf("new layer has no history entry -- this will confuse many tools!")
+	}
+}
+
 // PickDefaultCompressAlgorithm returns the best option for the compression
 // algorithm for new layers. The main preference is to use re-use whatever the
 // most recent layer's compression algorithm is (for those we support). As a
@@ -296,6 +307,18 @@ func (m *Mutator) PickDefaultCompressAlgorithm(ctx context.Context) (Compressor,
 // appended to the image's history and should correspond to what operations
 // were made to the configuration.
 func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (_ ispec.Descriptor, Err error) {
+	return m.addLayer(ctx, mediaType, r, history, compressor, annotations, false)
+}
+
+// Prepend adds a layer to the front of the image, by reading the layer
+// changeset blob from the provided reader. The provided history entry is
+// inserted at the start of the image's history and should correspond to the
+// new first layer in the configuration.
+func (m *Mutator) Prepend(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string) (_ ispec.Descriptor, Err error) {
+	return m.addLayer(ctx, mediaType, r, history, compressor, annotations, true)
+}
+
+func (m *Mutator) addLayer(ctx context.Context, mediaType string, r io.Reader, history *ispec.History, compressor Compressor, annotations map[string]string, prepend bool) (_ ispec.Descriptor, Err error) {
 	var desc ispec.Descriptor
 	if err := m.cache(ctx); err != nil {
 		return desc, fmt.Errorf("getting cache failed: %w", err)
@@ -326,7 +349,11 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 	}
 
 	// Add DiffID to configuration.
-	m.appendToConfig(history, diffidDigester.Digest())
+	if prepend {
+		m.prependToConfig(history, diffidDigester.Digest())
+	} else {
+		m.appendToConfig(history, diffidDigester.Digest())
+	}
 
 	// Build the descriptor.
 	if suffix := compressor.MediaTypeSuffix(); suffix != "" {
@@ -340,14 +367,17 @@ func (m *Mutator) Add(ctx context.Context, mediaType string, r io.Reader, histor
 		annotations[UmociUncompressedBlobSizeAnnotation] = fmt.Sprintf("%d", plainSize)
 	}
 
-	// Append to layers.
 	desc = ispec.Descriptor{
 		MediaType:   mediaType,
 		Digest:      layerDigest,
 		Size:        layerSize,
 		Annotations: annotations,
 	}
-	m.manifest.Layers = append(m.manifest.Layers, desc)
+	if prepend {
+		m.manifest.Layers = append([]ispec.Descriptor{desc}, m.manifest.Layers...)
+	} else {
+		m.manifest.Layers = append(m.manifest.Layers, desc)
+	}
 	return desc, nil
 }
 
@@ -361,6 +391,18 @@ func (m *Mutator) AddExisting(ctx context.Context, desc ispec.Descriptor, histor
 
 	m.appendToConfig(history, diffID)
 	m.manifest.Layers = append(m.manifest.Layers, desc)
+	return nil
+}
+
+// PrependExisting adds a blob that already exists to the front of the layer list,
+// using the user specified DiffID.
+func (m *Mutator) PrependExisting(ctx context.Context, desc ispec.Descriptor, history *ispec.History, diffID digest.Digest) error {
+	if err := m.cache(ctx); err != nil {
+		return fmt.Errorf("getting cache failed: %w", err)
+	}
+
+	m.prependToConfig(history, diffID)
+	m.manifest.Layers = append([]ispec.Descriptor{desc}, m.manifest.Layers...)
 	return nil
 }
 

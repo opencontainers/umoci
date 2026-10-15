@@ -42,7 +42,7 @@ import (
 var rawAddLayerCommand = uxCompress(uxHistory(uxTag(cli.Command{
 	Name:  "add-layer",
 	Usage: "add a layer archive verbatim to an image",
-	ArgsUsage: `--image <image-path>[:<tag>] <new-layer.tar>
+	ArgsUsage: `--image <image-path>[:<tag>] [--prepend] <new-layer.tar>
 
 Where "<image-path>" is the path to the OCI image, "<tag>" is the name of the
 tagged image to modify (if not specified, defaults to "latest"),
@@ -52,13 +52,20 @@ Note that using your own layer archives may result in strange behaviours (for
 instance, you may need to use --keep-dirlink with umoci-unpack(1) in order to
 avoid breaking certain entries).
 
-At the moment, umoci-raw-add-layer(1) will only *append* layers to an image and
-only supports uncompressed archives.`,
+By default, umoci-raw-add-layer(1) appends layers to the end of the image. Use
+--prepend to insert the new layer at the beginning of the layer list instead.
+This command only supports uncompressed archives.`,
 
 	// unpack reads manifest information.
 	Category: "image",
 
 	Action: rawAddLayer,
+	Flags: []cli.Flag{
+		cli.BoolFlag{
+			Name:  "prepend",
+			Usage: "prepend the layer to the beginning of the image layer list instead of appending it",
+		},
+	},
 
 	Before: func(ctx *cli.Context) error {
 		if ctx.NArg() != 1 {
@@ -172,7 +179,11 @@ func rawAddLayer(ctx *cli.Context) (Err error) {
 		}
 	}
 
-	if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, compressAlgo, nil); err != nil {
+	if ctx.Bool("prepend") {
+		if _, err := mutator.Prepend(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, compressAlgo, nil); err != nil {
+			return fmt.Errorf("prepend diff layer: %w", err)
+		}
+	} else if _, err := mutator.Add(context.Background(), ispec.MediaTypeImageLayer, newLayer, history, compressAlgo, nil); err != nil {
 		return fmt.Errorf("add diff layer: %w", err)
 	}
 

@@ -9,6 +9,7 @@ umoci raw add-layer - add a layer archive verbatim to an image
 **--image**=*image*
 [**--tag**=*tag*]
 [**--compress**=*compression-type*]
+[**--prepend**]
 [**--no-history**]
 [**--history.comment**=*comment*]
 [**--history.created_by**=*created_by*]
@@ -24,8 +25,8 @@ files) will be included unmodified. Use of this command is therefore only
 recommended for expert users, and more novice users should look at
 **umoci-repack**(1) to create their layers.
 
-At the moment, **umoci raw add-layer** only supports appending layers to the
-end of the image layer list.
+By default, **umoci raw add-layer** appends layers to the end of the image
+layer list. Use **--prepend** to insert the new layer at the beginning instead.
 
 # OPTIONS
 The global options are defined in **umoci**(1).
@@ -45,6 +46,10 @@ The global options are defined in **umoci**(1).
   compression types are *none*, *gzip*, and *zstd*. **umoci-unpack**(1)
   transparently supports all compression methods you can specify with
   **--compress**.
+
+**--prepend**
+  Insert the new layer at the beginning of the image layer list instead of
+  appending it to the end. The default behavior is to append.
   <!-- paragraph break -->
   The special value *auto* will cause **umoci**(1) to auto-select the most
   appropriate compression algorithm based on what previous layers are

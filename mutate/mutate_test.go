@@ -258,6 +258,40 @@ func TestMutateAdd(t *testing.T) {
 	assert.Equal(t, newLayerHist, mutator.config.History[1], "new layer history should match specified value")
 }
 
+func TestMutatePrepend(t *testing.T) {
+	engine, fromDescriptor := setup(t)
+	defer engine.Close() //nolint:errcheck
+
+	mutator, err := New(engine, casext.DescriptorPath{Walk: []ispec.Descriptor{fromDescriptor}})
+	require.NoError(t, err)
+
+	buffer := bytes.NewBufferString("new-base-layer")
+	newLayerHist := ispec.History{EmptyLayer: false, Comment: "prepend layer"}
+	newLayerDesc, err := mutator.Prepend(t.Context(), ispec.MediaTypeImageLayer, buffer, &newLayerHist, blobcompress.Gzip, nil)
+	require.NoError(t, err, "prepend layer")
+
+	newDescriptor, err := mutator.Commit(t.Context())
+	require.NoError(t, err, "commit changes")
+	assert.NotEqual(t, fromDescriptor.Digest, newDescriptor.Descriptor().Digest, "new and old descriptors should be different")
+
+	mutator, err = New(engine, newDescriptor)
+	require.NoError(t, err)
+	err = mutator.cache(t.Context())
+	require.NoError(t, err, "get cache")
+
+	assert.Len(t, mutator.manifest.Layers, 2, "manifest.Layers should include prepended layer")
+	assert.Equal(t, newLayerDesc, mutator.manifest.Layers[0], "new layer descriptor should be first")
+	assert.Equal(t, expectedLayerDigest, mutator.manifest.Layers[1].Digest, "old layer should remain after the prepended layer")
+
+	assert.Len(t, mutator.config.RootFS.DiffIDs, 2, "config.RootFS.DiffIDs should include new layer")
+	assert.NotEqual(t, expectedLayerDiffID, mutator.config.RootFS.DiffIDs[0], "prepended layer should be the first diffid")
+	assert.Equal(t, expectedLayerDiffID, mutator.config.RootFS.DiffIDs[1], "original layer should remain after the prepended layer")
+
+	assert.Len(t, mutator.config.History, 2, "config.History should include new layer")
+	assert.Equal(t, newLayerHist, mutator.config.History[0], "prepended layer history should match specified value")
+	assert.Equal(t, ispec.History{EmptyLayer: false}, mutator.config.History[1], "original history should remain after the prepended layer")
+}
+
 func testMutateAddCompression(t *testing.T, mutator *Mutator, mediaType string, addCompressAlgo, expectedCompressAlgo blobcompress.Algorithm) {
 	// This test doesn't care about whether the layer is real.
 	fakeLayerData := `fake tar archive`
