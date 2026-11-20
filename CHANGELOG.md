@@ -24,6 +24,8 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 * When encountering an invalid whiteout (specifically, one with the name
   `.wh.`), `umoci unpack` will now return an error. Previously such whiteouts
   were incorrectly treated as though they were opaque whiteouts.
+* Layer decompressors are now always closed, even when extraction fails. This
+  fixes a resource leak when unpacking malformed layers. (#684)
 
 ### Changed ###
 * `github.com/vbatts/go-mtree` has merged our patches to improve the strictness

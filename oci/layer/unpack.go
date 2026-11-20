@@ -287,6 +287,10 @@ func UnpackRootfs(ctx context.Context, engine cas.Engine, rootfsPath string, man
 			if err != nil {
 				return fmt.Errorf("create %s reader: %w", compressType, err)
 			}
+			// The decompressor is a separate resource from the underlying blob
+			// reader (and may own buffers or goroutines), so make sure it is
+			// closed even if extraction fails part-way through.
+			defer funchelpers.VerifyClose(&Err, layerRaw)
 		}
 
 		layerDigester := digest.SHA256.Digester()
