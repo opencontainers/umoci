@@ -14,6 +14,8 @@ umoci config - Modifies the configuration of an OCI image
 [**--history.author**=*author*]
 [**--history-created**=*date*]
 [**--clear**=*value*]
+[**--remove-label**=*name*]
+[**--remove-annotation**=*name*]
 [**--config.user**=*value*]
 [**--config.exposedports**=*value*]
 [**--config.env**=*value*]
@@ -86,6 +88,16 @@ The global options are defined in **umoci**(1).
     * config.entrypoint
     * config.cmd
     * config.volume
+
+**--remove-label**=*name*
+  Removes the specified pre-existing configuration label. May be repeated.
+  A missing label is ignored. Removals run before any **--config.label**
+  additions made by this invocation.
+
+**--remove-annotation**=*name*
+  Removes the specified pre-existing manifest annotation. May be repeated.
+  A missing annotation is ignored. Removals run before any
+  **--manifest.annotation** additions made by this invocation.
 
 The following commands all set their corresponding values in the configuration
 or image manifest. For more information see [the OCI image specification][1].

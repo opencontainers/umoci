@@ -97,6 +97,8 @@ image.`,
 		cli.StringFlag{Name: "platform.variant"},
 		// TODO: platform.os.{version,features}
 		cli.StringSliceFlag{Name: "manifest.annotation"},
+		cli.StringSliceFlag{Name: "remove-label", Usage: "remove an existing configuration label by name (repeatable)"},
+		cli.StringSliceFlag{Name: "remove-annotation", Usage: "remove an existing manifest annotation by name (repeatable)"},
 		cli.StringSliceFlag{Name: "clear"},
 	},
 
@@ -226,6 +228,13 @@ func config(ctx *cli.Context) (Err error) {
 				return fmt.Errorf("unknown key to --clear: %s", key)
 			}
 		}
+	}
+
+	for _, label := range ctx.StringSlice("remove-label") {
+		g.RemoveConfigLabel(label)
+	}
+	for _, annotation := range ctx.StringSlice("remove-annotation") {
+		delete(annotations, annotation)
 	}
 
 	if ctx.IsSet("created") {
