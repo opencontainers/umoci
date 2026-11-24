@@ -14,6 +14,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/).
 
 ## [Unreleased] ##
 
+### Added ###
+* `umoci config` now supports removing individual configuration labels and
+  manifest annotations with `--remove-label` and `--remove-annotation`. (#639)
+
 ### Fixed ###
 * Previously umoci would always overwrite the `HOME` environment variable with
   the home directory configured in the container image's `/etc/passwd` (if the

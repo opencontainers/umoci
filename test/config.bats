@@ -1101,6 +1101,39 @@ function teardown() {
 	image-verify "${IMAGE}"
 }
 
+@test "umoci config --remove-label and --remove-annotation" {
+	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-metadata" \
+		--clear=config.labels --clear=manifest.annotations \
+		--config.label=org.example.remove=label \
+		--config.label=org.example.keep= \
+		--manifest.annotation=org.example.remove=annotation \
+		--manifest.annotation=org.example.keep=
+	[ "$status" -eq 0 ]
+
+	umoci config --image "${IMAGE}:${TAG}-metadata" --tag "${TAG}-new" \
+		--remove-label=org.example.remove --remove-label=org.example.missing \
+		--remove-annotation=org.example.remove --remove-annotation=org.example.missing \
+		--remove-label=org.example.keep --config.label=org.example.keep= \
+		--manifest.annotation=org.example.new=added
+	[ "$status" -eq 0 ]
+
+	umoci stat --image "${IMAGE}:${TAG}-new" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -e '
+		.config.blob.config.Labels == {"org.example.keep": ""} and
+		.manifest.blob.annotations == {"org.example.keep": "", "org.example.new": "added"}
+	' <<<"$output"
+	[ "$status" -eq 0 ]
+
+	umoci stat --image "${IMAGE}:${TAG}-metadata" --json
+	[ "$status" -eq 0 ]
+	sane_run jq -e '
+		.config.blob.config.Labels["org.example.remove"] == "label" and
+		.manifest.blob.annotations["org.example.remove"] == "annotation"
+	' <<<"$output"
+	[ "$status" -eq 0 ]
+}
+
 @test "umoci config --config.exposedports" {
 	# Modify none of the configuration.
 	umoci config --image "${IMAGE}:${TAG}" --tag "${TAG}-new" \
