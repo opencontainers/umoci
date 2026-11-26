@@ -21,6 +21,10 @@ public = "public"
 command = "hugo"
 ignore = "false"
 
+[build.environment]
+# hugo-theme-learn is not compatible with newer Hugo versions.
+HUGO_VERSION = "0.85.0"
+
 # NOTE: All security headers are set in .site/static/_headers, and redirects in
 #       .site/static/_redirects. While Netlify does support setting headers and
 #       redirects in netlify.toml, it seems that this doesn't work for our
