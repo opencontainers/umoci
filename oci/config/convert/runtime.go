@@ -163,7 +163,7 @@ func MutateRuntimeSpec(spec *rspec.Spec, rootfs string, image ispec.Image) error
 		appendEnv(&spec.Process.Env, name, value, true)
 	}
 
-	args := []string{}
+	args := make([]string, 0, len(ig.ConfigEntrypoint())+len(ig.ConfigCmd()))
 	args = append(args, ig.ConfigEntrypoint()...)
 	args = append(args, ig.ConfigCmd()...)
 	if len(args) > 0 {

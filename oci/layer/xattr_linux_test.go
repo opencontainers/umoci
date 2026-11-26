@@ -232,7 +232,7 @@ func testUnpackGenerateRoundTrip_ComplexXattr_OverlayfsRootfs(t *testing.T, tarX
 
 			// We expect to get the exact same thing as the original archive
 			// entries in the new archive.
-			var wantDentries []tarDentry
+			wantDentries := make([]tarDentry, 0, len(dentries))
 			for _, dentry := range dentries {
 				wantDentries = append(wantDentries, dentry.tarDentry)
 			}
@@ -370,7 +370,7 @@ func TestUnpackGenerateRoundTrip_MockedSELinux(t *testing.T) {
 
 			// We expect to get the exact same thing as the original archive
 			// entries in the new archive.
-			var wantDentries []tarDentry
+			wantDentries := make([]tarDentry, 0, len(dentries))
 			for _, dentry := range dentries {
 				wantDentries = append(wantDentries, dentry.tarDentry)
 			}

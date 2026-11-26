@@ -520,7 +520,7 @@ func TestPprintImageConfig(t *testing.T) {
 `},
 		{"Command+Entrypoint-Escaped", "\t\t", ispec.ImageConfig{
 			User:        "0",
-			ArgsEscaped: true,
+			ArgsEscaped: true, //nolint:staticcheck // we need to support this deprecated field
 			Entrypoint:  []string{"/bin/bash -c "},
 			Cmd:         []string{"while true; sleep 1s; done;"},
 		}, "\t\t" + `Image Config:
