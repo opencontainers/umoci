@@ -123,7 +123,7 @@ func TestRootfsDiffIDs(t *testing.T) {
 	g := New()
 
 	values := []string{"a", "b", "c"}
-	diffids := []digest.Digest{}
+	diffids := make([]digest.Digest, 0, len(values))
 	for _, value := range values {
 		digester := digest.SHA256.Digester()
 		_, _ = io.WriteString(digester.Hash(), value)

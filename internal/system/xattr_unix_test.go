@@ -65,7 +65,7 @@ func TestClearxattrFilter(t *testing.T) {
 		{"user.forbidden1.allowed", "test", false},
 	}
 
-	setXattrNames := []string{}
+	setXattrNames := make([]string, 0, len(xattrs)+len(autosetXattrs))
 	forbiddenXattrNames := []string{}
 	forbiddenXattrs := make(map[string]struct{})
 

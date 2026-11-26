@@ -29,6 +29,7 @@ import (
 	"fmt"
 	"io"
 	"maps"
+	"slices"
 	"time"
 
 	"github.com/apex/log"
@@ -275,8 +276,8 @@ func (m *Mutator) PickDefaultCompressAlgorithm(ctx context.Context) (Compressor,
 		return nil, fmt.Errorf("getting cache failed: %w", err)
 	}
 	layers := m.manifest.Layers
-	for i := len(layers) - 1; i >= 0; i-- {
-		_, compressType := mediatype.SplitMediaTypeSuffix(layers[i].MediaType)
+	for _, layer := range slices.Backward(layers) {
+		_, compressType := mediatype.SplitMediaTypeSuffix(layer.MediaType)
 		// Don't generate an uncompressed layer even if the previous one is --
 		// there is no reason to automatically generate uncompressed blobs.
 		if compressType != "" {

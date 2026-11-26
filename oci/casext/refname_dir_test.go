@@ -94,7 +94,7 @@ func randomTarData(tw *tar.Writer) error {
 // types. The returned mapping is for a given index -> descriptor you would
 // expect to get from ResolveReference.
 func fakeSetupEngine(t *testing.T, engineExt Engine) []descriptorMap {
-	mapping := []descriptorMap{}
+	mapping := make([]descriptorMap, 0, 3*5)
 
 	// Add some "normal" images that contain some layers and also have some
 	// index indirects. The multiple layers makes sure that we don't break the
